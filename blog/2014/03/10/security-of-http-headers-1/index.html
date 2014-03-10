@@ -3,30 +3,30 @@
 <html class="no-js " lang="zh-TW" xmlns="http://www.w3.org/1999/xhtml" xmlns:og="http://ogp.me/ns#" xmlns:fb="http://www.facebook.com/2008/fbml">
   <head>
     <title>
-      所有文章 Archive | DEVCORE 戴夫寇爾
+      Security of HTTP headers (1) | DEVCORE 戴夫寇爾
     </title>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1, maximum-scale=1" name="viewport">
-    <meta name="description" property="og:description" content="戴夫寇爾團隊熱衷挑戰駭客思維、創新技術，藉由對技術的熱情，為企業建立堅強的資安後盾，協助打造更穩固的主顧信賴關係，讓企業與民眾的數位資產得到有效的保障。" />
-    <meta name="keywords" content="DEVCORE,戴夫寇爾,資訊安全,滲透測試" />
+    <meta name="description" property="og:description" content="企業主與開發人員越來越重視資安卻常不知該如何著手，戴夫寇爾將於本文多項資安相關的 HTTP headers，以低成本方式強化網站安全性。" />
+    <meta name="keywords" content="HTTP header, Defense" />
     <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
-    <meta property="og:title" content="所有文章 Archive | DEVCORE 戴夫寇爾" />
-    <meta property="og:url" content="http://devco.re/blog/archive" />
+    <meta property="og:title" content="Security of HTTP headers (1) | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="http://devco.re/blog/2014/03/10/security-of-http-headers-1/" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="http://devco.re/assets/themes/devcore/images/double-sticker.png" />
+    
     <meta name="twitter:card" content="summary">
     <meta name="twitter:site" content="d3vc0r3">
-    <meta name="twitter:title" content="所有文章 Archive | DEVCORE 戴夫寇爾">
-    <meta name="twitter:description" content="戴夫寇爾團隊熱衷挑戰駭客思維、創新技術，藉由對技術的熱情，為企業建立堅強的資安後盾，協助打造更穩固的主顧信賴關係，讓企業與民眾的數位資產得到有效的保障。">
+    <meta name="twitter:title" content="Security of HTTP headers (1) | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="企業主與開發人員越來越重視資安卻常不知該如何著手，戴夫寇爾將於本文多項資安相關的 HTTP headers，以低成本方式強化網站安全性。">
     <meta name="twitter:creator" content="d3vc0r3">
-    <meta name="twitter:image:src" content="http://devco.re/assets/themes/devcore/images/double-sticker.png">
+    
     <meta name="twitter:domain" content="devco.re">
     <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
     <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
     <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
     <meta name='yandex-verification' content='4561963cf1d18fe3' />
 
-    <link rel="canonical" href="http://devco.re/blog/archive"/>
+    <link rel="canonical" href="http://devco.re/blog/2014/03/10/security-of-http-headers-1/"/>
     <link rel="alternate" type=application/rss+xml title="DEVCORE 戴夫寇爾" href="http://devco.re/rss">
     <link rel="publisher" href="https://plus.google.com/118439315679478709768/" />
 
@@ -166,7 +166,7 @@
               </ul>
             </div>
             <h1 class="logo">
-              <a href="/">所有文章 Archive</a>
+              <a href="/">Security of HTTP headers (1)</a>
             </h1>
           </div>
         </div>
@@ -176,74 +176,195 @@
           <div class="page-header">
             <div class="container">
               <h2 class="page-header-title">
-                所有文章 <small> Archive </small>
+                部落格 <small> Blog </small>
               </h2>
             </div>
           </div>
           <div class="page-content">
             <div class="container">
               <div class="post">
-                <div class="post-main article">
-                  
-                  
-            
-              
-                
-                
-                
-                
-
-                
-                  <h3 class="lead">2014</h3>
-                  <h4>March</h4>
-                  <ul>
-                
-
-                    <li><a href="/blog/2014/03/10/security-of-http-headers-1/">Security of HTTP headers (1)</a></li>
-
-                
-                  
+                <div class="post-main">
+                  <div class="post-switch">
+                    <a class="prev" href="/blog/2014/03/06/qiyou-ads-hijacking/" title="奇優廣告 Qiyou 廣告手法剖析">上一篇文章</a>
                     
+                  </div>
+                  <div itemscope itemtype="http://schema.org/Article" class="post-content">
+                    <h2 itemprop="name" class="post-title">
+                      Security of HTTP headers (1)
+                    </h2>
+                    <div class="post-info">
+                      <span class="post-category"><a href="/blog/category/技術專欄/">技術專欄</a></span>Posted by <a class="poster" href="#"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Bowen Hsu</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-03-10">2014-03-10</span>
+                    </div>
+                    <div class="post-tag">
+                      
+                      Tags: <a href="/blog/tag/HTTP header/">HTTP header</a>, <a href="/blog/tag/Defense/">Defense</a>
+                    </div>
+                    <span itemprop="articleBody">
+                      <h3 id="">前言</h3>
+
+<p>隨著駭客攻擊事件日益漸增，原本經常被大眾所忽視的網站資安問題，現在已經逐漸受到重視。但是，許多企業主或開發人員雖然很想強化網站的安全性，卻不知道該如何從何著手。</p>
+
+<p>企業主通常想到的改善方案是添購資安設備，希望可以一勞永逸。我們姑且先不談「<strong>資訊界沒有永遠的安全</strong>」這件事，企業光是要買到有效的資安設備就是一件令人頭痛的事情，不但要花許多時間聽取廠商的簡報，耗費大筆的經費採購，購買之後還要請員工或原廠技術人員協助調校、設定或教學，否則買了等於沒買。</p>
+
+<p>而對於技術人員來說，若要強化網站安全性，必須先了解駭客如何攻擊，才知道如何建立根本性的防禦機制。但是企業主通常捨不得送員工去參加專業的教育訓練，台灣員工拿的 22k 低薪也低得常常令人捨不得花錢去上課。</p>
+
+<p>如果有一種方式可以增強網站的基本安全性，而且不需要花大錢，又可以讓開發人員不用大幅度變更程式，應該是個皆大歡喜的方案？</p>
+<!-- more -->
+<h3 id="_2">究竟有沒有低成本的簡易防禦方法？</h3>
+
+<p>有的！目前各家瀏覽器 (Google Chrome、Firefox、Safari、IE) 其實已經支援許多種資安相關的 HTTP headers。開發人員若在伺服器設定加入某些 headers，瀏覽器收到 response 時就會執行相對應的防禦機制，如此一來可直接提升網頁應用程式的基本安全性。這些 HTTP headers 通常也已被許多常見的 framework 納入爲基本功能，即使開發人員不清楚如何修改伺服器相關設定，也可以依靠 framework 提供的方式來使用這些 headers。因此使用這些 headers 來提升網站安全性就成爲頗具 CP 值的方式。</p>
+
+<p>目前最常見的資安相關 HTTP headers 可參考 <a href="https://www.owasp.org/index.php/List_of_useful_HTTP_headers">OWASP 網站</a> 所條列的內容：</p>
+
+<ul>
+<li>Content-Security-Policy (X-Content-Security-Policy、X-Webkit-CSP 都是同一系列)</li>
+
+<li>Strict-Transport-Security</li>
+
+<li>X-Content-Type-Options</li>
+
+<li>X-Frame-Options</li>
+
+<li>X-XSS-Protection</li>
+</ul>
+
+<p>還有一些其他的資安相關 HTTP headers 也值得注意：</p>
+
+<ul>
+<li>Access-Control-Allow-Origin</li>
+
+<li>X-Download-Options</li>
+
+<li>X-Permitted-Cross-Domain-Policies</li>
+</ul>
+
+<p>最後有一項比較特別的是 Cookie 的安全設定，由於 Cookie 也是 HTTP headers 的一部份，因此本文也將其列出：</p>
+
+<ul>
+<li>Set-Cookie: HttpOnly</li>
+
+<li>Set-Cookie: Secure</li>
+</ul>
+
+<p>上述 headers 的數量是不是稍微超過你的想像？其實這些技術早已被很多大公司採用，像是 Google、Facebook、Twitter 等常見的網路服務都可看到這些 headers 的蹤影。下面這張圖片使用 Chrome 的 Inspector 來觀察 Twitter 的 HTTP response 內容：</p>
+
+<p><a href="https://lh6.googleusercontent.com/-6dyPHEZZ6RU/UxlujAnSihI/AAAAAAAAAIg/Yq2xC_M4dV8/w1138-h954-no/http-headers-twitter.jpg"><img src="https://lh6.googleusercontent.com/-6dyPHEZZ6RU/UxlujAnSihI/AAAAAAAAAIg/Yq2xC_M4dV8/w1138-h954-no/http-headers-twitter.jpg" alt="HTTP headers of Twitter" /></a></p>
+
+<p>從畫紅線的部分我們可看到 Twitter 在 Cookie 設定了 Secure 與 HttpOnly 這兩個屬性，並且採用了 Strict-Transport-Security、X-Content-Type-Options、X-Frame-Options、X-XSS-Protection 這幾種 headers。</p>
+
+<p>如果覺得用圖形界面太麻煩，也可以使用 command line 的工具來觀察。下面這張圖片使用 curl 來觀察 Facebook 的 HTTP response 內容：</p>
+
+<p><a href="https://lh4.googleusercontent.com/-wKFIH6kIZDk/UxybqPYO60I/AAAAAAAAAI4/t12_TyJz3cA/w1096-h370-no/http-headers-facebook.jpg"><img src="https://lh4.googleusercontent.com/-wKFIH6kIZDk/UxybqPYO60I/AAAAAAAAAI4/t12_TyJz3cA/w1096-h370-no/http-headers-facebook.jpg" alt="HTTP headers of Facebook" /></a></p>
+
+<h3 id="_headers_">上述資安相關的 headers 想解決哪些問題？</h3>
+
+<p>目前這些資安相關的 HTTP headers 想解決的問題主要可分為以下五大類：</p>
+
+<ul>
+<li>防禦 XSS (Cross Site Scripting)：
+<ul>
+<li>Content-Security-Policy</li>
+
+<li>Set-Cookie: HttpOnly</li>
+
+<li>X-XSS-Protection</li>
+
+<li>X-Download-Options</li>
+</ul>
+</li>
+
+<li>防禦 Clickjacking：
+<ul>
+<li>X-Frame-Options</li>
+</ul>
+</li>
+
+<li>強化 HTTPS 機制：
+<ul>
+<li>Set-Cookie: Secure</li>
+
+<li>Strict-Transport-Security</li>
+</ul>
+</li>
+
+<li>避免瀏覽器誤判文件形態：
+<ul>
+<li>X-Content-Type-Options</li>
+</ul>
+</li>
+
+<li>保護網站資源別被任意存取：
+<ul>
+<li>Access-Control-Allow-Origin（此 header 若設定錯誤會適得其反！）</li>
+
+<li>X-Permitted-Cross-Domain-Policies</li>
+</ul>
+</li>
+</ul>
+
+<p>其中 <a href='https://www.owasp.org/index.php/Cross-site_Scripting_(XSS)'>XSS</a> 與 <a href="https://www.owasp.org/index.php/Clickjacking">Clickjacking</a> 是目前常見的攻擊手法，尤其 XSS 目前仍高居 <a href="https://www.owasp.org/index.php/Top_10_2013-Top_10">OWASP Top 10 2013 的第三名</a>，其嚴重性可見一斑。而在我們執行過的許多<a href="http://devco.re/services/penetration-test">滲透測試</a>案之中，被我們找出 XSS 弱點的網站高達九成！實在是不能輕忽這些問題。若能降低這些手法攻擊成功的機率，企業的利益就能有更多的安全保障，客戶對企業的信賴亦會更加穩固。</p>
+
+<h3 id="_headers__2">目前這些 headers 的使用狀況？</h3>
+
+<p>這麼簡便的基本防禦方式，理當廣為企業所採用，因此我們針對 <a href="http://www.alexa.com/topsites/countries/TW">Alexa Taiwan Top 525</a> 中挑出 513 個可正常使用的網站，調查這些網站是否使用某些常見的 HTTP headers。結果相當令人失望，許多網站都未採用這些 headers。統計數據如下圖：</p>
+
+<p><a href="https://lh3.googleusercontent.com/-EGrtPA75hno/Uxy4jyFD9PI/AAAAAAAAAJc/QDhb3lIDtHw/w369-h201-no/http-headers-statistic-alexa-taiwan.png"><img src="https://lh3.googleusercontent.com/-EGrtPA75hno/Uxy4jyFD9PI/AAAAAAAAAJc/QDhb3lIDtHw/w369-h201-no/http-headers-statistic-alexa-taiwan.png" alt="HTTP headers statistic of Alexa Taiwan Top 513" /></a></p>
+
+<p>從統計結果中可發現最多人使用的 HttpOnly 只有 20.89%，排名第二的 X-Frame-Options 也只有 7.93%。而且這些數據尚未將 Google、Twitter 等大公司排除，若將前述國際公司排除後，這些比率恐怕會更低。</p>
+
+<p>不過在上述網站中有不少入口網站、漫畫網站、色情網站，或是公司並非台灣企業，無法反應台灣的使用狀況。恰好在 2012 年 10 月台灣有許多網路服務公司一同成立了 <a href="http://www.tieataiwan.org/index.php">TIEA 台灣網路暨電子商務產業發展協會</a>，目前網站上的<a href="http://www.tieataiwan.org/member.php">會員名單</a>中有 116 個會員，其中不少頗具代表性，正好可觀察這些公司營運的網站是否有採用這些 headers。統計數據如下圖：</p>
+
+<p><a href="https://lh6.googleusercontent.com/-iG4K8bQRP-U/Uxy4vfPsqPI/AAAAAAAAAJo/x66oSzmqwoM/w369-h201-no/http-headers-statistic-tiea.png"><img src="https://lh6.googleusercontent.com/-iG4K8bQRP-U/Uxy4vfPsqPI/AAAAAAAAAJo/x66oSzmqwoM/w369-h201-no/http-headers-statistic-tiea.png" alt="HTTP headers statistic of TIEA" /></a></p>
+
+<p>很可惜地，所有 header 的採用率比起上一份數據都還要低。而且由於 meeya 目前沒有正式官網，是直接使用 facebook 粉絲頁作為官網，因此 Content-Security-Policy、Set-Cookie Secure、Strict-Transport-Security、X-Content-Type-Options、X-Frame-Options、X-XSS-Protection 等六項 headers 的統計數量都還要再減一，頓時 Content-Security-Policy 與 Strict-Transport-Security 的總數量皆降至 0 個。此狀況顯示出，即使是在一些台灣主流的網站中，相關營運人員在資安領域仍有許多努力與學習的空間。</p>
+
+<p>許多台灣企業經常顧著衝業績、開發新功能、趕著讓新服務上線，卻忽略了非常重要的基礎資安建設，往往是在遭到攻擊後才大呼損失慘重，甚至是已被滲透了而不自知，其企業利益與民眾個資的保障皆相當令人擔憂。</p>
+
+<h3 id="_3">下集預告</h3>
+
+<p>接下來本文的續作我們會分幾個篇章詳談各種 headers 的使用方式並介紹實際案例，下一篇將會探討專門防禦 XSS 的 HTTP headers，敬請期待！等不及的朋友們就請先用上面的一些關鍵字自行上網查詢囉！</p>
+                    </span>
+                    <div class="social-share" style="line-height: 10px; margin: 20px 0;">
+                      <div style="float: right;">
+                        <div class="fb-like" data-href="http://devco.re/blog/2014/03/10/security-of-http-headers-1/" data-layout="button_count" data-action="like" data-show-faces="false" data-share="false"></div>
+                      </div>
+                      <a href="#" style="dispaly:none; border-bottom:none;"> </a>
+                      <a href="https://twitter.com/share?" class="twitter-share-button">Tweet</a>
+                      <div class="g-plusone" data-size="medium"></div>
+                      <script type="text/javascript">
+                        (function() {
+                          var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+                          po.src = 'https://apis.google.com/js/platform.js';
+                          var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+                        })();
+                      </script>
+                      <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+                    </div>
+                  </div>
                   
-                
-              
-                
-                
-                
-                
 
-                
 
-                    <li><a href="/blog/2014/03/06/qiyou-ads-hijacking/">奇優廣告 Qiyou 廣告手法剖析</a></li>
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
 
-                
-                  
-                    
-                      </ul>
-                      <h4>February</h4>
-                      <ul>
-                    
-                  
-                
-              
-                
-                
-                
-                
 
-                
 
-                    <li><a href="/blog/2014/02/27/devcore-new-website/">DEVCORE 新網站上線！</a></li>
-
-                
-                  </ul>
-                
-              
-            
-            
 
                 </div>
                 <div class="post-sidebar">
+                  <!--文章分類-->
                   <div class="widget">
                     <div class="widget-title">
                       文章分類
@@ -267,6 +388,7 @@
 
                     </ul>
                   </div>
+                  <!--文章分類 end--><!--最新文章-->
                   <div class="widget">
                     <div class="widget-title">
                       最新文章
@@ -309,6 +431,7 @@
 
                     </ul>
                   </div>
+                  <!--最新文章 end--><!--文章標籤-->
                   <div class="widget">
                     <div class="widget-title">
                       文章標籤
@@ -332,12 +455,19 @@
 
                     </ul>
                   </div>
+                  <!--文章標籤 end-->
                 </div>
               </div>
+              <div id="fb-root"></div>
+              <script>(function(d, s, id) {
+                var js, fjs = d.getElementsByTagName(s)[0];
+                if (d.getElementById(id)) return;
+                js = d.createElement(s); js.id = id;
+                js.src = "//connect.facebook.net/en_US/all.js#xfbml=1";
+                fjs.parentNode.insertBefore(js, fjs);
+              }(document, 'script', 'facebook-jssdk'));</script>
             </div>
           </div>
-
-
 
 
         </div>

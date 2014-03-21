@@ -12,9 +12,9 @@ var off_canvas = function (){
 
   closeMenuButton.on("click", function(){
     menuStatus.removeClass("open-menu").delay(500).queue(function(){
-			menuStatus.removeClass("model");
-			menuStatus.dequeue();
-      affixHack.attr("style", "").removeClass("affix").addClass("affix-top"); // fix affix bug
+      menuStatus.removeClass("model");
+      menuStatus.dequeue();
+      affixHack.attr("style", "").removeClass("affix affix-bottom").addClass("affix-top"); // fix affix bug
     });
     event.preventDefault();
     affixHack.attr("style", "position: static"); // fix affix bug
@@ -23,6 +23,4 @@ var off_canvas = function (){
 };
 
 off_canvas();
-// $( window ).resize(function() {
-//   $('body').removeClass('open-menu');
-// });
+

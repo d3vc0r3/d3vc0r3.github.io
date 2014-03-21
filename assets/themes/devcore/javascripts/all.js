@@ -37,6 +37,3 @@ if ( $('.page-content-sidebar-affix').length != 0 ) {
     _sidebar.data('bs.affix').options.offset.bottom = $('.footer').outerHeight(true)
   })
 }
-
-
-

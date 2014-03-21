@@ -26,5 +26,3 @@ off_canvas();
 // $( window ).resize(function() {
 //   $('body').removeClass('open-menu');
 // });
-
-

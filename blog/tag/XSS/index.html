@@ -3,30 +3,30 @@
 <html class="no-js " lang="zh-TW" xmlns="http://www.w3.org/1999/xhtml" xmlns:og="http://ogp.me/ns#" xmlns:fb="http://www.facebook.com/2008/fbml">
   <head>
     <title>
-      奇優廣告 Qiyou 廣告手法剖析 | DEVCORE 戴夫寇爾
+      文章標籤：XSS | DEVCORE 戴夫寇爾
     </title>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1, maximum-scale=1" name="viewport">
-    <meta name="description" property="og:description" content="廣告網站為了增加廣告曝光度以及點擊率，使用各種複雜多變的手法顯示廣告。戴夫寇爾將於本文分析奇優廣告 Qiyou 是如何利用 JavaScript 控制滑鼠事件顯示廣告。" />
-    <meta name="keywords" content="Clickjacking, Qiyou, Hijack" />
+    <meta name="description" property="og:description" content="戴夫寇爾團隊熱衷挑戰駭客思維、創新技術，藉由對技術的熱情，為企業建立堅強的資安後盾，協助打造更穩固的主顧信賴關係，讓企業與民眾的數位資產得到有效的保障。" />
+    <meta name="keywords" content="DEVCORE,戴夫寇爾,資訊安全,滲透測試" />
     <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
-    <meta property="og:title" content="奇優廣告 Qiyou 廣告手法剖析 | DEVCORE 戴夫寇爾" />
-    <meta property="og:url" content="http://devco.re/blog/2014/03/06/qiyou-ads-hijacking/" />
+    <meta property="og:title" content="文章標籤：XSS | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="http://devco.re/blog/tag/XSS/" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="" />
+    <meta property="og:image" content="http://devco.re/assets/themes/devcore/images/double-sticker.png" />
     <meta name="twitter:card" content="summary">
     <meta name="twitter:site" content="d3vc0r3">
-    <meta name="twitter:title" content="奇優廣告 Qiyou 廣告手法剖析 | DEVCORE 戴夫寇爾">
-    <meta name="twitter:description" content="廣告網站為了增加廣告曝光度以及點擊率，使用各種複雜多變的手法顯示廣告。戴夫寇爾將於本文分析奇優廣告 Qiyou 是如何利用 JavaScript 控制滑鼠事件顯示廣告。">
+    <meta name="twitter:title" content="文章標籤：XSS | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="戴夫寇爾團隊熱衷挑戰駭客思維、創新技術，藉由對技術的熱情，為企業建立堅強的資安後盾，協助打造更穩固的主顧信賴關係，讓企業與民眾的數位資產得到有效的保障。">
     <meta name="twitter:creator" content="d3vc0r3">
-    <meta name="twitter:image:src" content="">
+    <meta name="twitter:image:src" content="http://devco.re/assets/themes/devcore/images/double-sticker.png">
     <meta name="twitter:domain" content="devco.re">
     <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
     <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
     <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
     <meta name='yandex-verification' content='4561963cf1d18fe3' />
 
-    <link rel="canonical" href="http://devco.re/blog/2014/03/06/qiyou-ads-hijacking/"/>
+    <link rel="canonical" href="http://devco.re/blog/tag/XSS/"/>
     <link rel="alternate" type=application/rss+xml title="DEVCORE 戴夫寇爾" href="http://devco.re/rss">
     <link rel="publisher" href="https://plus.google.com/118439315679478709768/" />
 
@@ -218,7 +218,7 @@
               </ul>
             </div>
             <h1 class="logo">
-              <a href="/" title="DEVCORE 戴夫寇爾">奇優廣告 Qiyou 廣告手法剖析</a>
+              <a href="/" title="DEVCORE 戴夫寇爾">文章標籤：XSS</a>
             </h1>
           </div>
         </div>
@@ -228,138 +228,62 @@
           <div class="page-header">
             <div class="container">
               <h2 class="page-header-title">
-                部落格 <small> Blog </small>
+                文章標籤：XSS
               </h2>
             </div>
           </div>
           <div class="page-content">
             <div class="container">
               <div class="post">
-                <div class="post-main">
-                  <div class="post-switch">
-                    <a class="prev" href="/blog/2014/02/27/devcore-new-website/" title="DEVCORE 新網站上線！">上一篇文章</a>
-                    <a class="next" href="/blog/2014/03/10/security-issues-of-http-headers-1/" title="HTTP Headers 的資安議題 (1)">下一篇文章</a>
-                  </div>
-                  <div itemscope itemtype="http://schema.org/Article" class="post-content">
-                    <h2 itemprop="name" class="post-title">
-                      奇優廣告 Qiyou 廣告手法剖析
-                    </h2>
-                    <div class="post-info">
-                      <span class="post-category"><a href="/blog/category/案例剖析/">案例剖析</a></span><span class="posted">Posted </span>by <a class="poster" href="#"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Allen Own</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-03-06">2014-03-06</span>
-                    </div>
-                    <div class="post-tag">
-                      
-                      Tags: <a href="/blog/tag/JavaScript/">JavaScript</a>, <a href="/blog/tag/Hijack/">Hijack</a>
-                    </div>
-                    <span itemprop="articleBody">
-                      <p>歡迎來到我們的技術文章專欄！</p>
-
-<p>今天我們來談談「廣告顯示手法」。不少廣告商為了要增加廣告的曝光以及點擊率，會使用各種手法強迫使用者顯示廣告。例如彈出式視窗、內嵌廣告、強制跳轉等等。但這樣的手法有什麼好提的呢？今天有一個很特別的案例，讓我們來看看一個網站「<a href="http://1kkk.com">1kkk.com 極速漫畫</a>」。</p>
-
-<p><img src="https://lh4.googleusercontent.com/4pevslM2QNBVcXug76t7MCziPk5ms9U1gK76fXqLyQ=w839-h634-no" alt="奇優廣告 Qiyou 廣告手法剖析 - 1kkk.com" /> 這是一個常見的網路漫畫網站，接著點擊進去漫畫頁面。 <!-- more --> <img src="https://lh6.googleusercontent.com/-Q9pSLJQc0Ak/Uxf8YrS0tNI/AAAAAAAAAHQ/lZNQcky2r8k/w839-h634-no/blog_qiyou_hijack_03.png" alt="奇優廣告 Qiyou 廣告手法剖析 - 1kkk.com 漫畫頁面" /> 網站中充斥著煩人的廣告，並且突然一閃而過 Safari 的「閱讀列表」動畫。怎麼會突然這樣呢？讓我們打開「閱讀列表」一探究竟。</p>
-
-<p><img src="https://lh6.googleusercontent.com/-4s9QKuK9ANs/Uxf8ZVeIr-I/AAAAAAAAAHE/C06SoY1VyMI/w262-h525-no/blog_qiyou_hijack_04.png" alt="奇優廣告 Qiyou 廣告手法剖析 - Safari 顯示閱讀側邊欄" /> <img src="https://lh6.googleusercontent.com/-gWdJCWw41dY/Uxf8ZtMwpuI/AAAAAAAAAHM/m9WbSBbnJSM/w839-h634-no/blog_qiyou_hijack_05.png" alt="奇優廣告 Qiyou 廣告手法剖析 - Safari 閱讀列表被放置廣告 URL" /></p>
-
-<p>打開閱讀列表之後，我們赫然發現裡面被加了非常多廣告的頁面！</p>
-
-<p>可以看以下影片示範：</p>
-<center><div class='videowrapper'><iframe frameborder='0' height='420' src='http://www.youtube.com/embed/E-BGf1MwecU' width='560'> </iframe></div></center>
-<p>這是怎麼做到的呢？就是一種利用 JavaScript 控制滑鼠點擊的變形應用。點選「網頁檢閱器」或是「開發者工具」，會看到一段奇怪的 JavaScript 控制滑鼠的點擊行為。</p>
-
-<p><img src="https://lh6.googleusercontent.com/-Ngnx2PsIyNw/Uxf8ZtZtfSI/AAAAAAAAAHU/NEvZLh6a09M/w795-h634-no/blog_qiyou_hijack_06.png" alt="奇優廣告 Qiyou 廣告手法剖析 - 廣告 JavaScript" /></p>
-
-<p>分析節錄後的 code 如下：</p>
-<div class='highlight'><pre><code class='html'><span class='cp'>&lt;!DOCTYPE html&gt;</span>
-<span class='nt'>&lt;html&gt;</span>
-<span class='nt'>&lt;head&gt;</span>
-  <span class='nt'>&lt;script&gt;</span>
-    <span class='kd'>var</span> <span class='nx'>force_add_url_to_readinglist</span> <span class='o'>=</span> <span class='kd'>function</span> <span class='p'>(</span><span class='nx'>target_url</span><span class='p'>)</span> <span class='p'>{</span>
-      <span class='k'>try</span> <span class='p'>{</span>
-        <span class='kd'>var</span> <span class='nx'>fake_element</span> <span class='o'>=</span> <span class='nb'>document</span><span class='p'>.</span><span class='nx'>createElement</span><span class='p'>(</span><span class='s1'>&#39;a&#39;</span><span class='p'>);</span>
-        <span class='nx'>fake_element</span><span class='p'>.</span><span class='nx'>setAttribute</span><span class='p'>(</span><span class='s1'>&#39;href&#39;</span><span class='p'>,</span> <span class='nx'>target_url</span><span class='p'>);</span>
-        <span class='nx'>fake_element</span><span class='p'>.</span><span class='nx'>setAttribute</span><span class='p'>(</span><span class='s1'>&#39;style&#39;</span><span class='p'>,</span> <span class='s1'>&#39;display:none;&#39;</span><span class='p'>);</span>
-
-        <span class='c1'>// https://developer.mozilla.org/en-US/docs/Web/API/event.initMouseEvent</span>
-        <span class='kd'>var</span> <span class='nx'>fake_event</span> <span class='o'>=</span> <span class='nb'>document</span><span class='p'>.</span><span class='nx'>createEvent</span><span class='p'>(</span><span class='s1'>&#39;MouseEvents&#39;</span><span class='p'>);</span>
-        <span class='nx'>fake_event</span><span class='p'>.</span><span class='nx'>initMouseEvent</span><span class='p'>(</span><span class='s1'>&#39;click&#39;</span><span class='p'>,</span> <span class='kc'>false</span><span class='p'>,</span> <span class='kc'>false</span><span class='p'>,</span> <span class='nb'>window</span><span class='p'>,</span> <span class='mi'>0</span><span class='p'>,</span> <span class='mi'>0</span><span class='p'>,</span> <span class='mi'>0</span><span class='p'>,</span> <span class='mi'>0</span><span class='p'>,</span> <span class='mi'>0</span><span class='p'>,</span> <span class='kc'>false</span><span class='p'>,</span> <span class='kc'>false</span><span class='p'>,</span> <span class='kc'>true</span><span class='p'>,</span> <span class='kc'>false</span><span class='p'>,</span> <span class='mi'>0</span><span class='p'>,</span> <span class='kc'>null</span><span class='p'>);</span>
-        <span class='nx'>fake_element</span><span class='p'>.</span><span class='nx'>dispatchEvent</span><span class='p'>(</span><span class='nx'>fake_event</span><span class='p'>);</span>
-
-      <span class='p'>}</span> <span class='k'>catch</span> <span class='p'>(</span> <span class='nx'>error</span> <span class='p'>)</span> <span class='p'>{</span>
-        <span class='c1'>// nothing.</span>
-      <span class='p'>}</span>
-    <span class='p'>};</span>
-
-    <span class='kd'>var</span> <span class='nx'>url</span> <span class='o'>=</span> <span class='s1'>&#39;http://google.com/?&#39;</span> <span class='o'>+</span> <span class='nb'>Math</span><span class='p'>.</span><span class='nx'>random</span><span class='p'>().</span><span class='nx'>toString</span><span class='p'>().</span><span class='nx'>substr</span><span class='p'>(</span><span class='mi'>1</span><span class='p'>);</span>
-    <span class='nx'>force_add_url_to_readinglist</span><span class='p'>(</span><span class='nx'>url</span><span class='p'>);</span>
-  <span class='nt'>&lt;/script&gt;</span>
-<span class='nt'>&lt;/head&gt;</span>
-
-<span class='nt'>&lt;body&gt;</span>
-
-  <span class='nt'>&lt;h1&gt;</span>Test: FORCE_ADD_URL_TO_READINGLIST<span class='nt'>&lt;/h1&gt;</span>
-
-<span class='nt'>&lt;/body&gt;</span>
-<span class='nt'>&lt;/html&gt;</span>
-</code></pre></div>
-<p>利用「<a href="https://developer.mozilla.org/en-US/docs/Web/API/event.initMouseEvent">initMouseEvent</a>」模擬滑鼠的點擊，在 URL 上按下 Shift 鍵點擊。在一般瀏覽器中是「開啟新視窗」，在 Safari 中則是「加入閱讀清單」了，因此形成廣告視窗不斷加入閱讀清單的現象。廣告商利用這種手法增加廣告的點擊率，只要瀏覽器沒有安裝阻擋廣告的套件或者是阻擋「彈出式視窗」，你就會成為流量的貢獻者。</p>
-
-<p>經過我們的測試，Internet Explorer、Mozilla Firefox 不會受這類攻擊影響，Google Chrome、Opera 則會被內建的 Pop-up 視窗阻擋功能擋下。但若是直接模擬點擊，則全數瀏覽器都會受影響導向至 URL。雖然這種類型的攻擊不會造成實質上的損失跟危害，但若是結合其他惡意手法將可以造成攻擊。例如透過網站掛碼將使用者導向至惡意網站等等。</p>
-
-<p>若要避免此類型攻擊，有以下幾個建議方案：</p>
-
-<ol>
-<li>安裝 NoScript 類型套件，僅允許可信賴的網站執行 JavaScript</li>
-
-<li>開啟「彈出式視窗」阻擋功能，並將網站安全性等級提高。</li>
-
-<li>安裝 AdBlock 等廣告阻擋套件（但會影響網站營收）</li>
-
-<li>使用最新版本瀏覽器以策安全</li>
-</ol>
-
-<p>網頁型的攻擊越來越多樣化，除了依賴瀏覽器本身的保護並輔以第三方安全套件之外，更需要使用者本身的安全意識，才能安心暢快的瀏覽網路！</p>
-                    </span>
-                    <div class="social-share" style="line-height: 10px; margin: 20px 0;">
-                      <div style="float: right;">
-                        <div class="fb-like" data-href="http://devco.re/blog/2014/03/06/qiyou-ads-hijacking/" data-layout="button_count" data-action="like" data-show-faces="false" data-share="false"></div>
-                      </div>
-                      <a href="#" style="dispaly:none; border-bottom:none;"> </a>
-                      <a href="https://twitter.com/share?" class="twitter-share-button">Tweet</a>
-                      <div class="g-plusone" data-size="medium"></div>
-                      <script type="text/javascript">
-                        (function() {
-                          var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
-                          po.src = 'https://apis.google.com/js/platform.js';
-                          var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-                        })();
-                      </script>
-                      <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
-                    </div>
-                  </div>
-                  
-
-
-  <div id="disqus_thread"></div>
-<script type="text/javascript">
-    var disqus_developer = 1;
-    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
-    
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-
-
-
-
+                <div class="post-main article">
+                  <h3 class="lead">XSS</h3>
+                  <ul>
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    <li>
+                      <a href='/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/' title="HTTP Headers 資安議題 (2) - Content-Security-Policy">HTTP Headers 資安議題 (2) - Content-Security-Policy</a>
+                    </li>
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                  </ul>
                 </div>
                 <div class="post-sidebar">
-                  <!--文章分類-->
                   <div class="widget">
                     <div class="widget-title">
                       文章分類
@@ -394,7 +318,6 @@
 
                     </ul>
                   </div>
-                  <!--文章分類 end--><!--最新文章-->
                   <div class="widget">
                     <div class="widget-title">
                       最新文章
@@ -470,7 +393,6 @@
 
                     </ul>
                   </div>
-                  <!--最新文章 end--><!--文章標籤-->
                   <div class="widget">
                     <div class="widget-title">
                       文章標籤
@@ -504,19 +426,12 @@
 
                     </ul>
                   </div>
-                  <!--文章標籤 end-->
                 </div>
               </div>
-              <div id="fb-root"></div>
-              <script>(function(d, s, id) {
-                var js, fjs = d.getElementsByTagName(s)[0];
-                if (d.getElementById(id)) return;
-                js = d.createElement(s); js.id = id;
-                js.src = "//connect.facebook.net/en_US/all.js#xfbml=1";
-                fjs.parentNode.insertBefore(js, fjs);
-              }(document, 'script', 'facebook-jssdk'));</script>
             </div>
           </div>
+
+
 
 
         </div>

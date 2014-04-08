@@ -4,7 +4,7 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="http://devco.re/" rel="self"/>
  <link href="http://devco.re"/>
- <updated>2014-04-09T01:04:16+08:00</updated>
+ <updated>2014-04-09T01:06:59+08:00</updated>
  <id>http://devco.re</id>
  <author>
    <name>DEVCORE</name>
@@ -13,194 +13,10 @@
 
  
  <entry>
-   <title>HTTP Headers 的資安議題 (2) - Content-Security-Policy</title>
-   <link href="http://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/"/>
-   <updated>2014-04-08T00:00:00+08:00</updated>
-   <id>http://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy</id>
-   <content type="html">&lt;h3 id=&quot;contentsecuritypolicy&quot;&gt;Content-Security-Policy&lt;/h3&gt;
-
-&lt;p&gt;還記得在上一篇 &lt;a href=&quot;http://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/&quot;&gt;HTTP headers 的資安議題 (1)&lt;/a&gt; 文章中，我們提到了多種資安相關的 HTTP headers 嗎？接下來的幾篇文章我們會介紹幾個專門對付 XSS 的 HTTP headers，首先就由 Content-Security-Policy 打頭陣。&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://www.owasp.org/index.php/Content_Security_Policy&quot;&gt;Content-Security-Policy&lt;/a&gt;（以下簡稱 CSP）是從 2010 年被提出來的一項 Web 規格，主要目的是用來防止 Cross-Site Scripting（以下簡稱 XSS）跟網頁樣式置換（例如&lt;a href=&quot;http://udn.com/NEWS/NATIONAL/NAT5/8554327.shtml&quot;&gt;科技部被惡搞&lt;/a&gt;就是一個最好的例子）。經過五年發展，CSP 1.0 已從 W3C 的 TR (Technical Report) 變成 &lt;a href=&quot;http://www.w3.org/TR/CSP/&quot;&gt;Candidate Recommendation&lt;/a&gt;，應該不久就會將成為 W3C 推薦標準。新的 &lt;a href=&quot;http://w3c.github.io/webappsec/specs/content-security-policy/csp-specification.dev.html&quot;&gt;CSP 1.1&lt;/a&gt; 則仍在草案階段。&lt;/p&gt;
-
-&lt;p&gt;CSP 家族龐大，總共有三個類別，六個項目：&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;Content-Security-Policy&lt;/li&gt;
-
-&lt;li&gt;Content-Security-Policy-Report-Only&lt;/li&gt;
-
-&lt;li&gt;X-Content-Security-Policy&lt;/li&gt;
-
-&lt;li&gt;X-Content-Security-Policy-Report-Only&lt;/li&gt;
-
-&lt;li&gt;X-WebKit-CSP&lt;/li&gt;
-
-&lt;li&gt;X-WebKit-CSP-Report-Only&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;在 CSP 發展初期，主流瀏覽器並未全部依照同一標準來開發，因此發展成這三種類別。目前由於 CSP 1.0 即將成為標準，大多數瀏覽器已支援 Content-Security-Policy 這個類別，因此狀況已逐漸收斂。主流瀏覽器的支援列表如下圖：&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-qJvtcG9lvq8/Ux6DrOeqNhI/AAAAAAAAALQ/gzQ2EbNrOHA/w531-h105-no/csp-browser-support-list.png&quot; title=&quot;Content-Security-Policy 瀏覽器支援列表&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-qJvtcG9lvq8/Ux6DrOeqNhI/AAAAAAAAALQ/gzQ2EbNrOHA/w531-h105-no/csp-browser-support-list.png&quot; alt=&quot;Content-Security-Policy 瀏覽器支援列表&quot; title=&quot;Content-Security-Policy 瀏覽器支援列表&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;從列表中可看到，只要使用 Content-Security-Policy 與 X-Content-Security-Policy 就已有很高的覆蓋率，除非要支援 Safari 6，否則不用特意使用 X-WebKit-CSP。更詳細的瀏覽器支援列表可參考 &lt;a href=&quot;http://caniuse.com/contentsecuritypolicy&quot;&gt;Can I use&lt;/a&gt;。&lt;/p&gt;
-&lt;!-- more --&gt;
-&lt;h3 id=&quot;csp_10_&quot;&gt;CSP 1.0 主要作用&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p&gt;載入來源白名單&lt;/p&gt;
-
-&lt;p&gt;宣告一組受信任的白名單與資源種類（如 JavaScript, CSS, image 等等），使瀏覽器只能從此白名單中載入資源，藉此防止攻擊者從外部引入含有惡意程式碼的資源。&lt;/p&gt;
-
-&lt;p&gt;例：Content-Security-Policy: default-src ‘self’; script-src ‘self’ http://js.devco.re; style-src ‘self’ http://css.devco.re; img-src ‘self’ data:; frame-src ‘none’&lt;/p&gt;
-
-&lt;p&gt;效果：限定 script 資源只能從 http://js.devco.re 載入；限定 style 資源只能從 http://css.devco.re 載入；限定 img 只能從相同 domain 載入，並且支援 data scheme；限定 frame 不能從任何來源載入；除了 script、style、img、frame 之外的資源，則只能從同樣 domain 以及同樣協定的來源載入。&lt;/p&gt;
-&lt;/li&gt;
-
-&lt;li&gt;
-&lt;p&gt;禁止 inline 程式碼&lt;/p&gt;
-
-&lt;p&gt;一般人開發網站時為求便利，經常會在 HTML 中寫入一些 inline 程式碼，但攻擊者意圖入侵網站時也常用此手法。然而瀏覽器其實無法分辨這些 inline 程式碼究竟是開發人員寫的，還是攻擊者植入的。因此 CSP 乾脆強迫開發者必須把所有 inline 程式碼移到外部檔案，完全杜絕在 HTML 中出現 inline 程式碼的狀況。因此除非你在 CSP 宣告時有註明 ‘unsafe-inline’，否則 CSP 預設禁止使用 inline script 或 inline CSS。&lt;/p&gt;
-
-&lt;p&gt;例：Content-Security-Policy: default-src ‘self’; script-src ‘unsafe-inline’&lt;/p&gt;
-&lt;/li&gt;
-
-&lt;li&gt;
-&lt;p&gt;禁止 eval 函式&lt;/p&gt;
-
-&lt;p&gt;eval() 對許多開發者來說一直是個非常方便的函式，然而若缺乏資安觀念，使用此函式時很可能會導致潛在的 XSS 風險。因此除非你在 CSP 宣告時有註明 ‘unsafe-eval’，否則 CSP 預設禁止使用 eval() 函式。&lt;/p&gt;
-
-&lt;p&gt;例：Content-Security-Policy: default-src ‘self’; script-src ‘unsafe-eval’&lt;/p&gt;
-&lt;/li&gt;
-
-&lt;li&gt;
-&lt;p&gt;防止 sniffer&lt;/p&gt;
-
-&lt;p&gt;由於 CSP 可指定載入資源時強制使用 https 協定，因此可降低被 sniffing 的機率。&lt;/p&gt;
-
-&lt;p&gt;例：Content-Security-Policy: default-src http://devco.re; img-src https:&lt;/p&gt;
-
-&lt;p&gt;效果：限定圖片只能從 https 協定載入，不限定 domain。而除了圖片之外的資源則可從任意來源載入。&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h3 id=&quot;csp_demo&quot;&gt;CSP Demo&lt;/h3&gt;
-
-&lt;p&gt;下面這一段程式碼，使用 default-src * 讓相關資源可正常顯示：&lt;/p&gt;
-&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;php&#39;&gt;&lt;span class=&#39;cp&#39;&gt;&amp;lt;?php&lt;/span&gt;
-&lt;span class=&#39;nx&#39;&gt;header&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;Content-Security-Policy: default-src *&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;);&lt;/span&gt;
-&lt;span class=&#39;cp&#39;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&#39;x&#39; /&gt;
-
-&lt;span class=&#39;x&#39;&gt;&amp;lt;html&amp;gt;&lt;/span&gt;
-&lt;span class=&#39;x&#39;&gt;    &amp;lt;head&amp;gt;&lt;/span&gt;
-&lt;span class=&#39;x&#39;&gt;        &amp;lt;title&amp;gt;CSP Demo Site&amp;lt;/title&amp;gt;&lt;/span&gt;
-&lt;span class=&#39;x&#39;&gt;    &amp;lt;/head&amp;gt;&lt;/span&gt;
-&lt;span class=&#39;x&#39;&gt;    &amp;lt;body&amp;gt;&lt;/span&gt;
-&lt;span class=&#39;x&#39;&gt;        &amp;lt;h3&amp;gt;Content Security Policy Demo Site&amp;lt;/h3&amp;gt;&lt;/span&gt;
-&lt;span class=&#39;x&#39;&gt;        &amp;lt;img width=&amp;quot;200&amp;quot; height=&amp;quot;200&amp;quot; src=&amp;quot;http://devco.re/assets/themes/devcore/images/double-sticker.png&amp;quot;&amp;gt;&amp;lt;/img&amp;gt;&lt;/span&gt;
-&lt;span class=&#39;x&#39;&gt;        &amp;lt;iframe frameborder=&amp;#39;0&amp;#39; width=&amp;#39;300&amp;#39; height=&amp;#39;200&amp;#39; src=&amp;#39;http://www.youtube.com/embed/E-BGf1MwecU&amp;#39;&amp;gt;&amp;lt;/iframe&amp;gt;&lt;/span&gt;
-&lt;span class=&#39;x&#39;&gt;    &amp;lt;/body&amp;gt;&lt;/span&gt;
-&lt;span class=&#39;x&#39;&gt;&amp;lt;/html&amp;gt;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-DVXEu8Xe4GQ/Ux6DqiVHyBI/AAAAAAAAALU/88qSfa5aJkY/w754-h633-no/csp-demo-1.png&quot; title=&quot;使用最寬鬆的 Content-Security-Policy 規則&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-DVXEu8Xe4GQ/Ux6DqiVHyBI/AAAAAAAAALU/88qSfa5aJkY/w754-h633-no/csp-demo-1.png&quot; alt=&quot;使用最寬鬆的 Content-Security-Policy 規則&quot; title=&quot;使用最寬鬆的 Content-Security-Policy 規則&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;接下來我們將 php header 的那一行程式碼修改如下並且 reload 瀏覽器頁面：&lt;/p&gt;
-&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;php&#39;&gt;&lt;span class=&#39;cp&#39;&gt;&amp;lt;?php&lt;/span&gt;
-&lt;span class=&#39;nx&#39;&gt;header&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;Content-Security-Policy: default-src *; img-src https:; frame-src &amp;#39;none&amp;#39;&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;);&lt;/span&gt;
-&lt;span class=&#39;cp&#39;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&#39;x&#39; /&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-iisyWwpo5IY/Ux6Dqn3FBgI/AAAAAAAAALM/MahpofJ2sK0/w754-h633-no/csp-demo-2.png&quot; title=&quot;使用 Content-Security-Policy 限制 img 與 frame 的來源&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-iisyWwpo5IY/Ux6Dqn3FBgI/AAAAAAAAALM/MahpofJ2sK0/w754-h633-no/csp-demo-2.png&quot; alt=&quot;使用 Content-Security-Policy 限制 img 與 frame 的來源&quot; title=&quot;使用 Content-Security-Policy 限制 img 與 frame 的來源&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;使用 CSP 限制 img 與 frame 的來源種類後，我們可以從上圖 Chrome Inspector 的紅字觀察到，網站的圖片與 iframe 影片已被瀏覽器擋掉，無法載入。&lt;/p&gt;
-
-&lt;p&gt;如果擔心直接使用 CSP 會影響網站營運，但又想嘗試 CSP，可以先使用 Content-Security-Policy-Report-Only，示範如下：&lt;/p&gt;
-&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;php&#39;&gt;&lt;span class=&#39;cp&#39;&gt;&amp;lt;?php&lt;/span&gt;
-&lt;span class=&#39;nx&#39;&gt;header&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;Content-Security-Policy-Report-Only: default-src *; img-src https:; frame-src &amp;#39;none&amp;#39;; report-uri http://devco.re/demo&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;);&lt;/span&gt;
-&lt;span class=&#39;cp&#39;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&#39;x&#39; /&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-zLXj9r2aIxc/UyGO-Bzi_5I/AAAAAAAAANU/nbwz6lAfTLc/w754-h594-no/csp-demo-report-only.png&quot; title=&quot;Content-Security-Policy-Report-Only&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-zLXj9r2aIxc/UyGO-Bzi_5I/AAAAAAAAANU/nbwz6lAfTLc/w754-h594-no/csp-demo-report-only.png&quot; alt=&quot;Content-Security-Policy-Report-Only&quot; title=&quot;Content-Security-Policy-Report-Only&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;由上圖可以看到，此 header 不會直接阻擋不符合 CSP 規範的資源，但是會根據使用者所違反的規則發送相對應的 POST request 至指定的 URI，發送內容如下：&lt;/p&gt;
-&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;json&#39;&gt;&lt;span class=&#39;p&#39;&gt;{&lt;/span&gt;
-  &lt;span class=&#39;nt&#39;&gt;&amp;quot;csp-report&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;{&lt;/span&gt;
-    &lt;span class=&#39;nt&#39;&gt;&amp;quot;blocked-uri&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;http://devco.re/&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt;
-    &lt;span class=&#39;nt&#39;&gt;&amp;quot;document-uri&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;http://yoursite.com/csp.php&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt;
-    &lt;span class=&#39;nt&#39;&gt;&amp;quot;original-policy&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;default-src *; img-src https:; frame-src &amp;#39;none&amp;#39;; report-uri http://devco.re/demo&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt;
-    &lt;span class=&#39;nt&#39;&gt;&amp;quot;referrer&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt;
-    &lt;span class=&#39;nt&#39;&gt;&amp;quot;status-code&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;&lt;span class=&#39;mi&#39;&gt;200&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt;
-    &lt;span class=&#39;nt&#39;&gt;&amp;quot;violated-directive&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;img-src https:&amp;quot;&lt;/span&gt;
-  &lt;span class=&#39;p&#39;&gt;}&lt;/span&gt;
-&lt;span class=&#39;p&#39;&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-&lt;p&gt;由發送內容可看出這個 request 因為違反了「img-src https:」規則而將「http://devco.re/」這個來源擋掉。經由此方式，可一邊修改網站一邊觀察是否仍有不符合 CSP 規範之處，等到所有違規的內容都修正完畢後，再將 CSP 套用到正式上線環境。&lt;/p&gt;
-
-&lt;p&gt;由於宣告方式非常多種，在這邊就不一一條列，若有興趣可前往 &lt;a href=&quot;http://content-security-policy.com/&quot;&gt;Content Security Policy Reference &amp;amp; Examples&lt;/a&gt;、&lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Security/CSP/Using_Content_Security_Policy&quot;&gt;Using Content Security Policy - Security | MDN&lt;/a&gt; 等網頁，有更完整的使用情境與範例可供參考。另外也有 &lt;a href=&quot;http://benvinegar.github.io/csp-talk-2013/&quot;&gt;Slide&lt;/a&gt; (by Ben Vinegar) 跟 &lt;a href=&quot;https://www.youtube.com/watch?v=pocsv39pNXA&quot;&gt;YouTube 影片&lt;/a&gt; (by Adam Barth) 可參考。&lt;/p&gt;
-
-&lt;p&gt;若欲使用 CSP 卻一直未能成功時，可到 &lt;a href=&quot;http://www.cspplayground.com/csp_validator&quot;&gt;Content Security Policy Playground&lt;/a&gt; 驗證您所寫的設定是否正確。&lt;/p&gt;
-
-&lt;h3 id=&quot;csp_&quot;&gt;CSP 實際使用案例&lt;/h3&gt;
-
-&lt;p&gt;目前採用 CSP 的案例較少，比較知名的使用案例是 &lt;a href=&quot;https://github.com/&quot;&gt;GitHub&lt;/a&gt;，在 2013 年 4 月 &lt;a href=&quot;https://github.com/blog/1477-content-security-policy&quot;&gt;GitHub 還寫了一篇專文&lt;/a&gt;公告表示他們已開始採用 CSP。另外一個案例廠商可能較廣為人知，是在 2013 年當紅的免費儲存空間 &lt;a href=&quot;https://mega.co.nz/&quot;&gt;MEGA&lt;/a&gt;。兩個案例的實際內容可見於下圖：&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-WPU1UT9T6WA/Ux6DrfiQ_EI/AAAAAAAAALc/s0XmlPFKmoc/w1169-h758-no/http-headers-github-and-mega.jpg&quot; title=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-WPU1UT9T6WA/Ux6DrfiQ_EI/AAAAAAAAALc/s0XmlPFKmoc/w1169-h758-no/http-headers-github-and-mega.jpg&quot; alt=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot; title=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;另一項知名使用案例是 Google 明定&lt;a href=&quot;http://developer.chrome.com/extensions/contentSecurityPolicy&quot;&gt;開發 Chrome Extension 時必須使用 CSP&lt;/a&gt;，以追求更高的安全性。Mozilla 也在 &lt;a href=&quot;https://wiki.mozilla.org/Security/CSP/Specification&quot;&gt;MozillaWiki 開了一頁&lt;/a&gt;存放相關技術細節。若您想觀察其他使用案例，可使用 Chrome Inspector 或 curl 觀察以下幾個網站：&lt;a href=&quot;https://lastpass.com/&quot;&gt;LastPass&lt;/a&gt;，&lt;a href=&quot;https://support.twitter.com/&quot;&gt;Twitter Help Center&lt;/a&gt;，&lt;a href=&quot;https://adblockplus.org/en/chrome&quot;&gt;Adblock Plus&lt;/a&gt;，&lt;a href=&quot;https://www.sendsafely.com/&quot;&gt;Sendsafely&lt;/a&gt;，&lt;a href=&quot;http://likealyzer.com/&quot;&gt;LikeAlyzer&lt;/a&gt;。&lt;/p&gt;
-
-&lt;h3 id=&quot;csp__2&quot;&gt;CSP 常見誤用案例&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p&gt;directives 後面不需加冒號&lt;/p&gt;
-
-&lt;p&gt;錯誤：default-src: ‘self’&lt;/p&gt;
-
-&lt;p&gt;正確：&lt;strong&gt;default-src ‘self’&lt;/strong&gt;&lt;/p&gt;
-&lt;/li&gt;
-
-&lt;li&gt;
-&lt;p&gt;directives 之間以分號區隔&lt;/p&gt;
-
-&lt;p&gt;錯誤：default-src ‘self’, script-src ‘self’&lt;/p&gt;
-
-&lt;p&gt;正確：&lt;strong&gt;default-src ‘self’; script-src ‘self’&lt;/strong&gt;&lt;/p&gt;
-&lt;/li&gt;
-
-&lt;li&gt;
-&lt;p&gt;多個 source 之間僅以空白區隔&lt;/p&gt;
-
-&lt;p&gt;錯誤：default-src ‘self’; img-src ‘self’, img1.devco.re, img2.devco.re&lt;/p&gt;
-
-&lt;p&gt;正確：&lt;strong&gt;default-src ‘self’; img-src ‘self’ img1.devco.re img2.devco.re&lt;/strong&gt;&lt;/p&gt;
-&lt;/li&gt;
-
-&lt;li&gt;
-&lt;p&gt;某些 source 必須加冒號（https:、data:）&lt;/p&gt;
-
-&lt;p&gt;錯誤：default-src ‘self’; img-src ‘self’ https data&lt;/p&gt;
-
-&lt;p&gt;正確：&lt;strong&gt;default-src ‘self’; img-src ‘self’ https: data:&lt;/strong&gt;&lt;/p&gt;
-&lt;/li&gt;
-
-&lt;li&gt;
-&lt;p&gt;某些 source 必須用單引號括起來（’none’、’self’、’unsafe-inline’、’unsafe-eval’）&lt;/p&gt;
-
-&lt;p&gt;錯誤：script-src self unsafe-inline unsafe-eval&lt;/p&gt;
-
-&lt;p&gt;正確：&lt;strong&gt;script-src ‘self’ ‘unsafe-inline’ ‘unsafe-eval’&lt;/strong&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h3 id=&quot;&quot;&gt;結論&lt;/h3&gt;
-
-&lt;p&gt;使用 CSP 可以有效提升攻擊難度，讓許多常見的 XSS 攻擊失效，是一個非常推薦開發者使用的 HTTP header。但由於目前的開發者在 HTML 裡面寫 inline script 及 inline CSS 的比例非常高，同時也有一些網路服務預設都需要使用 inline script（例如 Google Analytics，相關解法可參考&lt;a href=&quot;http://stackoverflow.com/questions/3870345/new-google-analytics-code-into-external-file&quot;&gt;這裡&lt;/a&gt;），因此要享受這樣的安全之前，可能需要先付出許多時間與心力將網站大幅整理，套用 CSP 規範後網頁才能正常運作。&lt;/p&gt;</content>
- </entry>
- 
- <entry>
    <title>OpenSSL CVE-2014-0160 Heartbleed 嚴重漏洞 </title>
-   <link href="http://devco.re/blog/2014/04/08/openssl-heartbleed-CVE-2014-0160/"/>
-   <updated>2014-04-08T00:00:00+08:00</updated>
-   <id>http://devco.re/blog/2014/04/08/openssl-heartbleed-CVE-2014-0160</id>
+   <link href="http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/"/>
+   <updated>2014-04-09T00:00:00+08:00</updated>
+   <id>http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160</id>
    <content type="html">&lt;h3 id=&quot;openssl_cve20140160_&quot;&gt;OpenSSL CVE-2014-0160 嚴重漏洞&lt;/h3&gt;
 
 &lt;p&gt;OpenSSL 今天公告了一個極度嚴重的漏洞（&lt;a href=&quot;https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-0160&quot;&gt;CVE-2014-0160&lt;/a&gt;），被稱為「&lt;a href=&quot;http://heartbleed.com/&quot;&gt;Heartbleed&lt;/a&gt;」，而他確實也如同心臟噴出血般嚴重。這個漏洞能讓攻擊者從伺服器記憶體中讀取 64 KB 的資料，利用傳送 heartbeat 的封包給伺服器，在封包中控制變數導致 memcpy 函數複製錯誤的記憶體資料，因而擷取記憶體中可能存在的機敏資料。記憶體中最嚴重可能包含 ssl private key、session cookie、使用者密碼等，因此可能因為這樣的漏洞導致伺服器遭到入侵或取得使用者帳號。&lt;/p&gt;
@@ -412,6 +228,190 @@
 &lt;h3 id=&quot;_4&quot;&gt;小結&lt;/h3&gt;
 
 &lt;p&gt;就連 OpenSSL 這種歷史悠久而且重要的函式庫，都可能犯這種基本的 C 語言程式設計錯誤，老舊的程式碼一定有不少陳年遺毒，如果沒有徹底清查，類似的心臟噴血事件會不斷上演。大家快點止血吧！&lt;/p&gt;</content>
+ </entry>
+ 
+ <entry>
+   <title>HTTP Headers 的資安議題 (2) - Content-Security-Policy</title>
+   <link href="http://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/"/>
+   <updated>2014-04-08T00:00:00+08:00</updated>
+   <id>http://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy</id>
+   <content type="html">&lt;h3 id=&quot;contentsecuritypolicy&quot;&gt;Content-Security-Policy&lt;/h3&gt;
+
+&lt;p&gt;還記得在上一篇 &lt;a href=&quot;http://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/&quot;&gt;HTTP headers 的資安議題 (1)&lt;/a&gt; 文章中，我們提到了多種資安相關的 HTTP headers 嗎？接下來的幾篇文章我們會介紹幾個專門對付 XSS 的 HTTP headers，首先就由 Content-Security-Policy 打頭陣。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.owasp.org/index.php/Content_Security_Policy&quot;&gt;Content-Security-Policy&lt;/a&gt;（以下簡稱 CSP）是從 2010 年被提出來的一項 Web 規格，主要目的是用來防止 Cross-Site Scripting（以下簡稱 XSS）跟網頁樣式置換（例如&lt;a href=&quot;http://udn.com/NEWS/NATIONAL/NAT5/8554327.shtml&quot;&gt;科技部被惡搞&lt;/a&gt;就是一個最好的例子）。經過五年發展，CSP 1.0 已從 W3C 的 TR (Technical Report) 變成 &lt;a href=&quot;http://www.w3.org/TR/CSP/&quot;&gt;Candidate Recommendation&lt;/a&gt;，應該不久就會將成為 W3C 推薦標準。新的 &lt;a href=&quot;http://w3c.github.io/webappsec/specs/content-security-policy/csp-specification.dev.html&quot;&gt;CSP 1.1&lt;/a&gt; 則仍在草案階段。&lt;/p&gt;
+
+&lt;p&gt;CSP 家族龐大，總共有三個類別，六個項目：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Content-Security-Policy&lt;/li&gt;
+
+&lt;li&gt;Content-Security-Policy-Report-Only&lt;/li&gt;
+
+&lt;li&gt;X-Content-Security-Policy&lt;/li&gt;
+
+&lt;li&gt;X-Content-Security-Policy-Report-Only&lt;/li&gt;
+
+&lt;li&gt;X-WebKit-CSP&lt;/li&gt;
+
+&lt;li&gt;X-WebKit-CSP-Report-Only&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;在 CSP 發展初期，主流瀏覽器並未全部依照同一標準來開發，因此發展成這三種類別。目前由於 CSP 1.0 即將成為標準，大多數瀏覽器已支援 Content-Security-Policy 這個類別，因此狀況已逐漸收斂。主流瀏覽器的支援列表如下圖：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-qJvtcG9lvq8/Ux6DrOeqNhI/AAAAAAAAALQ/gzQ2EbNrOHA/w531-h105-no/csp-browser-support-list.png&quot; title=&quot;Content-Security-Policy 瀏覽器支援列表&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-qJvtcG9lvq8/Ux6DrOeqNhI/AAAAAAAAALQ/gzQ2EbNrOHA/w531-h105-no/csp-browser-support-list.png&quot; alt=&quot;Content-Security-Policy 瀏覽器支援列表&quot; title=&quot;Content-Security-Policy 瀏覽器支援列表&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;從列表中可看到，只要使用 Content-Security-Policy 與 X-Content-Security-Policy 就已有很高的覆蓋率，除非要支援 Safari 6，否則不用特意使用 X-WebKit-CSP。更詳細的瀏覽器支援列表可參考 &lt;a href=&quot;http://caniuse.com/contentsecuritypolicy&quot;&gt;Can I use&lt;/a&gt;。&lt;/p&gt;
+&lt;!-- more --&gt;
+&lt;h3 id=&quot;csp_10_&quot;&gt;CSP 1.0 主要作用&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;載入來源白名單&lt;/p&gt;
+
+&lt;p&gt;宣告一組受信任的白名單與資源種類（如 JavaScript, CSS, image 等等），使瀏覽器只能從此白名單中載入資源，藉此防止攻擊者從外部引入含有惡意程式碼的資源。&lt;/p&gt;
+
+&lt;p&gt;例：Content-Security-Policy: default-src ‘self’; script-src ‘self’ http://js.devco.re; style-src ‘self’ http://css.devco.re; img-src ‘self’ data:; frame-src ‘none’&lt;/p&gt;
+
+&lt;p&gt;效果：限定 script 資源只能從 http://js.devco.re 載入；限定 style 資源只能從 http://css.devco.re 載入；限定 img 只能從相同 domain 載入，並且支援 data scheme；限定 frame 不能從任何來源載入；除了 script、style、img、frame 之外的資源，則只能從同樣 domain 以及同樣協定的來源載入。&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;p&gt;禁止 inline 程式碼&lt;/p&gt;
+
+&lt;p&gt;一般人開發網站時為求便利，經常會在 HTML 中寫入一些 inline 程式碼，但攻擊者意圖入侵網站時也常用此手法。然而瀏覽器其實無法分辨這些 inline 程式碼究竟是開發人員寫的，還是攻擊者植入的。因此 CSP 乾脆強迫開發者必須把所有 inline 程式碼移到外部檔案，完全杜絕在 HTML 中出現 inline 程式碼的狀況。因此除非你在 CSP 宣告時有註明 ‘unsafe-inline’，否則 CSP 預設禁止使用 inline script 或 inline CSS。&lt;/p&gt;
+
+&lt;p&gt;例：Content-Security-Policy: default-src ‘self’; script-src ‘unsafe-inline’&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;p&gt;禁止 eval 函式&lt;/p&gt;
+
+&lt;p&gt;eval() 對許多開發者來說一直是個非常方便的函式，然而若缺乏資安觀念，使用此函式時很可能會導致潛在的 XSS 風險。因此除非你在 CSP 宣告時有註明 ‘unsafe-eval’，否則 CSP 預設禁止使用 eval() 函式。&lt;/p&gt;
+
+&lt;p&gt;例：Content-Security-Policy: default-src ‘self’; script-src ‘unsafe-eval’&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;p&gt;防止 sniffer&lt;/p&gt;
+
+&lt;p&gt;由於 CSP 可指定載入資源時強制使用 https 協定，因此可降低被 sniffing 的機率。&lt;/p&gt;
+
+&lt;p&gt;例：Content-Security-Policy: default-src http://devco.re; img-src https:&lt;/p&gt;
+
+&lt;p&gt;效果：限定圖片只能從 https 協定載入，不限定 domain。而除了圖片之外的資源則可從任意來源載入。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;csp_demo&quot;&gt;CSP Demo&lt;/h3&gt;
+
+&lt;p&gt;下面這一段程式碼，使用 default-src * 讓相關資源可正常顯示：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;php&#39;&gt;&lt;span class=&#39;cp&#39;&gt;&amp;lt;?php&lt;/span&gt;
+&lt;span class=&#39;nx&#39;&gt;header&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;Content-Security-Policy: default-src *&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;);&lt;/span&gt;
+&lt;span class=&#39;cp&#39;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&#39;x&#39; /&gt;
+
+&lt;span class=&#39;x&#39;&gt;&amp;lt;html&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;    &amp;lt;head&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;        &amp;lt;title&amp;gt;CSP Demo Site&amp;lt;/title&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;    &amp;lt;/head&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;    &amp;lt;body&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;        &amp;lt;h3&amp;gt;Content Security Policy Demo Site&amp;lt;/h3&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;        &amp;lt;img width=&amp;quot;200&amp;quot; height=&amp;quot;200&amp;quot; src=&amp;quot;http://devco.re/assets/themes/devcore/images/double-sticker.png&amp;quot;&amp;gt;&amp;lt;/img&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;        &amp;lt;iframe frameborder=&amp;#39;0&amp;#39; width=&amp;#39;300&amp;#39; height=&amp;#39;200&amp;#39; src=&amp;#39;http://www.youtube.com/embed/E-BGf1MwecU&amp;#39;&amp;gt;&amp;lt;/iframe&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;    &amp;lt;/body&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;&amp;lt;/html&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-DVXEu8Xe4GQ/Ux6DqiVHyBI/AAAAAAAAALU/88qSfa5aJkY/w754-h633-no/csp-demo-1.png&quot; title=&quot;使用最寬鬆的 Content-Security-Policy 規則&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-DVXEu8Xe4GQ/Ux6DqiVHyBI/AAAAAAAAALU/88qSfa5aJkY/w754-h633-no/csp-demo-1.png&quot; alt=&quot;使用最寬鬆的 Content-Security-Policy 規則&quot; title=&quot;使用最寬鬆的 Content-Security-Policy 規則&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;接下來我們將 php header 的那一行程式碼修改如下並且 reload 瀏覽器頁面：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;php&#39;&gt;&lt;span class=&#39;cp&#39;&gt;&amp;lt;?php&lt;/span&gt;
+&lt;span class=&#39;nx&#39;&gt;header&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;Content-Security-Policy: default-src *; img-src https:; frame-src &amp;#39;none&amp;#39;&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;);&lt;/span&gt;
+&lt;span class=&#39;cp&#39;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&#39;x&#39; /&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-iisyWwpo5IY/Ux6Dqn3FBgI/AAAAAAAAALM/MahpofJ2sK0/w754-h633-no/csp-demo-2.png&quot; title=&quot;使用 Content-Security-Policy 限制 img 與 frame 的來源&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-iisyWwpo5IY/Ux6Dqn3FBgI/AAAAAAAAALM/MahpofJ2sK0/w754-h633-no/csp-demo-2.png&quot; alt=&quot;使用 Content-Security-Policy 限制 img 與 frame 的來源&quot; title=&quot;使用 Content-Security-Policy 限制 img 與 frame 的來源&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;使用 CSP 限制 img 與 frame 的來源種類後，我們可以從上圖 Chrome Inspector 的紅字觀察到，網站的圖片與 iframe 影片已被瀏覽器擋掉，無法載入。&lt;/p&gt;
+
+&lt;p&gt;如果擔心直接使用 CSP 會影響網站營運，但又想嘗試 CSP，可以先使用 Content-Security-Policy-Report-Only，示範如下：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;php&#39;&gt;&lt;span class=&#39;cp&#39;&gt;&amp;lt;?php&lt;/span&gt;
+&lt;span class=&#39;nx&#39;&gt;header&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;Content-Security-Policy-Report-Only: default-src *; img-src https:; frame-src &amp;#39;none&amp;#39;; report-uri http://devco.re/demo&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;);&lt;/span&gt;
+&lt;span class=&#39;cp&#39;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&#39;x&#39; /&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-zLXj9r2aIxc/UyGO-Bzi_5I/AAAAAAAAANU/nbwz6lAfTLc/w754-h594-no/csp-demo-report-only.png&quot; title=&quot;Content-Security-Policy-Report-Only&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-zLXj9r2aIxc/UyGO-Bzi_5I/AAAAAAAAANU/nbwz6lAfTLc/w754-h594-no/csp-demo-report-only.png&quot; alt=&quot;Content-Security-Policy-Report-Only&quot; title=&quot;Content-Security-Policy-Report-Only&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;由上圖可以看到，此 header 不會直接阻擋不符合 CSP 規範的資源，但是會根據使用者所違反的規則發送相對應的 POST request 至指定的 URI，發送內容如下：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;json&#39;&gt;&lt;span class=&#39;p&#39;&gt;{&lt;/span&gt;
+  &lt;span class=&#39;nt&#39;&gt;&amp;quot;csp-report&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;{&lt;/span&gt;
+    &lt;span class=&#39;nt&#39;&gt;&amp;quot;blocked-uri&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;http://devco.re/&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt;
+    &lt;span class=&#39;nt&#39;&gt;&amp;quot;document-uri&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;http://yoursite.com/csp.php&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt;
+    &lt;span class=&#39;nt&#39;&gt;&amp;quot;original-policy&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;default-src *; img-src https:; frame-src &amp;#39;none&amp;#39;; report-uri http://devco.re/demo&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt;
+    &lt;span class=&#39;nt&#39;&gt;&amp;quot;referrer&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt;
+    &lt;span class=&#39;nt&#39;&gt;&amp;quot;status-code&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;&lt;span class=&#39;mi&#39;&gt;200&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt;
+    &lt;span class=&#39;nt&#39;&gt;&amp;quot;violated-directive&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;img-src https:&amp;quot;&lt;/span&gt;
+  &lt;span class=&#39;p&#39;&gt;}&lt;/span&gt;
+&lt;span class=&#39;p&#39;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;由發送內容可看出這個 request 因為違反了「img-src https:」規則而將「http://devco.re/」這個來源擋掉。經由此方式，可一邊修改網站一邊觀察是否仍有不符合 CSP 規範之處，等到所有違規的內容都修正完畢後，再將 CSP 套用到正式上線環境。&lt;/p&gt;
+
+&lt;p&gt;由於宣告方式非常多種，在這邊就不一一條列，若有興趣可前往 &lt;a href=&quot;http://content-security-policy.com/&quot;&gt;Content Security Policy Reference &amp;amp; Examples&lt;/a&gt;、&lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Security/CSP/Using_Content_Security_Policy&quot;&gt;Using Content Security Policy - Security | MDN&lt;/a&gt; 等網頁，有更完整的使用情境與範例可供參考。另外也有 &lt;a href=&quot;http://benvinegar.github.io/csp-talk-2013/&quot;&gt;Slide&lt;/a&gt; (by Ben Vinegar) 跟 &lt;a href=&quot;https://www.youtube.com/watch?v=pocsv39pNXA&quot;&gt;YouTube 影片&lt;/a&gt; (by Adam Barth) 可參考。&lt;/p&gt;
+
+&lt;p&gt;若欲使用 CSP 卻一直未能成功時，可到 &lt;a href=&quot;http://www.cspplayground.com/csp_validator&quot;&gt;Content Security Policy Playground&lt;/a&gt; 驗證您所寫的設定是否正確。&lt;/p&gt;
+
+&lt;h3 id=&quot;csp_&quot;&gt;CSP 實際使用案例&lt;/h3&gt;
+
+&lt;p&gt;目前採用 CSP 的案例較少，比較知名的使用案例是 &lt;a href=&quot;https://github.com/&quot;&gt;GitHub&lt;/a&gt;，在 2013 年 4 月 &lt;a href=&quot;https://github.com/blog/1477-content-security-policy&quot;&gt;GitHub 還寫了一篇專文&lt;/a&gt;公告表示他們已開始採用 CSP。另外一個案例廠商可能較廣為人知，是在 2013 年當紅的免費儲存空間 &lt;a href=&quot;https://mega.co.nz/&quot;&gt;MEGA&lt;/a&gt;。兩個案例的實際內容可見於下圖：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-WPU1UT9T6WA/Ux6DrfiQ_EI/AAAAAAAAALc/s0XmlPFKmoc/w1169-h758-no/http-headers-github-and-mega.jpg&quot; title=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-WPU1UT9T6WA/Ux6DrfiQ_EI/AAAAAAAAALc/s0XmlPFKmoc/w1169-h758-no/http-headers-github-and-mega.jpg&quot; alt=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot; title=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;另一項知名使用案例是 Google 明定&lt;a href=&quot;http://developer.chrome.com/extensions/contentSecurityPolicy&quot;&gt;開發 Chrome Extension 時必須使用 CSP&lt;/a&gt;，以追求更高的安全性。Mozilla 也在 &lt;a href=&quot;https://wiki.mozilla.org/Security/CSP/Specification&quot;&gt;MozillaWiki 開了一頁&lt;/a&gt;存放相關技術細節。若您想觀察其他使用案例，可使用 Chrome Inspector 或 curl 觀察以下幾個網站：&lt;a href=&quot;https://lastpass.com/&quot;&gt;LastPass&lt;/a&gt;，&lt;a href=&quot;https://support.twitter.com/&quot;&gt;Twitter Help Center&lt;/a&gt;，&lt;a href=&quot;https://adblockplus.org/en/chrome&quot;&gt;Adblock Plus&lt;/a&gt;，&lt;a href=&quot;https://www.sendsafely.com/&quot;&gt;Sendsafely&lt;/a&gt;，&lt;a href=&quot;http://likealyzer.com/&quot;&gt;LikeAlyzer&lt;/a&gt;。&lt;/p&gt;
+
+&lt;h3 id=&quot;csp__2&quot;&gt;CSP 常見誤用案例&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;directives 後面不需加冒號&lt;/p&gt;
+
+&lt;p&gt;錯誤：default-src: ‘self’&lt;/p&gt;
+
+&lt;p&gt;正確：&lt;strong&gt;default-src ‘self’&lt;/strong&gt;&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;p&gt;directives 之間以分號區隔&lt;/p&gt;
+
+&lt;p&gt;錯誤：default-src ‘self’, script-src ‘self’&lt;/p&gt;
+
+&lt;p&gt;正確：&lt;strong&gt;default-src ‘self’; script-src ‘self’&lt;/strong&gt;&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;p&gt;多個 source 之間僅以空白區隔&lt;/p&gt;
+
+&lt;p&gt;錯誤：default-src ‘self’; img-src ‘self’, img1.devco.re, img2.devco.re&lt;/p&gt;
+
+&lt;p&gt;正確：&lt;strong&gt;default-src ‘self’; img-src ‘self’ img1.devco.re img2.devco.re&lt;/strong&gt;&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;p&gt;某些 source 必須加冒號（https:、data:）&lt;/p&gt;
+
+&lt;p&gt;錯誤：default-src ‘self’; img-src ‘self’ https data&lt;/p&gt;
+
+&lt;p&gt;正確：&lt;strong&gt;default-src ‘self’; img-src ‘self’ https: data:&lt;/strong&gt;&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;p&gt;某些 source 必須用單引號括起來（’none’、’self’、’unsafe-inline’、’unsafe-eval’）&lt;/p&gt;
+
+&lt;p&gt;錯誤：script-src self unsafe-inline unsafe-eval&lt;/p&gt;
+
+&lt;p&gt;正確：&lt;strong&gt;script-src ‘self’ ‘unsafe-inline’ ‘unsafe-eval’&lt;/strong&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;&quot;&gt;結論&lt;/h3&gt;
+
+&lt;p&gt;使用 CSP 可以有效提升攻擊難度，讓許多常見的 XSS 攻擊失效，是一個非常推薦開發者使用的 HTTP header。但由於目前的開發者在 HTML 裡面寫 inline script 及 inline CSS 的比例非常高，同時也有一些網路服務預設都需要使用 inline script（例如 Google Analytics，相關解法可參考&lt;a href=&quot;http://stackoverflow.com/questions/3870345/new-google-analytics-code-into-external-file&quot;&gt;這裡&lt;/a&gt;），因此要享受這樣的安全之前，可能需要先付出許多時間與心力將網站大幅整理，套用 CSP 規範後網頁才能正常運作。&lt;/p&gt;</content>
  </entry>
  
  <entry>

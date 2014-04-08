@@ -239,56 +239,10 @@
   
                   <div class="post-content preview">
                     <h2 class="post-title">
-                      <a href="/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/">HTTP Headers 的資安議題 (2) - Content-Security-Policy</a>
+                      <a href="/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/">OpenSSL CVE-2014-0160 Heartbleed 嚴重漏洞 </a>
                     </h2>
                     <div class="post-info">
-                      <span class="post-category"><a href="/blog/category/技術專欄/" title="技術專欄">技術專欄</a></span><span class="posted">Posted </span>by <a class="poster" href="#"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Bowen Hsu</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-04-08">2014-04-08</span>
-                    </div>
-                    <div class="post-tag">
-                      
-                      Tags: <a href="/blog/tag/HTTP header/">HTTP header</a>, <a href="/blog/tag/Defense/">Defense</a>, <a href="/blog/tag/JavaScript/">JavaScript</a>, <a href="/blog/tag/XSS/">XSS</a>
-                    </div>
-                    <div class="post-preview" itemprop="articleBody">
-                      
-                        <h3 id="contentsecuritypolicy">Content-Security-Policy</h3>
-
-<p>還記得在上一篇 <a href="http://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/">HTTP headers 的資安議題 (1)</a> 文章中，我們提到了多種資安相關的 HTTP headers 嗎？接下來的幾篇文章我們會介紹幾個專門對付 XSS 的 HTTP headers，首先就由 Content-Security-Policy 打頭陣。</p>
-
-<p><a href="https://www.owasp.org/index.php/Content_Security_Policy">Content-Security-Policy</a>（以下簡稱 CSP）是從 2010 年被提出來的一項 Web 規格，主要目的是用來防止 Cross-Site Scripting（以下簡稱 XSS）跟網頁樣式置換（例如<a href="http://udn.com/NEWS/NATIONAL/NAT5/8554327.shtml">科技部被惡搞</a>就是一個最好的例子）。經過五年發展，CSP 1.0 已從 W3C 的 TR (Technical Report) 變成 <a href="http://www.w3.org/TR/CSP/">Candidate Recommendation</a>，應該不久就會將成為 W3C 推薦標準。新的 <a href="http://w3c.github.io/webappsec/specs/content-security-policy/csp-specification.dev.html">CSP 1.1</a> 則仍在草案階段。</p>
-
-<p>CSP 家族龐大，總共有三個類別，六個項目：</p>
-
-<ul>
-<li>Content-Security-Policy</li>
-
-<li>Content-Security-Policy-Report-Only</li>
-
-<li>X-Content-Security-Policy</li>
-
-<li>X-Content-Security-Policy-Report-Only</li>
-
-<li>X-WebKit-CSP</li>
-
-<li>X-WebKit-CSP-Report-Only</li>
-</ul>
-
-<p>在 CSP 發展初期，主流瀏覽器並未全部依照同一標準來開發，因此發展成這三種類別。目前由於 CSP 1.0 即將成為標準，大多數瀏覽器已支援 Content-Security-Policy 這個類別，因此狀況已逐漸收斂。主流瀏覽器的支援列表如下圖：</p>
-
-<p><a href="https://lh3.googleusercontent.com/-qJvtcG9lvq8/Ux6DrOeqNhI/AAAAAAAAALQ/gzQ2EbNrOHA/w531-h105-no/csp-browser-support-list.png" title="Content-Security-Policy 瀏覽器支援列表"><img src="https://lh3.googleusercontent.com/-qJvtcG9lvq8/Ux6DrOeqNhI/AAAAAAAAALQ/gzQ2EbNrOHA/w531-h105-no/csp-browser-support-list.png" alt="Content-Security-Policy 瀏覽器支援列表" title="Content-Security-Policy 瀏覽器支援列表" /></a></p>
-
-<p>從列表中可看到，只要使用 Content-Security-Policy 與 X-Content-Security-Policy 就已有很高的覆蓋率，除非要支援 Safari 6，否則不用特意使用 X-WebKit-CSP。更詳細的瀏覽器支援列表可參考 <a href="http://caniuse.com/contentsecuritypolicy">Can I use</a>。</p>
-
-                      
-                    </div>
-                    <a class="readmore" href="/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/">read more →</a>
-                  </div>
-  
-                  <div class="post-content preview">
-                    <h2 class="post-title">
-                      <a href="/blog/2014/04/08/openssl-heartbleed-CVE-2014-0160/">OpenSSL CVE-2014-0160 Heartbleed 嚴重漏洞 </a>
-                    </h2>
-                    <div class="post-info">
-                      <span class="post-category"><a href="/blog/category/技術專欄/" title="技術專欄">技術專欄</a></span><span class="posted">Posted </span>by <a class="poster" href="#"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">allenown</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-04-08">2014-04-08</span>
+                      <span class="post-category"><a href="/blog/category/技術專欄/" title="技術專欄">技術專欄</a></span><span class="posted">Posted </span>by <a class="poster" href="#"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">allenown</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-04-09">2014-04-09</span>
                     </div>
                     <div class="post-tag">
                       
@@ -509,7 +463,53 @@
 <p>就連 OpenSSL 這種歷史悠久而且重要的函式庫，都可能犯這種基本的 C 語言程式設計錯誤，老舊的程式碼一定有不少陳年遺毒，如果沒有徹底清查，類似的心臟噴血事件會不斷上演。大家快點止血吧！</p>
                       
                     </div>
-                    <a class="readmore" href="/blog/2014/04/08/openssl-heartbleed-CVE-2014-0160/">read more →</a>
+                    <a class="readmore" href="/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/">read more →</a>
+                  </div>
+  
+                  <div class="post-content preview">
+                    <h2 class="post-title">
+                      <a href="/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/">HTTP Headers 的資安議題 (2) - Content-Security-Policy</a>
+                    </h2>
+                    <div class="post-info">
+                      <span class="post-category"><a href="/blog/category/技術專欄/" title="技術專欄">技術專欄</a></span><span class="posted">Posted </span>by <a class="poster" href="#"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Bowen Hsu</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-04-08">2014-04-08</span>
+                    </div>
+                    <div class="post-tag">
+                      
+                      Tags: <a href="/blog/tag/HTTP header/">HTTP header</a>, <a href="/blog/tag/Defense/">Defense</a>, <a href="/blog/tag/JavaScript/">JavaScript</a>, <a href="/blog/tag/XSS/">XSS</a>
+                    </div>
+                    <div class="post-preview" itemprop="articleBody">
+                      
+                        <h3 id="contentsecuritypolicy">Content-Security-Policy</h3>
+
+<p>還記得在上一篇 <a href="http://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/">HTTP headers 的資安議題 (1)</a> 文章中，我們提到了多種資安相關的 HTTP headers 嗎？接下來的幾篇文章我們會介紹幾個專門對付 XSS 的 HTTP headers，首先就由 Content-Security-Policy 打頭陣。</p>
+
+<p><a href="https://www.owasp.org/index.php/Content_Security_Policy">Content-Security-Policy</a>（以下簡稱 CSP）是從 2010 年被提出來的一項 Web 規格，主要目的是用來防止 Cross-Site Scripting（以下簡稱 XSS）跟網頁樣式置換（例如<a href="http://udn.com/NEWS/NATIONAL/NAT5/8554327.shtml">科技部被惡搞</a>就是一個最好的例子）。經過五年發展，CSP 1.0 已從 W3C 的 TR (Technical Report) 變成 <a href="http://www.w3.org/TR/CSP/">Candidate Recommendation</a>，應該不久就會將成為 W3C 推薦標準。新的 <a href="http://w3c.github.io/webappsec/specs/content-security-policy/csp-specification.dev.html">CSP 1.1</a> 則仍在草案階段。</p>
+
+<p>CSP 家族龐大，總共有三個類別，六個項目：</p>
+
+<ul>
+<li>Content-Security-Policy</li>
+
+<li>Content-Security-Policy-Report-Only</li>
+
+<li>X-Content-Security-Policy</li>
+
+<li>X-Content-Security-Policy-Report-Only</li>
+
+<li>X-WebKit-CSP</li>
+
+<li>X-WebKit-CSP-Report-Only</li>
+</ul>
+
+<p>在 CSP 發展初期，主流瀏覽器並未全部依照同一標準來開發，因此發展成這三種類別。目前由於 CSP 1.0 即將成為標準，大多數瀏覽器已支援 Content-Security-Policy 這個類別，因此狀況已逐漸收斂。主流瀏覽器的支援列表如下圖：</p>
+
+<p><a href="https://lh3.googleusercontent.com/-qJvtcG9lvq8/Ux6DrOeqNhI/AAAAAAAAALQ/gzQ2EbNrOHA/w531-h105-no/csp-browser-support-list.png" title="Content-Security-Policy 瀏覽器支援列表"><img src="https://lh3.googleusercontent.com/-qJvtcG9lvq8/Ux6DrOeqNhI/AAAAAAAAALQ/gzQ2EbNrOHA/w531-h105-no/csp-browser-support-list.png" alt="Content-Security-Policy 瀏覽器支援列表" title="Content-Security-Policy 瀏覽器支援列表" /></a></p>
+
+<p>從列表中可看到，只要使用 Content-Security-Policy 與 X-Content-Security-Policy 就已有很高的覆蓋率，除非要支援 Safari 6，否則不用特意使用 X-WebKit-CSP。更詳細的瀏覽器支援列表可參考 <a href="http://caniuse.com/contentsecuritypolicy">Can I use</a>。</p>
+
+                      
+                    </div>
+                    <a class="readmore" href="/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/">read more →</a>
                   </div>
   
                   <div class="post-content preview">
@@ -664,20 +664,20 @@
                     <ul class="widget-list">
                         
                       <li>
-                        <a href="/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/">
+                        <a href="/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/">
                           <div class="widget-list-title">
-                            HTTP Headers 的資安議題 (2) - Content-Security-Policy
+                            OpenSSL CVE-2014-0160 Heartbleed 嚴重漏洞 
                           </div>
                           <div class="widget-list-date">
-                            2014-04-08
+                            2014-04-09
                           </div>
                         </a>
                       </li>
   
                       <li>
-                        <a href="/blog/2014/04/08/openssl-heartbleed-CVE-2014-0160/">
+                        <a href="/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/">
                           <div class="widget-list-title">
-                            OpenSSL CVE-2014-0160 Heartbleed 嚴重漏洞 
+                            HTTP Headers 的資安議題 (2) - Content-Security-Policy
                           </div>
                           <div class="widget-list-date">
                             2014-04-08
@@ -770,11 +770,11 @@
                     
                       <li><a href="/blog/tag/Phishing/">Phishing <span class="count">(1)</span></a></li>
                     
+                      <li><a href="/blog/tag/XSS/">XSS <span class="count">(1)</span></a></li>
+                    
                       <li><a href="/blog/tag/openssl/">openssl <span class="count">(1)</span></a></li>
                     
                       <li><a href="/blog/tag/vulnerability/">vulnerability <span class="count">(1)</span></a></li>
-                    
-                      <li><a href="/blog/tag/XSS/">XSS <span class="count">(1)</span></a></li>
                     
                   
                 

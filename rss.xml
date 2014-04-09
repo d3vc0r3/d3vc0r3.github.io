@@ -4,8 +4,8 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試、資安事件處理、教育訓練、資安顧問服務</description>
         <link>http://devco.re</link>
-        <lastBuildDate>Wed, 09 Apr 2014 12:15:38 +0800</lastBuildDate>
-        <pubDate>Wed, 09 Apr 2014 12:15:38 +0800</pubDate>
+        <lastBuildDate>Wed, 09 Apr 2014 16:32:46 +0800</lastBuildDate>
+        <pubDate>Wed, 09 Apr 2014 16:32:46 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="http://devco.re/rss" rel="self" type="application/rss+xml" />
 
@@ -44,6 +44,8 @@
 &lt;li&gt;OpenSUSE 12.2 (OpenSSL 1.0.1c)&lt;/li&gt;
 &lt;/ul&gt;
 &lt;/li&gt;
+
+&lt;li&gt;影響服務：HTTP、SMTPS、IMAPS、POP3S 等使用 OpenSSL 之服務&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;p&gt;OpenSSL 的公告如下：&lt;a href=&quot;https://www.openssl.org/news/secadv_20140407.txt&quot;&gt;https://www.openssl.org/news/secadv_20140407.txt&lt;/a&gt;&lt;/p&gt;
@@ -67,7 +69,7 @@ Only 1.0.1 and 1.0.2-beta releases of OpenSSL are affected including
 &lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-eZWKW24FMRM/U0QjWVEvSlI/AAAAAAAAAQc/tG8bOO00NCg/s2560/2014-04-08-openssl-heartbleed-CVE-2014-0160-01-fbi.gov.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-eZWKW24FMRM/U0QjWVEvSlI/AAAAAAAAAQc/tG8bOO00NCg/w897-h678-no/2014-04-08-openssl-heartbleed-CVE-2014-0160-01-fbi.gov.png&quot; alt=&quot;OpenSSL CVE-2014-0160 Heartbleed 檢測: fbi.gov&quot; title=&quot;OpenSSL CVE-2014-0160 Heartbleed 檢測: fbi.gov&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;ul&gt;
-&lt;li&gt;自我測試工具 &lt;a href=&quot;http://s3.jspenguin.org/ssltest.py&quot;&gt;http://s3.jspenguin.org/ssltest.py&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;自我測試工具 &lt;a href=&quot;http://s3.jspenguin.org/ssltest.py&quot;&gt;http://s3.jspenguin.org/ssltest.py&lt;/a&gt; （或 &lt;a href=&quot;http://pastebin.com/WmxzjkXJ&quot;&gt;http://pastebin.com/WmxzjkXJ&lt;/a&gt;）&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;p&gt;使用方法直接執行「python ssltest.py ifttt.com」，或是用「-p」指定特定 SSL 連接埠。畫面上會顯示出記憶體資料，可能內含機敏資料例如 private key、session cookie 等。&lt;/p&gt;
@@ -211,6 +213,48 @@ Only 1.0.1 and 1.0.2-beta releases of OpenSSL are affected including
 
 &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;__name__&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;==&lt;/span&gt; &lt;span class=&#39;s&#39;&gt;&amp;#39;__main__&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;:&lt;/span&gt;
     &lt;span class=&#39;n&#39;&gt;main&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;()&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;ul&gt;
+&lt;li&gt;自我測試工具 &lt;a href=&quot;https://github.com/noxxi/p5-scripts/blob/master/check-ssl-heartbleed.pl&quot;&gt;https://github.com/noxxi/p5-scripts/blob/master/check-ssl-heartbleed.pl&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;使用方法直接執行「perl check-ssl-heartbleed.pl mail.XXXXXX.gov.tw:443」，可在網域名稱後指定特定 SSL 連接埠。&lt;/p&gt;
+
+&lt;p&gt;使用說明：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;console&#39;&gt;&lt;span class=&#39;go&#39;&gt;Check if server is vulnerable against heartbleet SSL attack (CVE-2014-0160)&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;Usage: check-ssl-heartbleed.pl [ --starttls proto[:arg] ] [ --timeout T ] host:port&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  --starttls proto[:arg] - start plain and upgrade to SSL with&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;			   starttls protocol (imap,smtp,http,pop)&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  -T|--timeout T         - use timeout (default 5)&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  -H|--heartbeats N      - number of heartbeats (default 1)&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  -s|--show-data [L]     - show heartbeat response if vulnerable, optional&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;                           parameter L specifies number of bytes per line (16)&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  -R|--show-regex-data R - show data matching perl regex R. Option can be&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;                           used multiple times&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  -q|--quiet             - don&amp;#39;t show anything, exit 1 if vulnerable&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  -h|--help              - this screen&lt;/span&gt;
+
+&lt;span class=&#39;go&#39;&gt;Examples:&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  # check direct www, imaps .. server&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  check-ssl-heartbleed.pl www.google.com:443&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  check-ssl-heartbleed.pl www.google.com:https&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  check-ssl-heartbleed.pl mail.google.com:imaps&lt;/span&gt;
+
+&lt;span class=&#39;go&#39;&gt;  # try to get Cookies&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  check-ssl-heartbleed.pl -R &amp;#39;Cookie:.*&amp;#39; www.broken-site.com:443&lt;/span&gt;
+
+&lt;span class=&#39;go&#39;&gt;  # check webserver via proxy&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  check-ssl-heartbleed.pl --starttls http:www.google.com:443 proxy:8000&lt;/span&gt;
+
+&lt;span class=&#39;go&#39;&gt;  # check imap server, start with plain and upgrade&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  check-ssl-heartbleed.pl --starttls imap imap.gmx.net:143&lt;/span&gt;
+
+&lt;span class=&#39;go&#39;&gt;  # check pop server, start with plain and upgrade&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  check-ssl-heartbleed.pl --starttls pop pop.gmx.net:110&lt;/span&gt;
+
+&lt;span class=&#39;go&#39;&gt;  # check smtp server, start with plain and upgrade&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  check-ssl-heartbleed.pl --starttls smtp smtp.gmail.com:587&lt;/span&gt;
+&lt;span class=&#39;go&#39;&gt;  &lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 &lt;h3 id=&quot;_2&quot;&gt;應對措施&lt;/h3&gt;
 

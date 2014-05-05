@@ -4,13 +4,184 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="http://devco.re/" rel="self"/>
  <link href="http://devco.re"/>
- <updated>2014-04-24T17:02:42+08:00</updated>
+ <updated>2014-05-05T20:29:03+08:00</updated>
  <id>http://devco.re</id>
  <author>
    <name>DEVCORE</name>
    <email>contact [at] devco.re</email>
  </author>
 
+ 
+ <entry>
+   <title>Zone Transfer CVE-1999-0532 - 古老的 DNS 資安議題</title>
+   <link href="http://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/"/>
+   <updated>2014-05-05T00:00:00+08:00</updated>
+   <id>http://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue</id>
+   <content type="html">&lt;h3 id=&quot;&quot;&gt;前言&lt;/h3&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://en.wikipedia.org/wiki/Domain_Name_System&quot;&gt;DNS&lt;/a&gt; 是在 1983 年由 Paul Mockapetris 所發明，相關規範分別在 &lt;a href=&quot;http://tools.ietf.org/html/rfc1034&quot;&gt;RFC 1034&lt;/a&gt; 以及 &lt;a href=&quot;http://tools.ietf.org/html/rfc1035&quot;&gt;RFC 1035&lt;/a&gt;。其主要作用是用來記憶 IP 位址與英文之間的對應關係，讓人類可以用較簡單的方式記得主機名稱。目前一般民眾大多使用 ISP 或國際知名公司提供的 DNS server，如中華的 168.95.1.1 或是 Google 的 8.8.8.8 等等。&lt;/p&gt;
+
+&lt;p&gt;然而對於企業而言，可能需要架設大量機器或內部系統，又希望以簡單的方式記憶主機名稱，因此許多企業有自行架設 DNS server 的需求。同時企業通常也會建立幾台備援 DNS server，以避免 DNS 服務忽然中斷。但是當企業有多台 DNS server 時，就必須考量 DNS 記錄的同步問題，通常會使用 &lt;a href=&quot;http://en.wikipedia.org/wiki/DNS_zone_transfer&quot;&gt;zone transfer&lt;/a&gt; 這個功能來同步記錄。&lt;/p&gt;
+&lt;!-- more --&gt;
+&lt;p&gt;然而若管理者未做好相關設定，使所有來源皆可對企業主機進行 zone transfer 查詢，則有機會造成企業遭受攻擊的起點。用現實生活情境舉例的話，對外開放 zone transfer 就如同所有人都可以任意查詢你名下的所有房地產位在何處，假如有人要針對性的攻擊你，隨時都可以去看你某個房地產有沒有哪扇門窗沒關好，伺機入侵你的家園。一般我們對企業資訊系統進行&lt;a href=&quot;http://devco.re/services/penetration-test&quot;&gt;滲透測試&lt;/a&gt;時，在資訊搜集的階段也會先從 domain name 下手，因此 DNS 相關資料的重要性可見一斑。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-1999-0532&quot;&gt;Zone transfer 的資安議題早在 1999 年就已有人提出&lt;/a&gt;，理應成為各企業進行資安稽核的步驟之一。然而十五年過去了，在近期我們卻發現許多國內大企業仍有此問題，令人非常驚訝！究竟企業該如何檢測自身是否存在這種安全漏洞？此問題目前在台灣網路環境佔有多大的比例？Zone transfer 會對企業造成什麼影響？讓我們繼續看下去～&lt;/p&gt;
+
+&lt;h3 id=&quot;zone_transfer_&quot;&gt;Zone Transfer 檢測方式&lt;/h3&gt;
+
+&lt;p&gt;首先需感謝 &lt;a href=&quot;http://www.digininja.org/&quot;&gt;DigiNinja&lt;/a&gt; 提供了一個&lt;a href=&quot;http://www.digininja.org/projects/zonetransferme.php&quot;&gt;讓大家自由測試的 zonetransfer.me 網域&lt;/a&gt;，以下我們分別在 Linux 及 Windows 環境下進行檢測。&lt;/p&gt;
+
+&lt;h4 id=&quot;linux&quot;&gt;Linux&lt;/h4&gt;
+
+&lt;p&gt;在 Linux 環境內，我們可利用 &lt;a href=&quot;http://linux.vbird.org/linux_server/0350dns.php#dig&quot;&gt;dig&lt;/a&gt; 指令查詢目標 domain 使用哪些 name server：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;bash&#39;&gt;dig +nostats +nocomments +nocmd NS zonetransfer.me
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Name server 查詢結果：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;bash&#39;&gt;&lt;span class=&#39;p&#39;&gt;;&lt;/span&gt;zonetransfer.me.		IN	NS
+zonetransfer.me.	7118	IN	NS	ns12.zoneedit.com.
+zonetransfer.me.	7118	IN	NS	ns16.zoneedit.com.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;從結果可得知有 ns12.zoneedit.com 或 ns16.zoneedit.com 這兩個 DNS server，接著我們即可測試是否可從外部網路對這兩個 DNS server 進行 zone transfer，測試方式如下：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;bash&#39;&gt;dig axfr zonetransfer.me @ns12.zoneedit.com
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Zone transfer 測試結果：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-zKvUVHK73-c/U2do2IyDEpI/AAAAAAAAATk/9fpiMnq8pts/w844-h685-no/linux-zone-transfer-result.jpg&quot; title=&quot;使用 dig 測試網域是否存在 zone transfer 漏洞&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-zKvUVHK73-c/U2do2IyDEpI/AAAAAAAAATk/9fpiMnq8pts/w844-h685-no/linux-zone-transfer-result.jpg&quot; alt=&quot;使用 dig 測試網域是否存在 zone transfer 漏洞&quot; title=&quot;使用 dig 測試網域是否存在 zone transfer 漏洞&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;從上面的測試結果中我們可發現，zonetransfer.me 這個網域的所有 DNS 設定已全部被列出。&lt;/p&gt;
+
+&lt;h4 id=&quot;windows&quot;&gt;Windows&lt;/h4&gt;
+
+&lt;p&gt;若是在 Windows 環境，可在命令提示字元環境內使用 &lt;a href=&quot;http://support.microsoft.com/kb/200525/zh-tw&quot;&gt;nslookup&lt;/a&gt; 指令查詢目標 domain 使用哪些 name server：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;bash&#39;&gt;nslookup -type&lt;span class=&#39;o&#39;&gt;=&lt;/span&gt;ns zonetransfer.me
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Name server 查詢結果：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;bash&#39;&gt;Server:		8.8.8.8
+Address:	8.8.8.8#53
+
+Non-authoritative answer:
+zonetransfer.me	&lt;span class=&#39;nv&#39;&gt;nameserver&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; ns12.zoneedit.com.
+zonetransfer.me	&lt;span class=&#39;nv&#39;&gt;nameserver&lt;/span&gt; &lt;span class=&#39;o&#39;&gt;=&lt;/span&gt; ns16.zoneedit.com.
+
+Authoritative answers can be found from:
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;輸入指令後我們如同先前使用 dig 一樣，得知目標有 ns12.zoneedit.com 與 ns16.zoneedit.com 這兩個 name server，接著再如下圖依序輸入三道指令查詢：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;bash&#39;&gt;nslookup
+
+server ns12.zoneedit.com
+
+ls -d zonetransfer.me
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;blockquote&gt;
+&lt;p&gt;註：Linux 版的 nslookup 沒有實作 ls 這個功能喔！&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Zone transfer 測試結果：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-AJaByKBuTUU/U2do2FfORdI/AAAAAAAAATc/LMY79aQtyFc/w626-h432-no/windows-zone-transfer-result.jpg&quot; title=&quot;使用 nslookup 測試網域是否存在 zone transfer 漏洞&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-AJaByKBuTUU/U2do2FfORdI/AAAAAAAAATc/LMY79aQtyFc/w626-h432-no/windows-zone-transfer-result.jpg&quot; alt=&quot;使用 nslookup 測試網域是否存在 zone transfer 漏洞&quot; title=&quot;使用 nslookup 測試網域是否存在 zone transfer 漏洞&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;測試結果與 Linux 環境所得到的資料雷同，可成功列出該網域的所有 DNS 設定。&lt;/p&gt;
+
+&lt;h4 id=&quot;online_service&quot;&gt;Online Service&lt;/h4&gt;
+
+&lt;p&gt;當然，並不是每個人都熟悉上述指令的操作方式，因此除了介紹手動檢測方法之外，在這裡也提供幾個線上檢測的服務，讓大家可以迅速檢測自家公司或者你正在使用的服務是否有此問題：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://www.ultratools.com/tools/zoneFileDump&quot;&gt;UltraTools&lt;/a&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;a href=&quot;http://hackertarget.com/zone-transfer/&quot;&gt;HackerTarget&lt;/a&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;a href=&quot;https://tools.digitalpoint.com/zone-transfer&quot;&gt;Digital Point&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;_2&quot;&gt;實際案例&lt;/h3&gt;
+
+&lt;p&gt;如同上次 &lt;a href=&quot;http://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/&quot;&gt;HTTP Headers 資安議題&lt;/a&gt;所探討的對象，我們從 TIEA 成員以及 Alexa TW top 525 觀察 zone transfer 問題分別在這些族群中佔有多少比例。&lt;/p&gt;
+
+&lt;p&gt;根據我們監測的結果，在目前 TIEA 的 132 名成員中，有 20 個網域存在 zone transfer 問題，佔了 15.15%。而在 Alexa TW top 525 當中，有 48 個網域存在 zone transfer 問題，佔了 9.14%。乍看之下比率似乎不高，但是在上述兩個族群的網域當中，包括：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;電信商&lt;/li&gt;
+
+&lt;li&gt;多家電視媒體&lt;/li&gt;
+
+&lt;li&gt;多家網路新聞媒體&lt;/li&gt;
+
+&lt;li&gt;多家線上購物網站&lt;/li&gt;
+
+&lt;li&gt;知名團購網站&lt;/li&gt;
+
+&lt;li&gt;知名金流公司&lt;/li&gt;
+
+&lt;li&gt;知名線上音樂服務&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;台灣企業不夠注重資訊安全，罔顧客戶資料安全性，早已不是新聞。然而若企業不顧自身商業利益與責任，當彼此無商業往來時，我們也無法一一咎責。但若連台北市政府、教育部、多間大專院校都有此問題，就令人不太能接受了，這些政府單位與教育機構理當為我們的個人資料安全性負起全部的責任，不應該漏掉任何一個資安環節。上述結果顯示出台灣從政府到企業可能都沒有徹底落實 DNS 的資安設定，而且目前的數據僅僅是針對 TIEA 成員以及 Alexa TW top 525 進行檢測，若是對全台灣或是全世界進行大範圍的檢測，恐怕會發現更多驚人的案例！&lt;/p&gt;
+
+&lt;h3 id=&quot;_3&quot;&gt;對企業的潛在影響&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;洩漏網域名稱&lt;/p&gt;
+
+&lt;p&gt;一般企業在進行&lt;a href=&quot;http://devco.re/services/penetration-test&quot;&gt;滲透測試&lt;/a&gt;時，通常只會挑幾個最重要、最常面對客戶的網域進行測試，但是入侵者可不會這麼乖。當有人嘗試要入侵企業時，必定是先進行全面的偵查，觀察企業哪幾個網域所執行的 service 有潛在的弱點，或是看哪幾個網域防禦力道較弱，再從該處下手。因此 zone transfer 問題所提供的完整 DNS 記錄，就為入侵者省下了許多偵查的工夫。&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;p&gt;洩漏外網 IP 範圍&lt;/p&gt;
+
+&lt;p&gt;當攻擊者取得 zone transfer 所洩漏的資料後，可合理推斷哪些網段是屬於該企業，進一步對該網段進行掃描，嘗試找尋有機會入侵之標的物。&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;p&gt;洩漏內網 IP 範圍&lt;/p&gt;
+
+&lt;p&gt;有些管理人員、開發者為求內部開發方便，經常會將網域名稱跟內網 IP 位址綁在一起，例如將 phpmyadmin.example.com 設定為 192.168.1.100，攻擊者就可根據此類資訊猜測內網哪些網段存在重要服務。這種設定平常也許不會造成重大損害，但是當管理者疏於建立內網防禦機制，恰好企業又被入侵至內網時，造成一連串重大損失的機率將會大幅提高。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;_4&quot;&gt;解決方式&lt;/h3&gt;
+
+&lt;h4 id=&quot;linux_2&quot;&gt;Linux&lt;/h4&gt;
+
+&lt;p&gt;若使用 Linux，可在 /etc/named.conf 內加入下列選項，以限制可存取 zone transfer 的來源：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;bash&#39;&gt;options &lt;span class=&#39;o&#39;&gt;{&lt;/span&gt;
+    allow-transfer &lt;span class=&#39;o&#39;&gt;{&lt;/span&gt;
+        1.2.3.4&lt;span class=&#39;p&#39;&gt;;&lt;/span&gt;
+        5.6.7.8&lt;span class=&#39;p&#39;&gt;;&lt;/span&gt;
+    &lt;span class=&#39;o&#39;&gt;}&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;;&lt;/span&gt;
+&lt;span class=&#39;o&#39;&gt;}&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;設定完畢後，將 DNS 服務重啟即可生效。&lt;/p&gt;
+
+&lt;h4 id=&quot;windows_2&quot;&gt;Windows&lt;/h4&gt;
+
+&lt;p&gt;在 Windows server 當中，我們可到伺服器管理員修改網域的相關設定，如下圖：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-r7_az_iPK5c/U2do2LxMAQI/AAAAAAAAAT0/novlW-stA3s/w844-h678-no/windows-zone-transfer-solution-1.png&quot; title=&quot;於伺服器管理員修改網域的 zone transfer 設定&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-r7_az_iPK5c/U2do2LxMAQI/AAAAAAAAAT0/novlW-stA3s/w844-h678-no/windows-zone-transfer-solution-1.png&quot; alt=&quot;於伺服器管理員修改網域的 zone transfer 設定&quot; title=&quot;於伺服器管理員修改網域的 zone transfer 設定&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;在伺服器管理員中，選定想要修改的網域（此處以 test.com 為例），按右鍵點選內容，將會跳出選單如下圖：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-6GroJXkIY6I/U2do2i3GqrI/AAAAAAAAATo/QzfAWqsvhUw/w401-h427-no/windows-zone-transfer-solution-2.png&quot; title=&quot;修改 test.com 的 zone transfer 設定&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-6GroJXkIY6I/U2do2i3GqrI/AAAAAAAAATo/QzfAWqsvhUw/w401-h427-no/windows-zone-transfer-solution-2.png&quot; alt=&quot;修改 test.com 的 zone transfer 設定&quot; title=&quot;修改 test.com 的 zone transfer 設定&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;接著就是觀看「允許區域轉送」選項是否有勾選，若已勾選，則確認轉送對象是否為下列兩種：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;只到列在「名稱伺服器索」引標簽上的伺服器&lt;/li&gt;
+
+&lt;li&gt;只到下列伺服器&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&quot;tcp_53_port&quot;&gt;TCP 53 port&lt;/h4&gt;
+
+&lt;p&gt;DNS 在做 zone transfer 時是使用 TCP 53 port（有別於一般 DNS query 的 UDP 53 port），因此有些人會認為將 TCP 53 port 關閉就可以對付 zone transfer，而不想修改 zone transfer 的設定。其實這個觀念只對了一半，若 zone file 的資料小於 512 byte，仍然可以透過 UDP 傳輸。即使 zone file 的資料大於 512 byte，&lt;a href=&quot;http://securityweekly.com/2011/11/incremental-zone-transfers-for.html&quot;&gt;也可以用 Incremental Zone Transfer (IXFR) 的方式取得部分資料&lt;/a&gt;。&lt;/p&gt;
+
+&lt;h3 id=&quot;_5&quot;&gt;結論&lt;/h3&gt;
+
+&lt;p&gt;如果企業今天非常有自信能夠替所有網域都準備好完善的安全措施，那麼 zone transfer 所洩漏的資料對該企業就不會有太嚴重的影響。然而，在現今這個入侵手法日新月異的世界裡，又有誰能夠永遠保證自己的安全防護已經做足了呢？在前陣子火紅的 &lt;a href=&quot;http://devco.re/blog/2014/04/11/openssl-heartbleed-how-to-hack-how-to-protect/&quot;&gt;OpenSSL CVE-2014-0160 Heartbleed&lt;/a&gt; 問題被爆出來之後，我們就藉由許多 zone transfer 的記錄觀察到全世界有非常多企業只修復了主要網站的 OpenSSL 漏洞，卻忽略了企業內其他的服務與設備可能也有此漏洞，像是 DB、Email、VPN、NAS 等等，直到今日仍遲遲未修復。&lt;/p&gt;
+
+&lt;p&gt;千萬別以為你所購買的各種資安設備能防禦所有資安弱點，也別忽略了各項古老的資安弱點，更別小看了你所不熟悉的駭客們的組合各式各樣弱點的能力，只要有一個資安環節疏漏，隨時都有可能對企業造成致命危機。&lt;/p&gt;</content>
+ </entry>
  
  <entry>
    <title>PHP 官網原始碼讀取案例</title>

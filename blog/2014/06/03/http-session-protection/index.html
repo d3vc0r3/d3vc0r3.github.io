@@ -3,30 +3,30 @@
 <html class="no-js " lang="zh-TW" xmlns="http://www.w3.org/1999/xhtml" xmlns:og="http://ogp.me/ns#" xmlns:fb="http://www.facebook.com/2008/fbml">
   <head>
     <title>
-      部落格 Blog | DEVCORE 戴夫寇爾
+      HTTP Session 攻擊與防護 | DEVCORE 戴夫寇爾
     </title>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1, maximum-scale=1" name="viewport">
-    <meta name="description" property="og:description" content="戴夫寇爾部落格包含各種案例剖析、技術專欄、科普文章等多樣化內容，以帶給大眾最專業的資安知識與資安趨勢為經營方向。" />
-    <meta name="keywords" content="DEVCORE,戴夫寇爾,資訊安全,滲透測試" />
+    <meta name="description" property="og:description" content="Session 保護是網站服務防止使用者帳號被竊的決定要素之一。如果能做好防護，將能在第一時間偵測到帳號遭竊，而強制登出網站。本文將介紹 Session 攻擊的手法以及防禦的方式，提供給管理者參考。" />
+    <meta name="keywords" content="Session, Cookie" />
     <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
-    <meta property="og:title" content="部落格 Blog | DEVCORE 戴夫寇爾" />
-    <meta property="og:url" content="http://devco.re/blog/" />
+    <meta property="og:title" content="HTTP Session 攻擊與防護 | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="http://devco.re/blog/2014/06/03/http-session-protection/" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="http://devco.re/assets/themes/devcore/images/double-sticker.png" />
+    <meta property="og:image" content="" />
     <meta name="twitter:card" content="summary">
     <meta name="twitter:site" content="d3vc0r3">
-    <meta name="twitter:title" content="部落格 Blog | DEVCORE 戴夫寇爾">
-    <meta name="twitter:description" content="戴夫寇爾部落格包含各種案例剖析、技術專欄、科普文章等多樣化內容，以帶給大眾最專業的資安知識與資安趨勢為經營方向。">
+    <meta name="twitter:title" content="HTTP Session 攻擊與防護 | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="Session 保護是網站服務防止使用者帳號被竊的決定要素之一。如果能做好防護，將能在第一時間偵測到帳號遭竊，而強制登出網站。本文將介紹 Session 攻擊的手法以及防禦的方式，提供給管理者參考。">
     <meta name="twitter:creator" content="d3vc0r3">
-    <meta name="twitter:image:src" content="http://devco.re/assets/themes/devcore/images/double-sticker.png">
+    <meta name="twitter:image:src" content="">
     <meta name="twitter:domain" content="devco.re">
     <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
     <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
     <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
     <meta name='yandex-verification' content='4561963cf1d18fe3' />
 
-    <link rel="canonical" href="http://devco.re/blog/"/>
+    <link rel="canonical" href="http://devco.re/blog/2014/06/03/http-session-protection/"/>
     <link rel="alternate" type=application/rss+xml title="DEVCORE 戴夫寇爾" href="http://devco.re/rss">
     <link rel="publisher" href="https://plus.google.com/118439315679478709768/" />
 
@@ -221,7 +221,7 @@
               </ul>
             </div>
             <h1 class="logo">
-              <a href="/" title="DEVCORE 戴夫寇爾">部落格 Blog</a>
+              <a href="/" title="DEVCORE 戴夫寇爾">HTTP Session 攻擊與防護</a>
             </h1>
           </div>
         </div>
@@ -239,159 +239,219 @@
             <div class="container">
               <div class="post">
                 <div class="post-main">
-  
-                  <div class="post-content preview">
-                    <h2 class="post-title">
-                      <a href="/blog/2014/06/03/http-session-protection/">HTTP Session 攻擊與防護</a>
+                  <div class="post-switch">
+                    <a class="prev" href="/blog/2014/05/12/line-phishing/" title="LINE 免費貼圖釣魚訊息分析">上一篇文章</a>
+                    
+                  </div>
+                  <div itemscope itemtype="http://schema.org/Article" class="post-content">
+                    <h2 itemprop="name" class="post-title">
+                      HTTP Session 攻擊與防護
                     </h2>
                     <div class="post-info">
-                      <span class="post-category"><a href="/blog/category/技術專欄/" title="技術專欄">技術專欄</a></span><span class="posted">Posted </span>by <a class="poster" href="#"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Allen Own</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-06-03">2014-06-03</span>
+                      <span class="post-category"><a href="/blog/category/技術專欄/">技術專欄</a></span><span class="posted">Posted </span>by <a class="poster" href="#"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Allen Own</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-06-03">2014-06-03</span>
                     </div>
                     <div class="post-tag">
                       
                       Tags: <a href="/blog/tag/PHP/">PHP</a>, <a href="/blog/tag/Hijack/">Hijack</a>, <a href="/blog/tag/Session/">Session</a>, <a href="/blog/tag/Cookie/">Cookie</a>, <a href="/blog/tag/Defense/">Defense</a>, <a href="/blog/tag/XSS/">XSS</a>
                     </div>
-                    <div class="post-preview" itemprop="articleBody">
-                      
-                        <h3 id="">前言</h3>
+                    <span itemprop="articleBody">
+                      <h3 id="">前言</h3>
 
 <p>大家還記得四月份的 <a href="http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/">OpenSSL Heartbleed</a> 事件嗎？當時除了網站本身以外，受害最嚴重的就屬 VPN Server 了。國內外不少駭客不眠不休利用 Heartbleed 漏洞竊取 VPN Server 的管理者 Session Cookie，運氣好的話就可以直接登入大企業的內網。</p>
 
 <p>但是，其實這樣的風險是可以避免的，今天我們以開發者的角度來談談 Session 的攻擊與防護。</p>
+<!-- more -->
+<h3 id="_session_cookie">什麼是 Session？什麼是 Cookie？</h3>
 
+<p>在談 Session 之前，我們要先瞭解 Cookie。你知道網站是如何辨識我們的身份嗎？為什麼我們輸入完帳號密碼之後，網站就知道我們是誰呢？就是利用 Cookie。Cookie 是網站在瀏覽器中存放的資料，內容包括使用者在網站上的偏好設定、或者是登入的 Session ID。網站利用 Session ID 來辨認訪客的身份。</p>
+
+<p>Cookie 既然存放在 Client 端，那就有被竊取的風險。例如透過 <a href="https://www.owasp.org/index.php/Cross-site_Scripting_%28XSS%29">Cross-Site Scripting（跨站腳本攻擊，又稱 XSS）</a>，攻擊者可以輕易竊取受害者的 Cookie。如果 Cookie 被偷走了，你的身份就被竊取了。</p>
+
+<p>我們可以用一個譬喻來表示：你加入了一個秘密俱樂部，填寫完會員資料後，得到了一張會員卡。之後只要憑這張會員卡，就可以進入這個俱樂部。但是隔天，你的會員卡掉了。撿走你會員卡的人，就可以用你的會員卡進入這個秘密俱樂部，因為會員卡上沒有你的照片或是其他足以辨識身分的資訊。這就像是一個會員網站，我們申請了一個帳號（填寫會員資料加入俱樂部），輸入帳號密碼登入之後，得到一組 Cookie，其中有 Session ID 來辨識你的身分（透過會員卡來辨識身分）。今天如果 Cookie 被偷走了（會員卡被撿走了），別人就可以用你的帳號來登入網站（別人用你的會員卡進入俱樂部）。</p>
+
+<p>Session 攻擊手法有三種：</p>
+
+<ol>
+<li>猜測 Session ID (Session Prediction)</li>
+
+<li>竊取 Session ID (Session Hijacking)</li>
+
+<li>固定 Session ID (Session Fixation)</li>
+</ol>
+
+<p>我們以下一一介紹。</p>
+
+<h4 id="session_prediction__session_id">Session Prediction (猜測 Session ID)</h4>
+
+<p>Session ID 如同我們前面所說的，就如同是會員卡的編號。只要知道 Session ID，就可以成為這個使用者。如果 Session ID 的長度、複雜度、雜亂度不夠，就能夠被攻擊者猜測。攻擊者只要寫程式不斷暴力計算 Session ID，就有機會得到有效的 Session ID 而竊取使用者帳號。</p>
+
+<p>分析 Session ID 的工具可以用以下幾種</p>
+
+<ol>
+<li><a href="https://www.owasp.org/index.php/Category:OWASP_WebScarab_Project">OWASP WebScarab</a></li>
+
+<li><a href="http://lcamtuf.coredump.cx/soft/stompy.tgz">Stompy</a></li>
+
+<li><a href="http://portswigger.net/burp/">Burp Suite</a></li>
+</ol>
+
+<p>觀察 Session ID 的亂數分布，可以了解是否能夠推出規律、猜測有效的 Session ID。</p>
+
+<p><a href="https://lh4.googleusercontent.com/-0tLscJj_r_E/U3VCmkcvcCI/AAAAAAAAAZo/bChmIZvZZCg/s2400/2014-05-16-http-session-protection-03-session-id-analysis.jpg"><img src="https://lh4.googleusercontent.com/-0tLscJj_r_E/U3VCmkcvcCI/AAAAAAAAAZo/bChmIZvZZCg/w700-h388-no/2014-05-16-http-session-protection-03-session-id-analysis.jpg" alt="分析 Session ID" title="分析 Session ID" /></a></p>
+
+<p>Ref: <a href="http://programming4.us/security/3950.aspx">http://programming4.us/security/3950.aspx</a></p>
+
+<p><strong>防護措施</strong></p>
+
+<p>使用 Session ID 分析程式進行分析，評估是否無法被預測。如果沒有 100% 的把握自己撰寫的 Session ID 產生機制是安全的，不妨使用內建的 Session ID 產生 function，通常都有一定程度的安全。</p>
+
+<h4 id="session_hijacking__session_id">Session Hijacking (竊取 Session ID)</h4>
+
+<p>竊取 Session ID 是最常見的攻擊手法。攻擊者可以利用多種方式竊取 Cookie 獲取 Session ID：</p>
+
+<ol>
+<li>跨站腳本攻擊 (<a href="https://www.owasp.org/index.php/Cross-site_Scripting_%28XSS%29">Cross-Site Scripting (XSS)</a>)：利用 XSS 漏洞竊取使用者 Cookie</li>
+
+<li>網路竊聽：使用 ARP Spoofing 等手法竊聽網路封包獲取 Cookie</li>
+
+<li>透過 Referer 取得：若網站允許 Session ID 使用 URL 傳遞，便可能從 Referer 取得 Session ID</li>
+</ol>
+
+<p>竊取利用的方式如下圖：</p>
+
+<p>受害者已經登入網站伺服器，並且取得 Session ID，在連線過程中攻擊者用竊聽的方式獲取受害者 Session ID。</p>
+
+<p><a href="https://lh3.googleusercontent.com/-glmPtR_Erp0/U3VCmo0w9yI/AAAAAAAAAZk/4rP1hOOC5W8/s2400/2014-05-16-http-session-protection-01-session-id-sniffing.png"><img src="https://lh3.googleusercontent.com/-glmPtR_Erp0/U3VCmo0w9yI/AAAAAAAAAZk/4rP1hOOC5W8/w600-no/2014-05-16-http-session-protection-01-session-id-sniffing.png" alt="竊取 Session ID" title="竊取 Session ID" /></a></p>
+
+<p>攻擊者直接使用竊取到的 Session ID 送至伺服器，偽造受害者身分。若伺服器沒有檢查 Session ID 的使用者身分，則可以讓攻擊者得逞。</p>
+
+<p><a href="https://lh3.googleusercontent.com/--Si53ercaV0/U3VCmfP_ZKI/AAAAAAAAAZg/-Dirb4AYKGk/s2400/2014-05-16-http-session-protection-02-session-id-spoofing.png"><img src="https://lh3.googleusercontent.com/--Si53ercaV0/U3VCmfP_ZKI/AAAAAAAAAZg/-Dirb4AYKGk/w600/2014-05-16-http-session-protection-02-session-id-spoofing.png" alt="偽造 Session ID" title="偽造 Session ID" /></a></p>
+
+<p><strong>防護措施</strong></p>
+
+<ul>
+<li>禁止將 Session ID 使用 URL (GET) 方式來傳遞</li>
+
+<li>設定加強安全性的 Cookie 屬性：HttpOnly (無法被 JavaScript 存取)</li>
+
+<li>設定加強安全性的 Cookie 屬性：Secure (只在 HTTPS 傳遞，若網站無 HTTPS 請勿設定)</li>
+
+<li>在需要權限的頁面請使用者重新輸入密碼</li>
+</ul>
+
+<h4 id="session_fixation__session_id">Session Fixation (固定 Session ID)</h4>
+
+<p>攻擊者誘使受害者使用特定的 Session ID 登入網站，而攻擊者就能取得受害者的身分。</p>
+
+<ol>
+<li>攻擊者從網站取得有效 Session ID</li>
+
+<li>使用社交工程等手法誘使受害者點選連結，使用該 Session ID 登入網站</li>
+
+<li>受害者輸入帳號密碼成功登入網站</li>
+
+<li>攻擊者使用該 Session ID，操作受害者的帳號</li>
+</ol>
+
+<p><a href="https://lh5.googleusercontent.com/-qAizYyaOoRo/U3Vaaw6lqsI/AAAAAAAAAZ4/GNO7z3T6Mjg/s2400/2014-05-16-http-session-protection-04-session-id-fixation.png"><img src="https://lh5.googleusercontent.com/-qAizYyaOoRo/U3Vaaw6lqsI/AAAAAAAAAZ4/GNO7z3T6Mjg/w904-h678-no/2014-05-16-http-session-protection-04-session-id-fixation.png" alt="Session Fixation" title="Session Fixation" /></a></p>
+
+<p><strong>防護措施</strong></p>
+
+<ul>
+<li>在使用者登入成功後，立即更換 Session ID，防止攻擊者操控 Session ID 給予受害者。</li>
+
+<li>禁止將 Session ID 使用 URL (GET) 方式來傳遞</li>
+</ul>
+
+<h3 id="session_">Session 防護</h3>
+
+<p>那要怎麼防範攻擊呢？當然會有人說，會員卡不要掉不就沒事了嗎？當然我們沒辦法確保用戶不會因為各種方式導致 Cookie 遭竊（XSS、惡意程式等），因此最後一道防線就是網站的 Session 保護。一張會員卡上如果沒有任何可識別的個人資料，當然任何人撿去了都可以用。如果上面有照片跟簽名呢？偷走會員卡的人在進入俱樂部的時候，在門口就會因為照片跟本人不符而被擋下來。Session 保護也是一樣，怎麼讓我們的 Session 保護機制也能辨識身分呢？答案是利用每個使用者特有的識別資訊。</p>
+
+<p>每個使用者在登入網站的時候，我們可以用每個人特有的識別資訊來確認身分：</p>
+
+<ol>
+<li>來源 IP 位址</li>
+
+<li>瀏覽器 User-Agent</li>
+</ol>
+
+<p>如果在同一個 Session 中，使用者的 IP 或者 User-Agent 改變了，最安全的作法就是把這個 Session 清除，請使用者重新登入。雖然使用者可能因為 IP 更換、Proxy 等因素導致被強制登出，但為了安全性，便利性必須要與之取捨。以 PHP 為例，我們可以這樣撰寫：</p>
+<div class='highlight'><pre><code class='php'><span class='x'>if($_SERVER[&#39;REMOTE_ADDR&#39;] !== $_SESSION[&#39;LAST_REMOTE_ADDR&#39;] || $_SERVER[&#39;HTTP_USER_AGENT&#39;] !== $_SESSION[&#39;LAST_USER_AGENT&#39;]) {</span>
+<span class='x'>   session_destroy();</span>
+<span class='x'>}</span>
+<span class='x'>session_regenerate_id();</span>
+<span class='x'>$_SESSION[&#39;LAST_REMOTE_ADDR&#39;] = $_SERVER[&#39;REMOTE_ADDR&#39;];</span>
+<span class='x'>$_SESSION[&#39;LAST_USER_AGENT&#39;] = $_SERVER[&#39;HTTP_USER_AGENT&#39;];</span>
+</code></pre></div>
+<p>除了檢查個人識別資訊來確認是否盜用之外，也可以增加前述的 Session ID 的防護方式：</p>
+
+<ol>
+<li>Cookie 設定 Secure Flag (HTTPS)</li>
+
+<li>Cookie 設定 HTTP Only Flag</li>
+
+<li>成功登入後立即變更 Session ID</li>
+</ol>
+
+<p>Session 的清除機制也非常重要。當伺服器偵測到可疑的使用者 Session 行為時，例如攻擊者惡意嘗試偽造 Session ID、使用者 Session 可能遭竊、或者逾時等情況，都應該立刻清除該 Session ID 以免被攻擊者利用。</p>
+
+<p>Session 清除機制時機：</p>
+
+<ol>
+<li>偵測到惡意嘗試 Session ID</li>
+
+<li>識別資訊無效時</li>
+
+<li>逾時</li>
+</ol>
+
+<h3 id="_2">管理者有避免使用者帳號遭竊的責任</h3>
+
+<p>使用者帳號遭竊一直以來都是顯著的問題，但卻鮮少有網站針對 Session 的機制進行保護。攻擊者可以輕鬆使用 <a href="http://codebutler.github.io/firesheep/">firesheep</a> 之類的工具竊取帳號。國外已經有不少網站偵測到 Session 可能遭竊時將帳號強制登出，但國內目前還鮮少網站實作此防禦，設備商的 Web 管理介面更少針對 Session 進行保護。如果 VPN Server 等設備有偵測 Session ID 的偽造，在 <a href="http://devco.re/blog/2014/04/11/openssl-heartbleed-how-to-hack-how-to-protect/">OpenSSL Heartbleed</a> 事件時就不會有那麼慘重的損失了。</p>
+
+<p>立刻把自己的網站加上 Session 保護機制吧！</p>
+                    </span>
+                    <div class="post-switch">
+                      <a class="prev" href="/blog/2014/05/12/line-phishing/" title="LINE 免費貼圖釣魚訊息分析">上一篇文章</a>
                       
                     </div>
-                    <a class="readmore" href="/blog/2014/06/03/http-session-protection/">read more →</a>
+                    <div class="social-share" style="line-height: 10px; margin: 20px 0;">
+                      <div style="float: right;">
+                        <div class="fb-like" data-href="http://devco.re/blog/2014/06/03/http-session-protection/" data-layout="button_count" data-action="like" data-show-faces="false" data-share="false"></div>
+                      </div>
+                      <a href="#" style="dispaly:none; border-bottom:none;"> </a>
+                      <a href="https://twitter.com/share?" class="twitter-share-button">Tweet</a>
+                      <div class="g-plusone" data-size="medium"></div>
+                      <script type="text/javascript">
+                        (function() {
+                          var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+                          po.src = 'https://apis.google.com/js/platform.js';
+                          var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+                        })();
+                      </script>
+                      <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+                    </div>
                   </div>
-  
-                  <div class="post-content preview">
-                    <h2 class="post-title">
-                      <a href="/blog/2014/05/12/line-phishing/">LINE 免費貼圖釣魚訊息分析</a>
-                    </h2>
-                    <div class="post-info">
-                      <span class="post-category"><a href="/blog/category/案例剖析/" title="案例剖析">案例剖析</a></span><span class="posted">Posted </span>by <a class="poster" href="#"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Allen Own</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-05-12">2014-05-12</span>
-                    </div>
-                    <div class="post-tag">
-                      
-                      Tags: <a href="/blog/tag/Phishing/">Phishing</a>, <a href="/blog/tag/IM/">IM</a>, <a href="/blog/tag/Facebook/">Facebook</a>
-                    </div>
-                    <div class="post-preview" itemprop="articleBody">
-                      
-                        <p>晚上突然接到社群朋友傳 LINE 的訊息過來，定睛一看並不單純。這網址看起來就是釣魚網站啊？怎麼會這樣呢？難道是朋友在測試我們的警覺心夠不夠嗎？讓我們看下去這個釣魚網頁怎麼玩。</p>
-
-<p><a href="https://lh3.googleusercontent.com/-ynmXJsHIv0w/U2kPLvxOvkI/AAAAAAAAAUw/qG0y0Ahcf44/s2560/LINE_Phishing_01.png"><img src="https://lh3.googleusercontent.com/-ynmXJsHIv0w/U2kPLvxOvkI/AAAAAAAAAUw/qG0y0Ahcf44/w381-h677-no/LINE_Phishing_01.png" alt="LINE 傳送贈送貼圖訊息釣魚" title="LINE 傳送贈送貼圖訊息釣魚" /></a></p>
-
-                      
-                    </div>
-                    <a class="readmore" href="/blog/2014/05/12/line-phishing/">read more →</a>
-                  </div>
-  
-                  <div class="post-content preview">
-                    <h2 class="post-title">
-                      <a href="/blog/2014/05/07/vote.tw.am-potential-phishing-site/">搶搭核四與服貿熱潮的潛在詐騙網站</a>
-                    </h2>
-                    <div class="post-info">
-                      <span class="post-category"><a href="/blog/category/案例剖析/" title="案例剖析">案例剖析</a></span><span class="posted">Posted </span>by <a class="poster" href="#"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">DEVCORE</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-05-07">2014-05-07</span>
-                    </div>
-                    <div class="post-tag">
-                      
-                      Tags: <a href="/blog/tag/Phishing/">Phishing</a>, <a href="/blog/tag/SVN/">SVN</a>
-                    </div>
-                    <div class="post-preview" itemprop="articleBody">
-                      
-                        <h3 id="votetwam">vote.tw.am</h3>
-
-<p>最近很多人都收到了一個看起來很像釣魚網站的核四投票站台簡訊，如下圖：</p>
-
-<p><a href="https://lh4.googleusercontent.com/1mICaXeUMYfM-dYj4k4_9IUx9COR_JNienon7uCmV6A=w640-h960-no"><img src="https://lh4.googleusercontent.com/1mICaXeUMYfM-dYj4k4_9IUx9COR_JNienon7uCmV6A=w640-h960-no" alt="核四投票站台簡訊" title="核四投票站台簡訊" /></a></p>
-
-<p>我們也收到了，但是剛吃飽飯實在很想睡覺，不太想理他，於是就忍不住趴下睡覺，竟然做了個夢…..</p>
-
-                      
-                    </div>
-                    <a class="readmore" href="/blog/2014/05/07/vote.tw.am-potential-phishing-site/">read more →</a>
-                  </div>
-  
-                  <div class="post-content preview">
-                    <h2 class="post-title">
-                      <a href="/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/">Zone Transfer CVE-1999-0532 - 古老的 DNS 資安議題</a>
-                    </h2>
-                    <div class="post-info">
-                      <span class="post-category"><a href="/blog/category/技術專欄/" title="技術專欄">技術專欄</a></span><span class="posted">Posted </span>by <a class="poster" href="#"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Bowen Hsu</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-05-05">2014-05-05</span>
-                    </div>
-                    <div class="post-tag">
-                      
-                      Tags: <a href="/blog/tag/DNS/">DNS</a>, <a href="/blog/tag/CVE/">CVE</a>, <a href="/blog/tag/Vulnerability/">Vulnerability</a>, <a href="/blog/tag/Reconnaissance/">Reconnaissance</a>
-                    </div>
-                    <div class="post-preview" itemprop="articleBody">
-                      
-                        <h3 id="">前言</h3>
-
-<p><a href="http://en.wikipedia.org/wiki/Domain_Name_System">DNS</a> 是在 1983 年由 Paul Mockapetris 所發明，相關規範分別在 <a href="http://tools.ietf.org/html/rfc1034">RFC 1034</a> 以及 <a href="http://tools.ietf.org/html/rfc1035">RFC 1035</a>。其主要作用是用來記憶 IP 位址與英文之間的對應關係，讓人類可以用較簡單的方式記得主機名稱。目前一般民眾大多使用 ISP 或國際知名公司提供的 DNS server，如中華的 168.95.1.1 或是 Google 的 8.8.8.8 等等。</p>
-
-<p>然而對於企業而言，可能需要架設大量機器或內部系統，又希望以簡單的方式記憶主機名稱，因此許多企業有自行架設 DNS server 的需求。同時企業通常也會建立幾台備援 DNS server，以避免 DNS 服務忽然中斷。但是當企業有多台 DNS server 時，就必須考量 DNS 記錄的同步問題，通常會使用 <a href="http://en.wikipedia.org/wiki/DNS_zone_transfer">zone transfer</a> 這個功能來同步記錄。</p>
-
-                      
-                    </div>
-                    <a class="readmore" href="/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/">read more →</a>
-                  </div>
-  
-                  <div class="post-content preview">
-                    <h2 class="post-title">
-                      <a href="/blog/2014/04/24/php.net-insecure-direct-object-reference/">PHP 官網原始碼讀取案例</a>
-                    </h2>
-                    <div class="post-info">
-                      <span class="post-category"><a href="/blog/category/案例剖析/" title="案例剖析">案例剖析</a></span><span class="posted">Posted </span>by <a class="poster" href="#"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">ding</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-04-24">2014-04-24</span>
-                    </div>
-                    <div class="post-tag">
-                      
-                      Tags: <a href="/blog/tag/PHP/">PHP</a>, <a href="/blog/tag/LFI/">LFI</a>
-                    </div>
-                    <div class="post-preview" itemprop="articleBody">
-                      
-                        <p><a href="https://www.owasp.org/index.php/Top_10_2013-A4-Insecure_Direct_Object_References">不安全的引用物件 (Insecure Direct Object Reference)</a> 是個非常常見的資安漏洞，在 <a href="https://www.owasp.org/">OWASP</a> 公布的<a href="https://www.owasp.org/index.php/Top_10_2013-Top_10">十大網站應用程式安全漏洞</a> 中高居第四名。通常發生在網站應用程式上沒有針對輸入的參數做好檢查，就把參數丟入 include 或 readfile 等函數當中引用，使得攻擊者可以藉此存取任意文件的原始碼。</p>
-
-<p>今天這個案例就發生在 PHP 的官方網站 (<a href="http://www.php.net/">http://www.php.net/</a>)，消息來源是知名的 0-Day 黑市 1337day，發佈的日期是 2014/4/4 ，原始的內容是這樣的：</p>
-
-                      
-                    </div>
-                    <a class="readmore" href="/blog/2014/04/24/php.net-insecure-direct-object-reference/">read more →</a>
-                  </div>
-  
+                  
 
 
-                  <ul class="pagination">
-  
-                  <li>
-                    <span class="disable">« prev</span>
-                  </li>
-  
-  
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
     
-                  <li>
-                    <a class="active" href="#">1</a>
-                  </li>
-    
-  
-    
-                  <li>
-                    <a href="/blog/page2">2</a>
-                  </li>
-    
-  
-    
-                  <li>
-                    <a href="/blog/page3">3</a>
-                  </li>
-    
-  
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
 
-  
-                  <li>
-                    <a href="/blog/page2">next »</a>
-                  </li>
-  
-                </ul>
+
+
 
                 </div>
                 <div class="post-sidebar">
@@ -657,10 +717,16 @@
                   <!--文章標籤 end-->
                 </div>
               </div>
+              <div id="fb-root"></div>
+              <script>(function(d, s, id) {
+                var js, fjs = d.getElementsByTagName(s)[0];
+                if (d.getElementById(id)) return;
+                js = d.createElement(s); js.id = id;
+                js.src = "//connect.facebook.net/en_US/all.js#xfbml=1";
+                fjs.parentNode.insertBefore(js, fjs);
+              }(document, 'script', 'facebook-jssdk'));</script>
             </div>
           </div>
-
-
 
 
         </div>

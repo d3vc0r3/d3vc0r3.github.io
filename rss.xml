@@ -4,11 +4,173 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試、資安事件處理、教育訓練、資安顧問服務</description>
         <link>http://devco.re</link>
-        <lastBuildDate>Tue, 03 Jun 2014 16:14:43 +0800</lastBuildDate>
-        <pubDate>Tue, 03 Jun 2014 16:14:43 +0800</pubDate>
+        <lastBuildDate>Wed, 04 Jun 2014 11:23:42 +0800</lastBuildDate>
+        <pubDate>Wed, 04 Jun 2014 11:23:42 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="http://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>HTTP Session 攻擊與防護</title>
+                <description>&lt;h3 id=&quot;&quot;&gt;前言&lt;/h3&gt;
+
+&lt;p&gt;大家還記得四月份的 &lt;a href=&quot;http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;OpenSSL Heartbleed&lt;/a&gt; 事件嗎？當時除了網站本身以外，受害最嚴重的就屬 VPN Server 了。國內外不少駭客不眠不休利用 Heartbleed 漏洞竊取 VPN Server 的管理者 Session Cookie，運氣好的話就可以直接登入大企業的內網。&lt;/p&gt;
+
+&lt;p&gt;但是，其實這樣的風險是可以避免的，今天我們以開發者的角度來談談 Session 的攻擊與防護。&lt;/p&gt;
+&lt;!-- more --&gt;
+&lt;h3 id=&quot;_session_cookie&quot;&gt;什麼是 Session？什麼是 Cookie？&lt;/h3&gt;
+
+&lt;p&gt;在談 Session 之前，我們要先瞭解 Cookie。你知道網站是如何辨識我們的身份嗎？為什麼我們輸入完帳號密碼之後，網站就知道我們是誰呢？就是利用 Cookie。Cookie 是網站在瀏覽器中存放的資料，內容包括使用者在網站上的偏好設定、或者是登入的 Session ID。網站利用 Session ID 來辨認訪客的身份。&lt;/p&gt;
+
+&lt;p&gt;Cookie 既然存放在 Client 端，那就有被竊取的風險。例如透過 &lt;a href=&quot;https://www.owasp.org/index.php/Cross-site_Scripting_%28XSS%29&quot;&gt;Cross-Site Scripting（跨站腳本攻擊，又稱 XSS）&lt;/a&gt;，攻擊者可以輕易竊取受害者的 Cookie。如果 Cookie 被偷走了，你的身份就被竊取了。&lt;/p&gt;
+
+&lt;p&gt;我們可以用一個譬喻來表示：你加入了一個秘密俱樂部，填寫完會員資料後，得到了一張會員卡。之後只要憑這張會員卡，就可以進入這個俱樂部。但是隔天，你的會員卡掉了。撿走你會員卡的人，就可以用你的會員卡進入這個秘密俱樂部，因為會員卡上沒有你的照片或是其他足以辨識身分的資訊。這就像是一個會員網站，我們申請了一個帳號（填寫會員資料加入俱樂部），輸入帳號密碼登入之後，得到一組 Cookie，其中有 Session ID 來辨識你的身分（透過會員卡來辨識身分）。今天如果 Cookie 被偷走了（會員卡被撿走了），別人就可以用你的帳號來登入網站（別人用你的會員卡進入俱樂部）。&lt;/p&gt;
+
+&lt;p&gt;Session 攻擊手法有三種：&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;猜測 Session ID (Session Prediction)&lt;/li&gt;
+
+&lt;li&gt;竊取 Session ID (Session Hijacking)&lt;/li&gt;
+
+&lt;li&gt;固定 Session ID (Session Fixation)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;我們以下一一介紹。&lt;/p&gt;
+
+&lt;h4 id=&quot;session_prediction__session_id&quot;&gt;Session Prediction (猜測 Session ID)&lt;/h4&gt;
+
+&lt;p&gt;Session ID 如同我們前面所說的，就如同是會員卡的編號。只要知道 Session ID，就可以成為這個使用者。如果 Session ID 的長度、複雜度、雜亂度不夠，就能夠被攻擊者猜測。攻擊者只要寫程式不斷暴力計算 Session ID，就有機會得到有效的 Session ID 而竊取使用者帳號。&lt;/p&gt;
+
+&lt;p&gt;分析 Session ID 的工具可以用以下幾種&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;a href=&quot;https://www.owasp.org/index.php/Category:OWASP_WebScarab_Project&quot;&gt;OWASP WebScarab&lt;/a&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;a href=&quot;http://lcamtuf.coredump.cx/soft/stompy.tgz&quot;&gt;Stompy&lt;/a&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;a href=&quot;http://portswigger.net/burp/&quot;&gt;Burp Suite&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;觀察 Session ID 的亂數分布，可以了解是否能夠推出規律、猜測有效的 Session ID。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-0tLscJj_r_E/U3VCmkcvcCI/AAAAAAAAAZo/bChmIZvZZCg/s2400/2014-05-16-http-session-protection-03-session-id-analysis.jpg&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-0tLscJj_r_E/U3VCmkcvcCI/AAAAAAAAAZo/bChmIZvZZCg/w700-h388-no/2014-05-16-http-session-protection-03-session-id-analysis.jpg&quot; alt=&quot;分析 Session ID&quot; title=&quot;分析 Session ID&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Ref: &lt;a href=&quot;http://programming4.us/security/3950.aspx&quot;&gt;http://programming4.us/security/3950.aspx&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;防護措施&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;使用 Session ID 分析程式進行分析，評估是否無法被預測。如果沒有 100% 的把握自己撰寫的 Session ID 產生機制是安全的，不妨使用內建的 Session ID 產生 function，通常都有一定程度的安全。&lt;/p&gt;
+
+&lt;h4 id=&quot;session_hijacking__session_id&quot;&gt;Session Hijacking (竊取 Session ID)&lt;/h4&gt;
+
+&lt;p&gt;竊取 Session ID 是最常見的攻擊手法。攻擊者可以利用多種方式竊取 Cookie 獲取 Session ID：&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;跨站腳本攻擊 (&lt;a href=&quot;https://www.owasp.org/index.php/Cross-site_Scripting_%28XSS%29&quot;&gt;Cross-Site Scripting (XSS)&lt;/a&gt;)：利用 XSS 漏洞竊取使用者 Cookie&lt;/li&gt;
+
+&lt;li&gt;網路竊聽：使用 ARP Spoofing 等手法竊聽網路封包獲取 Cookie&lt;/li&gt;
+
+&lt;li&gt;透過 Referer 取得：若網站允許 Session ID 使用 URL 傳遞，便可能從 Referer 取得 Session ID&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;竊取利用的方式如下圖：&lt;/p&gt;
+
+&lt;p&gt;受害者已經登入網站伺服器，並且取得 Session ID，在連線過程中攻擊者用竊聽的方式獲取受害者 Session ID。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-glmPtR_Erp0/U3VCmo0w9yI/AAAAAAAAAZk/4rP1hOOC5W8/s2400/2014-05-16-http-session-protection-01-session-id-sniffing.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-glmPtR_Erp0/U3VCmo0w9yI/AAAAAAAAAZk/4rP1hOOC5W8/w600-no/2014-05-16-http-session-protection-01-session-id-sniffing.png&quot; alt=&quot;竊取 Session ID&quot; title=&quot;竊取 Session ID&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;攻擊者直接使用竊取到的 Session ID 送至伺服器，偽造受害者身分。若伺服器沒有檢查 Session ID 的使用者身分，則可以讓攻擊者得逞。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/--Si53ercaV0/U3VCmfP_ZKI/AAAAAAAAAZg/-Dirb4AYKGk/s2400/2014-05-16-http-session-protection-02-session-id-spoofing.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/--Si53ercaV0/U3VCmfP_ZKI/AAAAAAAAAZg/-Dirb4AYKGk/w600/2014-05-16-http-session-protection-02-session-id-spoofing.png&quot; alt=&quot;偽造 Session ID&quot; title=&quot;偽造 Session ID&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;防護措施&lt;/strong&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;禁止將 Session ID 使用 URL (GET) 方式來傳遞&lt;/li&gt;
+
+&lt;li&gt;設定加強安全性的 Cookie 屬性：HttpOnly (無法被 JavaScript 存取)&lt;/li&gt;
+
+&lt;li&gt;設定加強安全性的 Cookie 屬性：Secure (只在 HTTPS 傳遞，若網站無 HTTPS 請勿設定)&lt;/li&gt;
+
+&lt;li&gt;在需要權限的頁面請使用者重新輸入密碼&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&quot;session_fixation__session_id&quot;&gt;Session Fixation (固定 Session ID)&lt;/h4&gt;
+
+&lt;p&gt;攻擊者誘使受害者使用特定的 Session ID 登入網站，而攻擊者就能取得受害者的身分。&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;攻擊者從網站取得有效 Session ID&lt;/li&gt;
+
+&lt;li&gt;使用社交工程等手法誘使受害者點選連結，使用該 Session ID 登入網站&lt;/li&gt;
+
+&lt;li&gt;受害者輸入帳號密碼成功登入網站&lt;/li&gt;
+
+&lt;li&gt;攻擊者使用該 Session ID，操作受害者的帳號&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-qAizYyaOoRo/U3Vaaw6lqsI/AAAAAAAAAZ4/GNO7z3T6Mjg/s2400/2014-05-16-http-session-protection-04-session-id-fixation.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-qAizYyaOoRo/U3Vaaw6lqsI/AAAAAAAAAZ4/GNO7z3T6Mjg/w904-h678-no/2014-05-16-http-session-protection-04-session-id-fixation.png&quot; alt=&quot;Session Fixation&quot; title=&quot;Session Fixation&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;防護措施&lt;/strong&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;在使用者登入成功後，立即更換 Session ID，防止攻擊者操控 Session ID 給予受害者。&lt;/li&gt;
+
+&lt;li&gt;禁止將 Session ID 使用 URL (GET) 方式來傳遞&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;session_&quot;&gt;Session 防護&lt;/h3&gt;
+
+&lt;p&gt;那要怎麼防範攻擊呢？當然會有人說，會員卡不要掉不就沒事了嗎？當然我們沒辦法確保用戶不會因為各種方式導致 Cookie 遭竊（XSS、惡意程式等），因此最後一道防線就是網站的 Session 保護。一張會員卡上如果沒有任何可識別的個人資料，當然任何人撿去了都可以用。如果上面有照片跟簽名呢？偷走會員卡的人在進入俱樂部的時候，在門口就會因為照片跟本人不符而被擋下來。Session 保護也是一樣，怎麼讓我們的 Session 保護機制也能辨識身分呢？答案是利用每個使用者特有的識別資訊。&lt;/p&gt;
+
+&lt;p&gt;每個使用者在登入網站的時候，我們可以用每個人特有的識別資訊來確認身分：&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;來源 IP 位址&lt;/li&gt;
+
+&lt;li&gt;瀏覽器 User-Agent&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;如果在同一個 Session 中，使用者的 IP 或者 User-Agent 改變了，最安全的作法就是把這個 Session 清除，請使用者重新登入。雖然使用者可能因為 IP 更換、Proxy 等因素導致被強制登出，但為了安全性，便利性必須要與之取捨。以 PHP 為例，我們可以這樣撰寫：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;php&#39;&gt;&lt;span class=&#39;x&#39;&gt;if($_SERVER[&amp;#39;REMOTE_ADDR&amp;#39;] !== $_SESSION[&amp;#39;LAST_REMOTE_ADDR&amp;#39;] || $_SERVER[&amp;#39;HTTP_USER_AGENT&amp;#39;] !== $_SESSION[&amp;#39;LAST_USER_AGENT&amp;#39;]) {&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;   session_destroy();&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;}&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;session_regenerate_id();&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;$_SESSION[&amp;#39;LAST_REMOTE_ADDR&amp;#39;] = $_SERVER[&amp;#39;REMOTE_ADDR&amp;#39;];&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;$_SESSION[&amp;#39;LAST_USER_AGENT&amp;#39;] = $_SERVER[&amp;#39;HTTP_USER_AGENT&amp;#39;];&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;除了檢查個人識別資訊來確認是否盜用之外，也可以增加前述的 Session ID 的防護方式：&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;Cookie 設定 Secure Flag (HTTPS)&lt;/li&gt;
+
+&lt;li&gt;Cookie 設定 HTTP Only Flag&lt;/li&gt;
+
+&lt;li&gt;成功登入後立即變更 Session ID&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Session 的清除機制也非常重要。當伺服器偵測到可疑的使用者 Session 行為時，例如攻擊者惡意嘗試偽造 Session ID、使用者 Session 可能遭竊、或者逾時等情況，都應該立刻清除該 Session ID 以免被攻擊者利用。&lt;/p&gt;
+
+&lt;p&gt;Session 清除機制時機：&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;偵測到惡意嘗試 Session ID&lt;/li&gt;
+
+&lt;li&gt;識別資訊無效時&lt;/li&gt;
+
+&lt;li&gt;逾時&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;_2&quot;&gt;管理者有避免使用者帳號遭竊的責任&lt;/h3&gt;
+
+&lt;p&gt;使用者帳號遭竊一直以來都是顯著的問題，但卻鮮少有網站針對 Session 的機制進行保護。攻擊者可以輕鬆使用 &lt;a href=&quot;http://codebutler.github.io/firesheep/&quot;&gt;firesheep&lt;/a&gt; 之類的工具竊取帳號。國外已經有不少網站偵測到 Session 可能遭竊時將帳號強制登出，但國內目前還鮮少網站實作此防禦，設備商的 Web 管理介面更少針對 Session 進行保護。如果 VPN Server 等設備有偵測 Session ID 的偽造，在 &lt;a href=&quot;http://devco.re/blog/2014/04/11/openssl-heartbleed-how-to-hack-how-to-protect/&quot;&gt;OpenSSL Heartbleed&lt;/a&gt; 事件時就不會有那麼慘重的損失了。&lt;/p&gt;
+
+&lt;p&gt;立刻把自己的網站加上 Session 保護機制吧！&lt;/p&gt;</description>
+                <link>http://devco.re/blog/2014/06/03/http-session-protection/</link>
+                <guid>http://devco.re/blog/2014/06/03/http-session-protection</guid>
+                <pubDate>Tue, 03 Jun 2014 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>LINE 免費貼圖釣魚訊息分析</title>

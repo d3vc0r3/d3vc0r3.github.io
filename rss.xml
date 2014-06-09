@@ -4,11 +4,97 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試、資安事件處理、教育訓練、資安顧問服務</description>
         <link>http://devco.re</link>
-        <lastBuildDate>Wed, 04 Jun 2014 12:50:56 +0800</lastBuildDate>
-        <pubDate>Wed, 04 Jun 2014 12:50:56 +0800</pubDate>
+        <lastBuildDate>Mon, 09 Jun 2014 16:51:02 +0800</lastBuildDate>
+        <pubDate>Mon, 09 Jun 2014 16:51:02 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="http://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>OpenSSL 再爆嚴重漏洞，部分重要網站仍在風險中！</title>
+                <description>&lt;p&gt;(本篇最後更新時間：2014.6.9 15:40 pm)&lt;/p&gt;
+
+&lt;p&gt;OpenSSL 團隊於 6/5 修補了&lt;a href=&quot;http://www.openssl.org/news/secadv_20140605.txt&quot;&gt;六項安全漏洞&lt;/a&gt;，&lt;a href=&quot;http://www.sans.org/about/&quot;&gt;SANS&lt;/a&gt; 在&lt;a href=&quot;https://isc.sans.edu/diary/Critical+OpenSSL+Patch+Available+Patch+Now/18211&quot;&gt;這篇文章&lt;/a&gt;中整理了這幾個漏洞的摘要，這裡截圖表格如下：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-btOMwf3omik/U5Vnx2xR_lI/AAAAAAAAAa4/0xB5tuTj_eQ/w794-h429-no/openssl_0605_table.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-btOMwf3omik/U5Vnx2xR_lI/AAAAAAAAAa4/0xB5tuTj_eQ/w794-h429-no/openssl_0605_table.png&quot; alt=&quot;OpenSSL 0605 安全更新比較表&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;其中 CVE-2014-0224、CVE-2014-0195 兩項被列為 Critical，我們分別來看看這兩個弱點到底造成了什麼危害。&lt;/p&gt;
+&lt;!-- more --&gt;
+&lt;h3 id=&quot;cve20140224_ccs_injection_vulnerability&quot;&gt;CVE-2014-0224 (CCS Injection Vulnerability)&lt;/h3&gt;
+
+&lt;h4 id=&quot;&quot;&gt;說明&lt;/h4&gt;
+
+&lt;p&gt;加密通訊被視為預防&lt;a href=&quot;http://zh.wikipedia.org/wiki/%E4%B8%AD%E9%97%B4%E4%BA%BA%E6%94%BB%E5%87%BB&quot;&gt;中間人攻擊&lt;/a&gt;的解法之一，利用 SSL 協定防止竊聽、竄改傳輸資料是一種常見的方式。然而 OpenSSL 這次出現在 ChangeCipherSpec（更改密鑰規格）的設計瑕疵，讓攻擊者有辦法解密所有通訊內容，讓加密保護徹底失效。&lt;/p&gt;
+
+&lt;p&gt;該弱點原理是 OpenSSL 伺服器端在實作 handshake 時並未檢查訊息的順序（嚴格來說是 ChangeCipherSpec 的順序），所以攻擊者可以提前送出 ChangeCipherSpec 訊息，使伺服器在還未初始完畢的狀態先去做 ChangeCipherSpec 的動作，最終造成加解密可解的狀況，是以此弱點稱之為 CCS Injection。更多的細節請參考原通報者 Masashi Kikuchi 的&lt;a href=&quot;http://ccsinjection.lepidum.co.jp/blog/2014-06-05/CCS-Injection-en/index.html&quot;&gt;部落格&lt;/a&gt;，佐以&lt;a href=&quot;https://www.imperialviolet.org/2014/06/05/earlyccs.html&quot;&gt;這篇&lt;/a&gt;附程式碼的解說，OpenSSL github 上關於 CVE-2014-0224 的 &lt;a href=&quot;https://github.com/openssl/openssl/commit/a91be10833e61bcdc9002de28489405101c52650&quot;&gt;fix&lt;/a&gt; 也可以幫助了解。&lt;/p&gt;
+
+&lt;h4 id=&quot;_2&quot;&gt;誰應該注意&lt;/h4&gt;
+
+&lt;p&gt;所有靠 OpenSSL 保護連線的應用服務都需要注意。又尤其是銀行、金流服務這些連線中存在金融資訊的服務，若不注意會造成信用卡卡號洩漏，網路銀行被盜用。經過實際檢測，&lt;strong&gt;目前仍有銀行單位和金流單位使用有問題的 OpenSSL 版本&lt;/strong&gt;。消費者需要特別注意，在使用前也可透過下面小工具來輔助檢查自己所使用的服務使否存在風險：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Tripwire 提供的&lt;a href=&quot;http://www.tripwire.com/state-of-security/incident-detection/detection-script-for-cve-2014-0224-openssl-cipher-change-spec-injection/&quot;&gt;小程式&lt;/a&gt; (python)&lt;/li&gt;
+
+&lt;li&gt;測試網站 &lt;a href=&quot;http://ccsbug.exposed/&quot;&gt;http://ccsbug.exposed/&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;慶幸的是，此弱點只發生在用戶端及伺服器端皆使用有問題 OpenSSL 版本的狀況下。一般來說，桌面端的瀏覽器都不是使用 OpenSSL，所以一般使用者可以稍微安心。問題比較大的是 android 使用者，android 內建 OpenSSL，許多 app 呼叫它來進行加密傳輸，所以建議 android 用戶在 google 釋出更新前，不要使用手機連線到有問題的服務，或使用自帶 SSL 的 app，例如：firefox、最新版 Chrome (35.0.1916.141)…。&lt;/p&gt;
+
+&lt;p&gt;另外，若使用者常用到一些加密連線服務，例如 VPN，請自行注意所使用軟體是否使用 OpenSSL，以免受到 CCS Injection 的影響。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-c83v3B0k_4A/U5VnmAsGBVI/AAAAAAAAAaw/VtVNovmHLnQ/s240-no/logo.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-c83v3B0k_4A/U5VnmAsGBVI/AAAAAAAAAaw/VtVNovmHLnQ/s240-no/logo.png&quot; alt=&quot;CCS Injection Vulnerability&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;最後說個題外話，原來現在發表漏洞還要為漏洞出張圖，在 Hacker News 原討論串的&lt;a href=&quot;https://news.ycombinator.com/item?id=7851357#up_7851735&quot;&gt;這篇回應&lt;/a&gt;，就有人說：『這個漏洞有 logo 嗎？如果沒有我就不打算認真看待它！』XD&lt;/p&gt;
+
+&lt;h3 id=&quot;cve20140195_dtls_arbitrary_code_execution&quot;&gt;CVE-2014-0195 (DTLS arbitrary code execution)&lt;/h3&gt;
+
+&lt;h4 id=&quot;_3&quot;&gt;說明&lt;/h4&gt;
+
+&lt;p&gt;OpenSSL 在處理 &lt;a href=&quot;http://en.wikipedia.org/wiki/Datagram_Transport_Layer_Security&quot;&gt;DTLS&lt;/a&gt; 訊息上，為了避免 IP fragmentation，所以做了一些處理機制，這個處理機制並沒有好好驗證 DLTS ClientHello 中的 fragment 長度（嚴格來說是在正確的位置做驗證），若攻擊者發送一個很長的 fragment，能造成緩衝區溢位攻擊。更多的細節請參考&lt;a href=&quot;http://h30499.www3.hp.com/t5/HP-Security-Research-Blog/ZDI-14-173-CVE-2014-0195-OpenSSL-DTLS-Fragment-Out-of-Bounds/ba-p/6501002#.U5FqnvmSyD4&quot;&gt;這篇文章&lt;/a&gt;。&lt;/p&gt;
+
+&lt;p&gt;比較有趣的是那段出問題的程式碼是一位有名德國工程師 Robin Seggelmann 寫的，有名的點在於上次非常嚴重的 &lt;a href=&quot;http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;Heartbleed&lt;/a&gt; 事件也是他寫的 code XD&lt;/p&gt;
+
+&lt;h4 id=&quot;_4&quot;&gt;誰應該注意&lt;/h4&gt;
+
+&lt;p&gt;使用 OpenSSL 且有用到 DTLS 的服務提供者，通常是 VoIP、WebRTC、VPN 這類服務，這個風險有可能會造成伺服器被入侵。&lt;/p&gt;
+
+&lt;h3 id=&quot;_5&quot;&gt;修補&lt;/h3&gt;
+
+&lt;p&gt;除了上面所提及兩個嚴重風險，這次的更新也同時修復了幾個 DOS 的弱點，強烈建議伺服器端更新。 請確認 OpenSSL 已經更新到下面版本，並且有重新啟動讓其生效。&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;OpenSSL 0.9.8za&lt;/li&gt;
+
+&lt;li&gt;OpenSSL 1.0.0m&lt;/li&gt;
+
+&lt;li&gt;OpenSSL 1.0.1h&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;更新資訊依據所用的系統分別如下：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://www.ubuntu.com/usn/usn-2232-1/&quot;&gt;Ubuntu&lt;/a&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;a href=&quot;https://lists.debian.org/debian-security-announce/2014/msg00129.html&quot;&gt;Debian&lt;/a&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;a href=&quot;https://www.freebsd.org/security/advisories/FreeBSD-SA-14:14.openssl.asc&quot;&gt;FreeBSD&lt;/a&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;a href=&quot;http://lists.centos.org/pipermail/centos-announce/2014-June/020344.html&quot;&gt;CentOS&lt;/a&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;a href=&quot;https://rhn.redhat.com/errata/RHSA-2014-0624.html&quot;&gt;Red Hat 5&lt;/a&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;a href=&quot;https://rhn.redhat.com/errata/RHSA-2014-0625.html&quot;&gt;Red Hat 6&lt;/a&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;a href=&quot;https://aws.amazon.com/jp/security/security-bulletins/openssl-security-advisory/&quot;&gt;Amazon Linux AMI&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;_6&quot;&gt;小結&lt;/h3&gt;
+
+&lt;p&gt;這次 OpenSSL 做了數個安全性的更新，雖然不若&lt;a href=&quot;http://devco.re/blog/2014/04/11/openssl-heartbleed-how-to-hack-how-to-protect/&quot;&gt;之前 Heartbleed 那麼嚴重&lt;/a&gt;，但卻也讓使用者暴露在風險中。建議有使用 OpenSSL 都應該更新到最新版本，尤其是一些大型的銀行及金流服務，更應儘速更新。&lt;/p&gt;</description>
+                <link>http://devco.re/blog/2014/06/09/openssl-CVE-2014-0224-ccs-injection/</link>
+                <guid>http://devco.re/blog/2014/06/09/openssl-CVE-2014-0224-ccs-injection</guid>
+                <pubDate>Mon, 09 Jun 2014 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>HTTP Session 攻擊與防護</title>
@@ -282,7 +368,7 @@
 
 &lt;p&gt;然而對於企業而言，可能需要架設大量機器或內部系統，又希望以簡單的方式記憶主機名稱，因此許多企業有自行架設 DNS server 的需求。同時企業通常也會建立幾台備援 DNS server，以避免 DNS 服務忽然中斷。但是當企業有多台 DNS server 時，就必須考量 DNS 記錄的同步問題，通常會使用 &lt;a href=&quot;http://en.wikipedia.org/wiki/DNS_zone_transfer&quot;&gt;zone transfer&lt;/a&gt; 這個功能來同步記錄。&lt;/p&gt;
 &lt;!-- more --&gt;
-&lt;p&gt;然而若管理者未做好相關設定，使所有來源皆可對企業主機進行 zone transfer 查詢，則有機會造成企業遭受攻擊的起點。用現實生活情境舉例的話，對外開放 zone transfer 就如同所有人都可以任意查詢你名下的所有房地產位在何處，假如有人要針對性的攻擊你，隨時都可以去看你某個房地產有沒有哪扇門窗沒關好，伺機入侵你的家園。一般我們對企業資訊系統進行&lt;a href=&quot;http://devco.re/services/penetration-test&quot;&gt;滲透測試&lt;/a&gt;時，在資訊搜集的階段也會先從 domain name 下手，因此 DNS 相關資料的重要性可見一斑。&lt;/p&gt;
+&lt;p&gt;然而若管理者未做好相關設定，使所有來源皆可對企業的 DNS 主機進行 zone transfer 查詢，則有機會讓此功能成為企業遭受攻擊的起點。用現實生活情境舉例的話，對外開放 zone transfer 就如同所有人都可以任意查詢你名下的所有房地產位在何處，假如有人要針對性的攻擊你，隨時都可以去看你某個房地產有沒有哪扇門窗沒關好，伺機入侵你的家園。一般我們對企業資訊系統進行&lt;a href=&quot;http://devco.re/services/penetration-test&quot;&gt;滲透測試&lt;/a&gt;時，在資訊搜集的階段也會先從 domain name 下手，因此 DNS 相關資料的重要性可見一斑。&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-1999-0532&quot;&gt;Zone transfer 的資安議題早在 1999 年就已有人提出&lt;/a&gt;，理應成為各企業進行資安稽核的步驟之一。然而十五年過去了，在近期我們卻發現許多國內大企業仍有此問題，令人非常驚訝！究竟企業該如何檢測自身是否存在這種安全漏洞？此問題目前在台灣網路環境佔有多大的比例？Zone transfer 會對企業造成什麼影響？讓我們繼續看下去～&lt;/p&gt;
 

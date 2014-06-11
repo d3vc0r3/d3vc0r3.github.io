@@ -4,13 +4,103 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="http://devco.re/" rel="self"/>
  <link href="http://devco.re"/>
- <updated>2014-06-09T17:22:07+08:00</updated>
+ <updated>2014-06-11T11:09:51+08:00</updated>
  <id>http://devco.re</id>
  <author>
    <name>DEVCORE</name>
    <email>contact [at] devco.re</email>
  </author>
 
+ 
+ <entry>
+   <title>HttpOnly - HTTP Headers 的資安議題 (3)</title>
+   <link href="http://devco.re/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3/"/>
+   <updated>2014-06-11T00:00:00+08:00</updated>
+   <id>http://devco.re/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3</id>
+   <content type="html">&lt;p&gt;上次我們提到了 &lt;a href=&quot;http://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/&quot;&gt;Content-Security-Pilicy&lt;/a&gt;，這次我們來聊聊同樣是為了防禦 XSS 而生的另一個技術。&lt;/p&gt;
+
+&lt;h3 id=&quot;httponly_&quot;&gt;HttpOnly 簡介&lt;/h3&gt;
+
+&lt;p&gt;Cookie 的概念雖然早在 1994 年就由 Netscape 的工程師 Montulli 提出，但當時仍未有完善的防護機制，像是 HttpOnly、Secure 等規範都是後來陸續被提出，直到 2011 年 4 月才在 &lt;a href=&quot;http://tools.ietf.org/html/rfc6265&quot;&gt;RFC 6265&lt;/a&gt; 中正式定案。而其中的 &lt;a href=&quot;https://www.owasp.org/index.php/HttpOnly&quot;&gt;HttpOnly&lt;/a&gt; 是專門為了抵禦攻擊者利用 Cross-Site Scripting (XSS) 手法來盜取用戶身份，此項 Cookie 防護設定應該是在 HTTP Headers 系列文中最廣為人知的項目。&lt;/p&gt;
+
+&lt;h3 id=&quot;httponly__2&quot;&gt;HttpOnly 主要作用&lt;/h3&gt;
+
+&lt;p&gt;說明 HttpOnly 主要作用之前，先談談 XSS 最常見的利用方式。XSS 攻擊早在 1990 年就被發現，此攻擊手法最常見的利用方式是存取使用者的 cookie 來獲得一些機敏資料。像是存取 session cookie 即可盜用使用者的身份（關於 session 的重要性，可以參考我們部落格的另一篇文章 &lt;a href=&quot;http://devco.re/blog/2014/06/03/http-session-protection/&quot;&gt;HTTP Session 攻擊與防護&lt;/a&gt;），如果在 cookie 中記錄了其他機敏資訊，也可能會一併遭竊。因此若能阻止攻擊者存取帶有敏感資料的 cookie，就能減少 XSS 對使用者的影響，因而催生了 HttpOnly 機制。&lt;/p&gt;
+&lt;!-- more --&gt;
+&lt;p&gt;當 cookie 有設定 HttpOnly flag 時，瀏覽器會限制 cookie 只能經由 HTTP(S) 協定來存取。因此當網站有 XSS 弱點時，若 cookie 含有 HttpOnly flag，則攻擊者無法直接經由 JavaScript 存取使用者的 session cookie，可降低使用者身份被盜用的機率。早期有些瀏覽器未完整實作 HttpOnly 所有功能，因此攻擊者仍可透過 XMLHttpRequest 讀取 cookie，但最近幾年各大瀏覽器也陸續阻擋了這個方式。因此 HttpOnly 可有效降低 XSS 的影響並提升攻擊難度。目前瀏覽器的支援列表如下：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-ryadJ4jta9o/UyGPRxYv-CI/AAAAAAAAAOA/ch-pNUJQcAs/w531-h122-no/httponly-browser-support-list.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-ryadJ4jta9o/UyGPRxYv-CI/AAAAAAAAAOA/ch-pNUJQcAs/w531-h122-no/httponly-browser-support-list.png&quot; alt=&quot;HttpOnly 瀏覽器支援列表&quot; title=&quot;HttpOnly 瀏覽器支援列表&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;其他瀏覽器支援列表以及各家程式語言使用 HttpOnly 的方式可參考 &lt;a href=&quot;https://www.owasp.org/index.php/HttpOnly&quot;&gt;OWASP HttpOnly&lt;/a&gt;。&lt;/p&gt;
+
+&lt;h3 id=&quot;httponly_demo&quot;&gt;HttpOnly Demo&lt;/h3&gt;
+
+&lt;p&gt;以下使用 PHP 程式碼為例：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;php&#39;&gt;&lt;span class=&#39;cp&#39;&gt;&amp;lt;?php&lt;/span&gt;
+&lt;span class=&#39;nb&#39;&gt;session_start&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;();&lt;/span&gt;
+&lt;span class=&#39;cp&#39;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&#39;x&#39; /&gt;
+
+&lt;span class=&#39;x&#39;&gt;&amp;lt;html&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;    &amp;lt;head&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;        &amp;lt;title&amp;gt;HttpOnly Demo&amp;lt;/title&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;    &amp;lt;/head&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;    &amp;lt;body&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;        &amp;lt;h3&amp;gt;HttpOnly Demo&amp;lt;/h3&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;        &amp;lt;p&amp;gt;If you didn&amp;#39;t set HttpOnly flag, cookie will write down by document.write().&amp;lt;/p&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;        &amp;lt;script&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;            document.write(document.cookie);&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;        &amp;lt;/script&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;    &amp;lt;/body&amp;gt;&lt;/span&gt;
+&lt;span class=&#39;x&#39;&gt;&amp;lt;/html&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-nH-7Pn8flY8/U5bZqr_TQQI/AAAAAAAAAcA/NX1xS-C0-Bc/w1138-h687-no/httponly-unset.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-nH-7Pn8flY8/U5bZqr_TQQI/AAAAAAAAAcA/NX1xS-C0-Bc/w1138-h687-no/httponly-unset.png&quot; alt=&quot;未設定 HttpOnly 之前，cookie 可被 JavaScript 存取&quot; title=&quot;未設定 HttpOnly 之前，cookie 可被 JavaScript 存取&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;在上圖中可看到 PHPSESSID 已成功被 JavaScript 存取，這也意味著網站有 XSS 弱點時，使用者的身份有較高的機率被盜用。為了使用 HttpOnly 進行防護，讓我們將 PHP 程式碼修改如下：&lt;/p&gt;
+&lt;div class=&#39;highlight&#39;&gt;&lt;pre&gt;&lt;code class=&#39;php&#39;&gt;&lt;span class=&#39;cp&#39;&gt;&amp;lt;?php&lt;/span&gt;
+&lt;span class=&#39;nb&#39;&gt;ini_set&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;(&lt;/span&gt;&lt;span class=&#39;s2&#39;&gt;&amp;quot;session.cookie_httponly&amp;quot;&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;,&lt;/span&gt; &lt;span class=&#39;mi&#39;&gt;1&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;);&lt;/span&gt;
+&lt;span class=&#39;nb&#39;&gt;session_start&lt;/span&gt;&lt;span class=&#39;p&#39;&gt;();&lt;/span&gt;
+&lt;span class=&#39;cp&#39;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&#39;x&#39; /&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-xIuTi9W726o/U5bZqbseCGI/AAAAAAAAAb8/byQawQzceR4/w1138-h687-no/httponly-set.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-xIuTi9W726o/U5bZqbseCGI/AAAAAAAAAb8/byQawQzceR4/w1138-h687-no/httponly-set.png&quot; alt=&quot;設定 HttpOnly 後，cookie 已無法被 JavaScript 存取&quot; title=&quot;設定 HttpOnly 後，cookie 已無法被 JavaScript 存取&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;我們可以使用畫面中右上角的 Chrome &lt;a href=&quot;https://chrome.google.com/webstore/detail/edit-this-cookie/fngmhnnpilhplaeedifhccceomclgfbg&quot;&gt;Edit This Cookie 套件&lt;/a&gt; 看到 HttpOnly 已經被勾選（如紅框處），並且 PHPSESSID 已無法被 JavaScript 存取，不存在於 HTML 中。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;目前 PHP 官方的教學是用 session_set_cookie_params 這個 function，可參考&lt;a href=&quot;http://www.php.net/manual/en/function.session-set-cookie-params.php&quot;&gt;官方網頁的這篇說明&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;httponly__3&quot;&gt;HttpOnly 實際使用案例&lt;/h3&gt;
+
+&lt;p&gt;由於 HttpOnly 的使用方式較簡單，因此僅列舉幾個站台的使用結果圖片給大家參考，就不另外多做說明囉！&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;T客邦 (www.techbang.com)，有設定 HttpOnly&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-s1rI18BhecY/U5bZpKzCjNI/AAAAAAAAAbw/EuIjX4R9AW8/w1138-h882-no/httponly-example-1.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-s1rI18BhecY/U5bZpKzCjNI/AAAAAAAAAbw/EuIjX4R9AW8/w1138-h882-no/httponly-example-1.png&quot; alt=&quot;T客邦&quot; title=&quot;T客邦&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;愛料理 (icook.tw)，有設定 HttpOnly&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-S3uBr-D6xQ8/U5bZpT5WM0I/AAAAAAAAAbs/IQnqvUy7jJw/w1138-h882-no/httponly-example-2.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-S3uBr-D6xQ8/U5bZpT5WM0I/AAAAAAAAAbs/IQnqvUy7jJw/w1138-h882-no/httponly-example-2.png&quot; alt=&quot;愛料理&quot; title=&quot;愛料理&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Mobile01 (www.mobile01.com)，未設定 HttpOnly&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-1mN1msqkvwg/U5bZpWDOj9I/AAAAAAAAAbo/6g4rHi0q_uk/w1138-h882-no/httponly-example-3.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-1mN1msqkvwg/U5bZpWDOj9I/AAAAAAAAAbo/6g4rHi0q_uk/w1138-h882-no/httponly-example-3.png&quot; alt=&quot;Mobile01&quot; title=&quot;Mobile01&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Giga Circle (tw.gigacircle.com)，未設定 HttpOnly&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-xX9qAnudjV8/U5bZqCN2FLI/AAAAAAAAAb4/srsZFwPfeRc/w1138-h882-no/httponly-example-4.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-xX9qAnudjV8/U5bZqCN2FLI/AAAAAAAAAb4/srsZFwPfeRc/w1138-h882-no/httponly-example-4.png&quot; alt=&quot;Giga Circle&quot; title=&quot;Giga Circle&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;&quot;&gt;結論&lt;/h3&gt;
+
+&lt;p&gt;HttpOnly 僅能防止惡意人士不正當存取 cookie，無法防禦其他的 XSS 攻擊方式，例如將使用者導向至釣魚網站騙取個資、導向至惡意網站植入後門、置換網頁外觀等等。同時未來仍有可能出現新的 XSS 攻擊手法，因此千萬別因設定了 HttpOnly 就掉以輕心，誤以為不會再被 XSS 手法侵害企業利益或用戶資料，仍然必須謹慎檢查每一個系統輸出輸入點，以避免未來因上述影響導致用戶或企業蒙受損失。&lt;/p&gt;</content>
+ </entry>
  
  <entry>
    <title>OpenSSL 再爆嚴重漏洞，部分重要網站仍在風險中！</title>

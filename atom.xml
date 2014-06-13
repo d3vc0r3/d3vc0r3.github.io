@@ -4,13 +4,243 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="http://devco.re/" rel="self"/>
  <link href="http://devco.re"/>
- <updated>2014-06-11T17:46:44+08:00</updated>
+ <updated>2014-06-13T15:16:31+08:00</updated>
  <id>http://devco.re</id>
  <author>
    <name>DEVCORE</name>
    <email>contact [at] devco.re</email>
  </author>
 
+ 
+ <entry>
+   <title>Zone Transfer Statistics of Alexa Top 1 Million</title>
+   <link href="http://devco.re/blog/2014/06/13/zone-transfer-statistics-of-alexa-top-1m/"/>
+   <updated>2014-06-13T00:00:00+08:00</updated>
+   <id>http://devco.re/blog/2014/06/13/zone-transfer-statistics-of-alexa-top-1m</id>
+   <content type="html">&lt;h3 id=&quot;zone_transfer_&quot;&gt;Zone Transfer 世界大揭秘&lt;/h3&gt;
+
+&lt;p&gt;在上一篇文章 &lt;a href=&quot;http://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/&quot;&gt;Zone Transfer CVE-1999-0532 - 古老的 DNS 資安議題&lt;/a&gt;中我們曾提到，若對全世界的網站進行 zone transfer 檢測恐怕會有更多驚人的案例嗎？正好 &lt;a href=&quot;http://s3.amazonaws.com/alexa-static/top-1m.csv.zip&quot;&gt;Alexa 提供了全球排名前一百萬名的網站資料&lt;/a&gt;，我們就以這份資料為基礎來做一些統計吧！&lt;/p&gt;
+
+&lt;h3 id=&quot;_domain_&quot;&gt;有問題的 domain 總數與比例&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;79133，約佔所有受測目標的 8.014%&lt;/li&gt;
+
+&lt;li&gt;上述 domain 的所有 zone file 共含有 22631804 筆 DNS 記錄&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;由於在 Alexa Top 1M 中有許多資料是重複的 domain，另外也有些資料是 IP，在本次的檢測當中都不列入計算，因此受測 domain 總數僅有 987447 個，而非一百萬個。另外，本次掃描為求快速犧牲了部分準確率，因此實際數量應比 79133 更多。&lt;/p&gt;
+&lt;!-- more --&gt;
+&lt;h3 id=&quot;_toplevel_domain_tld_&quot;&gt;有問題的 Top-Level Domain (TLD) 數量&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;全世界 TLD 總數：567&lt;/li&gt;
+
+&lt;li&gt;受測目標的 TLD 總數：316，佔全世界總數的 55.73%&lt;/li&gt;
+
+&lt;li&gt;有 zone transfer 問題的 TLD 總數：220，佔受測目標的 69.62%&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;目前 TLD 總數的數據取自於 &lt;a href=&quot;https://data.iana.org/TLD/tlds-alpha-by-domain.txt&quot;&gt;Internet Assigned Numbers Authority (IANA)&lt;/a&gt;，不了解 TLD 是什麼的人可以參考&lt;a href=&quot;http://en.wikipedia.org/wiki/Top-level_domain&quot;&gt;這篇維基百科文章&lt;/a&gt;。&lt;/p&gt;
+
+&lt;p&gt;有趣的是，連一些新的 TLD 都有 zone transfer 問題，例如 .technology、.museum 等等，可見這真的很容易被大家忽略～&lt;/p&gt;
+
+&lt;h3 id=&quot;_tld_&quot;&gt;關於各個 TLD 的統計數據&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Transferable domain in this TLD：在特定 TLD 中，有多少 domain 可任意執行 zone transfer&lt;/li&gt;
+
+&lt;li&gt;Same TLD in Alexa top 1M：特定 TLD 在本次 987447 個受測目標中所佔的數量&lt;/li&gt;
+
+&lt;li&gt;Percentage of same TLD in Alexa top 1M：特定 TLD 在 Alexa top 1M 內所有同樣 TLD 所佔的百分比（例：.com 即為 35230 / 527203 = 6.68%）&lt;/li&gt;
+
+&lt;li&gt;Percentage of all transferable domain：某特定 TLD 可任意執行 zone transfer 的數量在本次所有可任意執行 zone transfer 所占的百分比（例：.com 即為 35230 / 79133 = 44.52%）&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;由於原始數據太多，因此本文僅列出前 25 名。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-taAD_Ilxm2c/U2mqBEzEx2I/AAAAAAAAAVY/Jv-_PR7i9xQ/w494-h750-no/zone-transfer-statistics-of-TLD.png&quot; title=&quot;Zone Transfer 問題的 TLD 相關統計&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-taAD_Ilxm2c/U2mqBEzEx2I/AAAAAAAAAVY/Jv-_PR7i9xQ/w494-h750-no/zone-transfer-statistics-of-TLD.png&quot; alt=&quot;Zone Transfer 問題的 TLD 相關統計&quot; title=&quot;Zone Transfer 問題的 TLD 相關統計&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;.tw 網域排第二十一名，幸好這次不是世界第一了，否則又是另類的台灣之光。&lt;/p&gt;
+
+&lt;h3 id=&quot;_name_server_&quot;&gt;關於 name server 的統計數據&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Number of domain：該台 name server 有多少 domain 可任意執行 zone transfer&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;由於原始數據太多，因此本文僅列出前 25 名。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-VNyNVj3MkAA/U2mqBMfEKfI/AAAAAAAAAVU/FGGPow_qt_E/w367-h693-no/zone-transfer-statistics-of-name-server.png&quot; title=&quot;Zone Transfer 問題的 name server 相關統計&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-VNyNVj3MkAA/U2mqBMfEKfI/AAAAAAAAAVU/FGGPow_qt_E/w367-h693-no/zone-transfer-statistics-of-name-server.png&quot; alt=&quot;Zone Transfer 問題的 name server 相關統計&quot; title=&quot;Zone Transfer 問題的 name server 相關統計&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;可執行 zone transfer 且不重複的 namer server 共有 53830 個&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;_ip_&quot;&gt;關於 IP 位址的統計數據&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;有 7939172 個不重複的 IP 位址&lt;/li&gt;
+
+&lt;li&gt;在全部 IP 位址中，有 704638 個是私有 IP 位址&lt;/li&gt;
+
+&lt;li&gt;在私有 IP 位址中，有 598443 個是 10. 開頭，佔所有 IP 位址的 7.538%，佔私有 IP 位址的 84.929%&lt;/li&gt;
+
+&lt;li&gt;在私有 IP 位址中，有 66270 個是 172.16~31 開頭，佔所有 IP 位址的 0.835%，佔私有 IP 位址的 9.405%&lt;/li&gt;
+
+&lt;li&gt;在私有 IP 位址中，有 39925 個是 192.168 開頭，佔所有 IP 位址的 0.503%，佔私有 IP 位址的 5.666%&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;subdomain_&quot;&gt;subdomain 的統計數據&lt;/h3&gt;
+
+&lt;p&gt;以下選出一些常被入侵者當作攻擊目標的 subdomain 來計算在 22631804 筆 DNS 記錄中分別各佔了幾筆，每個 subdomain 共有兩個統計結果，逗號左邊的統計結果代表以該 subdomain 開頭的 DNS 記錄，例如 git.devco.re。逗號右邊的統計結果則將前後有數字的 subdomain 也一併計入，例如 dns01.devco.re、01dns.devco.re、0dns001.devco.re 等等。&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;版本控制&lt;/p&gt;
+
+&lt;p&gt;git: 583, 626&lt;/p&gt;
+
+&lt;p&gt;gitlab: 138, 138&lt;/p&gt;
+
+&lt;p&gt;svn: 1552, 1669&lt;/p&gt;
+
+&lt;p&gt;subversion: 71, 72&lt;/p&gt;
+
+&lt;p&gt;cvs: 284, 330&lt;/p&gt;
+
+&lt;p&gt;hg: 115, 331&lt;/p&gt;
+
+&lt;p&gt;mercurial: 18, 19&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;p&gt;開發與測試&lt;/p&gt;
+
+&lt;p&gt;test: 14691, 20001&lt;/p&gt;
+
+&lt;p&gt;dev: 8300, 10959&lt;/p&gt;
+
+&lt;p&gt;stage: 1329, 1628&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;p&gt;資料庫&lt;/p&gt;
+
+&lt;p&gt;db: 1190, 2537&lt;/p&gt;
+
+&lt;p&gt;database: 150, 302&lt;/p&gt;
+
+&lt;p&gt;sql: 2209, 3298&lt;/p&gt;
+
+&lt;p&gt;mysql: 4045, 4998&lt;/p&gt;
+
+&lt;p&gt;postgre: 11, 11&lt;/p&gt;
+
+&lt;p&gt;redis: 21, 33&lt;/p&gt;
+
+&lt;p&gt;mongodb: 6, 42&lt;/p&gt;
+
+&lt;p&gt;memcache: 13, 72&lt;/p&gt;
+
+&lt;p&gt;phpmyadmin: 455, 485&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;p&gt;後台管理&lt;/p&gt;
+
+&lt;p&gt;manager: 188, 222&lt;/p&gt;
+
+&lt;p&gt;staff: 481, 542&lt;/p&gt;
+
+&lt;p&gt;member: 331, 376&lt;/p&gt;
+
+&lt;p&gt;backend: 153, 177&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;p&gt;線上服務相關&lt;/p&gt;
+
+&lt;p&gt;api: 1871, 2097&lt;/p&gt;
+
+&lt;p&gt;search: 1469, 10987&lt;/p&gt;
+
+&lt;p&gt;pic: 178, 293&lt;/p&gt;
+
+&lt;p&gt;img: 1775, 3517&lt;/p&gt;
+
+&lt;p&gt;service: 779, 959&lt;/p&gt;
+
+&lt;p&gt;payment: 225, 238&lt;/p&gt;
+
+&lt;p&gt;cache: 373, 627&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;p&gt;私有服務&lt;/p&gt;
+
+&lt;p&gt;erp: 275, 318&lt;/p&gt;
+
+&lt;p&gt;eip: 69, 80&lt;/p&gt;
+
+&lt;p&gt;log: 227, 414&lt;/p&gt;
+
+&lt;p&gt;nagios: 636, 736&lt;/p&gt;
+
+&lt;p&gt;mrtg: 458, 565&lt;/p&gt;
+
+&lt;p&gt;cgi: 194, 261&lt;/p&gt;
+
+&lt;p&gt;dns: 2634, 9085&lt;/p&gt;
+
+&lt;p&gt;ns: 12198, 63431&lt;/p&gt;
+
+&lt;p&gt;ftp: 197414, 199481&lt;/p&gt;
+
+&lt;p&gt;blog: 5074, 5446&lt;/p&gt;
+
+&lt;p&gt;mail: 238742, 254515&lt;/p&gt;
+
+&lt;p&gt;email: 2484, 2706&lt;/p&gt;
+
+&lt;p&gt;webmail: 24164, 25067&lt;/p&gt;
+
+&lt;p&gt;owa: 798, 888&lt;/p&gt;
+
+&lt;p&gt;autodiscover: 30462, 30466&lt;/p&gt;
+
+&lt;p&gt;vpn: 3152, 7025&lt;/p&gt;
+
+&lt;p&gt;sso: 398, 462&lt;/p&gt;
+
+&lt;p&gt;ssl: 709, 932&lt;/p&gt;
+
+&lt;p&gt;proxy: 1464, 2215&lt;/p&gt;
+
+&lt;p&gt;cms: 1320, 1696&lt;/p&gt;
+
+&lt;p&gt;crm: 1152, 1301&lt;/p&gt;
+
+&lt;p&gt;forum: 3654, 4037&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;_end_&quot;&gt;按 End 的人有福了&lt;/h3&gt;
+
+&lt;p&gt;究竟經由 zone transfer 所得到的資料可以拿來做什麼？對於攻擊者而言，主要有以下三種利用方式：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;建立字典檔：入侵者可利用上述資料建立一份最常見的 subdomain 的字典檔，未來利用此字典檔進行掃描時可節省許多時間成本，快速檢測某間公司有哪些 subdomain&lt;/li&gt;
+
+&lt;li&gt;旁敲側擊：入侵者可觀察哪些 name server 有開放 zone transfer 查詢，接著去蒐集還有哪些公司使用同一台 name server，再進一步掃瞄那些 domain。那些 domain 也許不是大公司、不在 Alexa top 1M 內，但你無法確保它永遠不會是入侵者的攻擊目標。&lt;/li&gt;
+
+&lt;li&gt;結合 0day 進行攻擊：當某個第三方套件被揭露 0day 弱點時，擁有上述資料的人就可以迅速執行大範圍的攻擊。例如&lt;a href=&quot;http://www.cvedetails.com/cve/CVE-2013-0156/&quot;&gt;這幾年正夯的 Rails 在去年被爆出有 Remote Code Exection 弱點 CVE-2013-0156&lt;/a&gt;，入侵者可直接對所有 redmine 進行攻擊。&lt;a href=&quot;http://www.cvedetails.com/cve/CVE-2014-3412/&quot;&gt;Juniper VPN 在今年也被揭露 Remote Code Execution 弱點&lt;/a&gt;，入侵者可找尋所有 vpn subdomain 來進行嘗試。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;在上次我們提起這個古老的弱點後，已經有部分台灣企業陸續將此問題修復，但許多台灣企業仍有此問題而不自知，也許過陣子我們直接做個 Wall of Shame 條列出哪些廠商有問題會讓大家比較有感 :p&lt;/p&gt;
+
+&lt;p&gt;不過也別急著笑台灣企業，許多國際級的大網站同樣也有此類問題。由此可見資安問題不分新舊、不分國內外，總是容易被大家忽略，等到不知不覺被入侵者捅了重重的一刀後，才驚覺這許多的小弱點一旦串起來是多麼的可怕。你，開始有所警覺了嗎？&lt;/p&gt;</content>
+ </entry>
  
  <entry>
    <title>HttpOnly - HTTP Headers 的資安議題 (3)</title>

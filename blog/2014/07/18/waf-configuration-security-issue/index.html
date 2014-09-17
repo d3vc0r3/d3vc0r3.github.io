@@ -260,13 +260,17 @@
                       Tags: <a href="/blog/tag/WAF/">WAF</a>, <a href="/blog/tag/Proxy/">Proxy</a>, <a href="/blog/tag/HTTP Header/">HTTP Header</a>, <a href="/blog/tag/Defense/">Defense</a>
                     </div>
                     <span itemprop="articleBody">
-                      <p><img src="https://farm7.staticflickr.com/6155/6183500441_5de4a999eb_z.jpg" alt="Firewall" /> <!-- Credit: https://www.flickr.com/photos/briannabites/6183500441/ --></p>
+                      
+<p><img src="https://farm7.staticflickr.com/6155/6183500441_5de4a999eb_z.jpg" alt="Firewall" />
+<!-- Credit: https://www.flickr.com/photos/briannabites/6183500441/ --></p>
 
 <p>過去談到網站安全，通常會使用防火牆或 IDS 進行防護。但近年來網站安全議題都是以網頁應用程式的漏洞居多，無法單靠防火牆阻擋。以 OWASP Top 10 2013 的第一名 Injection 而言，多半是程式撰寫方法不嚴謹所造成，因此才有了網頁應用程式防火牆 (Web Application Firewall, WAF) 的出現。</p>
 
 <p>有了 WAF 就是萬靈丹了嗎？就算有各種資安設備，但缺乏安全的設定，有的時候反而會讓系統陷入安全風險中。我們就以 Reverse Proxy 或 WAF 設備來探討不佳設定帶來的安全風險。</p>
+
 <!-- more -->
-<h3 id="waf_">WAF 搭配不佳的設定會帶來什麼危害？</h3>
+
+<h3 id="waf-">WAF 搭配不佳的設定會帶來什麼危害？</h3>
 
 <p>以常見的 mod_proxy 搭配 mod_security 的方案來看，通常使用 Reverse Proxy 或 Transparent Proxy 為其架構，透過 Proxy 的方式在 Client 與 Web Server 之間，對 HTTP Request / Response 進行過濾；以 HTTP Request 為例，當 WAF 偵測到 Client 端的請求中有 SQL Injection 語法時候，將會阻斷這個連線防止駭客攻擊。</p>
 
@@ -280,20 +284,21 @@
 
 <p><a href="https://lh3.googleusercontent.com/-hlQZaYZcEZE/U8jvhb5DHoI/AAAAAAAAAjw/jb2tUe10cl8/s2560/2014-07-11-waf-configuration-security-issue-02.png"><img src="https://lh3.googleusercontent.com/-hlQZaYZcEZE/U8jvhb5DHoI/AAAAAAAAAjw/jb2tUe10cl8/w784-h233-no/2014-07-11-waf-configuration-security-issue-02.png" alt="因為 WAF 而繞過 IP 限制" title="因為 WAF 而繞過 IP 限制" /></a></p>
 
-<h3 id="">實際案例</h3>
+<h3 id="section">實際案例</h3>
 
 <p>我們以常見的 Web Server 整合包 XAMPP 為例，在預設的 http-xampp.conf 設定檔中限制了一些管理頁面只能由 Private IP 存取，如 /security 、 /webalizer 、 /phpmyadmin 、 /server-status 、 /server-info 等，此時 WAF 的 IP 若為 Private IP，依 XAMPP 預設設定，WAF 將可以存取這些受 IP 限制的資源，當 WAF 存取完資源後又將內容回傳給 Client 端。</p>
 
 <p>http-xampp.conf 預設設定</p>
-<div class='highlight'><pre><code class='apache'><span class='nt'>&lt;LocationMatch</span> <span class='s'>&quot;^/(?i:(?:xampp|security|licenses|phpmyadmin|webalizer|server-status|server-info))&quot;</span><span class='nt'>&gt;</span>
-        <span class='nb'>Order</span> deny,allow
-        <span class='nb'>Deny</span> from <span class='k'>all</span>
-        <span class='nb'>Allow</span> from ::1 <span class='m'>127.0.0.0/8</span> \
-                <span class='err'>fc00::/7</span> <span class='err'>10</span>.<span class='err'>0</span>.<span class='err'>0</span>.<span class='err'>0/8</span> <span class='err'>172</span>.<span class='err'>16</span>.<span class='err'>0</span>.<span class='err'>0/12</span> <span class='err'>192</span>.<span class='err'>168</span>.<span class='err'>0</span>.<span class='err'>0/16</span> <span class='err'>\</span>
-                <span class='err'>fe80::/10</span> <span class='err'>169</span>.<span class='err'>254</span>.<span class='err'>0</span>.<span class='err'>0/16</span>
-         <span class='nb'>ErrorDocument</span> <span class='m'>403</span> <span class='sx'>/error/XAMPP_FORBIDDEN.html.var</span>
-<span class='nt'>&lt;/LocationMatch&gt;</span>
-</code></pre></div>
+
+<div class="highlight"><pre><code class="language-apache" data-lang="apache"><span class="nt">&lt;LocationMatch</span> <span class="s">&quot;^/(?i:(?:xampp|security|licenses|phpmyadmin|webalizer|server-status|server-info))&quot;</span><span class="nt">&gt;</span>
+        <span class="nb">Order</span> deny,allow
+        <span class="nb">Deny</span> from <span class="k">all</span>
+        <span class="nb">Allow</span> from ::1 <span class="m">127.0.0.0/8</span> \
+                <span class="err">fc00::/7</span> <span class="err">10</span>.<span class="err">0</span>.<span class="err">0</span>.<span class="err">0/8</span> <span class="err">172</span>.<span class="err">16</span>.<span class="err">0</span>.<span class="err">0/12</span> <span class="err">192</span>.<span class="err">168</span>.<span class="err">0</span>.<span class="err">0/16</span> <span class="err">\</span>
+                <span class="err">fe80::/10</span> <span class="err">169</span>.<span class="err">254</span>.<span class="err">0</span>.<span class="err">0/16</span>
+         <span class="nb">ErrorDocument</span> <span class="m">403</span> <span class="sx">/error/XAMPP_FORBIDDEN.html.var</span>
+<span class="nt">&lt;/LocationMatch&gt;</span></code></pre></div>
+
 <p>如果照著預設的設定，以現成的案例來看，能夠存取 Apache Server 的系統狀態，其中可以看到網站所有連線以及 URI 等資料。</p>
 
 <p><a href="https://lh5.googleusercontent.com/-EO9Rkiws9UI/U8jvhN47OoI/AAAAAAAAAj0/huRQZAHBaWM/s2560/2014-07-11-waf-configuration-security-issue-05.png"><img src="https://lh5.googleusercontent.com/-EO9Rkiws9UI/U8jvhN47OoI/AAAAAAAAAj0/huRQZAHBaWM/w827-h678-no/2014-07-11-waf-configuration-security-issue-05.png" alt="預設開放 Apache 伺服器狀態" title="預設開放 Apache 伺服器狀態" /></a></p>
@@ -306,9 +311,10 @@
 
 <p><a href="https://lh6.googleusercontent.com/-22UDz3CWOzw/U8jvig8XCfI/AAAAAAAAAkM/JlDEr1YQXL4/s2560/2014-07-11-waf-configuration-security-issue-09.png"><img src="https://lh6.googleusercontent.com/-22UDz3CWOzw/U8jvig8XCfI/AAAAAAAAAkM/JlDEr1YQXL4/w860-h678-no/2014-07-11-waf-configuration-security-issue-09.png" alt="網站記錄分析工具 webalizer" title="網站記錄分析工具 webalizer" /></a></p>
 
-<h3 id="_2">小結</h3>
+<h3 id="section-1">小結</h3>
 
 <p>如果建置了 WAF，有關 IP 的設定必須要從 WAF 支援的 HTTP Header 中取出使用者的 IP (REMOTE_ADDR)，才能讓原本網站的 IP 限制生效。在這種設定錯誤或是對 WAF 架構不瞭解的情況下，WAF 反而成為駭客繞過 Private IP 限制的跳板，就如同為駭客開了一個後門。因此在使用資安設備時，必須瞭解其架構。別讓資安設備、安全機制，反而使得伺服器更不安全。</p>
+
                     </span>
                     
                     <div class="author-area">

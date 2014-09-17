@@ -260,41 +260,47 @@
                       Tags: <a href="/blog/tag/HTTP Header/">HTTP Header</a>, <a href="/blog/tag/Defense/">Defense</a>, <a href="/blog/tag/PHP/">PHP</a>
                     </div>
                     <span itemprop="articleBody">
-                      <p><a href="https://farm7.staticflickr.com/6220/6250089499_f908fcb990_o.jpg"><img src="https://farm7.staticflickr.com/6220/6250089499_da2fb7a973_z.jpg" alt="公車站牌的 IP" /></a> <!-- Photo Credit: https://www.flickr.com/photos/kevandotorg/6250089499/ --></p>
+                      
+<p><a href="https://farm7.staticflickr.com/6220/6250089499_f908fcb990_o.jpg"><img src="https://farm7.staticflickr.com/6220/6250089499_da2fb7a973_z.jpg" alt="公車站牌的 IP" /></a>
+<!-- Photo Credit: https://www.flickr.com/photos/kevandotorg/6250089499/ --></p>
 
 <p>很多網站都會有偵測使用者 IP 的功能，不管是判斷使用者來自哪邊，或者是記錄使用者的位置。但是你知道嗎？網路上大多數的教學全部都是「錯誤」的。正確的程式寫法可以確保知道訪客的 IP，但是錯誤的寫法卻可能讓網站管理者永遠不知道犯罪者的來源。</p>
 
 <p>這次我們單就偵測 IP 的議題來探討各種錯誤的寫法。</p>
+
 <!-- more -->
-<h3 id="">你知道網路上的教學是不安全的嗎？</h3>
+
+<h3 id="section">你知道網路上的教學是不安全的嗎？</h3>
 
 <p>我們先來看一下網路上的教學，讓我們 Google 找一下「<a href="https://www.google.com.tw/search?q=php+取得+ip">PHP 取得 IP</a>」，就可以看到許多人熱心的教學，我們隨意挑一個常見的教學來看看。</p>
 
 <p>以 PHP 為例：</p>
-<div class='highlight'><pre><code class='php'><span class='cp'>&lt;?php</span>
-<span class='k'>if</span><span class='p'>(</span><span class='o'>!</span><span class='k'>empty</span><span class='p'>(</span><span class='nv'>$_SERVER</span><span class='p'>[</span><span class='s1'>&#39;HTTP_CLIENT_IP&#39;</span><span class='p'>])){</span>
-   <span class='nv'>$myip</span> <span class='o'>=</span> <span class='nv'>$_SERVER</span><span class='p'>[</span><span class='s1'>&#39;HTTP_CLIENT_IP&#39;</span><span class='p'>];</span>
-<span class='p'>}</span><span class='k'>else</span> <span class='k'>if</span><span class='p'>(</span><span class='o'>!</span><span class='k'>empty</span><span class='p'>(</span><span class='nv'>$_SERVER</span><span class='p'>[</span><span class='s1'>&#39;HTTP_X_FORWARDED_FOR&#39;</span><span class='p'>])){</span>
-   <span class='nv'>$myip</span> <span class='o'>=</span> <span class='nv'>$_SERVER</span><span class='p'>[</span><span class='s1'>&#39;HTTP_X_FORWARDED_FOR&#39;</span><span class='p'>];</span>
-<span class='p'>}</span><span class='k'>else</span><span class='p'>{</span>
-   <span class='nv'>$myip</span><span class='o'>=</span> <span class='nv'>$_SERVER</span><span class='p'>[</span><span class='s1'>&#39;REMOTE_ADDR&#39;</span><span class='p'>];</span>
-<span class='p'>}</span>
-<span class='k'>echo</span> <span class='nv'>$myip</span><span class='p'>;</span>
-<span class='cp'>?&gt;</span><span class='x' />
-</code></pre></div>
+
+<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
+<span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="k">empty</span><span class="p">(</span><span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;HTTP_CLIENT_IP&#39;</span><span class="p">])){</span>
+   <span class="nv">$myip</span> <span class="o">=</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;HTTP_CLIENT_IP&#39;</span><span class="p">];</span>
+<span class="p">}</span><span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="k">empty</span><span class="p">(</span><span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;HTTP_X_FORWARDED_FOR&#39;</span><span class="p">])){</span>
+   <span class="nv">$myip</span> <span class="o">=</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;HTTP_X_FORWARDED_FOR&#39;</span><span class="p">];</span>
+<span class="p">}</span><span class="k">else</span><span class="p">{</span>
+   <span class="nv">$myip</span><span class="o">=</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s1">&#39;REMOTE_ADDR&#39;</span><span class="p">];</span>
+<span class="p">}</span>
+<span class="k">echo</span> <span class="nv">$myip</span><span class="p">;</span>
+<span class="cp">?&gt;</span><span class="x"></span></code></pre></div>
+
 <p>以 ASP.NET 為例：</p>
-<div class='highlight'><pre><code class='c#'><span class='n'>Dim</span> <span class='n'>ClientIP</span> <span class='n'>As</span> <span class='n'>String</span> <span class='p'>=</span> <span class='n'>Request</span><span class='p'>.</span><span class='n'>ServerVariables</span><span class='p'>(</span><span class='s'>&quot;HTTP_X_FORWARDED_FOR&quot;</span><span class='p'>)</span> 
-<span class='n'>IF</span> <span class='n'>ClientIP</span> <span class='p'>=</span> <span class='n'>String</span><span class='p'>.</span><span class='n'>Empty</span> <span class='n'>Then</span> 
- <span class='n'>ClientIP</span> <span class='p'>=</span> <span class='n'>Request</span><span class='p'>.</span><span class='n'>ServerVariables</span><span class='p'>(</span><span class='s'>&quot;REMOTE_ADDR&quot;</span><span class='p'>)</span> 
-<span class='n'>End</span> <span class='n'>IF</span>
-</code></pre></div>
+
+<div class="highlight"><pre><code class="language-c#" data-lang="c#"><span class="n">Dim</span> <span class="n">ClientIP</span> <span class="n">As</span> <span class="n">String</span> <span class="p">=</span> <span class="n">Request</span><span class="p">.</span><span class="n">ServerVariables</span><span class="p">(</span><span class="s">&quot;HTTP_X_FORWARDED_FOR&quot;</span><span class="p">)</span> 
+<span class="n">IF</span> <span class="n">ClientIP</span> <span class="p">=</span> <span class="n">String</span><span class="p">.</span><span class="n">Empty</span> <span class="n">Then</span> 
+ <span class="n">ClientIP</span> <span class="p">=</span> <span class="n">Request</span><span class="p">.</span><span class="n">ServerVariables</span><span class="p">(</span><span class="s">&quot;REMOTE_ADDR&quot;</span><span class="p">)</span> 
+<span class="n">End</span> <span class="n">IF</span></code></pre></div>
+
 <p>這是一個很基本的寫法、很正確的想法，如果 HTTP Header 中包含「Client-IP」，就先以他當作真實 IP。若包含「X-Forwarded-For」，則取他當作真實 IP。若兩者都沒有，則取「REMOTE_ADDR」變數作為真實 IP。因為當使用者連線時透過代理伺服器時，REMOTE_ADDR 會顯示為代理伺服器 Proxy 的 IP。部分代理伺服器會將使用者的原始真實 IP 放在 Client-IP 或 X-Forwarded-For header 中傳遞，如果在變數中呼叫則可以取得真實 IP。</p>
 
 <p>但是你知道嗎？<strong>網路上 80% 的教學寫法全部都是「錯誤」的。</strong></p>
 
 <p>為什麼這樣說呢？請大家記得一件事情：「<strong>任何從客戶端取得的資料都是不可信任的！</strong>」</p>
 
-<h3 id="_http_header">竄改 HTTP Header</h3>
+<h3 id="http-header">竄改 HTTP Header</h3>
 
 <p>「X-Forwarded-For」這個變數雖然「有機會」取得使用者的真實 IP，但是由於這個值是從客戶端傳送過來的，所以「有可能」被使用者竄改。</p>
 
@@ -310,53 +316,45 @@
 
 <p><a href="https://lh3.googleusercontent.com/-hHA7NtX_9KI/U5lB8Nn1VjI/AAAAAAAAAc0/umHpFoGWDDo/s2400/2014-06-12-client-ip-detection-03-detech-user-ip.png"><img src="https://lh3.googleusercontent.com/-hHA7NtX_9KI/U5lB8Nn1VjI/AAAAAAAAAc0/umHpFoGWDDo/w897-h678-no/2014-06-12-client-ip-detection-03-detech-user-ip.png" alt="顯示遭到竄改的 HTTP Header" /></a></p>
 
-<h3 id="_proxy_">使用代理伺服器 Proxy 的情況</h3>
+<h3 id="proxy-">使用代理伺服器 Proxy 的情況</h3>
 
 <p>使用代理伺服器的情況下，HTTP Header 會有不同的行為。例如 Elite Proxy 如何隱藏客戶端的真實 IP。以下簡單介紹幾種常見的狀況給各位參考。</p>
 
-<h4 id="__proxy">直接連線 （沒有使用 Proxy）</h4>
+<h4 id="proxy">直接連線 （沒有使用 Proxy）</h4>
 
 <ul>
-<li>REMOTE_ADDR: 客戶端真實 IP</li>
-
-<li>HTTP_VIA: 無</li>
-
-<li>HTTP_X_FORWARDED_FOR: 無</li>
+  <li>REMOTE_ADDR: 客戶端真實 IP</li>
+  <li>HTTP_VIA: 無</li>
+  <li>HTTP_X_FORWARDED_FOR: 無</li>
 </ul>
 
-<h4 id="transparent_proxy">Transparent Proxy</h4>
+<h4 id="transparent-proxy">Transparent Proxy</h4>
 
 <ul>
-<li>REMOTE_ADDR: 最後一個代理伺服器 IP</li>
-
-<li>HTTP_VIA: 代理伺服器 IP</li>
-
-<li>HTTP_X_FORWARDED_FOR: 客戶端真實 IP，後以逗點串接多個經過的代理伺服器 IP</li>
+  <li>REMOTE_ADDR: 最後一個代理伺服器 IP</li>
+  <li>HTTP_VIA: 代理伺服器 IP</li>
+  <li>HTTP_X_FORWARDED_FOR: 客戶端真實 IP，後以逗點串接多個經過的代理伺服器 IP</li>
 </ul>
 
-<h4 id="anonymous_proxy">Anonymous Proxy</h4>
+<h4 id="anonymous-proxy">Anonymous Proxy</h4>
 
 <ul>
-<li>REMOTE_ADDR: 最後一個代理伺服器 IP</li>
-
-<li>HTTP_VIA: 代理伺服器 IP</li>
-
-<li>HTTP_X_FORWARDED_FOR: 代理伺服器 IP，後以逗點串接多個經過的代理伺服器 IP</li>
+  <li>REMOTE_ADDR: 最後一個代理伺服器 IP</li>
+  <li>HTTP_VIA: 代理伺服器 IP</li>
+  <li>HTTP_X_FORWARDED_FOR: 代理伺服器 IP，後以逗點串接多個經過的代理伺服器 IP</li>
 </ul>
 
-<h4 id="high_anonymity_proxy_elite_proxy">High Anonymity Proxy (Elite Proxy)</h4>
+<h4 id="high-anonymity-proxy-elite-proxy">High Anonymity Proxy (Elite Proxy)</h4>
 
 <ul>
-<li>REMOTE_ADDR: 代理伺服器 IP</li>
-
-<li>HTTP_VIA: 無</li>
-
-<li>HTTP_X_FORWARDED_FOR: 無 (或以逗點串接多個經過的代理伺服器 IP)</li>
+  <li>REMOTE_ADDR: 代理伺服器 IP</li>
+  <li>HTTP_VIA: 無</li>
+  <li>HTTP_X_FORWARDED_FOR: 無 (或以逗點串接多個經過的代理伺服器 IP)</li>
 </ul>
 
-<h3 id="_2">實際情況</h3>
+<h3 id="section-1">實際情況</h3>
 
-<p>在我們測試的過程中，通常我們都會讓瀏覽器自帶 X-Forwarded-For，並且自行填入 IP。常常會發現有一些網站出現如下的警告</p>
+<p>在我們測試的過程中，通常我們都會讓瀏覽器自帶 X-Forwarded-For，並且自行填入 IP。常常會發現有一些網站出現如下的警告…</p>
 
 <p><a href="https://lh4.googleusercontent.com/-mWMLyw8Z924/U5lB8y19t5I/AAAAAAAAAc8/PgGRibfggZM/s2400/2014-06-12-client-ip-detection-04-discuz-user-ip.png"><img src="https://lh4.googleusercontent.com/-mWMLyw8Z924/U5lB8y19t5I/AAAAAAAAAc8/PgGRibfggZM/w268-h139-no/2014-06-12-client-ip-detection-04-discuz-user-ip.png" alt="Discuz! 顯示 IP 錯誤" /></a></p>
 
@@ -368,7 +366,7 @@
 
 <p>先不論為什麼 127.0.0.1 會在美國，這樣的寫法可能會讓管理者永遠抓不到犯罪者的真實 IP，甚至攻擊者可以竄改 header 插入特殊字元，對網站進行 SQL Injection 或者 Cross-Site Scripting 攻擊。</p>
 
-<h3 id="_3">正確又安全的方式</h3>
+<h3 id="section-2">正確又安全的方式</h3>
 
 <p>「<strong>任何從客戶端取得的資料都是不可信任的！</strong>」</p>
 
@@ -376,27 +374,18 @@
 
 <p>那我們該怎麼處理呢？我的建議是記錄所有相關的 header 欄位存入資料庫，包含「REMOTE_ADDR」「X-Forwarded-For」等等，真正有犯罪事件發生時，就可以調出所有完整的 IP 資訊進行人工判斷，找出真正的 IP。當然從 header 存入的數值也可能會遭到攻擊者竄改插入特殊字元嘗試 SQL Injection，因此存入值必須先經過過濾，或者使用 Prepared Statement 進行存放。</p>
 
-<p>可以參考的 HTTP Header（依照可能存放真實 IP 的順序）</p>
-
-<ul>
-<li>HTTP_CLIENT_IP</li>
-
-<li>HTTP_X_FORWARDED_FOR</li>
-
-<li>HTTP_X_FORWARDED</li>
-
-<li>HTTP_X_CLUSTER_CLIENT_IP</li>
-
-<li>HTTP_FORWARDED_FOR</li>
-
-<li>HTTP_FORWARDED</li>
-
-<li>REMOTE_ADDR (真實 IP 或是 Proxy IP)</li>
-
-<li>HTTP_VIA (參考經過的 Proxy)</li>
-</ul>
+<p>可以參考的 HTTP Header（依照可能存放真實 IP 的順序）
+* HTTP_CLIENT_IP
+* HTTP_X_FORWARDED_FOR
+* HTTP_X_FORWARDED
+* HTTP_X_CLUSTER_CLIENT_IP
+* HTTP_FORWARDED_FOR
+* HTTP_FORWARDED
+* REMOTE_ADDR (真實 IP 或是 Proxy IP)
+* HTTP_VIA (參考經過的 Proxy)</p>
 
 <p>「駭客思維」就是找出網站任何可能竄改的弱點，從網頁上的元素到 HTTP Header 都是嘗試的對象。因此身為防禦者一定要清楚的知道哪些數值是不能信賴的，不要再參考網路上錯誤的教學了！</p>
+
                     </span>
                     
                     <div class="author-area">

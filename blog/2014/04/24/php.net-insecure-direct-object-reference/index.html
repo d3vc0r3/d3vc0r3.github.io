@@ -260,11 +260,15 @@
                       Tags: <a href="/blog/tag/PHP/">PHP</a>, <a href="/blog/tag/LFI/">LFI</a>
                     </div>
                     <span itemprop="articleBody">
-                      <p><a href="https://www.owasp.org/index.php/Top_10_2013-A4-Insecure_Direct_Object_References">不安全的引用物件 (Insecure Direct Object Reference)</a> 是個非常常見的資安漏洞，在 <a href="https://www.owasp.org/">OWASP</a> 公布的<a href="https://www.owasp.org/index.php/Top_10_2013-Top_10">十大網站應用程式安全漏洞</a> 中高居第四名。通常發生在網站應用程式上沒有針對輸入的參數做好檢查，就把參數丟入 include 或 readfile 等函數當中引用，使得攻擊者可以藉此存取任意文件的原始碼。</p>
+                      
+<p><a href="https://www.owasp.org/index.php/Top_10_2013-A4-Insecure_Direct_Object_References">不安全的引用物件 (Insecure Direct Object Reference)</a> 是個非常常見的資安漏洞，在 <a href="https://www.owasp.org/">OWASP</a> 公布的<a href="https://www.owasp.org/index.php/Top_10_2013-Top_10">十大網站應用程式安全漏洞</a> 中高居第四名。通常發生在網站應用程式上沒有針對輸入的參數做好檢查，就把參數丟入 include 或 readfile 等函數當中引用，使得攻擊者可以藉此存取任意文件的原始碼。</p>
 
 <p>今天這個案例就發生在 PHP 的官方網站 (<a href="http://www.php.net/">http://www.php.net/</a>)，消息來源是知名的 0-Day 黑市 1337day，發佈的日期是 2014/4/4 ，原始的內容是這樣的：</p>
+
 <!-- more -->
-<p><a href="https://lh3.googleusercontent.com/-ECwrgluiQyQ/U0PMyB-vJEI/AAAAAAAAAPo/D5K9nPbpiKg/s2560/php.net_insecure_direct_object_reference_00_1337day.png"><img src="https://lh3.googleusercontent.com/-ECwrgluiQyQ/U0PMyB-vJEI/AAAAAAAAAPo/D5K9nPbpiKg/w822-h645-no/php.net_insecure_direct_object_reference_00_1337day.png" alt="1337day 漏洞交易網站" title="1337day 漏洞交易網站" /></a></p>
+
+<p><a href="https://lh3.googleusercontent.com/-ECwrgluiQyQ/U0PMyB-vJEI/AAAAAAAAAPo/D5K9nPbpiKg/s2560/php.net_insecure_direct_object_reference_00_1337day.png"><img src="https://lh3.googleusercontent.com/-ECwrgluiQyQ/U0PMyB-vJEI/AAAAAAAAAPo/D5K9nPbpiKg/w822-h645-no/php.net_insecure_direct_object_reference_00_1337day.png" alt="1337day 漏洞交易網站" title="1337day 漏洞交易網站" />
+</a></p>
 
 <p>可以看到這個弱點是不公開的，想要知道內容的話要支付 82 美元相當於新台幣 3500 元呢！在強烈的好奇心屈使之下，自己打開工具來找看看：</p>
 
@@ -285,6 +289,7 @@
 <p><a href="https://lh3.googleusercontent.com/-6dFKFRG7_Y4/U0PMzE-jk2I/AAAAAAAAAP8/lbpvS0Z2TpA/s2560/php.net_insecure_direct_object_reference_04_php_team_response.png"><img src="https://lh3.googleusercontent.com/-6dFKFRG7_Y4/U0PMzE-jk2I/AAAAAAAAAP8/lbpvS0Z2TpA/w731-h332-no/php.net_insecure_direct_object_reference_04_php_team_response.png" alt="PHP.NET 官網團隊回應" title="PHP.NET 官網團隊回應" /></a></p>
 
 <p>雖然在這個案例中並沒有造成實質上的危害，沒有帳號、密碼、系統設定等機敏資料，但若把此種寫法用在其他地方，則可能造成很大的資安風險。就連 PHP 官方網站都有這樣的失誤，身為開發人員的你們更不可不慎！</p>
+
                     </span>
                     
                     <div class="author-area">

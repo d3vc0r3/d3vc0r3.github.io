@@ -260,35 +260,35 @@
                       Tags: <a href="/blog/tag/SSL/">SSL</a>, <a href="/blog/tag/Mobile/">Mobile</a>, <a href="/blog/tag/MITM/">MITM</a>
                     </div>
                     <span itemprop="articleBody">
-                      <p><img src="https://lh5.googleusercontent.com/Fd1iUVkdWXPxlYucic4NznDQT9L4CQCR2gYL3KI-2Qs=w514-h686-no" alt="SSL" /> <!-- Credit: http://natashenka.ca/printable-ssl-posters/ --></p>
+                      
+<p><img src="https://lh5.googleusercontent.com/Fd1iUVkdWXPxlYucic4NznDQT9L4CQCR2gYL3KI-2Qs=w514-h686-no" alt="SSL" />
+<!-- Credit: http://natashenka.ca/printable-ssl-posters/ --></p>
 
 <p>在網路上傳輸敏感資訊時，通常會使用 HTTPS 協定，讓客戶端與伺服器端對資料進行 SSL 加密處理，以降低資料在傳輸過程中被監聽或中間人攻擊的風險。HTTPS 的重要性逐漸被重視，Google 除了預設開啟 HTTPS 之外，未來更會將 <a href="http://googlewebmastercentral.blogspot.tw/2014/08/https-as-ranking-signal.html">HTTPS 的網站搜尋排名加分</a>。但為了確保傳輸的安全，過程中客戶端會核對伺服器的憑證鏈 (certificate chain) 是否有效，若判定為無效時會作出警告。(詳見<a href="http://en.wikipedia.org/wiki/Secure_Sockets_Layer">Wikipedia</a>)</p>
+
 <!-- more -->
-<p><img src="https://lh5.googleusercontent.com/-3KUlB8qAxng/U-oq77eBmvI/AAAAAAAAAlw/Ul4v9jNaSXY/w846-h577-no/desktop_browser_insecure_warning.png" alt="Desktop 警告圖" /> 而在手機應用程式上 HTTPS 同樣重要，例如網路銀行、線上購物等。系統同樣會做憑證核對，但對被判定為無效的憑證就需要開發者作出額外的處理了。許多手機應用程式開發商在這個部分並沒有妥善處理好，以下我們就幾個常見的成因做基本的探討。</p>
+<p><img src="https://lh5.googleusercontent.com/-3KUlB8qAxng/U-oq77eBmvI/AAAAAAAAAlw/Ul4v9jNaSXY/w846-h577-no/desktop_browser_insecure_warning.png" alt="Desktop 警告圖" />
+而在手機應用程式上 HTTPS 同樣重要，例如網路銀行、線上購物等。系統同樣會做憑證核對，但對被判定為無效的憑證就需要開發者作出額外的處理了。許多手機應用程式開發商在這個部分並沒有妥善處理好，以下我們就幾個常見的成因做基本的探討。</p>
 
-<h3 id="">會被系統判定為無效的常見成因？</h3>
-
+<h3 id="section">會被系統判定為無效的常見成因？</h3>
 <p>在探討該如何處理這個問題之前，這裡先列出一些有可能被系統判定成無效憑證的成因。</p>
 
-<h4 id="1__">1. 系統支援問題 <sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup></h4>
-
+<h4 id="note1">1. 系統支援問題 <sup id="fnref:note1"><a href="#fn:note1" class="footnote">1</a></sup></h4>
 <p>在 Android 2.2 及之前的版本，對 SSL 的支援上存在著一些問題，像是 <a href="https://code.google.com/p/android/issues/detail?id=12908">SNI</a> 和 <a href="https://code.google.com/p/android/issues/detail?id=26542">Multiple Chain</a>。而 Android 上不接受缺少中繼 CA 憑證的憑證鏈，例如：<a href="https://egov.uscis.gov/">https://egov.uscis.gov/</a></p>
 
-<h4 id="2_">2. 相關憑證未被預載到系統中</h4>
-
+<h4 id="section-1">2. 相關憑證未被預載到系統中</h4>
 <p>以 GCA 簽發的 SSL 憑證為例，在 Windows 上被判定為有效，但在 iOS 系統上卻因為 CA 不在系統的預載清單中而被判定為無效。</p>
 
-<p><img src="https://lh4.googleusercontent.com/-1Aeo7DIPjMg/U-o1hpl5ZTI/AAAAAAAAAmk/jodyNvjqpTs/w741-h654-no/windows_recognize_gca.png" alt="Windows" /> <img src="https://lh4.googleusercontent.com/kXM1zDdNKQitgCAvIqIkTAz8fgi_QgPA3rBb8kP49jg=w457-h686-no" alt="iPhone" /></p>
+<p><img src="https://lh4.googleusercontent.com/-1Aeo7DIPjMg/U-o1hpl5ZTI/AAAAAAAAAmk/jodyNvjqpTs/w741-h654-no/windows_recognize_gca.png" alt="Windows" />
+<img src="https://lh4.googleusercontent.com/kXM1zDdNKQitgCAvIqIkTAz8fgi_QgPA3rBb8kP49jg=w457-h686-no" alt="iPhone" /></p>
 
-<h4 id="3_">3. 使用自行簽發的憑證</h4>
-
+<h4 id="section-2">3. 使用自行簽發的憑證</h4>
 <p>這種情況常出現在應用程式開發階段的內部測試環境中，由於是內部測試環境一般都不會花錢去申請憑證。</p>
 
-<h4 id="4_mitm">4. 連線被中間人(MITM)攻擊</h4>
-
+<h4 id="mitm">4. 連線被中間人(MITM)攻擊</h4>
 <p>當連線被 MITM 攻擊時，使用者原本的連線目的地會被導到攻擊者的設備上，此時伺服器憑證也會被取代成攻擊者自行簽發的憑證，造成原本正常的連線出現異常。</p>
 
-<h3 id="_2">開發者該如何處理？</h3>
+<h3 id="section-3">開發者該如何處理？</h3>
 
 <p>理想情況下，客戶端的支援度充足，伺服器憑證鏈的來源及設定正確，只需使用系統原有的方式去檢查憑證即可達到安全效果。但若非得要相容低版本系統或是自行簽發憑證的時候，就得自行做額外的檢查。</p>
 
@@ -298,221 +298,247 @@
 
 <p>下面我們整理了一些在手機應用開發上，常見的 SSL 處理錯誤，以及其對應適當的處理方法。</p>
 
-<h4 id="android_1">Android 錯誤處理情況1</h4>
-<div class='highlight'><pre><code class='java'><span class='lineno'>1</span> <span class='nd'>@Override</span>
-<span class='lineno'>2</span> <span class='kd'>public</span> <span class='kt'>void</span> <span class='nf'>onReceivedSslError</span><span class='o'>(</span><span class='n'>WebView</span> <span class='n'>view</span><span class='o'>,</span> <span class='n'>SslErrorHandler</span> <span class='n'>handler</span><span class='o'>,</span> <span class='n'>SslError</span> <span class='n'>error</span><span class='o'>)</span> <span class='o'>{</span>
-<span class='lineno'>3</span>     <span class='n'>handler</span><span class='o'>.</span><span class='na'>proceed</span><span class='o'>();</span>
-<span class='lineno'>4</span> <span class='o'>}</span>
-</code></pre></div>
+<h4 id="android-1">Android 錯誤處理情況1</h4>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="lineno">1</span> <span class="nd">@Override</span>
+<span class="lineno">2</span> <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onReceivedSslError</span><span class="o">(</span><span class="n">WebView</span> <span class="n">view</span><span class="o">,</span> <span class="n">SslErrorHandler</span> <span class="n">handler</span><span class="o">,</span> <span class="n">SslError</span> <span class="n">error</span><span class="o">)</span> <span class="o">{</span>
+<span class="lineno">3</span>     <span class="n">handler</span><span class="o">.</span><span class="na">proceed</span><span class="o">();</span>
+<span class="lineno">4</span> <span class="o">}</span></code></pre></div>
+
 <p>當透過 WebView 元件訪問 HTTPS 網站發生 SSL 錯誤時，會觸發 onReceivedSslError 這個函數。根據官方文件指出，可藉由執行 handler.proceed() 或是 handler.cancel() 來決定是否讓連線繼續進行。在不覆寫這函數的情況下預設會執行 handler.cancel()。而上面的做法卻讓異常的連線繼續進行了。</p>
 
 <p>較為恰當的做法是使用 handler.cancel() 讓連線終止，或是限制在開發階段才執行 handler.proceed()。像 <a href="https://github.com/apache/cordova-android/blob/3.5.1/framework/src/org/apache/cordova/CordovaWebViewClient.java#L298">Apache Coradova</a> 和 <a href="https://github.com/facebook/facebook-android-sdk/blob/sdk-version-3.15.0/facebook/src/com/facebook/widget/WebDialog.java#L420">Facebook Android SDK</a> 皆有對這部分做控管。</p>
 
-<h4 id="android_2">Android 錯誤處理情況2</h4>
-<div class='highlight'><pre><code class='java'><span class='lineno'> 1</span> <span class='n'>TrustManager</span><span class='o'>[]</span> <span class='n'>trustAllManager</span> <span class='o'>=</span> <span class='k'>new</span> <span class='n'>TrustManager</span><span class='o'>[]</span> <span class='o'>{</span> <span class='k'>new</span> <span class='n'>X509TrustManager</span><span class='o'>()</span> <span class='o'>{</span>
-<span class='lineno'> 2</span>     <span class='nd'>@Override</span>
-<span class='lineno'> 3</span>     <span class='kd'>public</span> <span class='kt'>void</span> <span class='nf'>checkClientTrusted</span><span class='o'>(</span><span class='n'>X509Certificate</span><span class='o'>[]</span> <span class='n'>chain</span><span class='o'>,</span> <span class='n'>String</span> <span class='n'>authType</span><span class='o'>)</span> <span class='o'>{</span>
-<span class='lineno'> 4</span>     <span class='o'>}</span>
-<span class='lineno'> 5</span> 
-<span class='lineno'> 6</span>     <span class='nd'>@Override</span>
-<span class='lineno'> 7</span>     <span class='kd'>public</span> <span class='kt'>void</span> <span class='nf'>checkServerTrusted</span><span class='o'>(</span><span class='n'>X509Certificate</span><span class='o'>[]</span> <span class='n'>chain</span><span class='o'>,</span> <span class='n'>String</span> <span class='n'>authType</span><span class='o'>)</span> <span class='o'>{</span>
-<span class='lineno'> 8</span>     <span class='o'>}</span>
-<span class='lineno'> 9</span> 
-<span class='lineno'>10</span>     <span class='nd'>@Override</span>
-<span class='lineno'>11</span>     <span class='kd'>public</span> <span class='n'>X509Certificate</span><span class='o'>[]</span> <span class='nf'>getAcceptedIssuers</span><span class='o'>()</span> <span class='o'>{</span>
-<span class='lineno'>12</span>         <span class='k'>return</span> <span class='kc'>null</span><span class='o'>;</span>
-<span class='lineno'>13</span>     <span class='o'>}</span>
-<span class='lineno'>14</span> <span class='o'>}</span> <span class='o'>};</span>
-<span class='lineno'>15</span> 
-<span class='lineno'>16</span> <span class='n'>SSLContext</span> <span class='n'>sslContext</span> <span class='o'>=</span> <span class='n'>SSLContext</span><span class='o'>.</span><span class='na'>getInstance</span><span class='o'>(</span><span class='s'>&quot;TLS&quot;</span><span class='o'>);</span>
-<span class='lineno'>17</span> <span class='n'>sslContext</span><span class='o'>.</span><span class='na'>init</span><span class='o'>(</span><span class='kc'>null</span><span class='o'>,</span> <span class='n'>trustAllManager</span><span class='o'>,</span> <span class='kc'>null</span><span class='o'>);</span>
-</code></pre></div>
-<p>本用來檢查伺服器憑證的 checkServerTrusted 被留空，導致警告被略過。Google 建議不要自行實作 TrustManager，而是把憑證放到 KeyStore，再把 KeyStore 放到 TrustManagerFactory，最後從 TrustManagerFactory 產出相關的 TrustManager，開發文件中有提供處理的<a href="https://developer.android.com/training/articles/security-ssl.html#UnknownCa">範例</a>。OWASP 的 WIKI 上也有提供自行實作 TrustManager 做 certificate pinning 的<a href="https://www.owasp.org/index.php/Certificate_and_Public_Key_Pinning#Android">範例</a>。<sup id="fnref:2"><a href="#fn:2" rel="footnote">2</a></sup></p>
+<h4 id="android-2">Android 錯誤處理情況2</h4>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="lineno"> 1</span> <span class="n">TrustManager</span><span class="o">[]</span> <span class="n">trustAllManager</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TrustManager</span><span class="o">[]</span> <span class="o">{</span> <span class="k">new</span> <span class="nf">X509TrustManager</span><span class="o">()</span> <span class="o">{</span>
+<span class="lineno"> 2</span>     <span class="nd">@Override</span>
+<span class="lineno"> 3</span>     <span class="kd">public</span> <span class="kt">void</span> <span class="nf">checkClientTrusted</span><span class="o">(</span><span class="n">X509Certificate</span><span class="o">[]</span> <span class="n">chain</span><span class="o">,</span> <span class="n">String</span> <span class="n">authType</span><span class="o">)</span> <span class="o">{</span>
+<span class="lineno"> 4</span>     <span class="o">}</span>
+<span class="lineno"> 5</span> 
+<span class="lineno"> 6</span>     <span class="nd">@Override</span>
+<span class="lineno"> 7</span>     <span class="kd">public</span> <span class="kt">void</span> <span class="nf">checkServerTrusted</span><span class="o">(</span><span class="n">X509Certificate</span><span class="o">[]</span> <span class="n">chain</span><span class="o">,</span> <span class="n">String</span> <span class="n">authType</span><span class="o">)</span> <span class="o">{</span>
+<span class="lineno"> 8</span>     <span class="o">}</span>
+<span class="lineno"> 9</span> 
+<span class="lineno">10</span>     <span class="nd">@Override</span>
+<span class="lineno">11</span>     <span class="kd">public</span> <span class="n">X509Certificate</span><span class="o">[]</span> <span class="nf">getAcceptedIssuers</span><span class="o">()</span> <span class="o">{</span>
+<span class="lineno">12</span>         <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+<span class="lineno">13</span>     <span class="o">}</span>
+<span class="lineno">14</span> <span class="o">}</span> <span class="o">};</span>
+<span class="lineno">15</span> 
+<span class="lineno">16</span> <span class="n">SSLContext</span> <span class="n">sslContext</span> <span class="o">=</span> <span class="n">SSLContext</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="s">&quot;TLS&quot;</span><span class="o">);</span>
+<span class="lineno">17</span> <span class="n">sslContext</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="kc">null</span><span class="o">,</span> <span class="n">trustAllManager</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span></code></pre></div>
+
+<p>本用來檢查伺服器憑證的 checkServerTrusted 被留空，導致警告被略過。Google 建議不要自行實作 TrustManager，而是把憑證放到 KeyStore，再把 KeyStore 放到 TrustManagerFactory，最後從 TrustManagerFactory 產出相關的 TrustManager，開發文件中有提供處理的<a href="https://developer.android.com/training/articles/security-ssl.html#UnknownCa">範例</a>。OWASP 的 WIKI 上也有提供自行實作 TrustManager 做 certificate pinning 的<a href="https://www.owasp.org/index.php/Certificate_and_Public_Key_Pinning#Android">範例</a>。<sup id="fnref:note2"><a href="#fn:note2" class="footnote">2</a></sup></p>
 
 <p>下面節錄 Android 官方文件上的範例：</p>
-<div class='highlight'><pre><code class='java'><span class='lineno'> 1</span> <span class='n'>KeyStore</span> <span class='n'>keyStore</span> <span class='o'>=</span> <span class='o'>...;</span>
-<span class='lineno'> 2</span> <span class='n'>String</span> <span class='n'>algorithm</span> <span class='o'>=</span> <span class='n'>TrustManagerFactory</span><span class='o'>.</span><span class='na'>getDefaultAlgorithm</span><span class='o'>();</span>
-<span class='lineno'> 3</span> <span class='n'>TrustManagerFactory</span> <span class='n'>tmf</span> <span class='o'>=</span> <span class='n'>TrustManagerFactory</span><span class='o'>.</span><span class='na'>getInstance</span><span class='o'>(</span><span class='n'>algorithm</span><span class='o'>);</span>
-<span class='lineno'> 4</span> <span class='n'>tmf</span><span class='o'>.</span><span class='na'>init</span><span class='o'>(</span><span class='n'>keyStore</span><span class='o'>);</span>
-<span class='lineno'> 5</span> 
-<span class='lineno'> 6</span> <span class='n'>SSLContext</span> <span class='n'>context</span> <span class='o'>=</span> <span class='n'>SSLContext</span><span class='o'>.</span><span class='na'>getInstance</span><span class='o'>(</span><span class='s'>&quot;TLS&quot;</span><span class='o'>);</span>
-<span class='lineno'> 7</span> <span class='n'>context</span><span class='o'>.</span><span class='na'>init</span><span class='o'>(</span><span class='kc'>null</span><span class='o'>,</span> <span class='n'>tmf</span><span class='o'>.</span><span class='na'>getTrustManagers</span><span class='o'>(),</span> <span class='kc'>null</span><span class='o'>);</span>
-<span class='lineno'> 8</span> 
-<span class='lineno'> 9</span> <span class='n'>URL</span> <span class='n'>url</span> <span class='o'>=</span> <span class='k'>new</span> <span class='n'>URL</span><span class='o'>(</span><span class='s'>&quot;https://www.example.com/&quot;</span><span class='o'>);</span>
-<span class='lineno'>10</span> <span class='n'>HttpsURLConnection</span> <span class='n'>urlConnection</span> <span class='o'>=</span> <span class='o'>(</span><span class='n'>HttpsURLConnection</span><span class='o'>)</span> <span class='n'>url</span><span class='o'>.</span><span class='na'>openConnection</span><span class='o'>();</span>
-<span class='lineno'>11</span> <span class='n'>urlConnection</span><span class='o'>.</span><span class='na'>setSSLSocketFactory</span><span class='o'>(</span><span class='n'>context</span><span class='o'>.</span><span class='na'>getSocketFactory</span><span class='o'>());</span>
-<span class='lineno'>12</span> <span class='n'>InputStream</span> <span class='n'>in</span> <span class='o'>=</span> <span class='n'>urlConnection</span><span class='o'>.</span><span class='na'>getInputStream</span><span class='o'>();</span>
-</code></pre></div>
-<h4 id="android_3">Android 錯誤處理情況3</h4>
-<div class='highlight'><pre><code class='java'><span class='lineno'>1</span> <span class='n'>URL</span> <span class='n'>url</span> <span class='o'>=</span> <span class='k'>new</span> <span class='n'>URL</span><span class='o'>(</span><span class='s'>&quot;https://www.example.com/&quot;</span><span class='o'>);</span>
-<span class='lineno'>2</span> <span class='n'>HttpsURLConnection</span> <span class='n'>conn</span> <span class='o'>=</span> <span class='o'>(</span><span class='n'>HttpsURLConnection</span><span class='o'>)</span> <span class='n'>url</span><span class='o'>.</span><span class='na'>openConnection</span><span class='o'>();</span>
-<span class='lineno'>3</span> <span class='n'>conn</span><span class='o'>.</span><span class='na'>setHostnameVerifier</span><span class='o'>(</span><span class='n'>SSLSocketFactory</span><span class='o'>.</span><span class='na'>ALLOW_ALL_HOSTNAME_VERIFIER</span><span class='o'>);</span>
-</code></pre></div>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="lineno"> 1</span> <span class="n">KeyStore</span> <span class="n">keyStore</span> <span class="o">=</span> <span class="o">...;</span>
+<span class="lineno"> 2</span> <span class="n">String</span> <span class="n">algorithm</span> <span class="o">=</span> <span class="n">TrustManagerFactory</span><span class="o">.</span><span class="na">getDefaultAlgorithm</span><span class="o">();</span>
+<span class="lineno"> 3</span> <span class="n">TrustManagerFactory</span> <span class="n">tmf</span> <span class="o">=</span> <span class="n">TrustManagerFactory</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="n">algorithm</span><span class="o">);</span>
+<span class="lineno"> 4</span> <span class="n">tmf</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="n">keyStore</span><span class="o">);</span>
+<span class="lineno"> 5</span> 
+<span class="lineno"> 6</span> <span class="n">SSLContext</span> <span class="n">context</span> <span class="o">=</span> <span class="n">SSLContext</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="s">&quot;TLS&quot;</span><span class="o">);</span>
+<span class="lineno"> 7</span> <span class="n">context</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="kc">null</span><span class="o">,</span> <span class="n">tmf</span><span class="o">.</span><span class="na">getTrustManagers</span><span class="o">(),</span> <span class="kc">null</span><span class="o">);</span>
+<span class="lineno"> 8</span> 
+<span class="lineno"> 9</span> <span class="n">URL</span> <span class="n">url</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">URL</span><span class="o">(</span><span class="s">&quot;https://www.example.com/&quot;</span><span class="o">);</span>
+<span class="lineno">10</span> <span class="n">HttpsURLConnection</span> <span class="n">urlConnection</span> <span class="o">=</span> <span class="o">(</span><span class="n">HttpsURLConnection</span><span class="o">)</span> <span class="n">url</span><span class="o">.</span><span class="na">openConnection</span><span class="o">();</span>
+<span class="lineno">11</span> <span class="n">urlConnection</span><span class="o">.</span><span class="na">setSSLSocketFactory</span><span class="o">(</span><span class="n">context</span><span class="o">.</span><span class="na">getSocketFactory</span><span class="o">());</span>
+<span class="lineno">12</span> <span class="n">InputStream</span> <span class="n">in</span> <span class="o">=</span> <span class="n">urlConnection</span><span class="o">.</span><span class="na">getInputStream</span><span class="o">();</span></code></pre></div>
+
+<h4 id="android-3">Android 錯誤處理情況3</h4>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="lineno">1</span> <span class="n">URL</span> <span class="n">url</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">URL</span><span class="o">(</span><span class="s">&quot;https://www.example.com/&quot;</span><span class="o">);</span>
+<span class="lineno">2</span> <span class="n">HttpsURLConnection</span> <span class="n">conn</span> <span class="o">=</span> <span class="o">(</span><span class="n">HttpsURLConnection</span><span class="o">)</span> <span class="n">url</span><span class="o">.</span><span class="na">openConnection</span><span class="o">();</span>
+<span class="lineno">3</span> <span class="n">conn</span><span class="o">.</span><span class="na">setHostnameVerifier</span><span class="o">(</span><span class="n">SSLSocketFactory</span><span class="o">.</span><span class="na">ALLOW_ALL_HOSTNAME_VERIFIER</span><span class="o">);</span></code></pre></div>
+
 <p>或是</p>
-<div class='highlight'><pre><code class='java'><span class='lineno'>1</span> <span class='n'>HostnameVerifier</span> <span class='n'>allHostVerifier</span> <span class='o'>=</span> <span class='k'>new</span> <span class='n'>HostnameVerifier</span><span class='o'>()</span> <span class='o'>{</span>
-<span class='lineno'>2</span>     <span class='nd'>@Override</span>
-<span class='lineno'>3</span>     <span class='kd'>public</span> <span class='kt'>boolean</span> <span class='nf'>verify</span><span class='o'>(</span><span class='n'>String</span> <span class='n'>hostname</span><span class='o'>,</span> <span class='n'>SSLSession</span> <span class='n'>session</span><span class='o'>)</span> <span class='o'>{</span>
-<span class='lineno'>4</span>         <span class='k'>return</span> <span class='kc'>true</span><span class='o'>;</span>
-<span class='lineno'>5</span>     <span class='o'>}</span>
-<span class='lineno'>6</span> <span class='o'>};</span>
-</code></pre></div>
+
+<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="lineno">1</span> <span class="n">HostnameVerifier</span> <span class="n">allHostVerifier</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">HostnameVerifier</span><span class="o">()</span> <span class="o">{</span>
+<span class="lineno">2</span>     <span class="nd">@Override</span>
+<span class="lineno">3</span>     <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">verify</span><span class="o">(</span><span class="n">String</span> <span class="n">hostname</span><span class="o">,</span> <span class="n">SSLSession</span> <span class="n">session</span><span class="o">)</span> <span class="o">{</span>
+<span class="lineno">4</span>         <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
+<span class="lineno">5</span>     <span class="o">}</span>
+<span class="lineno">6</span> <span class="o">};</span></code></pre></div>
+
 <p>上述寫法略過了憑證中的 hostname 檢查，導致即使連線端與憑證中指定的 hostname 不一致也能通過。較為恰當的做法是不特別設定，讓他使用預設的 DefaultHostnameVerifier，或是採用更為嚴謹的 StrictHostnameVerifier。</p>
 
-<h4 id="ios_1">iOS 錯誤處理情況1</h4>
-<div class='highlight'><pre><code class='objc'><span class='lineno'>1</span> <span class='k'>@implementation</span> <span class='nc'>NSURLRequest</span> <span class='nl'>(IgnoreSSL)</span>
-<span class='lineno'>2</span> <span class='k'>+</span> <span class='p'>(</span><span class='kt'>BOOL</span><span class='p'>)</span><span class='nf'>allowsAnyHTTPSCertificateForHost:</span><span class='p'>(</span><span class='n'>NSString</span><span class='o'>*</span><span class='p'>)</span><span class='nv'>host</span>
-<span class='lineno'>3</span> <span class='p'>{</span>
-<span class='lineno'>4</span>     <span class='k'>return</span> <span class='nb'>YES</span><span class='p'>;</span>
-<span class='lineno'>5</span> <span class='p'>}</span>
-<span class='lineno'>6</span> <span class='k'>@end</span>
-</code></pre></div>
+<h4 id="ios-1">iOS 錯誤處理情況1</h4>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="lineno">1</span> <span class="k">@implementation</span> <span class="bp">NSURLRequest</span> <span class="nl">(IgnoreSSL)</span>
+<span class="lineno">2</span> <span class="p">+</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">allowsAnyHTTPSCertificateForHost:</span><span class="p">(</span><span class="bp">NSString</span><span class="o">*</span><span class="p">)</span><span class="nv">host</span>
+<span class="lineno">3</span> <span class="p">{</span>
+<span class="lineno">4</span>     <span class="k">return</span> <span class="nb">YES</span><span class="p">;</span>
+<span class="lineno">5</span> <span class="p">}</span>
+<span class="lineno">6</span> <span class="k">@end</span></code></pre></div>
+
 <p>此情況使用到 Framework 中的 Private API，雖然這種寫法會因為不能通過 Apple 的審查而不會出現在 AppStore 上(使用回避技巧不在這討論範圍內)，但仍有機會在無需經過 Apple 審查的 Enterprise App 中使用。較為適當的做法是用 “#if DEBUG”，”#endif” 包起來以確保該段程式在編譯時只能對開發中的 debug 版上有作用。</p>
 
-<h4 id="ios_2">iOS 錯誤處理情況2</h4>
-<div class='highlight'><pre><code class='objc'><span class='lineno'> 1</span> <span class='k'>-</span> <span class='p'>(</span><span class='kt'>BOOL</span><span class='p'>)</span><span class='nf'>connection:</span><span class='p'>(</span><span class='n'>NSURLConnection</span> <span class='o'>*</span><span class='p'>)</span><span class='nv'>connection</span> <span class='nf'>canAuthenticateAgainstProtectionSpace:</span><span class='p'>(</span><span class='n'>NSURLProtectionSpace</span> <span class='o'>*</span><span class='p'>)</span><span class='nv'>protectionSpace</span> <span class='p'>{</span>
-<span class='lineno'> 2</span>     <span class='k'>return</span> <span class='p'>[</span><span class='n'>protectionSpace</span><span class='p'>.</span><span class='n'>authenticationMethod</span> <span class='n'>isEqualToString</span><span class='o'>:</span><span class='n'>NSURLAuthenticationMethodServerTrust</span><span class='p'>];</span>
-<span class='lineno'> 3</span> <span class='p'>}</span>
-<span class='lineno'> 4</span> 
-<span class='lineno'> 5</span> <span class='k'>-</span> <span class='p'>(</span><span class='kt'>void</span><span class='p'>)</span><span class='nf'>connection:</span><span class='p'>(</span><span class='n'>NSURLConnection</span> <span class='o'>*</span><span class='p'>)</span><span class='nv'>connection</span> <span class='nf'>didReceiveAuthenticationChallenge:</span><span class='p'>(</span><span class='n'>NSURLAuthenticationChallenge</span> <span class='o'>*</span><span class='p'>)</span><span class='nv'>challenge</span> <span class='p'>{</span>
-<span class='lineno'> 6</span>     <span class='k'>if</span> <span class='p'>([</span><span class='n'>challenge</span><span class='p'>.</span><span class='n'>protectionSpace</span><span class='p'>.</span><span class='n'>authenticationMethod</span> <span class='n'>isEqualToString</span><span class='o'>:</span><span class='n'>NSURLAuthenticationMethodServerTrust</span><span class='p'>])</span>
-<span class='lineno'> 7</span>         <span class='p'>[</span><span class='n'>challenge</span><span class='p'>.</span><span class='n'>sender</span> <span class='n'>useCredential</span><span class='o'>:</span><span class='p'>[</span><span class='n'>NSURLCredential</span> <span class='n'>credentialForTrust</span><span class='o'>:</span><span class='n'>challenge</span><span class='p'>.</span><span class='n'>protectionSpace</span><span class='p'>.</span><span class='n'>serverTrust</span><span class='p'>]</span> <span class='n'>forAuthenticationChallenge</span><span class='o'>:</span><span class='n'>challenge</span><span class='p'>];</span>
-<span class='lineno'> 8</span> 
-<span class='lineno'> 9</span>     <span class='p'>[</span><span class='n'>challenge</span><span class='p'>.</span><span class='n'>sender</span> <span class='n'>continueWithoutCredentialForAuthenticationChallenge</span><span class='o'>:</span><span class='n'>challenge</span><span class='p'>];</span>
-<span class='lineno'>10</span> <span class='p'>}</span>
-</code></pre></div>
+<h4 id="ios-2">iOS 錯誤處理情況2</h4>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="lineno"> 1</span> <span class="p">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">connection:</span><span class="p">(</span><span class="bp">NSURLConnection</span> <span class="o">*</span><span class="p">)</span><span class="nv">connection</span> <span class="nf">canAuthenticateAgainstProtectionSpace:</span><span class="p">(</span><span class="bp">NSURLProtectionSpace</span> <span class="o">*</span><span class="p">)</span><span class="nv">protectionSpace</span> <span class="p">{</span>
+<span class="lineno"> 2</span>     <span class="k">return</span> <span class="p">[</span><span class="n">protectionSpace</span><span class="p">.</span><span class="n">authenticationMethod</span> <span class="nl">isEqualToString</span><span class="p">:</span><span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">];</span>
+<span class="lineno"> 3</span> <span class="p">}</span>
+<span class="lineno"> 4</span> 
+<span class="lineno"> 5</span> <span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">connection:</span><span class="p">(</span><span class="bp">NSURLConnection</span> <span class="o">*</span><span class="p">)</span><span class="nv">connection</span> <span class="nf">didReceiveAuthenticationChallenge:</span><span class="p">(</span><span class="bp">NSURLAuthenticationChallenge</span> <span class="o">*</span><span class="p">)</span><span class="nv">challenge</span> <span class="p">{</span>
+<span class="lineno"> 6</span>     <span class="k">if</span> <span class="p">([</span><span class="n">challenge</span><span class="p">.</span><span class="n">protectionSpace</span><span class="p">.</span><span class="n">authenticationMethod</span> <span class="nl">isEqualToString</span><span class="p">:</span><span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">])</span>
+<span class="lineno"> 7</span>         <span class="p">[</span><span class="n">challenge</span><span class="p">.</span><span class="n">sender</span> <span class="nl">useCredential</span><span class="p">:[</span><span class="bp">NSURLCredential</span> <span class="nl">credentialForTrust</span><span class="p">:</span><span class="n">challenge</span><span class="p">.</span><span class="n">protectionSpace</span><span class="p">.</span><span class="n">serverTrust</span><span class="p">]</span> <span class="nl">forAuthenticationChallenge</span><span class="p">:</span><span class="n">challenge</span><span class="p">];</span>
+<span class="lineno"> 8</span> 
+<span class="lineno"> 9</span>     <span class="p">[</span><span class="n">challenge</span><span class="p">.</span><span class="n">sender</span> <span class="nl">continueWithoutCredentialForAuthenticationChallenge</span><span class="p">:</span><span class="n">challenge</span><span class="p">];</span>
+<span class="lineno">10</span> <span class="p">}</span></code></pre></div>
+
 <p>上面的做法會讓使用 NSURLConnection 的連線略過憑證檢查，容許任意憑證通過。下面節錄 OWASP WIKI 上的範例：</p>
-<div class='highlight'><pre><code class='objc'><span class='lineno'> 1</span> <span class='k'>-</span> <span class='p'>(</span><span class='kt'>void</span><span class='p'>)</span><span class='nf'>connection:</span><span class='p'>(</span><span class='n'>NSURLConnection</span> <span class='o'>*</span><span class='p'>)</span><span class='nv'>connection</span> <span class='nf'>didReceiveAuthenticationChallenge:</span>
-<span class='lineno'> 2</span>                    <span class='p'>(</span><span class='n'>NSURLAuthenticationChallenge</span> <span class='o'>*</span><span class='p'>)</span><span class='nv'>challenge</span>
-<span class='lineno'> 3</span> <span class='p'>{</span>
-<span class='lineno'> 4</span>     <span class='k'>if</span> <span class='p'>([[[</span><span class='n'>challenge</span> <span class='n'>protectionSpace</span><span class='p'>]</span> <span class='n'>authenticationMethod</span><span class='p'>]</span> <span class='n'>isEqualToString</span><span class='o'>:</span> <span class='n'>NSURLAuthenticationMethodServerTrust</span><span class='p'>])</span>
-<span class='lineno'> 5</span>     <span class='p'>{</span>
-<span class='lineno'> 6</span>         <span class='k'>do</span>
-<span class='lineno'> 7</span>         <span class='p'>{</span>
-<span class='lineno'> 8</span>             <span class='n'>SecTrustRef</span> <span class='n'>serverTrust</span> <span class='o'>=</span> <span class='p'>[[</span><span class='n'>challenge</span> <span class='n'>protectionSpace</span><span class='p'>]</span> <span class='n'>serverTrust</span><span class='p'>];</span>
-<span class='lineno'> 9</span>             <span class='k'>if</span><span class='p'>(</span><span class='nb'>nil</span> <span class='o'>==</span> <span class='n'>serverTrust</span><span class='p'>)</span>
-<span class='lineno'>10</span>                 <span class='k'>break</span><span class='p'>;</span> <span class='cm'>/* failed */</span>
-<span class='lineno'>11</span> 
-<span class='lineno'>12</span>             <span class='n'>OSStatus</span> <span class='n'>status</span> <span class='o'>=</span> <span class='n'>SecTrustEvaluate</span><span class='p'>(</span><span class='n'>serverTrust</span><span class='p'>,</span> <span class='nb'>NULL</span><span class='p'>);</span>
-<span class='lineno'>13</span>             <span class='k'>if</span><span class='p'>(</span><span class='o'>!</span><span class='p'>(</span><span class='n'>errSecSuccess</span> <span class='o'>==</span> <span class='n'>status</span><span class='p'>))</span>
-<span class='lineno'>14</span>                 <span class='k'>break</span><span class='p'>;</span> <span class='cm'>/* failed */</span>
-<span class='lineno'>15</span> 
-<span class='lineno'>16</span>             <span class='n'>SecCertificateRef</span> <span class='n'>serverCertificate</span> <span class='o'>=</span> <span class='n'>SecTrustGetCertificateAtIndex</span><span class='p'>(</span><span class='n'>serverTrust</span><span class='p'>,</span> <span class='mi'>0</span><span class='p'>);</span>
-<span class='lineno'>17</span>             <span class='k'>if</span><span class='p'>(</span><span class='nb'>nil</span> <span class='o'>==</span> <span class='n'>serverCertificate</span><span class='p'>)</span>
-<span class='lineno'>18</span>             <span class='k'>break</span><span class='p'>;</span> <span class='cm'>/* failed */</span>
-<span class='lineno'>19</span> 
-<span class='lineno'>20</span>             <span class='n'>CFDataRef</span> <span class='n'>serverCertificateData</span> <span class='o'>=</span> <span class='n'>SecCertificateCopyData</span><span class='p'>(</span><span class='n'>serverCertificate</span><span class='p'>);</span>
-<span class='lineno'>21</span>             <span class='p'>[(</span><span class='kt'>id</span><span class='p'>)</span><span class='n'>serverCertificateData</span> <span class='n'>autorelease</span><span class='p'>];</span>
-<span class='lineno'>22</span>             <span class='k'>if</span><span class='p'>(</span><span class='nb'>nil</span> <span class='o'>==</span> <span class='n'>serverCertificateData</span><span class='p'>)</span>
-<span class='lineno'>23</span>                 <span class='k'>break</span><span class='p'>;</span> <span class='cm'>/* failed */</span>
-<span class='lineno'>24</span> 
-<span class='lineno'>25</span>             <span class='k'>const</span> <span class='n'>UInt8</span><span class='o'>*</span> <span class='k'>const</span> <span class='n'>data</span> <span class='o'>=</span> <span class='n'>CFDataGetBytePtr</span><span class='p'>(</span><span class='n'>serverCertificateData</span><span class='p'>);</span>
-<span class='lineno'>26</span>             <span class='k'>const</span> <span class='n'>CFIndex</span> <span class='n'>size</span> <span class='o'>=</span> <span class='n'>CFDataGetLength</span><span class='p'>(</span><span class='n'>serverCertificateData</span><span class='p'>);</span>
-<span class='lineno'>27</span>             <span class='n'>NSData</span><span class='o'>*</span> <span class='n'>cert1</span> <span class='o'>=</span> <span class='p'>[</span><span class='n'>NSData</span> <span class='n'>dataWithBytes</span><span class='o'>:</span><span class='n'>data</span> <span class='n'>length</span><span class='o'>:</span><span class='p'>(</span><span class='n'>NSUInteger</span><span class='p'>)</span><span class='n'>size</span><span class='p'>];</span>
-<span class='lineno'>28</span> 
-<span class='lineno'>29</span>             <span class='n'>NSString</span> <span class='o'>*</span><span class='n'>file</span> <span class='o'>=</span> <span class='p'>[[</span><span class='n'>NSBundle</span> <span class='n'>mainBundle</span><span class='p'>]</span> <span class='n'>pathForResource</span><span class='o'>:</span><span class='s'>@&quot;random-org&quot;</span> <span class='n'>ofType</span><span class='o'>:</span><span class='s'>@&quot;der&quot;</span><span class='p'>];</span>
-<span class='lineno'>30</span>             <span class='n'>NSData</span><span class='o'>*</span> <span class='n'>cert2</span> <span class='o'>=</span> <span class='p'>[</span><span class='n'>NSData</span> <span class='n'>dataWithContentsOfFile</span><span class='o'>:</span><span class='n'>file</span><span class='p'>];</span>
-<span class='lineno'>31</span> 
-<span class='lineno'>32</span>             <span class='k'>if</span><span class='p'>(</span><span class='nb'>nil</span> <span class='o'>==</span> <span class='n'>cert1</span> <span class='o'>||</span> <span class='nb'>nil</span> <span class='o'>==</span> <span class='n'>cert2</span><span class='p'>)</span>
-<span class='lineno'>33</span>                 <span class='k'>break</span><span class='p'>;</span> <span class='cm'>/* failed */</span>
-<span class='lineno'>34</span> 
-<span class='lineno'>35</span>             <span class='k'>const</span> <span class='kt'>BOOL</span> <span class='n'>equal</span> <span class='o'>=</span> <span class='p'>[</span><span class='n'>cert1</span> <span class='n'>isEqualToData</span><span class='o'>:</span><span class='n'>cert2</span><span class='p'>];</span>
-<span class='lineno'>36</span>             <span class='k'>if</span><span class='p'>(</span><span class='o'>!</span><span class='n'>equal</span><span class='p'>)</span>
-<span class='lineno'>37</span>                 <span class='k'>break</span><span class='p'>;</span> <span class='cm'>/* failed */</span>
-<span class='lineno'>38</span> 
-<span class='lineno'>39</span>             <span class='c1'>// The only good exit point</span>
-<span class='lineno'>40</span>             <span class='k'>return</span> <span class='p'>[[</span><span class='n'>challenge</span> <span class='n'>sender</span><span class='p'>]</span> <span class='n'>useCredential</span><span class='o'>:</span> <span class='p'>[</span><span class='n'>NSURLCredential</span> <span class='n'>credentialForTrust</span><span class='o'>:</span> <span class='n'>serverTrust</span><span class='p'>]</span>
-<span class='lineno'>41</span>                         <span class='nl'>forAuthenticationChallenge:</span> <span class='n'>challenge</span><span class='p'>];</span>
-<span class='lineno'>42</span>         <span class='p'>}</span> <span class='k'>while</span><span class='p'>(</span><span class='mi'>0</span><span class='p'>);</span>
-<span class='lineno'>43</span>     <span class='p'>}</span>
-<span class='lineno'>44</span>     
-<span class='lineno'>45</span>     <span class='c1'>// Bad dog</span>
-<span class='lineno'>46</span>     <span class='k'>return</span> <span class='p'>[[</span><span class='n'>challenge</span> <span class='n'>sender</span><span class='p'>]</span> <span class='n'>cancelAuthenticationChallenge</span><span class='o'>:</span> <span class='n'>challenge</span><span class='p'>];</span>
-<span class='lineno'>47</span> <span class='p'>}</span>
-</code></pre></div>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="lineno"> 1</span> <span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">connection:</span><span class="p">(</span><span class="bp">NSURLConnection</span> <span class="o">*</span><span class="p">)</span><span class="nv">connection</span> <span class="nf">didReceiveAuthenticationChallenge:</span>
+<span class="lineno"> 2</span>                    <span class="p">(</span><span class="bp">NSURLAuthenticationChallenge</span> <span class="o">*</span><span class="p">)</span><span class="nv">challenge</span>
+<span class="lineno"> 3</span> <span class="p">{</span>
+<span class="lineno"> 4</span>     <span class="k">if</span> <span class="p">([[[</span><span class="n">challenge</span> <span class="n">protectionSpace</span><span class="p">]</span> <span class="n">authenticationMethod</span><span class="p">]</span> <span class="nl">isEqualToString</span><span class="p">:</span> <span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">])</span>
+<span class="lineno"> 5</span>     <span class="p">{</span>
+<span class="lineno"> 6</span>         <span class="k">do</span>
+<span class="lineno"> 7</span>         <span class="p">{</span>
+<span class="lineno"> 8</span>             <span class="n">SecTrustRef</span> <span class="n">serverTrust</span> <span class="o">=</span> <span class="p">[[</span><span class="n">challenge</span> <span class="n">protectionSpace</span><span class="p">]</span> <span class="n">serverTrust</span><span class="p">];</span>
+<span class="lineno"> 9</span>             <span class="k">if</span><span class="p">(</span><span class="nb">nil</span> <span class="o">==</span> <span class="n">serverTrust</span><span class="p">)</span>
+<span class="lineno">10</span>                 <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
+<span class="lineno">11</span> 
+<span class="lineno">12</span>             <span class="n">OSStatus</span> <span class="n">status</span> <span class="o">=</span> <span class="n">SecTrustEvaluate</span><span class="p">(</span><span class="n">serverTrust</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+<span class="lineno">13</span>             <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">errSecSuccess</span> <span class="o">==</span> <span class="n">status</span><span class="p">))</span>
+<span class="lineno">14</span>                 <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
+<span class="lineno">15</span> 
+<span class="lineno">16</span>             <span class="n">SecCertificateRef</span> <span class="n">serverCertificate</span> <span class="o">=</span> <span class="n">SecTrustGetCertificateAtIndex</span><span class="p">(</span><span class="n">serverTrust</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+<span class="lineno">17</span>             <span class="k">if</span><span class="p">(</span><span class="nb">nil</span> <span class="o">==</span> <span class="n">serverCertificate</span><span class="p">)</span>
+<span class="lineno">18</span>             <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
+<span class="lineno">19</span> 
+<span class="lineno">20</span>             <span class="n">CFDataRef</span> <span class="n">serverCertificateData</span> <span class="o">=</span> <span class="n">SecCertificateCopyData</span><span class="p">(</span><span class="n">serverCertificate</span><span class="p">);</span>
+<span class="lineno">21</span>             <span class="p">[(</span><span class="kt">id</span><span class="p">)</span><span class="n">serverCertificateData</span> <span class="n">autorelease</span><span class="p">];</span>
+<span class="lineno">22</span>             <span class="k">if</span><span class="p">(</span><span class="nb">nil</span> <span class="o">==</span> <span class="n">serverCertificateData</span><span class="p">)</span>
+<span class="lineno">23</span>                 <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
+<span class="lineno">24</span> 
+<span class="lineno">25</span>             <span class="k">const</span> <span class="kt">UInt8</span><span class="o">*</span> <span class="k">const</span> <span class="n">data</span> <span class="o">=</span> <span class="n">CFDataGetBytePtr</span><span class="p">(</span><span class="n">serverCertificateData</span><span class="p">);</span>
+<span class="lineno">26</span>             <span class="k">const</span> <span class="n">CFIndex</span> <span class="n">size</span> <span class="o">=</span> <span class="n">CFDataGetLength</span><span class="p">(</span><span class="n">serverCertificateData</span><span class="p">);</span>
+<span class="lineno">27</span>             <span class="bp">NSData</span><span class="o">*</span> <span class="n">cert1</span> <span class="o">=</span> <span class="p">[</span><span class="bp">NSData</span> <span class="nl">dataWithBytes</span><span class="p">:</span><span class="n">data</span> <span class="nl">length</span><span class="p">:(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="n">size</span><span class="p">];</span>
+<span class="lineno">28</span> 
+<span class="lineno">29</span>             <span class="bp">NSString</span> <span class="o">*</span><span class="n">file</span> <span class="o">=</span> <span class="p">[[</span><span class="bp">NSBundle</span> <span class="n">mainBundle</span><span class="p">]</span> <span class="nl">pathForResource</span><span class="p">:</span><span class="s">@&quot;random-org&quot;</span> <span class="nl">ofType</span><span class="p">:</span><span class="s">@&quot;der&quot;</span><span class="p">];</span>
+<span class="lineno">30</span>             <span class="bp">NSData</span><span class="o">*</span> <span class="n">cert2</span> <span class="o">=</span> <span class="p">[</span><span class="bp">NSData</span> <span class="nl">dataWithContentsOfFile</span><span class="p">:</span><span class="n">file</span><span class="p">];</span>
+<span class="lineno">31</span> 
+<span class="lineno">32</span>             <span class="k">if</span><span class="p">(</span><span class="nb">nil</span> <span class="o">==</span> <span class="n">cert1</span> <span class="o">||</span> <span class="nb">nil</span> <span class="o">==</span> <span class="n">cert2</span><span class="p">)</span>
+<span class="lineno">33</span>                 <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
+<span class="lineno">34</span> 
+<span class="lineno">35</span>             <span class="k">const</span> <span class="kt">BOOL</span> <span class="n">equal</span> <span class="o">=</span> <span class="p">[</span><span class="n">cert1</span> <span class="nl">isEqualToData</span><span class="p">:</span><span class="n">cert2</span><span class="p">];</span>
+<span class="lineno">36</span>             <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">equal</span><span class="p">)</span>
+<span class="lineno">37</span>                 <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
+<span class="lineno">38</span> 
+<span class="lineno">39</span>             <span class="c1">// The only good exit point</span>
+<span class="lineno">40</span>             <span class="k">return</span> <span class="p">[[</span><span class="n">challenge</span> <span class="n">sender</span><span class="p">]</span> <span class="nl">useCredential</span><span class="p">:</span> <span class="p">[</span><span class="bp">NSURLCredential</span> <span class="nl">credentialForTrust</span><span class="p">:</span> <span class="n">serverTrust</span><span class="p">]</span>
+<span class="lineno">41</span>                         <span class="nl">forAuthenticationChallenge</span><span class="p">:</span> <span class="n">challenge</span><span class="p">];</span>
+<span class="lineno">42</span>         <span class="p">}</span> <span class="k">while</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="lineno">43</span>     <span class="p">}</span>
+<span class="lineno">44</span>     
+<span class="lineno">45</span>     <span class="c1">// Bad dog</span>
+<span class="lineno">46</span>     <span class="k">return</span> <span class="p">[[</span><span class="n">challenge</span> <span class="n">sender</span><span class="p">]</span> <span class="nl">cancelAuthenticationChallenge</span><span class="p">:</span> <span class="n">challenge</span><span class="p">];</span>
+<span class="lineno">47</span> <span class="p">}</span></code></pre></div>
+
 <p>處理方式與前面的 Android 情況2類同，做了 certificate pinning。</p>
 
-<h4 id="ios_3">iOS 錯誤處理情況3</h4>
-<div class='highlight'><pre><code class='objc'><span class='lineno'> 1</span> <span class='k'>-</span> <span class='p'>(</span><span class='kt'>void</span><span class='p'>)</span> <span class='nf'>URLSession:</span><span class='p'>(</span><span class='n'>NSURLSession</span> <span class='o'>*</span><span class='p'>)</span><span class='nv'>session</span>
-<span class='lineno'> 2</span> <span class='nl'>didReceiveChallenge:</span><span class='p'>(</span><span class='n'>NSURLAuthenticationChallenge</span> <span class='o'>*</span><span class='p'>)</span><span class='nv'>challenge</span>
-<span class='lineno'> 3</span>   <span class='nl'>completionHandler:</span><span class='p'>(</span><span class='kt'>void</span> <span class='p'>(</span><span class='o'>^</span><span class='p'>)(</span><span class='n'>NSURLSessionAuthChallengeDisposition</span> <span class='n'>disposition</span><span class='p'>,</span>
-<span class='lineno'> 4</span>                               <span class='n'>NSURLCredential</span> <span class='o'>*</span><span class='n'>credential</span><span class='p'>))</span><span class='n'>completionHandler</span>
-<span class='lineno'> 5</span> <span class='p'>{</span>
-<span class='lineno'> 6</span>     <span class='n'>NSURLProtectionSpace</span> <span class='o'>*</span> <span class='n'>protectionSpace</span> <span class='o'>=</span> <span class='n'>challenge</span><span class='p'>.</span><span class='n'>protectionSpace</span><span class='p'>;</span>
-<span class='lineno'> 7</span>     <span class='k'>if</span> <span class='p'>([</span><span class='n'>protectionSpace</span><span class='p'>.</span><span class='n'>authenticationMethod</span> <span class='n'>isEqualToString</span><span class='o'>:</span><span class='n'>NSURLAuthenticationMethodServerTrust</span><span class='p'>])</span> <span class='p'>{</span>
-<span class='lineno'> 8</span>         <span class='n'>SecTrustRef</span> <span class='n'>serverTrust</span> <span class='o'>=</span> <span class='n'>protectionSpace</span><span class='p'>.</span><span class='n'>serverTrust</span><span class='p'>;</span>
-<span class='lineno'> 9</span>         <span class='n'>completionHandler</span><span class='p'>(</span><span class='n'>NSURLSessionAuthChallengeUseCredential</span><span class='p'>,</span> <span class='p'>[</span><span class='n'>NSURLCredential</span> <span class='n'>credentialForTrust</span><span class='o'>:</span> <span class='n'>serverTrust</span><span class='p'>]);</span>
-<span class='lineno'>10</span>     <span class='p'>}</span> <span class='k'>else</span> <span class='p'>{</span>
-<span class='lineno'>11</span>         <span class='n'>completionHandler</span><span class='p'>(</span><span class='n'>NSURLSessionAuthChallengePerformDefaultHandling</span><span class='p'>,</span> <span class='nb'>nil</span><span class='p'>);</span>
-<span class='lineno'>12</span>     <span class='p'>}</span>
-<span class='lineno'>13</span> <span class='p'>}</span>
-</code></pre></div>
-<p>與前面 NSURLConnection 的情況類同，只是這裡使用到的是 iOS7 新增的 NSURLSession 元件。對應的處理方式如下：</p>
-<div class='highlight'><pre><code class='objc'><span class='lineno'> 1</span> <span class='k'>-</span> <span class='p'>(</span><span class='kt'>void</span><span class='p'>)</span> <span class='nf'>URLSession:</span><span class='p'>(</span><span class='n'>NSURLSession</span> <span class='o'>*</span><span class='p'>)</span><span class='nv'>session</span>
-<span class='lineno'> 2</span> <span class='nl'>didReceiveChallenge:</span><span class='p'>(</span><span class='n'>NSURLAuthenticationChallenge</span> <span class='o'>*</span><span class='p'>)</span><span class='nv'>challenge</span>
-<span class='lineno'> 3</span>   <span class='nl'>completionHandler:</span><span class='p'>(</span><span class='kt'>void</span> <span class='p'>(</span><span class='o'>^</span><span class='p'>)(</span><span class='n'>NSURLSessionAuthChallengeDisposition</span> <span class='n'>disposition</span><span class='p'>,</span>
-<span class='lineno'> 4</span>                               <span class='n'>NSURLCredential</span> <span class='o'>*</span><span class='n'>credential</span><span class='p'>))</span><span class='n'>completionHandler</span>
-<span class='lineno'> 5</span> <span class='p'>{</span>
-<span class='lineno'> 6</span>     <span class='k'>if</span> <span class='p'>([[[</span><span class='n'>challenge</span> <span class='n'>protectionSpace</span><span class='p'>]</span> <span class='n'>authenticationMethod</span><span class='p'>]</span> <span class='n'>isEqualToString</span><span class='o'>:</span><span class='n'>NSURLAuthenticationMethodServerTrust</span><span class='p'>])</span> <span class='p'>{</span>
-<span class='lineno'> 7</span>         <span class='n'>SecTrustRef</span> <span class='n'>serverTrust</span> <span class='o'>=</span> <span class='p'>[[</span><span class='n'>challenge</span> <span class='n'>protectionSpace</span><span class='p'>]</span> <span class='n'>serverTrust</span><span class='p'>];</span>
-<span class='lineno'> 8</span>         <span class='k'>if</span> <span class='p'>(</span><span class='n'>serverTrust</span> <span class='o'>!=</span> <span class='nb'>NULL</span><span class='p'>)</span> <span class='p'>{</span>
-<span class='lineno'> 9</span>             <span class='n'>OSStatus</span> <span class='n'>status</span> <span class='o'>=</span> <span class='n'>SecTrustEvaluate</span><span class='p'>(</span><span class='n'>serverTrust</span><span class='p'>,</span> <span class='nb'>NULL</span><span class='p'>);</span>
-<span class='lineno'>10</span>             <span class='k'>if</span><span class='p'>(</span><span class='o'>!</span><span class='p'>(</span><span class='n'>errSecSuccess</span> <span class='o'>==</span> <span class='n'>status</span><span class='p'>))</span> <span class='p'>{</span>
-<span class='lineno'>11</span>                 <span class='n'>completionHandler</span><span class='p'>(</span><span class='n'>NSURLSessionAuthChallengeCancelAuthenticationChallenge</span><span class='p'>,</span> <span class='nb'>nil</span><span class='p'>);</span>
-<span class='lineno'>12</span>                 <span class='k'>return</span><span class='p'>;</span>
-<span class='lineno'>13</span>             <span class='p'>}</span>
-<span class='lineno'>14</span>             
-<span class='lineno'>15</span>             <span class='n'>NSData</span> <span class='o'>*</span><span class='n'>localCertData</span> <span class='o'>=</span> <span class='p'>[</span><span class='n'>NSData</span> <span class='n'>dataWithContentsOfFile</span><span class='o'>:</span><span class='p'>[[</span><span class='n'>NSBundle</span> <span class='n'>mainBundle</span><span class='p'>]</span>
-<span class='lineno'>16</span>                                                    <span class='nl'>pathForResource:</span><span class='s'>@&quot;random-org&quot;</span>
-<span class='lineno'>17</span>                                                             <span class='nl'>ofType:</span><span class='s'>@&quot;der&quot;</span><span class='p'>]];</span>
-<span class='lineno'>18</span>             
-<span class='lineno'>19</span>             <span class='n'>SecCertificateRef</span> <span class='n'>remoteServerCert</span> <span class='o'>=</span> <span class='n'>SecTrustGetCertificateAtIndex</span><span class='p'>(</span><span class='n'>serverTrust</span><span class='p'>,</span> <span class='mi'>0</span><span class='p'>);</span>
-<span class='lineno'>20</span>             <span class='n'>CFDataRef</span> <span class='n'>remoteCertData</span> <span class='o'>=</span> <span class='n'>SecCertificateCopyData</span><span class='p'>(</span><span class='n'>remoteServerCert</span><span class='p'>);</span>
-<span class='lineno'>21</span>             <span class='kt'>BOOL</span> <span class='n'>isMatch</span> <span class='o'>=</span> <span class='p'>[</span><span class='n'>localCertData</span> <span class='n'>isEqualToData</span><span class='o'>:</span> <span class='p'>(</span><span class='n'>__bridge</span> <span class='n'>NSData</span> <span class='o'>*</span><span class='p'>)</span><span class='n'>remoteCertData</span><span class='p'>];</span>
-<span class='lineno'>22</span>             <span class='n'>CFRelease</span><span class='p'>(</span><span class='n'>remoteCertData</span><span class='p'>);</span>
-<span class='lineno'>23</span>             
-<span class='lineno'>24</span>             <span class='k'>if</span> <span class='p'>(</span><span class='n'>isMatch</span><span class='p'>)</span> <span class='p'>{</span>
-<span class='lineno'>25</span>                 <span class='n'>completionHandler</span><span class='p'>(</span><span class='n'>NSURLSessionAuthChallengeUseCredential</span><span class='p'>,</span> <span class='p'>[</span><span class='n'>NSURLCredential</span> <span class='n'>credentialForTrust</span><span class='o'>:</span><span class='n'>serverTrust</span><span class='p'>]);</span>
-<span class='lineno'>26</span>             <span class='p'>}</span> <span class='k'>else</span> <span class='p'>{</span>
-<span class='lineno'>27</span>                 <span class='n'>completionHandler</span><span class='p'>(</span><span class='n'>NSURLSessionAuthChallengeCancelAuthenticationChallenge</span><span class='p'>,</span> <span class='nb'>nil</span><span class='p'>);</span>
-<span class='lineno'>28</span>             <span class='p'>}</span>
-<span class='lineno'>29</span>         <span class='p'>}</span>
-<span class='lineno'>30</span>     <span class='p'>}</span> <span class='k'>else</span> <span class='p'>{</span>
-<span class='lineno'>31</span>         <span class='n'>completionHandler</span><span class='p'>(</span><span class='n'>NSURLSessionAuthChallengePerformDefaultHandling</span><span class='p'>,</span> <span class='nb'>nil</span><span class='p'>);</span>
-<span class='lineno'>32</span>     <span class='p'>}</span>
-<span class='lineno'>33</span> <span class='p'>}</span>
-</code></pre></div>
-<h4 id="_webview_">對 WebView 的一些補充</h4>
+<h4 id="ios-3">iOS 錯誤處理情況3</h4>
 
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="lineno"> 1</span> <span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="nf">URLSession:</span><span class="p">(</span><span class="bp">NSURLSession</span> <span class="o">*</span><span class="p">)</span><span class="nv">session</span>
+<span class="lineno"> 2</span> <span class="nf">didReceiveChallenge:</span><span class="p">(</span><span class="bp">NSURLAuthenticationChallenge</span> <span class="o">*</span><span class="p">)</span><span class="nv">challenge</span>
+<span class="lineno"> 3</span>   <span class="nf">completionHandler:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">NSURLSessionAuthChallengeDisposition</span> <span class="n">disposition</span><span class="p">,</span>
+<span class="lineno"> 4</span>                               <span class="bp">NSURLCredential</span> <span class="o">*</span><span class="n">credential</span><span class="p">))</span><span class="n">completionHandler</span>
+<span class="lineno"> 5</span> <span class="p">{</span>
+<span class="lineno"> 6</span>     <span class="bp">NSURLProtectionSpace</span> <span class="o">*</span> <span class="n">protectionSpace</span> <span class="o">=</span> <span class="n">challenge</span><span class="p">.</span><span class="n">protectionSpace</span><span class="p">;</span>
+<span class="lineno"> 7</span>     <span class="k">if</span> <span class="p">([</span><span class="n">protectionSpace</span><span class="p">.</span><span class="n">authenticationMethod</span> <span class="nl">isEqualToString</span><span class="p">:</span><span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">])</span> <span class="p">{</span>
+<span class="lineno"> 8</span>         <span class="n">SecTrustRef</span> <span class="n">serverTrust</span> <span class="o">=</span> <span class="n">protectionSpace</span><span class="p">.</span><span class="n">serverTrust</span><span class="p">;</span>
+<span class="lineno"> 9</span>         <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengeUseCredential</span><span class="p">,</span> <span class="p">[</span><span class="bp">NSURLCredential</span> <span class="nl">credentialForTrust</span><span class="p">:</span> <span class="n">serverTrust</span><span class="p">]);</span>
+<span class="lineno">10</span>     <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+<span class="lineno">11</span>         <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengePerformDefaultHandling</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
+<span class="lineno">12</span>     <span class="p">}</span>
+<span class="lineno">13</span> <span class="p">}</span></code></pre></div>
+
+<p>與前面 NSURLConnection 的情況類同，只是這裡使用到的是 iOS7  新增的 NSURLSession 元件。對應的處理方式如下：</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="lineno"> 1</span> <span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="nf">URLSession:</span><span class="p">(</span><span class="bp">NSURLSession</span> <span class="o">*</span><span class="p">)</span><span class="nv">session</span>
+<span class="lineno"> 2</span> <span class="nf">didReceiveChallenge:</span><span class="p">(</span><span class="bp">NSURLAuthenticationChallenge</span> <span class="o">*</span><span class="p">)</span><span class="nv">challenge</span>
+<span class="lineno"> 3</span>   <span class="nf">completionHandler:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">NSURLSessionAuthChallengeDisposition</span> <span class="n">disposition</span><span class="p">,</span>
+<span class="lineno"> 4</span>                               <span class="bp">NSURLCredential</span> <span class="o">*</span><span class="n">credential</span><span class="p">))</span><span class="n">completionHandler</span>
+<span class="lineno"> 5</span> <span class="p">{</span>
+<span class="lineno"> 6</span>     <span class="k">if</span> <span class="p">([[[</span><span class="n">challenge</span> <span class="n">protectionSpace</span><span class="p">]</span> <span class="n">authenticationMethod</span><span class="p">]</span> <span class="nl">isEqualToString</span><span class="p">:</span><span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">])</span> <span class="p">{</span>
+<span class="lineno"> 7</span>         <span class="n">SecTrustRef</span> <span class="n">serverTrust</span> <span class="o">=</span> <span class="p">[[</span><span class="n">challenge</span> <span class="n">protectionSpace</span><span class="p">]</span> <span class="n">serverTrust</span><span class="p">];</span>
+<span class="lineno"> 8</span>         <span class="k">if</span> <span class="p">(</span><span class="n">serverTrust</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno"> 9</span>             <span class="n">OSStatus</span> <span class="n">status</span> <span class="o">=</span> <span class="n">SecTrustEvaluate</span><span class="p">(</span><span class="n">serverTrust</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+<span class="lineno">10</span>             <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">errSecSuccess</span> <span class="o">==</span> <span class="n">status</span><span class="p">))</span> <span class="p">{</span>
+<span class="lineno">11</span>                 <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengeCancelAuthenticationChallenge</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
+<span class="lineno">12</span>                 <span class="k">return</span><span class="p">;</span>
+<span class="lineno">13</span>             <span class="p">}</span>
+<span class="lineno">14</span>             
+<span class="lineno">15</span>             <span class="bp">NSData</span> <span class="o">*</span><span class="n">localCertData</span> <span class="o">=</span> <span class="p">[</span><span class="bp">NSData</span> <span class="nl">dataWithContentsOfFile</span><span class="p">:[[</span><span class="bp">NSBundle</span> <span class="n">mainBundle</span><span class="p">]</span>
+<span class="lineno">16</span>                                                    <span class="nl">pathForResource</span><span class="p">:</span><span class="s">@&quot;random-org&quot;</span>
+<span class="lineno">17</span>                                                             <span class="nl">ofType</span><span class="p">:</span><span class="s">@&quot;der&quot;</span><span class="p">]];</span>
+<span class="lineno">18</span>             
+<span class="lineno">19</span>             <span class="n">SecCertificateRef</span> <span class="n">remoteServerCert</span> <span class="o">=</span> <span class="n">SecTrustGetCertificateAtIndex</span><span class="p">(</span><span class="n">serverTrust</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+<span class="lineno">20</span>             <span class="n">CFDataRef</span> <span class="n">remoteCertData</span> <span class="o">=</span> <span class="n">SecCertificateCopyData</span><span class="p">(</span><span class="n">remoteServerCert</span><span class="p">);</span>
+<span class="lineno">21</span>             <span class="kt">BOOL</span> <span class="n">isMatch</span> <span class="o">=</span> <span class="p">[</span><span class="n">localCertData</span> <span class="nl">isEqualToData</span><span class="p">:</span> <span class="p">(</span><span class="k">__bridge</span> <span class="bp">NSData</span> <span class="o">*</span><span class="p">)</span><span class="n">remoteCertData</span><span class="p">];</span>
+<span class="lineno">22</span>             <span class="n">CFRelease</span><span class="p">(</span><span class="n">remoteCertData</span><span class="p">);</span>
+<span class="lineno">23</span>             
+<span class="lineno">24</span>             <span class="k">if</span> <span class="p">(</span><span class="n">isMatch</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno">25</span>                 <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengeUseCredential</span><span class="p">,</span> <span class="p">[</span><span class="bp">NSURLCredential</span> <span class="nl">credentialForTrust</span><span class="p">:</span><span class="n">serverTrust</span><span class="p">]);</span>
+<span class="lineno">26</span>             <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+<span class="lineno">27</span>                 <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengeCancelAuthenticationChallenge</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
+<span class="lineno">28</span>             <span class="p">}</span>
+<span class="lineno">29</span>         <span class="p">}</span>
+<span class="lineno">30</span>     <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+<span class="lineno">31</span>         <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengePerformDefaultHandling</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
+<span class="lineno">32</span>     <span class="p">}</span>
+<span class="lineno">33</span> <span class="p">}</span></code></pre></div>
+
+<h4 id="webview-">對 WebView 的一些補充</h4>
 <p>在對 WebView 做處理上，除了對 SSL 錯誤直接略過外，目前無論是在 Android 還是 iOS 上，SDK API 都尚未直接提供方法讓開發者能在 SSL Handshake 的途中作 Server Certificate Pinning。其中一個替代方法是，利用其他能夠作 Pinning 的元件將資料下載回來，接著把資料傳到 WebView 進行讀取，避開原本用 WebView 直接設定連線網址。蘋果公司有提供這種處理的<a href="https://developer.apple.com/library/ios/samplecode/CustomHTTPProtocol/Introduction/Intro.html">範例</a>。</p>
 
-<h3 id="_3">結語</h3>
-
+<h3 id="section-4">結語</h3>
 <p>本來為了提高安全性而使用的 SSL 加密連線，卻由於程式處理不當讓原來的保護形同虛設。觀念不足與為節省時間而沒做好處理相信是主要原因。網路上大量的文章在引指開發者略過錯誤警告的時候，卻沒有提醒他們這樣做帶來的影響，也助長了不當處理的發生。</p>
 
 <p>除了 SSL 處理問題外，手機應用程式開發還有許多要注意的安全問題，像是 OWASP 列出的 <a href="https://www.owasp.org/index.php/Projects/OWASP_Mobile_Security_Project_-_Top_Ten_Mobile_Risks">Top 10 Mobile Risks</a>、由日本智慧型手機安全協會發佈 <a href="http://www.jssec.org/report/android_securecoding_en_20140801.html">Android Application Secure Design/Secure Coding Guidebook</a> 裡面所建議的。開發商有責任做好安全把關以保障雙方權益。</p>
 
-<h3 id="_4">參考</h3>
-
+<h3 id="section-5">參考</h3>
 <ul>
-<li><a href="http://android-ssl.org">Rethinking SSL Development in an Appified World</a> <br /></li>
-
-<li><a href="http://android-developers.blogspot.com/2012/03/unifying-key-store-access-in-ics.html">Unifying Key Store Access in ICS | Android Developers Blog</a><br /></li>
-
-<li><a href="http://commonsware.com/blog/2013/03/04/ssl-android-basics.html">The CommonsBlog — SSL on Android: The Basics</a><br /></li>
-
-<li><a href="https://developer.android.com/training/articles/security-ssl.html">Security with HTTPS and SSL | Android Developers</a><br /></li>
-
-<li><a href="https://developer.apple.com/librarY/mac/documentation/NetworkingInternet/Conceptual/NetworkingTopics/Articles/OverridingSSLChainValidationCorrectly.html">Networking Programming Topics: Overriding TLS Chain Validation Correctly</a></li>
-
-<li><a href="https://developer.apple.com/library/ios/technotes/tn2232/_index.html">Technical Note TN2232: HTTPS Server Trust Evaluation</a><br /></li>
-
-<li><a href="https://www.owasp.org/index.php/Certificate_and_Public_Key_Pinning">Certificate and Public Key Pinning - OWASP</a></li>
+  <li><a href="http://android-ssl.org">Rethinking SSL Development in an Appified World</a> <br /></li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>[Unifying Key Store Access in ICS</td>
+          <td>Android Developers Blog](http://android-developers.blogspot.com/2012/03/unifying-key-store-access-in-ics.html)<br /></td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li><a href="http://commonsware.com/blog/2013/03/04/ssl-android-basics.html">The CommonsBlog — SSL on Android: The Basics</a><br /></li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>[Security with HTTPS and SSL</td>
+          <td>Android Developers](https://developer.android.com/training/articles/security-ssl.html)<br /></td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li><a href="https://developer.apple.com/librarY/mac/documentation/NetworkingInternet/Conceptual/NetworkingTopics/Articles/OverridingSSLChainValidationCorrectly.html">Networking Programming Topics: Overriding TLS Chain Validation Correctly</a></li>
+  <li><a href="https://developer.apple.com/library/ios/technotes/tn2232/_index.html">Technical Note TN2232: HTTPS Server Trust Evaluation</a><br /></li>
+  <li><a href="https://www.owasp.org/index.php/Certificate_and_Public_Key_Pinning">Certificate and Public Key Pinning - OWASP</a></li>
 </ul>
-<div class="footnotes"><hr /><ol><li id="fn:1">
-<p>Google 基於效能及有效性的考量，在 Android 系統上預設停用<a href="https://code.google.com/p/android/issues/detail?id=68643">憑證撤銷檢查</a><br /> <a href="#fnref:1" rev="footnote">↩</a></p>
-</li><li id="fn:2">
-<p>OWASP 的 Android 範例中，內含的 PUB_KEY 是錯誤的 (最後更改日期 2014/08/14) <a href="#fnref:2" rev="footnote">↩</a></p>
-</li></ol></div>
+
+<div class="footnotes">
+  <ol>
+    <li id="fn:note1">
+      <p>Google 基於效能及有效性的考量，在 Android 系統上預設停用<a href="https://code.google.com/p/android/issues/detail?id=68643">憑證撤銷檢查</a><br /> <a href="#fnref:note1" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:note2">
+      <p>OWASP 的 Android 範例中，內含的 PUB_KEY 是錯誤的 (最後更改日期 2014/08/14) <a href="#fnref:note2" class="reversefootnote">&#8617;</a></p>
+    </li>
+  </ol>
+</div>
+
                     </span>
                     
                     <div class="author-area">

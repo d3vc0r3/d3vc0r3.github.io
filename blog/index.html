@@ -242,6 +242,40 @@
   
                   <div class="post-content preview">
                     <h2 class="post-title">
+                      <a href="/blog/2015/07/24/the-vulnerability-of-dynamic-render-paths-in-rails/">Rails 動態樣板路徑的風險</a>
+                    </h2>
+                    <div class="post-info">
+                      
+                      
+                      
+<span class="post-category"><a href="/blog/category/技術專欄/" title="技術專欄">技術專欄</a></span><span class="posted">Posted </span>by <a class="poster" href="/blog/author/shaolin"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Shaolin</span></span></a>on <span class="post-time" itemprop="datePublished" content="2015-07-24">2015-07-24</span>
+
+
+                      
+                    </div>
+                    <div class="post-tag">
+                      
+                      Tags: <a href="/blog/tag/Rails/">Rails</a>, <a href="/blog/tag/Vulnerability/">Vulnerability</a>, <a href="/blog/tag/RCE/">RCE</a>, <a href="/blog/tag/IDOR/">IDOR</a>
+                    </div>
+                    <div class="post-preview" itemprop="articleBody">
+                      
+                        
+<p><img src="https://lh3.googleusercontent.com/-5Vlr0dDR9YA/VbHwkylOKLI/AAAAAAAAAzU/BiJ2eCEC6Js/w640-h320-no/rails.png" alt="Rails logo" /></p>
+
+<h3 id="section">前言</h3>
+
+<p>從安全開發的角度來看，Ruby on Rails 是一套很友善的框架。它從框架層避免了很多過去網站常出現的安全問題，例如使用 ORM 避免大部分的 SQL injection 問題、有內建的 authenticity_token 讓開發者不必特別煩惱 CSRF、從機制面規定開發者使用 Strong Parameter 避免 Mass Assignment、預設轉化危險字元避免 XSS 等…。</p>
+
+<p>就我們過去<a href="http://devco.re/services/penetration-test" title="滲透測試">滲透測試</a>的經驗來說，Rails 網站雖然還是能找到問題，但相對問題較少，而且很少單純因為 Rails 寫法問題拿到系統操作權。而今天要分享的，是在一次滲透測試中比較特別的例子，因為開發者使用了動態樣板路徑(Dynamic Render Paths)的寫法<sup id="fnref:note1"><a href="#fn:note1" class="footnote">1</a></sup>，最後造成了嚴重的結果。</p>
+
+
+                      
+                    </div>
+                    <a class="readmore" href="/blog/2015/07/24/the-vulnerability-of-dynamic-render-paths-in-rails/">read more →</a>
+                  </div>
+  
+                  <div class="post-content preview">
+                    <h2 class="post-title">
                       <a href="/blog/2015/01/30/cookie-security-insight-acer/">談 Cookie 認證安全－以宏碁雲端售票為例</a>
                     </h2>
                     <div class="post-info">
@@ -368,38 +402,6 @@
                     <a class="readmore" href="/blog/2014/09/30/shellshock-CVE-2014-6271/">read more →</a>
                   </div>
   
-                  <div class="post-content preview">
-                    <h2 class="post-title">
-                      <a href="/blog/2014/09/24/security-of-ip-camera-and-nvr/">網路攝影機、DVR、NVR 的資安議題 - 你知道我在看你嗎？</a>
-                    </h2>
-                    <div class="post-info">
-                      
-                      
-                      
-<span class="post-category"><a href="/blog/category/技術專欄/" title="技術專欄">技術專欄</a></span><span class="posted">Posted </span>by <a class="poster" href="/blog/author/bowenhsu"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Bowen Hsu</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-09-24">2014-09-24</span>
-
-
-                      
-                    </div>
-                    <div class="post-tag">
-                      
-                      Tags: <a href="/blog/tag/IP Camera/">IP Camera</a>, <a href="/blog/tag/CVE/">CVE</a>, <a href="/blog/tag/Statistics/">Statistics</a>, <a href="/blog/tag/IoT/">IoT</a>
-                    </div>
-                    <div class="post-preview" itemprop="articleBody">
-                      
-                        
-<p><a href="https://lh5.googleusercontent.com/-yzP5umnsAhg/VCKTF83dDpI/AAAAAAAAAp8/tS59M5xeSuw/w1522-h1015-no/i_am_watching_you.jpg"><img src="https://lh5.googleusercontent.com/-yzP5umnsAhg/VCKTF83dDpI/AAAAAAAAAp8/tS59M5xeSuw/w1522-h1015-no/i_am_watching_you.jpg" alt="你知道我在看你嗎？" title="你知道我在看你嗎？" /></a></p>
-
-<p>網路攝影機的普及率在近幾年來持續攀升，除了老人與幼兒居家照護、企業室內監控等需求迅速增加之外，結合手機應用程式讓人可隨時隨地觀看影像的方便性也成為普及的原因。當大家還以為黑帽駭客的目標仍然是網站、個人電腦時，已經有許多攻擊者悄悄地將目標轉向了各種物連網設備，例如 NAS、Wireless AP、Printer 等產品，而擁有眾多用戶的網路攝影機理所當然地也是目標之一。身為安控產品，卻造成一項資安的隱憂，是不是有點諷刺呢？</p>
-
-<p>恰好最近幾天忽然看到有新聞報導<a href="http://news.ltn.com.tw/news/world/breakingnews/1112329">「家用監視器遭駭客入侵 隱私全被看光光」</a>這樣子的案例，而在去年也有類似的報導<a href="http://news.networkmagazine.com.tw/classification/security/2013/06/18/51531/">「數十萬支監控攝影機潛藏被駭漏洞 電影情景恐真實上演」</a>，讓我們不禁想對這個事件做個深入的調查。就讓我們來看看網路攝影機以及相關產品究竟有哪些風險吧！</p>
-
-
-                      
-                    </div>
-                    <a class="readmore" href="/blog/2014/09/24/security-of-ip-camera-and-nvr/">read more →</a>
-                  </div>
-  
 
 
                   <ul class="pagination">
@@ -473,7 +475,7 @@
                       </li>
                     
                       <li>
-                        <a href="/blog/category/技術專欄/">技術專欄 <span class="count">(15)</span></a>
+                        <a href="/blog/category/技術專欄/">技術專欄 <span class="count">(16)</span></a>
                       </li>
                     
                       <li>
@@ -501,6 +503,17 @@
                     </div>
                     <ul class="widget-list">
                         
+                      <li>
+                        <a href="/blog/2015/07/24/the-vulnerability-of-dynamic-render-paths-in-rails/">
+                          <div class="widget-list-title">
+                            Rails 動態樣板路徑的風險
+                          </div>
+                          <div class="widget-list-date">
+                            2015-07-24
+                          </div>
+                        </a>
+                      </li>
+  
                       <li>
                         <a href="/blog/2015/01/30/cookie-security-insight-acer/">
                           <div class="widget-list-title">
@@ -600,17 +613,6 @@
                         </a>
                       </li>
   
-                      <li>
-                        <a href="/blog/2014/06/19/client-ip-detection/">
-                          <div class="widget-list-title">
-                            如何正確的取得使用者 IP？
-                          </div>
-                          <div class="widget-list-date">
-                            2014-06-19
-                          </div>
-                        </a>
-                      </li>
-  
 
                     </ul>
                   </div>
@@ -635,7 +637,7 @@
                     
                       <li><a href="/blog/tag/OpenSource/">OpenSource <span class="count">(1)</span></a></li>
                     
-                      <li><a href="/blog/tag/Vulnerability/">Vulnerability <span class="count">(7)</span></a></li>
+                      <li><a href="/blog/tag/Vulnerability/">Vulnerability <span class="count">(8)</span></a></li>
                     
                       <li><a href="/blog/tag/Mail/">Mail <span class="count">(2)</span></a></li>
                     
@@ -700,6 +702,12 @@
                       <li><a href="/blog/tag/Cashflow/">Cashflow <span class="count">(1)</span></a></li>
                     
                       <li><a href="/blog/tag/Vulreport/">Vulreport <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Rails/">Rails <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/RCE/">RCE <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/IDOR/">IDOR <span class="count">(1)</span></a></li>
                     
                   
                 

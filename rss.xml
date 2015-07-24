@@ -4,8 +4,8 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試、資安事件處理、教育訓練、資安顧問服務</description>
         <link>http://devco.re</link>
-        <lastBuildDate>Fri, 24 Jul 2015 16:49:51 +0800</lastBuildDate>
-        <pubDate>Fri, 24 Jul 2015 16:49:51 +0800</pubDate>
+        <lastBuildDate>Fri, 24 Jul 2015 21:32:39 +0800</lastBuildDate>
+        <pubDate>Fri, 24 Jul 2015 21:32:39 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="http://devco.re/rss" rel="self" type="application/rss+xml" />
 
@@ -26,11 +26,8 @@
 &lt;p&gt;動態樣板路徑，OWASP 的&lt;a href=&quot;https://www.owasp.org/index.php/Ruby_on_Rails_Cheatsheet#Dynamic_Render_Paths&quot;&gt;介紹&lt;/a&gt;是這樣的：&lt;/p&gt;
 
 &lt;blockquote&gt;
-  &lt;p&gt;In Rails, controller actions and views can dynamically determine which view or partial to render by calling the “render” method. If user input is used in or for the template name, an attacker could cause the application to render an arbitrary view, such as an administrative page.&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;Care should be taken when using user input to determine which view to render. If possible, avoid any user input in the name or path to the view.&lt;/p&gt;
+  &lt;p&gt;In Rails, controller actions and views can dynamically determine which view or partial to render by calling the “render” method. If user input is used in or for the template name, an attacker could cause the application to render an arbitrary view, such as an administrative page.&lt;br /&gt;&lt;br /&gt;
+Care should be taken when using user input to determine which view to render. If possible, avoid any user input in the name or path to the view.&lt;/p&gt;
 &lt;/blockquote&gt;
 
 &lt;p&gt;OWASP 是說，如果你的樣板路徑是動態產生的，而且使用者可以控制那個樣板路徑，那麼使用者就可以讀取到任意樣板，包含管理介面的樣板。這樣的描述感覺還好，但就我們的發現，這其實是更嚴重的直接存取物件問題(Insecure Direct Object References)，甚至有機會造成遠端命令執行(Remote Code Execution)，怎麼說呢？我們直接看下去。&lt;/p&gt;
@@ -69,7 +66,7 @@ This is DEMO page.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-DNSDV7HwXiQ/VbHQp5PHzVI/AAAAAAAAAyw/ceqXQZJYdCw/w951-h375-no/render_admin.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-DNSDV7HwXiQ/VbHQp5PHzVI/AAAAAAAAAyw/ceqXQZJYdCw/w951-h375-no/render_admin.png&quot; alt=&quot;Rails render admin view&quot; title=&quot;Rails render admin view&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
-&lt;p&gt;然而，當我們嘗試送出系統絕對路徑例如 /etc/passwd &lt;sup id=&quot;fnref:note2&quot;&gt;&lt;a href=&quot;#fn:note2&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt;，網頁竟然吐出了 /etc/passed 的內容！這就是之前所述的直接存取物件問題，可以遍歷目錄瀏覽檔案。&lt;/p&gt;
+&lt;p&gt;然而，當我們嘗試送出系統絕對路徑例如 /etc/passwd &lt;sup id=&quot;fnref:note2&quot;&gt;&lt;a href=&quot;#fn:note2&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt;，網頁竟然吐出了 /etc/passwd 的內容！這就是之前所述的直接存取物件問題，可以遍歷目錄瀏覽檔案。&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-FtPEW-Y0dlQ/VbHQrLP8A8I/AAAAAAAAAy4/lL7bRT9P57g/w781-h548-no/render_file_traversal.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-FtPEW-Y0dlQ/VbHQrLP8A8I/AAAAAAAAAy4/lL7bRT9P57g/w781-h548-no/render_file_traversal.png&quot; alt=&quot;Rails render Insecure Direct Object References&quot; title=&quot;Rails render Insecure Direct Object References&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
@@ -103,7 +100,6 @@ This is DEMO page.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-ruby&quot; data-lang=&quot;ruby&quot;&gt;&lt;span class=&quot;c1&quot;&gt;# lib/action_view/template/resolver.rb&lt;/span&gt;
 &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;extract_handler_and_format_and_variant&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;default_formats&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-  &lt;span class=&quot;c1&quot;&gt;# byebug&lt;/span&gt;
   &lt;span class=&quot;n&quot;&gt;pieces&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;File&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;basename&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;split&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;.&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
   &lt;span class=&quot;n&quot;&gt;pieces&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;shift&lt;/span&gt;
 
@@ -297,7 +293,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 &lt;ol&gt;
   &lt;li&gt;在步驟一把電子商務網站給的單子修改成：『訂單 123 號，金額 20 元』（原價是 456 元）&lt;/li&gt;
   &lt;li&gt;金流服務商依據單據跟惡意使用者收取 20 元費用，並且告訴電子商務網站：『訂單 123 已成功繳款，款項 20 元』&lt;/li&gt;
-  &lt;li&gt;最後電子商務網站看到『訂單 123 已成功繳款』的訊息，就告訴使用者說訂單 123 購買成功。也就是惡意使用者只花取 20 元就購買到原價 456 元的產品。 &lt;/li&gt;
+  &lt;li&gt;最後電子商務網站看到『訂單 123 已成功繳款』的訊息，就告訴使用者說訂單 123 購買成功。也就是惡意使用者只花取 20 元就購買到原價 456 元的產品。&lt;/li&gt;
 &lt;/ol&gt;
 
 &lt;p&gt;(聲明：為求精簡，電子商務與金流服務串接流程有經過簡化，有抓到精髓就好XD)&lt;/p&gt;
@@ -635,7 +631,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;h4 id=&quot;dhcp-&quot;&gt;建置惡意 DHCP 伺服器感染連線使用者&lt;/h4&gt;
 
-&lt;p&gt;同時，有另一批人發現某些作業系統在進行 DHCP 連線時，會將 DHCP 伺服器傳入的一些資訊塞入到環境變數中。於是，若建置一個惡意 DHCP 伺服器，對其連線的使用者就有很高的機會遭受攻擊。我們實際做了實驗攻擊一般使用者，在使用者建立連線的當下放置後門，實驗過程如下影片： &lt;/p&gt;
+&lt;p&gt;同時，有另一批人發現某些作業系統在進行 DHCP 連線時，會將 DHCP 伺服器傳入的一些資訊塞入到環境變數中。於是，若建置一個惡意 DHCP 伺服器，對其連線的使用者就有很高的機會遭受攻擊。我們實際做了實驗攻擊一般使用者，在使用者建立連線的當下放置後門，實驗過程如下影片：&lt;/p&gt;
 
 &lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;http://www.youtube.com/embed/rSj1v8pFVKg&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
 
@@ -2046,7 +2042,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
   &lt;li&gt;攻擊者使用該 Session ID，操作受害者的帳號&lt;/li&gt;
 &lt;/ol&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-qAizYyaOoRo/U3Vaaw6lqsI/AAAAAAAAAZ4/GNO7z3T6Mjg/s2400/2014-05-16-http-session-protection-04-session-id-fixation.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-qAizYyaOoRo/U3Vaaw6lqsI/AAAAAAAAAZ4/GNO7z3T6Mjg/w904-h678-no/2014-05-16-http-session-protection-04-session-id-fixation.png&quot; alt=&quot;Session Fixation&quot; title=&quot;Session Fixation&quot; /&gt;&lt;/a&gt; &lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-qAizYyaOoRo/U3Vaaw6lqsI/AAAAAAAAAZ4/GNO7z3T6Mjg/s2400/2014-05-16-http-session-protection-04-session-id-fixation.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-qAizYyaOoRo/U3Vaaw6lqsI/AAAAAAAAAZ4/GNO7z3T6Mjg/w904-h678-no/2014-05-16-http-session-protection-04-session-id-fixation.png&quot; alt=&quot;Session Fixation&quot; title=&quot;Session Fixation&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;strong&gt;防護措施&lt;/strong&gt;&lt;/p&gt;
 
@@ -3084,7 +3080,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 
 &lt;h3 id=&quot;section-3&quot;&gt;小結&lt;/h3&gt;
 
-&lt;p&gt;就連 OpenSSL 這種歷史悠久而且重要的函式庫，都可能犯這種基本的 C 語言程式設計錯誤，老舊的程式碼一定有不少陳年遺毒，如果沒有徹底清查，類似的心臟噴血事件會不斷上演。大家快點止血吧！ &lt;/p&gt;
+&lt;p&gt;就連 OpenSSL 這種歷史悠久而且重要的函式庫，都可能犯這種基本的 C 語言程式設計錯誤，老舊的程式碼一定有不少陳年遺毒，如果沒有徹底清查，類似的心臟噴血事件會不斷上演。大家快點止血吧！&lt;/p&gt;
 </description>
                 <link>http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/</link>
                 <guid>http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160</guid>
@@ -3377,8 +3373,8 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 
 &lt;ul&gt;
   &lt;li&gt;&lt;a href=&quot;http://wooyun.org/bugs/wooyun-2014-052010&quot;&gt;Dedecms某命令執行漏洞&lt;/a&gt;&lt;/li&gt;
-  &lt;li&gt;&lt;a href=&quot;http://wooyun.org/bugs/wooyun-2014-051950&quot;&gt;DedeCMS全版本通殺SQL注入(真正的無任何限制附官方測試結果)&lt;/a&gt;  &lt;/li&gt;
-  &lt;li&gt;&lt;a href=&quot;http://wooyun.org/bugs/wooyun-2014-051889&quot;&gt;DedeCMS全版本通殺SQL注入(無任何限制)&lt;/a&gt; &lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://wooyun.org/bugs/wooyun-2014-051950&quot;&gt;DedeCMS全版本通殺SQL注入(真正的無任何限制附官方測試結果)&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://wooyun.org/bugs/wooyun-2014-051889&quot;&gt;DedeCMS全版本通殺SQL注入(無任何限制)&lt;/a&gt;&lt;/li&gt;
   &lt;li&gt;&lt;a href=&quot;http://www.wooyun.org/bugs/wooyun-2014-052792&quot;&gt;Dedecms某命令执行漏洞（续）&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
 

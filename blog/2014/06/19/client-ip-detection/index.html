@@ -374,15 +374,18 @@
 
 <p>那我們該怎麼處理呢？我的建議是記錄所有相關的 header 欄位存入資料庫，包含「REMOTE_ADDR」「X-Forwarded-For」等等，真正有犯罪事件發生時，就可以調出所有完整的 IP 資訊進行人工判斷，找出真正的 IP。當然從 header 存入的數值也可能會遭到攻擊者竄改插入特殊字元嘗試 SQL Injection，因此存入值必須先經過過濾，或者使用 Prepared Statement 進行存放。</p>
 
-<p>可以參考的 HTTP Header（依照可能存放真實 IP 的順序）
-* HTTP_CLIENT_IP
-* HTTP_X_FORWARDED_FOR
-* HTTP_X_FORWARDED
-* HTTP_X_CLUSTER_CLIENT_IP
-* HTTP_FORWARDED_FOR
-* HTTP_FORWARDED
-* REMOTE_ADDR (真實 IP 或是 Proxy IP)
-* HTTP_VIA (參考經過的 Proxy)</p>
+<p>可以參考的 HTTP Header（依照可能存放真實 IP 的順序）</p>
+
+<ul>
+  <li>HTTP_CLIENT_IP</li>
+  <li>HTTP_X_FORWARDED_FOR</li>
+  <li>HTTP_X_FORWARDED</li>
+  <li>HTTP_X_CLUSTER_CLIENT_IP</li>
+  <li>HTTP_FORWARDED_FOR</li>
+  <li>HTTP_FORWARDED</li>
+  <li>REMOTE_ADDR (真實 IP 或是 Proxy IP)</li>
+  <li>HTTP_VIA (參考經過的 Proxy)</li>
+</ul>
 
 <p>「駭客思維」就是找出網站任何可能竄改的弱點，從網頁上的元素到 HTTP Header 都是嘗試的對象。因此身為防禦者一定要清楚的知道哪些數值是不能信賴的，不要再參考網路上錯誤的教學了！</p>
 

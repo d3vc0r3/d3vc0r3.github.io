@@ -4,16 +4,18 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試、資安事件處理、教育訓練、資安顧問服務</description>
         <link>http://devco.re</link>
-        <lastBuildDate>Wed, 19 Aug 2015 13:47:45 +0800</lastBuildDate>
-        <pubDate>Wed, 19 Aug 2015 13:47:45 +0800</pubDate>
+        <lastBuildDate>Wed, 16 Sep 2015 17:39:52 +0800</lastBuildDate>
+        <pubDate>Wed, 16 Sep 2015 17:39:52 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="http://devco.re/rss" rel="self" type="application/rss+xml" />
 
 
         <item>
-                <title>DEVCORE 徵求行政出納人才</title>
+                <title>[已結束] DEVCORE 徵求行政出納人才</title>
                 <description>
 &lt;p&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-cURj9jNGh34/VdNGQwioORI/AAAAAAAAAzw/cBOC-1k5rpg/w877-h581-no/devcore_office_1.png&quot; alt=&quot;DEVCORE LOGO&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;（2015.9.16 已結束徵才）&lt;/p&gt;
 
 &lt;p&gt;戴夫寇爾即將要邁入第四個年頭，在過去的歲月中，我們推廣資安的重要性、強調安全開發。我們堅持提供最高品質的滲透測試服務，協助企業找出隱藏的資安威脅。我們也不斷精進技術，期許自己能成為全台灣第一的滲透測試團隊。&lt;/p&gt;
 
@@ -1650,15 +1652,18 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
 &lt;p&gt;那我們該怎麼處理呢？我的建議是記錄所有相關的 header 欄位存入資料庫，包含「REMOTE_ADDR」「X-Forwarded-For」等等，真正有犯罪事件發生時，就可以調出所有完整的 IP 資訊進行人工判斷，找出真正的 IP。當然從 header 存入的數值也可能會遭到攻擊者竄改插入特殊字元嘗試 SQL Injection，因此存入值必須先經過過濾，或者使用 Prepared Statement 進行存放。&lt;/p&gt;
 
-&lt;p&gt;可以參考的 HTTP Header（依照可能存放真實 IP 的順序）
-* HTTP_CLIENT_IP
-* HTTP_X_FORWARDED_FOR
-* HTTP_X_FORWARDED
-* HTTP_X_CLUSTER_CLIENT_IP
-* HTTP_FORWARDED_FOR
-* HTTP_FORWARDED
-* REMOTE_ADDR (真實 IP 或是 Proxy IP)
-* HTTP_VIA (參考經過的 Proxy)&lt;/p&gt;
+&lt;p&gt;可以參考的 HTTP Header（依照可能存放真實 IP 的順序）&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;HTTP_CLIENT_IP&lt;/li&gt;
+  &lt;li&gt;HTTP_X_FORWARDED_FOR&lt;/li&gt;
+  &lt;li&gt;HTTP_X_FORWARDED&lt;/li&gt;
+  &lt;li&gt;HTTP_X_CLUSTER_CLIENT_IP&lt;/li&gt;
+  &lt;li&gt;HTTP_FORWARDED_FOR&lt;/li&gt;
+  &lt;li&gt;HTTP_FORWARDED&lt;/li&gt;
+  &lt;li&gt;REMOTE_ADDR (真實 IP 或是 Proxy IP)&lt;/li&gt;
+  &lt;li&gt;HTTP_VIA (參考經過的 Proxy)&lt;/li&gt;
+&lt;/ul&gt;
 
 &lt;p&gt;「駭客思維」就是找出網站任何可能竄改的弱點，從網頁上的元素到 HTTP Header 都是嘗試的對象。因此身為防禦者一定要清楚的知道哪些數值是不能信賴的，不要再參考網路上錯誤的教學了！&lt;/p&gt;
 </description>
@@ -2077,10 +2082,13 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
 &lt;p&gt;我們可以用一個譬喻來表示：你加入了一個秘密俱樂部，填寫完會員資料後，得到了一張會員卡。之後只要憑這張會員卡，就可以進入這個俱樂部。但是隔天，你的會員卡掉了。撿走你會員卡的人，就可以用你的會員卡進入這個秘密俱樂部，因為會員卡上沒有你的照片或是其他足以辨識身分的資訊。這就像是一個會員網站，我們申請了一個帳號（填寫會員資料加入俱樂部），輸入帳號密碼登入之後，得到一組 Cookie，其中有 Session ID 來辨識你的身分（透過會員卡來辨識身分）。今天如果 Cookie 被偷走了（會員卡被撿走了），別人就可以用你的帳號來登入網站（別人用你的會員卡進入俱樂部）。&lt;/p&gt;
 
-&lt;p&gt;Session 攻擊手法有三種：
-1. 猜測 Session ID (Session Prediction)
-2. 竊取 Session ID (Session Hijacking)
-3. 固定 Session ID (Session Fixation)&lt;/p&gt;
+&lt;p&gt;Session 攻擊手法有三種：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;猜測 Session ID (Session Prediction)&lt;/li&gt;
+  &lt;li&gt;竊取 Session ID (Session Hijacking)&lt;/li&gt;
+  &lt;li&gt;固定 Session ID (Session Fixation)&lt;/li&gt;
+&lt;/ol&gt;
 
 &lt;p&gt;我們以下一一介紹。&lt;/p&gt;
 
@@ -2088,10 +2096,13 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
 &lt;p&gt;Session ID 如同我們前面所說的，就如同是會員卡的編號。只要知道 Session ID，就可以成為這個使用者。如果 Session ID 的長度、複雜度、雜亂度不夠，就能夠被攻擊者猜測。攻擊者只要寫程式不斷暴力計算 Session ID，就有機會得到有效的 Session ID 而竊取使用者帳號。&lt;/p&gt;
 
-&lt;p&gt;分析 Session ID 的工具可以用以下幾種
-1. &lt;a href=&quot;https://www.owasp.org/index.php/Category:OWASP_WebScarab_Project&quot;&gt;OWASP WebScarab&lt;/a&gt;
-2. &lt;a href=&quot;http://lcamtuf.coredump.cx/soft/stompy.tgz&quot;&gt;Stompy&lt;/a&gt;
-3. &lt;a href=&quot;http://portswigger.net/burp/&quot;&gt;Burp Suite&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;分析 Session ID 的工具可以用以下幾種&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.owasp.org/index.php/Category:OWASP_WebScarab_Project&quot;&gt;OWASP WebScarab&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://lcamtuf.coredump.cx/soft/stompy.tgz&quot;&gt;Stompy&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://portswigger.net/burp/&quot;&gt;Burp Suite&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
 
 &lt;p&gt;觀察 Session ID 的亂數分布，可以了解是否能夠推出規律、猜測有效的 Session ID。&lt;/p&gt;
 
@@ -2156,9 +2167,12 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
 &lt;p&gt;那要怎麼防範攻擊呢？當然會有人說，會員卡不要掉不就沒事了嗎？當然我們沒辦法確保用戶不會因為各種方式導致 Cookie 遭竊（XSS、惡意程式等），因此最後一道防線就是網站的 Session 保護。一張會員卡上如果沒有任何可識別的個人資料，當然任何人撿去了都可以用。如果上面有照片跟簽名呢？偷走會員卡的人在進入俱樂部的時候，在門口就會因為照片跟本人不符而被擋下來。Session 保護也是一樣，怎麼讓我們的 Session 保護機制也能辨識身分呢？答案是利用每個使用者特有的識別資訊。&lt;/p&gt;
 
-&lt;p&gt;每個使用者在登入網站的時候，我們可以用每個人特有的識別資訊來確認身分：
-1. 來源 IP 位址
-2. 瀏覽器 User-Agent&lt;/p&gt;
+&lt;p&gt;每個使用者在登入網站的時候，我們可以用每個人特有的識別資訊來確認身分：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;來源 IP 位址&lt;/li&gt;
+  &lt;li&gt;瀏覽器 User-Agent&lt;/li&gt;
+&lt;/ol&gt;
 
 &lt;p&gt;如果在同一個 Session 中，使用者的 IP 或者 User-Agent 改變了，最安全的作法就是把這個 Session 清除，請使用者重新登入。雖然使用者可能因為 IP 更換、Proxy 等因素導致被強制登出，但為了安全性，便利性必須要與之取捨。以 PHP 為例，我們可以這樣撰寫：&lt;/p&gt;
 
@@ -2169,17 +2183,23 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 &lt;span class=&quot;x&quot;&gt;$_SESSION[&amp;#39;LAST_REMOTE_ADDR&amp;#39;] = $_SERVER[&amp;#39;REMOTE_ADDR&amp;#39;];&lt;/span&gt;
 &lt;span class=&quot;x&quot;&gt;$_SESSION[&amp;#39;LAST_USER_AGENT&amp;#39;] = $_SERVER[&amp;#39;HTTP_USER_AGENT&amp;#39;];&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;除了檢查個人識別資訊來確認是否盜用之外，也可以增加前述的 Session ID 的防護方式：
-1. Cookie 設定 Secure Flag (HTTPS)
-2. Cookie 設定 HTTP Only Flag
-3. 成功登入後立即變更 Session ID&lt;/p&gt;
+&lt;p&gt;除了檢查個人識別資訊來確認是否盜用之外，也可以增加前述的 Session ID 的防護方式：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Cookie 設定 Secure Flag (HTTPS)&lt;/li&gt;
+  &lt;li&gt;Cookie 設定 HTTP Only Flag&lt;/li&gt;
+  &lt;li&gt;成功登入後立即變更 Session ID&lt;/li&gt;
+&lt;/ol&gt;
 
 &lt;p&gt;Session 的清除機制也非常重要。當伺服器偵測到可疑的使用者 Session 行為時，例如攻擊者惡意嘗試偽造 Session ID、使用者 Session 可能遭竊、或者逾時等情況，都應該立刻清除該 Session ID 以免被攻擊者利用。&lt;/p&gt;
 
-&lt;p&gt;Session 清除機制時機：
-1. 偵測到惡意嘗試 Session ID 
-2. 識別資訊無效時
-3. 逾時&lt;/p&gt;
+&lt;p&gt;Session 清除機制時機：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;偵測到惡意嘗試 Session ID&lt;/li&gt;
+  &lt;li&gt;識別資訊無效時&lt;/li&gt;
+  &lt;li&gt;逾時&lt;/li&gt;
+&lt;/ol&gt;
 
 &lt;h3 id=&quot;section-1&quot;&gt;管理者有避免使用者帳號遭竊的責任&lt;/h3&gt;
 
@@ -3607,14 +3627,18 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;企業該如何自保？使用 OpenSource 第三方套件或者是系統委外開發，是企業無可避免的。如果是第三方套件，平時可以多加注意套件的資安消息，如果一有新的漏洞被發現，將可以在第一時間應變。若沒有足夠人力密切注意資安消息，也可以委請資安顧問廠商協助，在得知資安消息的第一時間通報企業。委外開發的系統，企業可以要求廠商提出專業公正第三方資安公司進行檢測，並且提出安全報告，證明該系統有經過滲透測試等安全檢測，保障雙方的權利。&lt;/p&gt;
 
-&lt;p&gt;如果系統已經被入侵了，或者是被揭露了安全漏洞，該如何自保呢？在漏洞大量揭露的情況下，系統更會成為攻擊者的目標。因此要務必密切注意使用該套件的伺服器狀況，並且遵循以下原則：
-* 密切注意官方的更新程式並立即更新
-* 此台伺服器的帳號密碼切勿與他台共用
-* 將此台伺服器與其他伺服器隔離，避免遭入侵時受害範圍擴大
-* 異地備份伺服器的系統記錄，並定時檢閱記錄，觀察是否有可疑行為
-* 考慮採用 Web Application Firewall (WAF)、ModSecurity 伺服器安全模組，增加攻擊難度
-* 重新評估使用遭入侵套件的必要性以及安全考量，避免成為企業的隱含風險
-使用第三方套件加速開發節省成本的同時，務必也要考慮安全的問題，才不會因小失大，造成企業更大的損失。同時企業也必須增加資安的素養以及了解攻擊者的思維，別讓自己的企業成為下一個資安事件報導的對象。&lt;/p&gt;
+&lt;p&gt;如果系統已經被入侵了，或者是被揭露了安全漏洞，該如何自保呢？在漏洞大量揭露的情況下，系統更會成為攻擊者的目標。因此要務必密切注意使用該套件的伺服器狀況，並且遵循以下原則：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;密切注意官方的更新程式並立即更新&lt;/li&gt;
+  &lt;li&gt;此台伺服器的帳號密碼切勿與他台共用&lt;/li&gt;
+  &lt;li&gt;將此台伺服器與其他伺服器隔離，避免遭入侵時受害範圍擴大&lt;/li&gt;
+  &lt;li&gt;異地備份伺服器的系統記錄，並定時檢閱記錄，觀察是否有可疑行為&lt;/li&gt;
+  &lt;li&gt;考慮採用 Web Application Firewall (WAF)、ModSecurity 伺服器安全模組，增加攻擊難度&lt;/li&gt;
+  &lt;li&gt;重新評估使用遭入侵套件的必要性以及安全考量，避免成為企業的隱含風險&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;使用第三方套件加速開發節省成本的同時，務必也要考慮安全的問題，才不會因小失大，造成企業更大的損失。同時企業也必須增加資安的素養以及了解攻擊者的思維，別讓自己的企業成為下一個資安事件報導的對象。&lt;/p&gt;
 
 </description>
                 <link>http://devco.re/blog/2014/03/14/3rd-party-software-security-issues/</link>

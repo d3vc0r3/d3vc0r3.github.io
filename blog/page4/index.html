@@ -242,6 +242,76 @@
   
                   <div class="post-content preview">
                     <h2 class="post-title">
+                      <a href="/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3/">HttpOnly - HTTP Headers 的資安議題 (3)</a>
+                    </h2>
+                    <div class="post-info">
+                      
+                      
+                      
+<span class="post-category"><a href="/blog/category/技術專欄/" title="技術專欄">技術專欄</a></span><span class="posted">Posted </span>by <a class="poster" href="/blog/author/bowenhsu"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Bowen Hsu</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-06-11">2014-06-11</span>
+
+
+                      
+                    </div>
+                    <div class="post-tag">
+                      
+                      Tags: <a href="/blog/tag/HTTP Header/">HTTP Header</a>, <a href="/blog/tag/Defense/">Defense</a>, <a href="/blog/tag/JavaScript/">JavaScript</a>, <a href="/blog/tag/XSS/">XSS</a>
+                    </div>
+                    <div class="post-preview" itemprop="articleBody">
+                      
+                        
+<p>上次我們提到了 <a href="http://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/">Content-Security-Pilicy</a>，這次我們來聊聊同樣是為了防禦 XSS 而生的另一個技術。</p>
+
+<h3 id="httponly-">HttpOnly 簡介</h3>
+
+<p>Cookie 的概念雖然早在 1994 年就由 Netscape 的工程師 Montulli 提出，但當時仍未有完善的防護機制，像是 HttpOnly、Secure 等規範都是後來陸續被提出，直到 2011 年 4 月才在 <a href="http://tools.ietf.org/html/rfc6265">RFC 6265</a> 中正式定案。而其中的 <a href="https://www.owasp.org/index.php/HttpOnly">HttpOnly</a> 是專門為了抵禦攻擊者利用 Cross-Site Scripting (XSS) 手法來盜取用戶身份，此項 Cookie 防護設定應該是在 HTTP Headers 系列文中最廣為人知的項目。</p>
+
+<h3 id="httponly--1">HttpOnly 主要作用</h3>
+
+<p>說明 HttpOnly 主要作用之前，先談談 XSS 最常見的利用方式。XSS 攻擊早在 1990 年就被發現，此攻擊手法最常見的利用方式是存取使用者的 cookie 來獲得一些機敏資料。像是存取 session cookie 即可盜用使用者的身份（關於 session 的重要性，可以參考我們部落格的另一篇文章 <a href="http://devco.re/blog/2014/06/03/http-session-protection/">HTTP Session 攻擊與防護</a>），如果在 cookie 中記錄了其他機敏資訊，也可能會一併遭竊。因此若能阻止攻擊者存取帶有敏感資料的 cookie，就能減少 XSS 對使用者的影響，因而催生了 HttpOnly 機制。</p>
+
+
+                      
+                    </div>
+                    <a class="readmore" href="/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3/">read more →</a>
+                  </div>
+  
+                  <div class="post-content preview">
+                    <h2 class="post-title">
+                      <a href="/blog/2014/06/09/openssl-CVE-2014-0224-ccs-injection/">OpenSSL 再爆嚴重漏洞，部分重要網站仍在風險中！</a>
+                    </h2>
+                    <div class="post-info">
+                      
+                      
+                      
+<span class="post-category"><a href="/blog/category/資安新聞/" title="資安新聞">資安新聞</a></span><span class="posted">Posted </span>by <a class="poster" href="/blog/author/shaolin"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Shaolin</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-06-09">2014-06-09</span>
+
+
+                      
+                    </div>
+                    <div class="post-tag">
+                      
+                      Tags: <a href="/blog/tag/OpenSSL/">OpenSSL</a>, <a href="/blog/tag/Vulnerability/">Vulnerability</a>, <a href="/blog/tag/CVE/">CVE</a>
+                    </div>
+                    <div class="post-preview" itemprop="articleBody">
+                      
+                        
+<p>(本篇最後更新時間：2014.6.9 15:40 pm)</p>
+
+<p>OpenSSL 團隊於 6/5 修補了<a href="http://www.openssl.org/news/secadv_20140605.txt">六項安全漏洞</a>，<a href="http://www.sans.org/about/">SANS</a> 在<a href="https://isc.sans.edu/diary/Critical+OpenSSL+Patch+Available+Patch+Now/18211">這篇文章</a>中整理了這幾個漏洞的摘要，這裡截圖表格如下：</p>
+
+<p><a href="https://lh6.googleusercontent.com/-btOMwf3omik/U5Vnx2xR_lI/AAAAAAAAAa4/0xB5tuTj_eQ/w794-h429-no/openssl_0605_table.png"><img src="https://lh6.googleusercontent.com/-btOMwf3omik/U5Vnx2xR_lI/AAAAAAAAAa4/0xB5tuTj_eQ/w794-h429-no/openssl_0605_table.png" alt="OpenSSL 0605 安全更新比較表" /></a></p>
+
+<p>其中 CVE-2014-0224、CVE-2014-0195 兩項被列為 Critical，我們分別來看看這兩個弱點到底造成了什麼危害。</p>
+
+
+                      
+                    </div>
+                    <a class="readmore" href="/blog/2014/06/09/openssl-CVE-2014-0224-ccs-injection/">read more →</a>
+                  </div>
+  
+                  <div class="post-content preview">
+                    <h2 class="post-title">
                       <a href="/blog/2014/06/03/http-session-protection/">HTTP Session 攻擊與防護</a>
                     </h2>
                     <div class="post-info">
@@ -336,68 +406,6 @@
                     <a class="readmore" href="/blog/2014/05/07/vote.tw.am-potential-phishing-site/">read more →</a>
                   </div>
   
-                  <div class="post-content preview">
-                    <h2 class="post-title">
-                      <a href="/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/">Zone Transfer CVE-1999-0532 - 古老的 DNS 資安議題</a>
-                    </h2>
-                    <div class="post-info">
-                      
-                      
-                      
-<span class="post-category"><a href="/blog/category/技術專欄/" title="技術專欄">技術專欄</a></span><span class="posted">Posted </span>by <a class="poster" href="/blog/author/bowenhsu"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Bowen Hsu</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-05-05">2014-05-05</span>
-
-
-                      
-                    </div>
-                    <div class="post-tag">
-                      
-                      Tags: <a href="/blog/tag/DNS/">DNS</a>, <a href="/blog/tag/CVE/">CVE</a>, <a href="/blog/tag/Vulnerability/">Vulnerability</a>, <a href="/blog/tag/Reconnaissance/">Reconnaissance</a>
-                    </div>
-                    <div class="post-preview" itemprop="articleBody">
-                      
-                        
-<h3 id="section">前言</h3>
-
-<p><a href="http://en.wikipedia.org/wiki/Domain_Name_System">DNS</a> 是在 1983 年由 Paul Mockapetris 所發明，相關規範分別在 <a href="http://tools.ietf.org/html/rfc1034">RFC 1034</a> 以及 <a href="http://tools.ietf.org/html/rfc1035">RFC 1035</a>。其主要作用是用來記憶 IP 位址與英文之間的對應關係，讓人類可以用較簡單的方式記得主機名稱。目前一般民眾大多使用 ISP 或國際知名公司提供的 DNS server，如中華的 168.95.1.1 或是 Google 的 8.8.8.8 等等。</p>
-
-<p>然而對於企業而言，可能需要架設大量機器或內部系統，又希望以簡單的方式記憶主機名稱，因此許多企業有自行架設 DNS server 的需求。同時企業通常也會建立幾台備援 DNS server，以避免 DNS 服務忽然中斷。但是當企業有多台 DNS server 時，就必須考量 DNS 記錄的同步問題，通常會使用 <a href="http://en.wikipedia.org/wiki/DNS_zone_transfer">zone transfer</a> 這個功能來同步記錄。</p>
-
-
-                      
-                    </div>
-                    <a class="readmore" href="/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/">read more →</a>
-                  </div>
-  
-                  <div class="post-content preview">
-                    <h2 class="post-title">
-                      <a href="/blog/2014/04/24/php.net-insecure-direct-object-reference/">PHP 官網原始碼讀取案例</a>
-                    </h2>
-                    <div class="post-info">
-                      
-                      
-                      
-<span class="post-category"><a href="/blog/category/案例剖析/" title="案例剖析">案例剖析</a></span><span class="posted">Posted </span>by <a class="poster" href="/blog/author/ding"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Ding</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-04-24">2014-04-24</span>
-
-
-                      
-                    </div>
-                    <div class="post-tag">
-                      
-                      Tags: <a href="/blog/tag/PHP/">PHP</a>, <a href="/blog/tag/LFI/">LFI</a>
-                    </div>
-                    <div class="post-preview" itemprop="articleBody">
-                      
-                        
-<p><a href="https://www.owasp.org/index.php/Top_10_2013-A4-Insecure_Direct_Object_References">不安全的引用物件 (Insecure Direct Object Reference)</a> 是個非常常見的資安漏洞，在 <a href="https://www.owasp.org/">OWASP</a> 公布的<a href="https://www.owasp.org/index.php/Top_10_2013-Top_10">十大網站應用程式安全漏洞</a> 中高居第四名。通常發生在網站應用程式上沒有針對輸入的參數做好檢查，就把參數丟入 include 或 readfile 等函數當中引用，使得攻擊者可以藉此存取任意文件的原始碼。</p>
-
-<p>今天這個案例就發生在 PHP 的官方網站 (<a href="http://www.php.net/">http://www.php.net/</a>)，消息來源是知名的 0-Day 黑市 1337day，發佈的日期是 2014/4/4 ，原始的內容是這樣的：</p>
-
-
-                      
-                    </div>
-                    <a class="readmore" href="/blog/2014/04/24/php.net-insecure-direct-object-reference/">read more →</a>
-                  </div>
-  
 
 
                   <ul class="pagination">
@@ -443,6 +451,12 @@
                   </li>
     
   
+    
+                  <li>
+                    <a href="/blog/page7">7</a>
+                  </li>
+    
+  
 
   
                   <li>
@@ -467,7 +481,7 @@
                       </li>
                     
                       <li>
-                        <a href="/blog/category/案例剖析/">案例剖析 <span class="count">(7)</span></a>
+                        <a href="/blog/category/案例剖析/">案例剖析 <span class="count">(9)</span></a>
                       </li>
                     
                       <li>
@@ -499,6 +513,28 @@
                     </div>
                     <ul class="widget-list">
                         
+                      <li>
+                        <a href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">
+                          <div class="widget-list-title">
+                            How I Hacked Facebook, and Found Someone's Backdoor Script
+                          </div>
+                          <div class="widget-list-date">
+                            2016-04-21
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/">
+                          <div class="widget-list-title">
+                            滲透 Facebook 的思路與發現
+                          </div>
+                          <div class="widget-list-date">
+                            2016-04-21
+                          </div>
+                        </a>
+                      </li>
+  
                       <li>
                         <a href="/blog/2015/08/19/devcore-2015-recruit/">
                           <div class="widget-list-title">
@@ -587,28 +623,6 @@
                         </a>
                       </li>
   
-                      <li>
-                        <a href="/blog/2014/08/15/ssl-mishandling-on-mobile-app-development/">
-                          <div class="widget-list-title">
-                            手機應用程式開發上被忽略的 SSL 處理
-                          </div>
-                          <div class="widget-list-date">
-                            2014-08-15
-                          </div>
-                        </a>
-                      </li>
-  
-                      <li>
-                        <a href="/blog/2014/07/18/waf-configuration-security-issue/">
-                          <div class="widget-list-title">
-                            設備不良設定帶來的安全風險：以 WAF 為例
-                          </div>
-                          <div class="widget-list-date">
-                            2014-07-18
-                          </div>
-                        </a>
-                      </li>
-  
 
                     </ul>
                   </div>
@@ -655,13 +669,13 @@
                     
                       <li><a href="/blog/tag/DNS/">DNS <span class="count">(2)</span></a></li>
                     
-                      <li><a href="/blog/tag/Reconnaissance/">Reconnaissance <span class="count">(2)</span></a></li>
+                      <li><a href="/blog/tag/Reconnaissance/">Reconnaissance <span class="count">(4)</span></a></li>
                     
                       <li><a href="/blog/tag/SVN/">SVN <span class="count">(2)</span></a></li>
                     
                       <li><a href="/blog/tag/IM/">IM <span class="count">(1)</span></a></li>
                     
-                      <li><a href="/blog/tag/Facebook/">Facebook <span class="count">(1)</span></a></li>
+                      <li><a href="/blog/tag/Facebook/">Facebook <span class="count">(3)</span></a></li>
                     
                       <li><a href="/blog/tag/Session/">Session <span class="count">(2)</span></a></li>
                     
@@ -701,11 +715,17 @@
                     
                       <li><a href="/blog/tag/Rails/">Rails <span class="count">(1)</span></a></li>
                     
-                      <li><a href="/blog/tag/RCE/">RCE <span class="count">(1)</span></a></li>
+                      <li><a href="/blog/tag/RCE/">RCE <span class="count">(3)</span></a></li>
                     
                       <li><a href="/blog/tag/IDOR/">IDOR <span class="count">(1)</span></a></li>
                     
                       <li><a href="/blog/tag/徵才/">徵才 <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/BugBounty/">BugBounty <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Backdoor/">Backdoor <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Pentest/">Pentest <span class="count">(2)</span></a></li>
                     
                   
                 

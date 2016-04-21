@@ -242,6 +242,96 @@
   
                   <div class="post-content preview">
                     <h2 class="post-title">
+                      <a href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">How I Hacked Facebook, and Found Someone's Backdoor Script</a>
+                    </h2>
+                    <div class="post-info">
+                      
+                      
+                      
+<span class="post-category"><a href="/blog/category/案例剖析/" title="案例剖析">案例剖析</a></span><span class="posted">Posted </span>by <a class="poster" href="/blog/author/orange"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Orange Tsai</span></span></a>on <span class="post-time" itemprop="datePublished" content="2016-04-21">2016-04-21</span>
+
+
+                      
+                    </div>
+                    <div class="post-tag">
+                      
+                      Tags: <a href="/blog/tag/Facebook/">Facebook</a>, <a href="/blog/tag/BugBounty/">BugBounty</a>, <a href="/blog/tag/RCE/">RCE</a>, <a href="/blog/tag/Backdoor/">Backdoor</a>, <a href="/blog/tag/Reconnaissance/">Reconnaissance</a>, <a href="/blog/tag/Pentest/">Pentest</a>
+                    </div>
+                    <div class="post-preview" itemprop="articleBody">
+                      
+                        
+<p>by <a href="http://blog.orange.tw/">Orange Tsai</a></p>
+
+<p><a href="http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">How I Hacked Facebook, and Found Someone’s Backdoor Script</a> (English Version)<br />
+<a href="http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/">滲透 Facebook 的思路與發現</a> (中文版本)</p>
+
+<hr />
+
+<p><img src="https://2.bp.blogspot.com/-8s6XWWiUGXU/Vxhye5uEG9I/AAAAAAAADks/XfF97zbxPTMbf1zV4nB6r3Gd75p9tEDgQCLcB/s1600/facebook.jpg" alt="Facebook" /></p>
+
+<hr />
+
+<h3 id="foreword">Foreword</h3>
+
+<p>As a pentester, I love server-side vulnerabilities more than client-side ones. Why? Because it’s way much cooler to take over the server directly and gain system SHELL privileges. &lt;(￣︶￣)&gt;</p>
+
+<p>Of course, both vulnerabilities from the server-side and the client-side are indispensable in a perfect penetration test. Sometimes, in order to take over the server more elegantly, it also need some client-side vulnerabilities to do the trick. But speaking of finding vulnerabilities, I prefer to find server-side vulnerabilities first.</p>
+
+<p>With the growing popularity of Facebook around the world, I’ve always been interested in testing the security of Facebook. Luckily, in 2012, Facebook launched the <a href="https://www.facebook.com/whitehat/">Bug Bounty Program</a>, which even motivated me to give it a shot.</p>
+
+
+                      
+                    </div>
+                    <a class="readmore" href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">read more →</a>
+                  </div>
+  
+                  <div class="post-content preview">
+                    <h2 class="post-title">
+                      <a href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/">滲透 Facebook 的思路與發現</a>
+                    </h2>
+                    <div class="post-info">
+                      
+                      
+                      
+<span class="post-category"><a href="/blog/category/案例剖析/" title="案例剖析">案例剖析</a></span><span class="posted">Posted </span>by <a class="poster" href="/blog/author/orange"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Orange Tsai</span></span></a>on <span class="post-time" itemprop="datePublished" content="2016-04-21">2016-04-21</span>
+
+
+                      
+                    </div>
+                    <div class="post-tag">
+                      
+                      Tags: <a href="/blog/tag/Facebook/">Facebook</a>, <a href="/blog/tag/BugBounty/">BugBounty</a>, <a href="/blog/tag/RCE/">RCE</a>, <a href="/blog/tag/Backdoor/">Backdoor</a>, <a href="/blog/tag/Reconnaissance/">Reconnaissance</a>, <a href="/blog/tag/Pentest/">Pentest</a>
+                    </div>
+                    <div class="post-preview" itemprop="articleBody">
+                      
+                        
+<p>by <a href="http://blog.orange.tw/">Orange Tsai</a></p>
+
+<p><a href="http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">How I Hacked Facebook, and Found Someone’s Backdoor Script</a> (English Version)<br />
+<a href="http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/">滲透 Facebook 的思路與發現</a> (中文版本)</p>
+
+<hr />
+
+<p><img src="https://2.bp.blogspot.com/-8s6XWWiUGXU/Vxhye5uEG9I/AAAAAAAADks/XfF97zbxPTMbf1zV4nB6r3Gd75p9tEDgQCLcB/s1600/facebook.jpg" alt="Facebook" /></p>
+
+<hr />
+
+<h3 id="section">寫在故事之前</h3>
+
+<p>身為一位滲透測試人員，比起 Client Side 的弱點我更喜歡 Server Side 的攻擊，能夠直接的控制伺服器、獲得權限操作 SHELL 才爽 &lt;(￣︶￣)&gt;</p>
+
+<p>當然一次完美的滲透任何形式的弱點都不可小覷，在實際滲透時偶爾還是需要些 Client Side 弱點組合可以更完美的控制伺服器，但是在尋找弱點時我本身還是先偏向以可直接進入伺服器的方式來去尋找風險高、能長驅直入的弱點。</p>
+
+<p>隨著 Facebook 在世界上越來越火紅、用戶量越來越多，一直以來都有想要嘗試看看的想法，恰巧 Facebook 在 2012 年開始有了 <a href="https://www.facebook.com/whitehat/">Bug Bounty</a> 獎金獵人的機制讓我更躍躍欲試。</p>
+
+
+                      
+                    </div>
+                    <a class="readmore" href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/">read more →</a>
+                  </div>
+  
+                  <div class="post-content preview">
+                    <h2 class="post-title">
                       <a href="/blog/2015/08/19/devcore-2015-recruit/">[已結束] DEVCORE 徵求行政出納人才</a>
                     </h2>
                     <div class="post-info">
@@ -343,68 +433,6 @@
                     <a class="readmore" href="/blog/2015/01/30/cookie-security-insight-acer/">read more →</a>
                   </div>
   
-                  <div class="post-content preview">
-                    <h2 class="post-title">
-                      <a href="/blog/2015/01/09/information-security-insight-kham/">從寬宏售票談資安</a>
-                    </h2>
-                    <div class="post-info">
-                      
-                      
-                      
-<span class="post-category"><a href="/blog/category/科普文章/" title="科普文章">科普文章</a></span><span class="posted">Posted </span>by <a class="poster" href="/blog/author/shaolin"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Shaolin</span></span></a>on <span class="post-time" itemprop="datePublished" content="2015-01-09">2015-01-09</span>
-
-
-                      
-                    </div>
-                    <div class="post-tag">
-                      
-                      Tags: <a href="/blog/tag/infoleak/">infoleak</a>, <a href="/blog/tag/Defense/">Defense</a>, <a href="/blog/tag/HTTP Header/">HTTP Header</a>, <a href="/blog/tag/Cashflow/">Cashflow</a>
-                    </div>
-                    <div class="post-preview" itemprop="articleBody">
-                      
-                        
-<p>戴夫寇爾部落格停載了快兩個月，非常抱歉，讓各位常常催稿的朋友們久等了 &lt;(_ _)&gt;<br />
-今天就乘著全臺瘋買票的浪頭，來談談一些常被忽略的資訊安全小概念吧！</p>
-
-<p><a href="https://lh6.googleusercontent.com/-HFoHvAu_6kU/VK-iyc6JkrI/AAAAAAAAAvw/9mF_ebSMHUc/w878-h596-no/kham.com.tw.png"><img src="https://lh6.googleusercontent.com/-HFoHvAu_6kU/VK-iyc6JkrI/AAAAAAAAAvw/9mF_ebSMHUc/w878-h596-no/kham.com.tw.png" alt="寬宏售票" title="寬宏售票" /></a></p>
-
-
-                      
-                    </div>
-                    <a class="readmore" href="/blog/2015/01/09/information-security-insight-kham/">read more →</a>
-                  </div>
-  
-                  <div class="post-content preview">
-                    <h2 class="post-title">
-                      <a href="/blog/2014/10/13/android-webview-left-shortcuts-for-hacker/">Android WebView 為你的使用者打開了漏洞之門你知道嗎？</a>
-                    </h2>
-                    <div class="post-info">
-                      
-                      
-                      
-<span class="post-category"><a href="/blog/category/技術專欄/" title="技術專欄">技術專欄</a></span><span class="posted">Posted </span>by <a class="poster" href="/blog/author/anfa"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Anfa Sam</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-10-13">2014-10-13</span>
-
-
-                      
-                    </div>
-                    <div class="post-tag">
-                      
-                      Tags: <a href="/blog/tag/Mobile/">Mobile</a>, <a href="/blog/tag/Android/">Android</a>, <a href="/blog/tag/WebView/">WebView</a>, <a href="/blog/tag/UXSS/">UXSS</a>
-                    </div>
-                    <div class="post-preview" itemprop="articleBody">
-                      
-                        
-<p><a href="https://lh3.googleusercontent.com/-BtDqPupmJiA/VDy2gz9bkQI/AAAAAAAAAuM/liUV3DXWcuE/s500-no/14773948755_6f8774540b_o.jpg"><img src="https://lh3.googleusercontent.com/-BtDqPupmJiA/VDy2gz9bkQI/AAAAAAAAAuM/liUV3DXWcuE/s500-no/14773948755_6f8774540b_o.jpg" alt="opened door" title="opened door" /></a>
-[Credit: <a href="https://www.flickr.com/photos/chrisgold/14773948755/in/photostream/">Chris Goldberg(flickr)</a>]</p>
-
-<p>為了解決在應用程式中顯示網頁的需求，開發者一般會使用到由系統提供的 WebView 元件。而由於 JavaScript 被廣泛應用在網頁上，開發者通常也會把 WebView 處理 JavaScript 的功能打開，好讓大部分網頁能正常運作。但就在開啟這個像是必不可少的 JavaScript 功能時，背後一些由於系統漏洞而引發出來意想不到的風險卻有機會由此而生。接下來的部分將把這些漏洞為大家做個整理。</p>
-
-
-                      
-                    </div>
-                    <a class="readmore" href="/blog/2014/10/13/android-webview-left-shortcuts-for-hacker/">read more →</a>
-                  </div>
-  
 
 
                   <ul class="pagination">
@@ -450,6 +478,12 @@
                   </li>
     
   
+    
+                  <li>
+                    <a href="/blog/page7">7</a>
+                  </li>
+    
+  
 
   
                   <li>
@@ -474,7 +508,7 @@
                       </li>
                     
                       <li>
-                        <a href="/blog/category/案例剖析/">案例剖析 <span class="count">(7)</span></a>
+                        <a href="/blog/category/案例剖析/">案例剖析 <span class="count">(9)</span></a>
                       </li>
                     
                       <li>
@@ -506,6 +540,28 @@
                     </div>
                     <ul class="widget-list">
                         
+                      <li>
+                        <a href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">
+                          <div class="widget-list-title">
+                            How I Hacked Facebook, and Found Someone's Backdoor Script
+                          </div>
+                          <div class="widget-list-date">
+                            2016-04-21
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/">
+                          <div class="widget-list-title">
+                            滲透 Facebook 的思路與發現
+                          </div>
+                          <div class="widget-list-date">
+                            2016-04-21
+                          </div>
+                        </a>
+                      </li>
+  
                       <li>
                         <a href="/blog/2015/08/19/devcore-2015-recruit/">
                           <div class="widget-list-title">
@@ -594,28 +650,6 @@
                         </a>
                       </li>
   
-                      <li>
-                        <a href="/blog/2014/08/15/ssl-mishandling-on-mobile-app-development/">
-                          <div class="widget-list-title">
-                            手機應用程式開發上被忽略的 SSL 處理
-                          </div>
-                          <div class="widget-list-date">
-                            2014-08-15
-                          </div>
-                        </a>
-                      </li>
-  
-                      <li>
-                        <a href="/blog/2014/07/18/waf-configuration-security-issue/">
-                          <div class="widget-list-title">
-                            設備不良設定帶來的安全風險：以 WAF 為例
-                          </div>
-                          <div class="widget-list-date">
-                            2014-07-18
-                          </div>
-                        </a>
-                      </li>
-  
 
                     </ul>
                   </div>
@@ -662,13 +696,13 @@
                     
                       <li><a href="/blog/tag/DNS/">DNS <span class="count">(2)</span></a></li>
                     
-                      <li><a href="/blog/tag/Reconnaissance/">Reconnaissance <span class="count">(2)</span></a></li>
+                      <li><a href="/blog/tag/Reconnaissance/">Reconnaissance <span class="count">(4)</span></a></li>
                     
                       <li><a href="/blog/tag/SVN/">SVN <span class="count">(2)</span></a></li>
                     
                       <li><a href="/blog/tag/IM/">IM <span class="count">(1)</span></a></li>
                     
-                      <li><a href="/blog/tag/Facebook/">Facebook <span class="count">(1)</span></a></li>
+                      <li><a href="/blog/tag/Facebook/">Facebook <span class="count">(3)</span></a></li>
                     
                       <li><a href="/blog/tag/Session/">Session <span class="count">(2)</span></a></li>
                     
@@ -708,11 +742,17 @@
                     
                       <li><a href="/blog/tag/Rails/">Rails <span class="count">(1)</span></a></li>
                     
-                      <li><a href="/blog/tag/RCE/">RCE <span class="count">(1)</span></a></li>
+                      <li><a href="/blog/tag/RCE/">RCE <span class="count">(3)</span></a></li>
                     
                       <li><a href="/blog/tag/IDOR/">IDOR <span class="count">(1)</span></a></li>
                     
                       <li><a href="/blog/tag/徵才/">徵才 <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/BugBounty/">BugBounty <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Backdoor/">Backdoor <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Pentest/">Pentest <span class="count">(2)</span></a></li>
                     
                   
                 

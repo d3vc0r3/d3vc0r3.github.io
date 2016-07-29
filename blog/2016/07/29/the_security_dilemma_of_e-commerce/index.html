@@ -1,0 +1,816 @@
+
+<!DOCTYPE html>
+<html class="no-js " lang="zh-TW" xmlns="http://www.w3.org/1999/xhtml" xmlns:og="http://ogp.me/ns#" xmlns:fb="http://www.facebook.com/2008/fbml">
+  <head>
+    <title>
+      電商業者的資安困境？ | DEVCORE 戴夫寇爾
+    </title>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1" name="viewport">
+    <meta name="description" property="og:description" content="電商業者到底發生了什麼事？為什麼就是不處理個資外洩呢？其實有的時候不是企業不處理，搞不好是有苦難言。今天我們來談談電商業者所遇到的困境是什麼。" />
+    <meta name="keywords" content="電子商務, 個資" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="電商業者的資安困境？ | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="http://devco.re/blog/2016/07/29/the_security_dilemma_of_e-commerce/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="http://devco.re/assets/img/blog/20160729/cart.jpg" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="電商業者的資安困境？ | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="電商業者到底發生了什麼事？為什麼就是不處理個資外洩呢？其實有的時候不是企業不處理，搞不好是有苦難言。今天我們來談談電商業者所遇到的困境是什麼。">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="http://devco.re/assets/img/blog/20160729/cart.jpg">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+
+    <link rel="canonical" href="http://devco.re/blog/2016/07/29/the_security_dilemma_of_e-commerce/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="http://devco.re/rss">
+    <link rel="publisher" href="https://plus.google.com/118439315679478709768/" />
+
+    <link href="/assets/themes/devcore/images/favicon.png" rel="icon" size="32x32">
+    <link href="/assets/themes/devcore/stylesheets/all.min.css" media="screen" rel="stylesheet" type="text/css" />
+    <!--[if lt IE 9]><link href="/stylesheets/ie8.css" media="screen" rel="stylesheet" type="text/css" /><![endif]--><!--[if lt IE 9]><script src="//html5shim.googlecode.com/svn/trunk/html5.js" type="text/javascript"></script><![endif]-->
+  </head>
+  <body class="off-canvas" data-offset="48" data-spy="scroll" data-target=".quick-nav">
+    <div class="wrapper">
+      <div class="outside">
+        <div class="page-width">
+          <div class="close-menu-btn-wrapper">
+            <div class="close-menu-btn-wrapper-inner">
+              <a class="close-menu-btn" href="#close-menu">×</a>
+            </div>
+          </div>
+        </div>
+        <div class="outside-inner">
+          <div class="main-nav" data-set="main-nav">
+            <ul>
+              <li>
+                <a href="/services/penetration-test" title="滲透測試服務 Penetration Test">
+                  <div class="zh">
+                    服務
+                  </div>
+                  <div class="en">
+                    Services
+                  </div>
+                </a>
+                <ul>
+                  <li>
+                    <a href="/services/penetration-test" title="滲透測試服務 Penetration Test">
+                      <div class="zh">
+                        滲透測試服務
+                      </div>
+                      <div class="en">
+                        Penetration Test
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/services/security-training" title="資安教育訓練 Security Training">
+                      <div class="zh">
+                        資安教育訓練
+                      </div>
+                      <div class="en">
+                        Security Training
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/services/incident-response" title="資安事件處理 Incident Response">
+                      <div class="zh">
+                        資安事件處理
+                      </div>
+                      <div class="en">
+                        Incident Response
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/services/security-consulting" title="資安顧問服務 Security Consulting">
+                      <div class="zh">
+                        資安顧問服務
+                      </div>
+                      <div class="en">
+                        Security Consulting
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/services/security-seal" title="網站安全標章 Security Seal">
+                      <div class="zh">
+                        網站安全標章
+                      </div>
+                      <div class="en">
+                        Security Seal
+                      </div>
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <a href="/blog/" title="部落格 Blog">
+                  <div class="zh">
+                    部落格
+                  </div>
+                  <div class="en">
+                    Blog
+                  </div>
+                </a>
+                <ul>
+                  <li>
+                    <a href="/blog/category/%E6%9C%80%E6%96%B0%E6%B6%88%E6%81%AF/" title="最新消息 News">
+                      <div class="zh">
+                        最新消息
+                      </div>
+                      <div class="en">
+                        News
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/blog/category/%E6%A1%88%E4%BE%8B%E5%89%96%E6%9E%90/" title="案例剖析 Case Study">
+                      <div class="zh">
+                        案例剖析
+                      </div>
+                      <div class="en">
+                        Case Study
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/blog/category/%E6%8A%80%E8%A1%93%E5%B0%88%E6%AC%84/" title="技術專欄 Technical">
+                      <div class="zh">
+                        技術專欄
+                      </div>
+                      <div class="en">
+                        Technical
+                      </div>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/blog/category/%E7%A7%91%E6%99%AE%E6%96%87%E7%AB%A0/" title="科普文章 For Muggle">
+                      <div class="zh">
+                        科普文章
+                      </div>
+                      <div class="en">
+                        For Muggle
+                      </div>
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <a href="/about/" title="關於 About">
+                  <div class="zh">
+                    關於
+                  </div>
+                  <div class="en">
+                    About
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a href="/contact/" title="聯絡 Contact">
+                  <div class="zh">
+                    聯絡
+                  </div>
+                  <div class="en">
+                    Contact
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a href="/partners/" title="合作夥伴 Partners">
+                  <div class="zh">
+                    合作夥伴
+                  </div>
+                  <div class="en">
+                    Partners
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="page">
+        <div class="header">
+          <div class="header-inner">
+            <div class="main-nav" data-set="main-nav">
+              <ul>
+                <li>
+                  <a href="/services/penetration-test" title="滲透測試服務 Penetration Test">Services</a>
+                </li>
+                <li>
+                  <a href="/blog/" title="部落格 Blog">Blog</a>
+                </li>
+                <li>
+                  <a href="/about/" title="關於 About">About</a>
+                </li>
+                <li>
+                  <a href="/contact/" title="聯絡 Contact">Contact</a>
+                </li>
+                <li>
+                  <a href="/partners/" title="合作夥伴 Partners">Partners</a>
+                </li>
+                <li class="menu-button">
+                  <a class="open-menu-btn" href="#open-menu">・・・</a>
+                </li>
+              </ul>
+            </div>
+            <h1 class="logo">
+              <a href="/" title="DEVCORE 戴夫寇爾">電商業者的資安困境？</a>
+            </h1>
+          </div>
+        </div>
+        <div class="main">
+          
+
+          <div class="page-header">
+            <div class="container">
+              <h2 class="page-header-title">
+                部落格 <small> Blog </small>
+              </h2>
+            </div>
+          </div>
+          <div class="page-content">
+            <div class="container">
+              <div class="post">
+                <div class="post-main">
+                  <div class="post-switch">
+                    <a class="prev" href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/" title="How I Hacked Facebook, and Found Someone's Backdoor Script">上一篇文章</a>
+                    
+                  </div>
+                  <div itemscope itemtype="http://schema.org/Article" class="post-content">
+                    <h2 itemprop="name" class="post-title">
+                      電商業者的資安困境？
+                    </h2>
+                    <div class="post-info">
+                      
+                      
+                      
+<span class="post-category"><a href="/blog/category/科普文章/" title="科普文章">科普文章</a></span><span class="posted">Posted </span>by <a class="poster" href="/blog/author/allenown"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Allen Own</span></span></a>on <span class="post-time" itemprop="datePublished" content="2016-07-29">2016-07-29</span>
+
+
+                    </div>
+                    <div class="post-tag">
+                      
+                      Tags: <a href="/blog/tag/ecommerce/">ecommerce</a>
+                    </div>
+                    <span itemprop="articleBody">
+                      
+<p><img src="/assets/img/blog/20160729/cart.jpg" alt="Photo Credit: https://www.flickr.com/photos/zionfiction/7968029824/" /></p>
+
+<p>台灣電商網站蓬勃發展，豐富的個資、金流都吸引了攻擊者。近期刑事局 165 反詐騙網站上常看到很多電商網站面臨個資外洩的問題，新聞也不斷報導民眾因為個資外洩被詐騙集團騙取錢財。資安問題是電商業者面臨到最大的危機，民眾也很憤怒為什麼這些企業都不肯把資安做好。但我相信，電商網站的業主也是有苦難言。不少企業知道該把資安做好，有些可能不得其法，也可能什麼都做了，卻還是無法防止自己的網站出現在 165 詐騙排行的榜單上。</p>
+
+<ul>
+  <li>內政部警政署 165 反詐騙諮詢專線 民眾通報高風險賣場排名<br />
+<a href="http://165.gov.tw/loss_rank.aspx">http://165.gov.tw/loss_rank.aspx</a></li>
+</ul>
+
+<p>對於無心於資安的業者來說，被揭露這樣的資訊會有一定程度的力量迫使他們把資安做好。但對於已經顧全資安的業者來說，則是摸不著頭緒到底個資從哪邊外洩的。今天我們就來談談，到底電商網站的資安問題是什麼，民眾的個資又是怎麼外洩的。</p>
+
+<!-- more -->
+
+<h3 id="section">電商網站的困境</h3>
+
+<p>目前電商網站常見的困境有幾點：</p>
+
+<ol>
+  <li>自行開發網站存在漏洞</li>
+  <li>委外開發網站存在漏洞，但承包商不處理</li>
+  <li>內部員工電腦遭入侵外洩個資</li>
+  <li>配合廠商個資外洩，如金流商、物流商</li>
+  <li>攻擊者用已外洩帳號密碼登入電商網站</li>
+  <li>買家在詐騙集團的賣場交易</li>
+</ol>
+
+<p>黑色產業的發展比大家想像中都還要盛行，若企業對攻擊者來說有利可圖，駭客組織會不擇手段入侵取得資料。因此對網站本身、網站周遭系統、企業內部員工、或者以社交工程手法，只要能取得資料都會是他們下手的目標。</p>
+
+<h4 id="section-1">自行開發網站存在漏洞</h4>
+
+<p>這是目前企業最需要先解決的問題。若網站本身資安體質不好，則會輕易被攻擊者入侵。資安問題往往都是企業內部最難解的問題，道高一尺魔高一丈，若沒有經過完整的<a href="http://devco.re/services/penetration-test">滲透測試</a>，則難以找出問題的根源。找到了問題之後，開發人員的教育訓練、資安機制、資安設備，都會是企業接下來要面對的課題。</p>
+
+<p>解決方案：滲透測試、資安顧問、教育訓練</p>
+
+<p><img src="/assets/img/blog/20160729/the_security_dilemma_of_e-commerce_1.png" alt="" /></p>
+
+<h4 id="section-2">委外開發網站存在漏洞，但承包商不處理</h4>
+
+<p>不少企業沒有自己開發網站，而是發包給外部廠商開發、維運。承包商的品質通常難以掌控，價格戰的業界生態，更讓開發的品質難以提升。但業者最頭大的是：承包商拒絕處理漏洞。若沒有在一開始的委外合約就明訂資安維護標準，在日後發生資安事件時則難以要求承包商修補漏洞。因此建議業者在日後的委外開發案，明訂資安標準、驗收時檢附第三方滲透測試報告，並且將日後資安維護合約獨立於一般維護約之外，強制執行。</p>
+
+<p>解決方案：選商標準、開標規格、驗收標準、資安維護合約</p>
+
+<h4 id="section-3">內部員工電腦遭入侵外洩個資</h4>
+
+<p>除了伺服器之外，客戶端也是攻擊者下手的目標。當網站難以被入侵，攻擊者就會轉往員工電腦下手。透過社交工程、搭配惡意郵件等 APT 攻擊，入侵個人電腦後取得消費者個資，甚至做為跳板滲透企業內部擴大攻擊成果。若沒有足夠的資安意識，員工將會是企業最大的資安缺口。</p>
+
+<p>解決方案：強化資安思維、權限最小化、APT 防禦</p>
+
+<p><img src="/assets/img/blog/20160729/the_security_dilemma_of_e-commerce_2.png" alt="" /></p>
+
+<h4 id="section-4">配合廠商個資外洩，如金流商、物流商</h4>
+
+<p>當企業裡裡外外都防禦好了，個資還在外洩，到底發生什麼事情了呢？別忘了一個電商網站有各種與外界橋接的服務，例如交易的金流、運輸的物流。若搭配的外部系統遭到入侵，個資一樣會被取得。但民眾、媒體只會覺得「我在這家電商平台買東西被詐騙」，而怪罪到企業本身。企業有責任要求配合的廠商一同將資安、個資把關好。</p>
+
+<p>解決方案：配合廠商的資安規範、滲透測試</p>
+
+<p><img src="/assets/img/blog/20160729/the_security_dilemma_of_e-commerce_3.png" alt="" /></p>
+
+<h4 id="section-5">攻擊者用已外洩帳號密碼登入電商網站</h4>
+
+<p>資安的責任並不僅在企業，有的時候消費者本身帳號的安全也會影響到電商網站的清譽。目前民眾只要接收到詐騙電話，直覺都會是在某個店家的交易被駭，被取得資料後販售給詐騙集團，因而回報給 165 等反詐騙專線。這種案例也會算在電商網站的帳上，但卻不一定是電商網站的問題。這樣的攻擊手法也俗稱「撞庫」。</p>
+
+<p>解決方案：企業間的聯防、提供使用者帳號保護</p>
+
+<p><img src="/assets/img/blog/20160729/the_security_dilemma_of_e-commerce_4.png" alt="" /></p>
+
+<h4 id="section-6">買家在詐騙集團的賣場交易</h4>
+
+<p>只要有利可圖，詐騙集團就會無所不用其極的想獲取利益。當系統已經達成基本的安全、使用者外洩的帳號也已經無法利用之後，詐騙集團將再攻擊人性的漏洞，開設販賣熱門商品的賣場，吸引無辜的受害者購買。或者在賣場的留言區塊假冒賣家，留下自己的 LINE 與消費者溝通，進行詐騙。</p>
+
+<p>解決方案：消費者安全宣導</p>
+
+<h3 id="section-7">電商業者該如何自保？</h3>
+
+<p>只要有利益的地方，就會有資安危機。雖說道高一尺魔高一丈，但業者並非只能等著被宰。經營網站最重要的就是保護顧客的資料，明白風險的所在。盤點手上的個資位置、機制、措施，謹慎安排資安規劃，確保將安全的風險降到最低。更進一步也可以建立與資安人員良好的關係，公開漏洞通報管道及獎勵機制，鼓勵資安人員優先通報漏洞給企業，避免流入黑色產業。當然，身為消費者的我們，也應該給予負責的企業掌聲。</p>
+
+<p>在未來我們的文章將提到企業應該採取的具體作為，敬請期待！</p>
+
+                    </span>
+                    
+                    <div class="author-area">
+                      <h4 class="page-content-title page-content-title-with-line">
+                        <span>作者資訊</span>
+                      </h4>
+
+                      <div class="author" style="overflow: hidden; margin-bottom: 30px;">
+                        <div class="authoe-avatar" style="float: left; width: 160px;">
+                          <img src="/assets/themes/devcore/images/avatar/allenown.jpg" style="margin: 0px auto; " alt="Allen Own" title="Allen Own" />
+                        </div>
+                        <div class="authoe-desc" style="margin-left: 200px;">
+                          <h4 class="author-name">
+                            <a href="/blog/author/allenown">Allen Own</a>
+                          </h4>
+                          <div class="author-role">
+                            CEO
+                          </div>
+                          <div class="author-intro">
+                            翁浩正 (Allen Own)，具備多年駭客技術研究以及網路管理經驗，擔任學術及政府單位專任講師及顧問。專長於網站應用程式安全、滲透測試、伺服器建置及開發、專業教育訓練。
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="post-switch">
+                      <a class="prev" href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/" title="How I Hacked Facebook, and Found Someone's Backdoor Script">上一篇文章</a>
+                      
+                    </div>
+                    <div class="social-share" style="line-height: 10px; margin: 20px 0;">
+                      <div style="float: right;">
+                        <div class="fb-like" data-href="http://devco.re/blog/2016/07/29/the_security_dilemma_of_e-commerce/" data-layout="button_count" data-action="like" data-show-faces="false" data-share="false"></div>
+                      </div>
+                      <a href="#" style="dispaly:none; border-bottom:none;"> </a>
+                      <a href="https://twitter.com/share?" class="twitter-share-button">Tweet</a>
+                      <div class="g-plusone" data-size="medium"></div>
+                      <script type="text/javascript">
+                        (function() {
+                          var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+                          po.src = 'https://apis.google.com/js/platform.js';
+                          var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+                        })();
+                      </script>
+                      <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+                    </div>
+                  </div>
+                  
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+                </div>
+                <div class="post-sidebar">
+                  <!--文章分類-->
+                  <div class="widget">
+                    <div class="widget-title">
+                      文章分類
+                    </div>
+                    <ul class="widget-list">
+                      
+                                        
+                    
+                      <li>
+                        <a href="/blog/category/最新消息/">最新消息 <span class="count">(2)</span></a>
+                      </li>
+                    
+                      <li>
+                        <a href="/blog/category/案例剖析/">案例剖析 <span class="count">(9)</span></a>
+                      </li>
+                    
+                      <li>
+                        <a href="/blog/category/技術專欄/">技術專欄 <span class="count">(16)</span></a>
+                      </li>
+                    
+                      <li>
+                        <a href="/blog/category/科普文章/">科普文章 <span class="count">(4)</span></a>
+                      </li>
+                    
+                      <li>
+                        <a href="/blog/category/資安新聞/">資安新聞 <span class="count">(1)</span></a>
+                      </li>
+                    
+                  
+                      <li>
+                        <a href="/blog/archive"><div class="widget-list-title">所有文章列表 »</div></a>
+                      </li>
+                      <li>
+                        <gcse:search></gcse:search>
+                      </li>
+
+                    </ul>
+                  </div>
+                  <!--文章分類 end--><!--最新文章-->
+                  <div class="widget">
+                    <div class="widget-title">
+                      最新文章
+                    </div>
+                    <ul class="widget-list">
+                        
+                      <li>
+                        <a href="/blog/2016/07/29/the_security_dilemma_of_e-commerce/">
+                          <div class="widget-list-title">
+                            電商業者的資安困境？
+                          </div>
+                          <div class="widget-list-date">
+                            2016-07-29
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">
+                          <div class="widget-list-title">
+                            How I Hacked Facebook, and Found Someone's Backdoor Script
+                          </div>
+                          <div class="widget-list-date">
+                            2016-04-21
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/">
+                          <div class="widget-list-title">
+                            滲透 Facebook 的思路與發現
+                          </div>
+                          <div class="widget-list-date">
+                            2016-04-21
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2015/08/19/devcore-2015-recruit/">
+                          <div class="widget-list-title">
+                            [已結束] DEVCORE 徵求行政出納人才
+                          </div>
+                          <div class="widget-list-date">
+                            2015-08-19
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2015/07/24/the-vulnerability-of-dynamic-render-paths-in-rails/">
+                          <div class="widget-list-title">
+                            Rails 動態樣板路徑的風險
+                          </div>
+                          <div class="widget-list-date">
+                            2015-07-24
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2015/01/30/cookie-security-insight-acer/">
+                          <div class="widget-list-title">
+                            談 Cookie 認證安全－以宏碁雲端售票為例
+                          </div>
+                          <div class="widget-list-date">
+                            2015-01-30
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2015/01/09/information-security-insight-kham/">
+                          <div class="widget-list-title">
+                            從寬宏售票談資安
+                          </div>
+                          <div class="widget-list-date">
+                            2015-01-09
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2014/10/13/android-webview-left-shortcuts-for-hacker/">
+                          <div class="widget-list-title">
+                            Android WebView 為你的使用者打開了漏洞之門你知道嗎？
+                          </div>
+                          <div class="widget-list-date">
+                            2014-10-13
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2014/09/30/shellshock-CVE-2014-6271/">
+                          <div class="widget-list-title">
+                            Shellshock (Bash CVE-2014-6271) 威脅仍在擴大中，但無需過度恐慌
+                          </div>
+                          <div class="widget-list-date">
+                            2014-09-30
+                          </div>
+                        </a>
+                      </li>
+  
+                      <li>
+                        <a href="/blog/2014/09/24/security-of-ip-camera-and-nvr/">
+                          <div class="widget-list-title">
+                            網路攝影機、DVR、NVR 的資安議題 - 你知道我在看你嗎？
+                          </div>
+                          <div class="widget-list-date">
+                            2014-09-24
+                          </div>
+                        </a>
+                      </li>
+  
+
+                    </ul>
+                  </div>
+                  <!--最新文章 end--><!--文章標籤-->
+                  <div class="widget">
+                    <div class="widget-title">
+                      文章標籤
+                    </div>
+                    <ul class="widget-tags">
+                      
+                                        
+                    
+                      <li><a href="/blog/tag/公告/">公告 <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/JavaScript/">JavaScript <span class="count">(3)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Hijack/">Hijack <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/HTTP Header/">HTTP Header <span class="count">(6)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Defense/">Defense <span class="count">(9)</span></a></li>
+                    
+                      <li><a href="/blog/tag/OpenSource/">OpenSource <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Vulnerability/">Vulnerability <span class="count">(8)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Mail/">Mail <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Phishing/">Phishing <span class="count">(4)</span></a></li>
+                    
+                      <li><a href="/blog/tag/XSS/">XSS <span class="count">(3)</span></a></li>
+                    
+                      <li><a href="/blog/tag/OpenSSL/">OpenSSL <span class="count">(4)</span></a></li>
+                    
+                      <li><a href="/blog/tag/CVE/">CVE <span class="count">(8)</span></a></li>
+                    
+                      <li><a href="/blog/tag/WordPress/">WordPress <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Brute-force/">Brute-force <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/PHP/">PHP <span class="count">(3)</span></a></li>
+                    
+                      <li><a href="/blog/tag/LFI/">LFI <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/DNS/">DNS <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Reconnaissance/">Reconnaissance <span class="count">(4)</span></a></li>
+                    
+                      <li><a href="/blog/tag/SVN/">SVN <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/IM/">IM <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Facebook/">Facebook <span class="count">(3)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Session/">Session <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Cookie/">Cookie <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Statistics/">Statistics <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/WAF/">WAF <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Proxy/">Proxy <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Mobile/">Mobile <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Android/">Android <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/iOS/">iOS <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/SSL/">SSL <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/MITM/">MITM <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/infoleak/">infoleak <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/IoT/">IoT <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/IP Camera/">IP Camera <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Shell/">Shell <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/WebView/">WebView <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/UXSS/">UXSS <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Cashflow/">Cashflow <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Vulreport/">Vulreport <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Rails/">Rails <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/RCE/">RCE <span class="count">(3)</span></a></li>
+                    
+                      <li><a href="/blog/tag/IDOR/">IDOR <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/徵才/">徵才 <span class="count">(1)</span></a></li>
+                    
+                      <li><a href="/blog/tag/BugBounty/">BugBounty <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Backdoor/">Backdoor <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/Pentest/">Pentest <span class="count">(2)</span></a></li>
+                    
+                      <li><a href="/blog/tag/ecommerce/">ecommerce <span class="count">(1)</span></a></li>
+                    
+                  
+                
+
+                    </ul>
+                  </div>
+                  <!--文章標籤 end-->
+                </div>
+              </div>
+              <div id="fb-root"></div>
+              <script>(function(d, s, id) {
+                var js, fjs = d.getElementsByTagName(s)[0];
+                if (d.getElementById(id)) return;
+                js = d.createElement(s); js.id = id;
+                js.src = "//connect.facebook.net/en_US/all.js#xfbml=1";
+                fjs.parentNode.insertBefore(js, fjs);
+              }(document, 'script', 'facebook-jssdk'));</script>
+            </div>
+          </div>
+
+
+        </div>
+        <div class="footer">
+          <div class="footer-inner">
+            <div class="footer-top">
+              <div class="footer-services">
+                <a class="footer-service col" href="/services/penetration-test" title="滲透測試服務 Penetration Test">
+                  <div class="footer-service-icon service-icon service-icon-penetration-test"></div>
+                  <div class="footer-service-title">
+                    滲透測試服務
+                  </div>
+                </a><a class="footer-service col" href="/services/security-training" title="資安教育訓練 Security Training">
+                  <div class="footer-service-icon service-icon service-icon-security-training"></div>
+                  <div class="footer-service-title">
+                    資安教育訓練
+                  </div>
+                </a><a class="footer-service col" href="/services/incident-response" title="資安事件處理 Incident Response">
+                  <div class="footer-service-icon service-icon service-icon-incident-response"></div>
+                  <div class="footer-service-title">
+                    資安事件處理
+                  </div>
+                </a><a class="footer-service col" href="/services/security-consulting" title="資安顧問服務 Security Consulting">
+                  <div class="footer-service-icon service-icon service-icon-security-consulting"></div>
+                  <div class="footer-service-title">
+                    資安顧問服務
+                  </div>
+                </a>
+              </div>
+            </div>
+            <div class="footer-bottom">
+              <div class="footer-links-group">
+                <ul class="footer-links">
+                  <li>
+                    <a href="/services/penetration-test" title="滲透測試服務 Penetration Test">Services</a>
+                  </li>
+                  <li>
+                    <a href="/blog/" title="部落格 Blog">Blog</a>
+                  </li>
+                  <li>
+                    <a href="/about/" title="關於 About">About</a>
+                  </li>
+                  <li>
+                    <a href="/contact/" title="聯絡 Contact">Contact</a>
+                  </li>
+                </ul>
+                <ul class="footer-links">
+                  <li>
+                    <a href="/services/security-seal" title="網站安全標章 Security Seal">Security Seal</a>
+                  </li>
+                  <li>
+                    <a href="/partners/" title="合作夥伴 Partners">Partners</a>
+                  </li>
+                </ul>
+                <ul class="footer-links">
+                  <li>
+                    <a href="https://www.facebook.com/D3VC0RE" title="DEVCORE Facebook 粉絲團" target="_blank">Facebook</a>
+                  </li>
+                  <li>
+                    <a href="https://plus.google.com/118439315679478709768/posts" title="DEVCORE Google+ 專頁" target="_blank">Google+</a>
+                  </li>
+                  <li>
+                    <a href="https://twitter.com/d3vc0r3" title="DEVCORE Twitter" target="_blank">Twitter</a>
+                  </li>
+                </ul>
+              </div>
+              <ul class="footer-info">
+                <li>
+                  電話：02-2718-0156
+                </li>
+                <li>
+                  Email：contact [at] devco.re
+                </li>
+                <li>
+                  統編：53955237
+                </li>
+              </ul>
+              <ul class="footer-info">
+                <li>
+                  地址：10487 台北市中山區復興北路 168 號 10 樓
+                </li>
+                <li>
+                  ©2016 DEVCORE 戴夫寇爾
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="off-canvas-mask"></div>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore/javascripts/vender/modernizr.js" type="text/javascript"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" type="text/javascript"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js" type="text/javascript"></script>
+    <script src="/assets/themes/devcore/javascripts/off-canvas.min.js" type="text/javascript"></script>
+    <script src="/assets/themes/devcore/javascripts/all.min.js" type="text/javascript"></script>
+    <script src="/assets/themes/devcore/javascripts/gcse.js" type="text/javascript"></script>
+    
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+    <!-- Google Tag Manager -->
+    <noscript>
+      <iframe src="//www.googletagmanager.com/ns.html?id=GTM-K5B8NW" height="0" width="0" style="display:none;visibility:hidden"></iframe>
+    </noscript>
+    <script>
+      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-K5B8NW');
+    </script>
+    <!-- End Google Tag Manager -->
+  </body>
+</html>
+

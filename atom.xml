@@ -4,7 +4,7 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="http://devco.re/" rel="self"/>
  <link href="http://devco.re"/>
- <updated>2016-09-22T16:59:27+08:00</updated>
+ <updated>2016-09-23T00:42:59+08:00</updated>
  <id>http://devco.re</id>
  <author>
    <name>DEVCORE</name>
@@ -34,6 +34,8 @@
 Accellion File Transfer Appliance (&lt;code&gt;FTA&lt;/code&gt;) is a secure file transfer service which enables users to share and sync files online with AES 128/256 encryption. The Enterprise version further incorporates SSL VPN services with integration of Single Sign-on mechanisms like AD, LDAP and Kerberos.
 &lt;br /&gt;&lt;/p&gt;
 
+&lt;!-- more --&gt;
+
 &lt;h3 id=&quot;vulnerability-details&quot;&gt;Vulnerability Details&lt;/h3&gt;
 &lt;p&gt;&lt;br /&gt;
 In this research, the following vulnerabilities were discovered on the FTA version FTA_9_12_0 (13-Oct-2015 Release)&lt;/p&gt;
@@ -55,8 +57,6 @@ In this research, the following vulnerabilities were discovered on the FTA versi
 According to a public data reconnaissance, there are currently 1,217 FTA servers online around the world, most of which are located in the US, followed by Canada, Australia, UK, and Singapore.&lt;br /&gt;
 Determine from the domain name and SSL Certificate of these servers, FTA is widely used by governmental bodies, educational institutions, enterprises, including several well-known brands.&lt;br /&gt;
 &lt;br /&gt;&lt;/p&gt;
-
-&lt;!-- more --&gt;
 
 &lt;h3 id=&quot;vulnerability-analysis-and-exploitation&quot;&gt;Vulnerability Analysis and Exploitation&lt;/h3&gt;
 &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
@@ -397,7 +397,7 @@ Upon discovering the FTA vulnerability in early February, I notified Facebook an
    <content type="html">
 &lt;p&gt;By &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability-eng-ver/&quot;&gt;English Version&lt;/a&gt; (English Version)
+&lt;p&gt;&lt;a href=&quot;/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability-eng-ver/&quot;&gt;English Version&lt;/a&gt; (English Version)&lt;br /&gt;
 &lt;a href=&quot;/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability/&quot;&gt;中文版本&lt;/a&gt; (中文版本)&lt;/p&gt;
 
 &lt;hr /&gt;
@@ -410,6 +410,8 @@ Upon discovering the FTA vulnerability in early February, I notified Facebook an
 &lt;p&gt;&lt;br /&gt;
 Accellion File Transfer Appliance (以下簡稱 FTA) 為一款安全檔案傳輸服務，可讓使用者線上分享、同步檔案，且所有檔案皆經 AES 128/256 加密，Enterprise 版本更支援 SSL VPN 服務並整合 AD, LDAP, Kerberos 等 Single Sign-on 機制。
 &lt;br /&gt;&lt;/p&gt;
+
+&lt;!-- more --&gt;
 
 &lt;h3 id=&quot;section&quot;&gt;漏洞描述&lt;/h3&gt;
 &lt;p&gt;&lt;br /&gt;
@@ -431,8 +433,6 @@ Accellion File Transfer Appliance (以下簡稱 FTA) 為一款安全檔案傳輸
 &lt;p&gt;&lt;br /&gt;
 根據公開資料掃描，全球共發現 1217 台 FTA 存活主機，主要分布地點為美國，其次加拿大、澳洲、英國與新加坡。根據存活主機的域名、SSL Certificate 發現 FTA 使用客戶遍及政府、教育、企業等領域，其中不乏一些知名品牌。
 &lt;br /&gt;&lt;/p&gt;
-
-&lt;!-- more --&gt;
 
 &lt;h3 id=&quot;section-2&quot;&gt;漏洞分析與利用&lt;/h3&gt;
 &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
@@ -539,8 +539,9 @@ Accellion File Transfer Appliance (以下簡稱 FTA) 為一款安全檔案傳輸
   &lt;p&gt;http://&amp;lt;fta&amp;gt;/courier/themes/templates/.cc.php&lt;/p&gt;
 &lt;/blockquote&gt;
 
-&lt;p&gt;&lt;br /&gt;
-#### Known Secret-Key leads to Remote Code Execution&lt;/p&gt;
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;known-secret-key-leads-to-remote-code-execution&quot;&gt;Known Secret-Key leads to Remote Code Execution&lt;/h4&gt;
 
 &lt;p&gt;在前個弱點中，要達成遠端代碼執行還有一個條件是要存在可寫目錄，但現實中有機率找不到可寫的目錄放置 Webshell，因此無法從 SQL Injection 達成代碼執行，不過這時有另外一條路可以幫助我們達成遠端代碼執行。&lt;/p&gt;
 
@@ -717,7 +718,7 @@ bash-3.2&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cat /tmp/.gg
 
 &lt;h3 id=&quot;section-3&quot;&gt;後門&lt;/h3&gt;
 &lt;p&gt;&lt;br /&gt;
-在取得最高權限後，開始對伺服器進行一些審視時，發現已有幾款後門藏在 FTA 主機中了，經過研究後首先確認一款 IRC BOT 為 Niara 所發布的 &lt;a href=&quot;#ref3&quot;&gt;弱點報告&lt;/a&gt; 中有提及，此外，額外發現兩款不同類型的 PHP Webshell 並無在公開的報告中發現，透過 Apache Log 時間推測應該是透過 2015 年中的 CVE-2015-2857 所放置之後門。&lt;/p&gt;
+在取得最高權限後，開始對伺服器進行一些審視時，發現已有幾款後門藏在 FTA 主機中了，經過研究後首先確認一款 IRC BOT 為 Niara 所發布的 &lt;a href=&quot;http://www.niara.com/docs/ta-accellion-fta-cve-2015-2857.pdf&quot;&gt;弱點報告&lt;/a&gt; 中有提及，此外，額外發現兩款不同類型的 PHP Webshell 並無在公開的報告中發現，透過 Apache Log 時間推測應該是透過 2015 年中的 CVE-2015-2857 所放置之後門。&lt;/p&gt;
 
 &lt;p&gt;PHPSPY 後門，全球 1217 台存活主機上共發現 62 台，放置路徑於：&lt;/p&gt;
 

@@ -242,6 +242,37 @@
   
                   <div class="post-content preview">
                     <h2 class="post-title">
+                      <a href="/blog/2014/08/15/ssl-mishandling-on-mobile-app-development/">手機應用程式開發上被忽略的 SSL 處理</a>
+                    </h2>
+                    <div class="post-info">
+                      
+                      
+                      
+<span class="post-category"><a href="/blog/category/技術專欄/" title="技術專欄">技術專欄</a></span><span class="posted">Posted </span>by <a class="poster" href="/blog/author/anfa"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Anfa Sam</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-08-15">2014-08-15</span>
+
+
+                      
+                    </div>
+                    <div class="post-tag">
+                      
+                      Tags: <a href="/blog/tag/Mobile/">Mobile</a>, <a href="/blog/tag/Android/">Android</a>, <a href="/blog/tag/iOS/">iOS</a>, <a href="/blog/tag/SSL/">SSL</a>, <a href="/blog/tag/MITM/">MITM</a>
+                    </div>
+                    <div class="post-preview" itemprop="articleBody">
+                      
+                        
+<p><img src="https://lh5.googleusercontent.com/Fd1iUVkdWXPxlYucic4NznDQT9L4CQCR2gYL3KI-2Qs=w514-h686-no" alt="SSL" />
+<!-- Credit: http://natashenka.ca/printable-ssl-posters/ --></p>
+
+<p>在網路上傳輸敏感資訊時，通常會使用 HTTPS 協定，讓客戶端與伺服器端對資料進行 SSL 加密處理，以降低資料在傳輸過程中被監聽或中間人攻擊的風險。HTTPS 的重要性逐漸被重視，Google 除了預設開啟 HTTPS 之外，未來更會將 <a href="http://googlewebmastercentral.blogspot.tw/2014/08/https-as-ranking-signal.html">HTTPS 的網站搜尋排名加分</a>。但為了確保傳輸的安全，過程中客戶端會核對伺服器的憑證鏈 (certificate chain) 是否有效，若判定為無效時會作出警告。(詳見<a href="http://en.wikipedia.org/wiki/Secure_Sockets_Layer">Wikipedia</a>)</p>
+
+
+                      
+                    </div>
+                    <a class="readmore" href="/blog/2014/08/15/ssl-mishandling-on-mobile-app-development/">read more →</a>
+                  </div>
+  
+                  <div class="post-content preview">
+                    <h2 class="post-title">
                       <a href="/blog/2014/07/18/waf-configuration-security-issue/">設備不良設定帶來的安全風險：以 WAF 為例</a>
                     </h2>
                     <div class="post-info">
@@ -375,42 +406,6 @@
                     <a class="readmore" href="/blog/2014/06/13/zone-transfer-statistics-of-alexa-top-1m/">read more →</a>
                   </div>
   
-                  <div class="post-content preview">
-                    <h2 class="post-title">
-                      <a href="/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3/">HttpOnly - HTTP Headers 的資安議題 (3)</a>
-                    </h2>
-                    <div class="post-info">
-                      
-                      
-                      
-<span class="post-category"><a href="/blog/category/技術專欄/" title="技術專欄">技術專欄</a></span><span class="posted">Posted </span>by <a class="poster" href="/blog/author/bowenhsu"><span itemprop="author" itemscope itemtype="http://schema.org/Person"><span itemprop="name">Bowen Hsu</span></span></a>on <span class="post-time" itemprop="datePublished" content="2014-06-11">2014-06-11</span>
-
-
-                      
-                    </div>
-                    <div class="post-tag">
-                      
-                      Tags: <a href="/blog/tag/HTTP Header/">HTTP Header</a>, <a href="/blog/tag/Defense/">Defense</a>, <a href="/blog/tag/JavaScript/">JavaScript</a>, <a href="/blog/tag/XSS/">XSS</a>
-                    </div>
-                    <div class="post-preview" itemprop="articleBody">
-                      
-                        
-<p>上次我們提到了 <a href="http://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/">Content-Security-Pilicy</a>，這次我們來聊聊同樣是為了防禦 XSS 而生的另一個技術。</p>
-
-<h3 id="httponly-">HttpOnly 簡介</h3>
-
-<p>Cookie 的概念雖然早在 1994 年就由 Netscape 的工程師 Montulli 提出，但當時仍未有完善的防護機制，像是 HttpOnly、Secure 等規範都是後來陸續被提出，直到 2011 年 4 月才在 <a href="http://tools.ietf.org/html/rfc6265">RFC 6265</a> 中正式定案。而其中的 <a href="https://www.owasp.org/index.php/HttpOnly">HttpOnly</a> 是專門為了抵禦攻擊者利用 Cross-Site Scripting (XSS) 手法來盜取用戶身份，此項 Cookie 防護設定應該是在 HTTP Headers 系列文中最廣為人知的項目。</p>
-
-<h3 id="httponly--1">HttpOnly 主要作用</h3>
-
-<p>說明 HttpOnly 主要作用之前，先談談 XSS 最常見的利用方式。XSS 攻擊早在 1990 年就被發現，此攻擊手法最常見的利用方式是存取使用者的 cookie 來獲得一些機敏資料。像是存取 session cookie 即可盜用使用者的身份（關於 session 的重要性，可以參考我們部落格的另一篇文章 <a href="http://devco.re/blog/2014/06/03/http-session-protection/">HTTP Session 攻擊與防護</a>），如果在 cookie 中記錄了其他機敏資訊，也可能會一併遭竊。因此若能阻止攻擊者存取帶有敏感資料的 cookie，就能減少 XSS 對使用者的影響，因而催生了 HttpOnly 機制。</p>
-
-
-                      
-                    </div>
-                    <a class="readmore" href="/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3/">read more →</a>
-                  </div>
-  
 
 
                   <ul class="pagination">
@@ -462,6 +457,12 @@
                   </li>
     
   
+    
+                  <li>
+                    <a href="/blog/page8">8</a>
+                  </li>
+    
+  
 
   
                   <li>
@@ -490,7 +491,7 @@
                       </li>
                     
                       <li>
-                        <a href="/blog/category/技術專欄/">技術專欄 <span class="count">(18)</span></a>
+                        <a href="/blog/category/技術專欄/">技術專欄 <span class="count">(19)</span></a>
                       </li>
                     
                       <li>
@@ -518,6 +519,17 @@
                     </div>
                     <ul class="widget-list">
                         
+                      <li>
+                        <a href="/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957/">
+                          <div class="widget-list-title">
+                            WEB2PY 反序列化的安全問題－CVE-2016-3957
+                          </div>
+                          <div class="widget-list-date">
+                            2017-01-03
+                          </div>
+                        </a>
+                      </li>
+  
                       <li>
                         <a href="/blog/2016/12/26/a-look-into-the-growth-of-IoT-DDoS-attacks/">
                           <div class="widget-list-title">
@@ -617,17 +629,6 @@
                         </a>
                       </li>
   
-                      <li>
-                        <a href="/blog/2015/01/09/information-security-insight-kham/">
-                          <div class="widget-list-title">
-                            從寬宏售票談資安
-                          </div>
-                          <div class="widget-list-date">
-                            2015-01-09
-                          </div>
-                        </a>
-                      </li>
-  
 
                     </ul>
                   </div>
@@ -652,7 +653,7 @@
                     
                       <li><a href="/blog/tag/OpenSource/">OpenSource <span class="count">(1)</span></a></li>
                     
-                      <li><a href="/blog/tag/Vulnerability/">Vulnerability <span class="count">(8)</span></a></li>
+                      <li><a href="/blog/tag/Vulnerability/">Vulnerability <span class="count">(9)</span></a></li>
                     
                       <li><a href="/blog/tag/Mail/">Mail <span class="count">(2)</span></a></li>
                     
@@ -662,7 +663,7 @@
                     
                       <li><a href="/blog/tag/OpenSSL/">OpenSSL <span class="count">(4)</span></a></li>
                     
-                      <li><a href="/blog/tag/CVE/">CVE <span class="count">(10)</span></a></li>
+                      <li><a href="/blog/tag/CVE/">CVE <span class="count">(11)</span></a></li>
                     
                       <li><a href="/blog/tag/WordPress/">WordPress <span class="count">(1)</span></a></li>
                     
@@ -702,7 +703,7 @@
                     
                       <li><a href="/blog/tag/MITM/">MITM <span class="count">(1)</span></a></li>
                     
-                      <li><a href="/blog/tag/infoleak/">infoleak <span class="count">(2)</span></a></li>
+                      <li><a href="/blog/tag/infoleak/">infoleak <span class="count">(3)</span></a></li>
                     
                       <li><a href="/blog/tag/IoT/">IoT <span class="count">(3)</span></a></li>
                     
@@ -730,11 +731,11 @@
                     
                       <li><a href="/blog/tag/Backdoor/">Backdoor <span class="count">(2)</span></a></li>
                     
-                      <li><a href="/blog/tag/Pentest/">Pentest <span class="count">(2)</span></a></li>
+                      <li><a href="/blog/tag/Pentest/">Pentest <span class="count">(3)</span></a></li>
                     
                       <li><a href="/blog/tag/ecommerce/">ecommerce <span class="count">(1)</span></a></li>
                     
-                      <li><a href="/blog/tag/Advisory/">Advisory <span class="count">(2)</span></a></li>
+                      <li><a href="/blog/tag/Advisory/">Advisory <span class="count">(3)</span></a></li>
                     
                       <li><a href="/blog/tag/DDoS/">DDoS <span class="count">(1)</span></a></li>
                     
@@ -832,7 +833,7 @@
                   地址：10487 台北市中山區復興北路 168 號 10 樓
                 </li>
                 <li>
-                  ©2016 DEVCORE 戴夫寇爾
+                  ©2017 DEVCORE 戴夫寇爾
                 </li>
               </ul>
             </div>

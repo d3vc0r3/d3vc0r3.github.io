@@ -4,13 +4,202 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="http://devco.re/" rel="self"/>
  <link href="http://devco.re"/>
- <updated>2016-12-26T21:33:06+08:00</updated>
+ <updated>2017-01-02T22:58:37+08:00</updated>
  <id>http://devco.re</id>
  <author>
    <name>DEVCORE</name>
    <email>contact [at] devco.re</email>
  </author>
 
+ 
+ <entry>
+   <title>WEB2PY 反序列化的安全問題－CVE-2016-3957</title>
+   <link href="http://devco.re/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957/"/>
+   <updated>2017-01-03T00:00:00+08:00</updated>
+   <id>http://devco.re/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957</id>
+   <content type="html">
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20170103/web2py.png&quot; alt=&quot;web2py&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
+
+&lt;p&gt;在一次滲透測試的過程中，我們遇到了用 web2py 框架建構的應用程式。為了成功滲透目標，我們研究了 web2py，發現該框架範例應用程式中存在三個資訊洩漏問題，這些洩漏都會導致遠端命令執行 (RCE)。由於範例應用程式預設是開啟的，若沒有手動關閉，攻擊者可以直接利用洩漏資訊取得系統執行權限。這些問題編號分別為：CVE-2016-3952、CVE-2016-3953、CVE-2016-3954、CVE-2016-3957。&lt;/p&gt;
+
+&lt;!-- more --&gt;
+
+&lt;h3 id=&quot;pickle-code-execution&quot;&gt;背景－老生常談的 Pickle Code Execution&lt;/h3&gt;
+
+&lt;p&gt;在繼續說明前必須要先認知什麼是反序列化的安全問題？反序列化的安全問題在本質上其實是物件注入，它的嚴重性取決於所注入的物件本身是否會造成危險行為，例如讀寫檔。一般來說要透過反序列化建構一個成功的攻擊有兩個要點：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;是否可控制目標所要反序列化的字串。&lt;/li&gt;
+  &lt;li&gt;危險行為在反序列化後是否會被執行。這在實務上大概有下面兩種情形：
+    &lt;ul&gt;
+      &lt;li&gt;危險行為是寫在魔法方法 (Magic Method) 裡面，例如 PHP 的 __construct 在物件生成時一定會執行。&lt;/li&gt;
+      &lt;li&gt;反序列化後覆蓋既有物件，導致正常程式流程出現危險結果。&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;反序列化的問題在每個程式語言都會發生，但通常需要搭配看程式碼拼湊出可以用的攻擊流程，比較難利用。不過，某些實作序列化的函式庫會將程式邏輯也序列化成字串，因此攻擊者可以自定義物件直接使用，不再需要拼湊，例如今天要提的 Python Pickle。&lt;/p&gt;
+
+&lt;p&gt;直接舉個 Pickle 的例子如下，我們製造了一個會執行系統指令 &lt;code&gt;echo success&lt;/code&gt; 的物件 &lt;code&gt;Malicious&lt;/code&gt;，並且序列化成字串 &lt;code&gt;&quot;cposix\nsystem\np1\n(S&#39;echo success&#39;\np2\ntp3\nRp4\n.&quot;&lt;/code&gt;。當受害者反序列化這個字串，即觸發執行該系統指令，因此印出 &lt;code&gt;success&lt;/code&gt;。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-py&quot; data-lang=&quot;py&quot;&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;os&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;cPickle&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Malicious&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;object&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;...&lt;/span&gt;   &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;__reduce__&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;...&lt;/span&gt;     &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;system&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;echo success&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,))&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;...&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;serialize&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cPickle&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dumps&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Malicious&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;serialize&lt;/span&gt;
+&lt;span class=&quot;s&quot;&gt;&amp;quot;cposix&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;system&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;p1&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;(S&amp;#39;echo success&amp;#39;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;p2&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;tp3&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;Rp4&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;.&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cPickle&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;loads&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;serialize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;success&lt;/span&gt;
+&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;這就是 Pickle 誤用反序列化所造成的命令執行風險。攻擊者很容易可以產生一個含有任意命令執行的序列化字串，進而讓受害者在進行反序列化的過程中觸發執行惡意命令。&lt;/p&gt;
+
+&lt;h3 id=&quot;section-1&quot;&gt;反序列化 ＋ 序列化字串可控&lt;/h3&gt;
+
+&lt;p&gt;本次發現的問題主要來自 web2py 本身的 session cookie 使用 Pickle 處理序列化需求 (CVE-2016-3957)，而且因為 session cookie 的加密字串固定 (CVE-2016-3953)，攻擊者可任意偽造惡意的序列化字串造成前面所介紹的命令執行風險。細節如下。&lt;/p&gt;
+
+&lt;h4 id=&quot;cve-2016-3957note1&quot;&gt;CVE-2016-3957&lt;sup id=&quot;fnref:note1&quot;&gt;&lt;a href=&quot;#fn:note1&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/h4&gt;
+
+&lt;p&gt;web2py 的應用程式如果使用 cookie 來儲存 session 資訊，那麼在每次接到使用者請求時會將 session cookie 用一個 secure_loads 函式將 cookie 內容讀入。 [&lt;a href=&quot;https://github.com/web2py/web2py/blob/R-2.14.1/gluon/globals.py#L846&quot;&gt;Ref&lt;/a&gt;]&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-py&quot; data-lang=&quot;py&quot;&gt;&lt;span class=&quot;c&quot;&gt;# gluon/globals.py#L846&lt;/span&gt;
+
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session_storage_type&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;cookie&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+            &lt;span class=&quot;c&quot;&gt;# check if there is session data in cookies&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session_data_name&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cookies&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;session_cookie_data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cookies&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session_data_name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;session_cookie_data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;session_cookie_data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;secure_loads&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session_cookie_data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cookie_key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                                    &lt;span class=&quot;n&quot;&gt;compression_level&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;compression_level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+                &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+                    &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;update&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;secure_loads 函式內容如下，在一連串解密後會用 pickle.loads 方法將解密內容反序列化，在這裡確定 cookie 內容會使用 Pickle 處理。[&lt;a href=&quot;https://github.com/web2py/web2py/blob/R-2.14.1/gluon/utils.py#L200&quot;&gt;Ref&lt;/a&gt;]&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-py&quot; data-lang=&quot;py&quot;&gt;&lt;span class=&quot;c&quot;&gt;# gluon/utils.py#L200&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;secure_loads&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;encryption_key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;hash_key&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;compression_level&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;:&amp;#39;&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;hash_key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;hash_key&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;sha1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;encryption_key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;hexdigest&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;signature&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;encrypted_data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;split&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;:&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;actual_signature&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;hmac&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;new&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;hash_key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;encrypted_data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;hexdigest&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;compare&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;signature&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;actual_signature&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;key&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pad&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;encryption_key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;32&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;encrypted_data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;base64&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;urlsafe_b64decode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;encrypted_data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;IV&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;encrypted_data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;encrypted_data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;encrypted_data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:]&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;cipher&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;AES_new&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;IV&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;IV&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cipher&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;decrypt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;encrypted_data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rstrip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39; &amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;compression_level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;zlib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;decompress&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pickle&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;loads&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;  &lt;span class=&quot;c&quot;&gt;# &amp;lt;-- Bingo!!!&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;except&lt;/span&gt; &lt;span class=&quot;ne&quot;&gt;Exception&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;e&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;因此，如果知道連線中用以加密 cookie 內容的 encryption_key，攻擊者就可以偽造 session cookie，進而利用 pickle.loads 進行遠端命令執行。&lt;/p&gt;
+
+&lt;h4 id=&quot;cve-2016-3953&quot;&gt;CVE-2016-3953&lt;/h4&gt;
+
+&lt;p&gt;很幸運的，我們發現 web2py 預設開啟的範例應用程式是使用 session cookie，並且有一個寫死的密鑰：&lt;code&gt;yoursecret&lt;/code&gt;。[&lt;a href=&quot;https://github.com/web2py/web2py/blob/R-2.14.1/applications/examples/models/session.py&quot;&gt;Ref&lt;/a&gt;]&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-py&quot; data-lang=&quot;py&quot;&gt;&lt;span class=&quot;c&quot;&gt;# applications/examples/models/session.py&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;connect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cookie_key&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;yoursecret&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;因此，web2py 的使用者如果沒有手動關閉範例應用程式，攻擊者就可以直接在 http://[target]/examples/ 頁面發動攻擊取得主機操作權。&lt;/p&gt;
+
+&lt;h4 id=&quot;proof-of-concept&quot;&gt;Proof of Concept&lt;/h4&gt;
+
+&lt;p&gt;我們嘗試用 &lt;code&gt;yoursecret&lt;/code&gt; 作為 encryption_key 偽造一個合法的 session cookie，並將一個會執行系統指令 sleep 的物件塞入其中。帶著此 session cookie 連入 web2py 官網範例應用程式(http://www.web2py.com/examples)，情形如下：&lt;/p&gt;
+
+&lt;p&gt;當插入的物件會執行指令 sleep 3 時，網站回應時間為 6.8 秒&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20170103/POC1.png&quot; alt=&quot;POC1&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;當插入的物件會執行指令 sleep 5 時，網站回應時間為 10.8 秒&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20170103/POC2.png&quot; alt=&quot;POC2&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;確實會因為塞入的 session cookie 值不同而有所延遲，證明網站的確執行了（兩次）我們偽造的物件內容。&lt;sup id=&quot;fnref:note2&quot;&gt;&lt;a href=&quot;#fn:note2&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;rce&quot;&gt;其他洩漏導致 RCE&lt;/h3&gt;
+
+&lt;p&gt;此外，在 web2py 範例應用程式為了示範框架的特性，因此洩漏了許多環境變數。其中有兩個變數較為敏感，間接也會導致端命令執行，分別如下。&lt;/p&gt;
+
+&lt;h4 id=&quot;cve-2016-3954&quot;&gt;CVE-2016-3954&lt;/h4&gt;
+
+&lt;p&gt;在 http://[target]/examples/simple_examples/status 頁面中，response 分頁內容洩漏了 session_cookie_key 值。這個值就是用來加密前面所介紹的 session cookie，搭配 CVE-2016-3957 Pickle 的問題可直接遠端命令執行。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20170103/CVE-2016-3954.png&quot; alt=&quot;CVE-2016-3954&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;無論使用者是否自行更改 session_cookie_key，或是該值是系統隨機產生。此介面仍然可以取得機敏資訊藉以造成危害。&lt;/p&gt;
+
+&lt;h4 id=&quot;cve-2016-3952&quot;&gt;CVE-2016-3952&lt;/h4&gt;
+
+&lt;p&gt;http://[target]/examples/template_examples/beautify 頁面洩漏了系統環境變數，當使用者是使用 standalone 版本時，管理者的密碼就會在環境變數裡出現。這個密碼可登入 http://[target]/admin 管理介面，管理介面內提供方便的功能得以執行任意指令。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20170103/CVE-2016-3952.png&quot; alt=&quot;CVE-2016-3952&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;section-2&quot;&gt;官方修復&lt;/h3&gt;
+
+&lt;p&gt;Version 2.14.1 移除洩漏的環境變數。[&lt;a href=&quot;https://github.com/web2py/web2py/commit/9706d125b42481178d2b423de245f5d2faadbf40&quot;&gt;Ref&lt;/a&gt;]&lt;/p&gt;
+
+&lt;p&gt;Version 2.14.2 使用不固定字串作為 session_cookie_key，並移除洩漏頁面。&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-py&quot; data-lang=&quot;py&quot;&gt;&lt;span class=&quot;c&quot;&gt;# applications/examples/models/session.py&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;gluon.utils&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;web2py_uuid&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;cookie_key&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ram&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;cookie_key&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;lambda&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;web2py_uuid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;connect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cookie_key&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cookie_key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;section-3&quot;&gt;總結&lt;/h3&gt;
+
+&lt;p&gt;web2py 框架預設會開啟一個範例應用程式，路徑為 http://[target]/examples/。&lt;br /&gt;
+由於這個應用程式使用 Pickle 來處理序列化的 session cookie，且因為加密字串為寫死的 &lt;code&gt;yoursecret&lt;/code&gt;，任何人可竄改 session cookie 的內容，藉此進行 Pickle 命令執行攻擊。&lt;br /&gt;
+該範例程式介面中也存在 session_cookie_key、管理者密碼洩漏問題，兩個都會導致任意命令執行。除此之外，在這個應用程式中洩漏許多系統配置、路徑等資訊，有機會被拿來做進階攻擊。&lt;br /&gt;
+在 2.14.2 版本後已經修復所有洩漏問題，當然最好的解決辦法就是關閉這個範例應用程式。&lt;/p&gt;
+
+&lt;p&gt;最後，來整理從開發者的角度在這個案例中該注意的要點：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;小心處理序列化字串，使用者若有機會改變該字串值，有機會被插入未預期的惡意物件，造成惡意的結果。&lt;/li&gt;
+  &lt;li&gt;正式產品中切記要移除任何跟開發相關的配置。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;section-4&quot;&gt;時間軸&lt;/h3&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;2016/03/08 發現問題與其他研究&lt;/li&gt;
+  &lt;li&gt;2016/03/09 回報官方 &lt;a href=&quot;https://github.com/web2py/web2py/issues/1205&quot;&gt;GitHub Issue&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;2016/03/15 成功與開發者 email 聯繫&lt;/li&gt;
+  &lt;li&gt;2016/03/15 官方修復管理者密碼洩漏問題 (CVE-2016-3952)&lt;/li&gt;
+  &lt;li&gt;2016/03/25 官方修復其他弱點並發佈 2.14.2 版本&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;section-5&quot;&gt;附註&lt;/h3&gt;
+
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:note1&quot;&gt;
+      &lt;p&gt;其實 CVE-2016-3957 並非不安全的設計，在跟 CVE team 溝通的過程中發現 web2py 開始使用 JSON 取代 Pickle [&lt;a href=&quot;https://github.com/web2py/web2py/commit/0820926b500a321060ef6a76ce89fd35a252f8b0&quot;&gt;Ref&lt;/a&gt;]，因此判定 web2py 認為目前的設計是不洽當的，給予此編號。後來官方因故將 Pickle 改了回來，不過在沒有洩漏加密字串的前提下已經是安全的了。 &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:note2&quot;&gt;
+      &lt;p&gt;在自行架設的 web2py 環境中只會執行一次，沒有去細追 web2py 官方網站為何執行兩次。 &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;
+</content>
+ </entry>
  
  <entry>
    <title>IoT設備商別成為幫兇 從Dyn DDoS攻擊事件看IoT安全</title>

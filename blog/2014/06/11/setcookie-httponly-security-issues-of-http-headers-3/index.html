@@ -98,11 +98,11 @@
               <article class="article">
           <p>上次我們提到了 <a href="http://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/">Content-Security-Pilicy</a>，這次我們來聊聊同樣是為了防禦 XSS 而生的另一個技術。</p>
 
-<h3 id="httponly-">HttpOnly 簡介</h3>
+<h3 id="httponly-簡介">HttpOnly 簡介</h3>
 
 <p>Cookie 的概念雖然早在 1994 年就由 Netscape 的工程師 Montulli 提出，但當時仍未有完善的防護機制，像是 HttpOnly、Secure 等規範都是後來陸續被提出，直到 2011 年 4 月才在 <a href="http://tools.ietf.org/html/rfc6265">RFC 6265</a> 中正式定案。而其中的 <a href="https://www.owasp.org/index.php/HttpOnly">HttpOnly</a> 是專門為了抵禦攻擊者利用 Cross-Site Scripting (XSS) 手法來盜取用戶身份，此項 Cookie 防護設定應該是在 HTTP Headers 系列文中最廣為人知的項目。</p>
 
-<h3 id="httponly--1">HttpOnly 主要作用</h3>
+<h3 id="httponly-主要作用">HttpOnly 主要作用</h3>
 
 <p>說明 HttpOnly 主要作用之前，先談談 XSS 最常見的利用方式。XSS 攻擊早在 1990 年就被發現，此攻擊手法最常見的利用方式是存取使用者的 cookie 來獲得一些機敏資料。像是存取 session cookie 即可盜用使用者的身份（關於 session 的重要性，可以參考我們部落格的另一篇文章 <a href="http://devco.re/blog/2014/06/03/http-session-protection/">HTTP Session 攻擊與防護</a>），如果在 cookie 中記錄了其他機敏資訊，也可能會一併遭竊。因此若能阻止攻擊者存取帶有敏感資料的 cookie，就能減少 XSS 對使用者的影響，因而催生了 HttpOnly 機制。</p>
 
@@ -152,7 +152,7 @@
   <p>目前 PHP 官方的教學是用 session_set_cookie_params 這個 function，可參考<a href="http://www.php.net/manual/en/function.session-set-cookie-params.php">官方網頁的這篇說明</a></p>
 </blockquote>
 
-<h3 id="httponly--2">HttpOnly 實際使用案例</h3>
+<h3 id="httponly-實際使用案例">HttpOnly 實際使用案例</h3>
 
 <p>由於 HttpOnly 的使用方式較簡單，因此僅列舉幾個站台的使用結果圖片給大家參考，就不另外多做說明囉！</p>
 
@@ -180,7 +180,7 @@
 
 <p><a href="https://lh5.googleusercontent.com/-xX9qAnudjV8/U5bZqCN2FLI/AAAAAAAAAb4/srsZFwPfeRc/w1138-h882-no/httponly-example-4.png"><img src="https://lh5.googleusercontent.com/-xX9qAnudjV8/U5bZqCN2FLI/AAAAAAAAAb4/srsZFwPfeRc/w1138-h882-no/httponly-example-4.png" alt="Giga Circle" title="Giga Circle" /></a></p>
 
-<h3 id="section">結論</h3>
+<h3 id="結論">結論</h3>
 
 <p>HttpOnly 是存在已久的技術，但在我們<a href="http://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/">系列文第一篇</a>的統計當中，採用的比例仍然偏低。如同之前我們提及的 <a href="http://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/">Zone Transer</a> 問題，即使一項資安技術或資安議題存在很久，也需要大家持續關注。</p>
 
@@ -242,6 +242,19 @@
           <div class="relative-posts__cells">
   
             <section class="card">
+              <a href="/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20171211/cover.png)"></div>
+                <h3 class="card__title">
+                  Exim RCE 資安通報 (CVE-2017-16943)
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Exim/" class="card__tag">Exim</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/資安新聞/">資安新聞</a></small>
+            </section>
+  
+            <section class="card">
               <a href="/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957/">
                 <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20170103/web2py.png)"></div>
                 <h3 class="card__title">
@@ -265,19 +278,6 @@
                 <a href="/blog/tag/IoT/" class="card__tag">IoT</a><a href="/blog/tag/DDoS/" class="card__tag">DDoS</a>
               </div>
               <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20160922/Accellion.jpeg)"></div>
-                <h3 class="card__title">
-                  Accellion File Transfer Appliance 弱點報告
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Facebook/" class="card__tag">Facebook</a><a href="/blog/tag/BugBounty/" class="card__tag">BugBounty</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
             </section>
   
           </div>

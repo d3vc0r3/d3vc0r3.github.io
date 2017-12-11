@@ -96,28 +96,28 @@
           
               </section>
               <article class="article">
-          <p>戴夫寇爾部落格停載了快兩個月，非常抱歉，讓各位常常催稿的朋友們久等了 &lt;(_ _)&gt;<br />
+          <p>戴夫寇爾部落格停載了快兩個月，非常抱歉，讓各位常常催稿的朋友們久等了 &lt;(_ _)&gt;<br /><br />
 今天就乘著全臺瘋買票的浪頭，來談談一些常被忽略的資訊安全小概念吧！</p>
 
 <!-- more -->
 
 <p>江蕙引退演唱會一票難求，隔岸觀了兩天火， 也忍不住想要當個鍵盤孝子。無奈運氣不好一直連不上主機，『Service Unavailable』畫面看膩了，只好看看暫存頁面的網頁原始碼，不看還好，一看我驚呆了！</p>
 
-<p><a href="https://lh6.googleusercontent.com/-JiRvqxjmTc0/VK-j-wHU6-I/AAAAAAAAAwE/29JWcFB9Oo0/w878-h650-no/kham_information_leakage.png"><img src="https://lh6.googleusercontent.com/-JiRvqxjmTc0/VK-j-wHU6-I/AAAAAAAAAwE/29JWcFB9Oo0/w878-h650-no/kham_information_leakage.png" alt="寬宏售票資訊洩漏" title="寬宏售票資訊洩漏" /></a>
+<p><a href="https://lh6.googleusercontent.com/-JiRvqxjmTc0/VK-j-wHU6-I/AAAAAAAAAwE/29JWcFB9Oo0/w878-h650-no/kham_information_leakage.png"><img src="https://lh6.googleusercontent.com/-JiRvqxjmTc0/VK-j-wHU6-I/AAAAAAAAAwE/29JWcFB9Oo0/w878-h650-no/kham_information_leakage.png" alt="寬宏售票資訊洩漏" title="寬宏售票資訊洩漏" /></a><br />
 （特別聲明：此流程中並無任何攻擊行為，該頁面是正常購票流程中出現的網頁）</p>
 
 <p>在結帳網頁原始碼當中竟然看到了疑似資料庫密碼 SqlPassWord 在表單裡面！這件事從資安的角度來看，除了表面上洩漏了資料庫密碼之外，還有兩個我想講很久但苦無機會談的資安議題，分別是金流串接常見的弱點以及駭客的心理。藉著寬宏售票網頁洩漏密碼這件事情，順道與大家分享分享吧！</p>
 
-<h3 id="section">談台灣網站的金流串接</h3>
+<h3 id="談台灣網站的金流串接">談台灣網站的金流串接</h3>
 
-<p>在本篇的例子中，寬宏售票網頁表單出現了疑似資料庫密碼，這狀況就好像去銀行繳款，櫃檯給你一把鑰匙跟你說：『這是金庫的鑰匙，麻煩你到對面那個櫃檯把鑰匙給服務員，請他幫你把錢放進金庫裡面』。<br />
-是不是有點多此一舉，銀行本來就會有一份鑰匙，幹嘛要請你（瀏覽器）幫忙轉交？<br />
+<p>在本篇的例子中，寬宏售票網頁表單出現了疑似資料庫密碼，這狀況就好像去銀行繳款，櫃檯給你一把鑰匙跟你說：『這是金庫的鑰匙，麻煩你到對面那個櫃檯把鑰匙給服務員，請他幫你把錢放進金庫裡面』。<br /><br />
+是不是有點多此一舉，銀行本來就會有一份鑰匙，幹嘛要請你（瀏覽器）幫忙轉交？<br /><br />
 如果今天壞人拿到了這把鑰匙，是不是只要繞過保全的視線，就可以打開金庫為所欲為？</p>
 
-<p><a href="https://lh4.googleusercontent.com/-W3tAzOTSrrk/VK-iw2tdc9I/AAAAAAAAAvY/Qtq4pzXFGmE/w640-h427-no/3d_key_to_success.jpg"><img src="https://lh4.googleusercontent.com/-W3tAzOTSrrk/VK-iw2tdc9I/AAAAAAAAAvY/Qtq4pzXFGmE/w640-h427-no/3d_key_to_success.jpg" alt="key_to_success" title="key_to_success" /></a>
+<p><a href="https://lh4.googleusercontent.com/-W3tAzOTSrrk/VK-iw2tdc9I/AAAAAAAAAvY/Qtq4pzXFGmE/w640-h427-no/3d_key_to_success.jpg"><img src="https://lh4.googleusercontent.com/-W3tAzOTSrrk/VK-iw2tdc9I/AAAAAAAAAvY/Qtq4pzXFGmE/w640-h427-no/3d_key_to_success.jpg" alt="key_to_success" title="key_to_success" /></a><br />
 <br />（Photo by StockMonkeys.com）</p>
 
-<p>類似的狀況也滿常發生在電子商務與第三方金流服務的串接上。<br />
+<p>類似的狀況也滿常發生在電子商務與第三方金流服務的串接上。<br /><br />
 許多電子商務網站專注於商務，選擇將付款步驟委託第三方金流服務處理，一般常見的流程是這樣的：</p>
 
 <ol>
@@ -147,7 +147,7 @@
 
 <p>以上兩種作法，將可以有效防止惡意使用者修改訂單金額。此外，建議電子商務網站在收到金流回傳的付款資訊後，能夠比對收取款項與訂單款項是否相符，如此雙重檢查，能大大避免惡意行為，減少企業處理惡意金流問題的成本。</p>
 
-<h3 id="section-1">談駭客心理</h3>
+<h3 id="談駭客心理">談駭客心理</h3>
 
 <p>很明顯的，寬宏售票洩漏密碼的狀況是工程師的小疏漏。在不知道資料庫確切位置的前提下，知道疑似資料庫密碼的東西確實也無法做什麼，頂多就是了解了一家公司制定密碼的策略。然而，看在駭客眼裡，這點疏失會代表著一個網站面對資安的態度。連顯而易見的問題都沒有注意，那後端程式應該也有可能出現漏洞。一旦駭客決定要攻擊這個網站，勢必會搬出比平常還要多的資源去嘗試，因為他們認為這個投資報酬率很高。</p>
 
@@ -163,7 +163,7 @@
 
 <p>一個經驗豐富的駭客，通常光看首頁就能夠判斷該網站是否可能存有漏洞，憑藉的就是這些蛛絲馬跡。為了不讓自家網站常被路過的惡意使用者攻擊，加強網頁前端的呈現、網頁原始碼乾淨有架構、沒有太多資訊洩漏，這些都是很好的防禦方法。</p>
 
-<h3 id="section-2">結論</h3>
+<h3 id="結論">結論</h3>
 
 <p>在使用最近熱門的寬宏售票網站時，我們發現網頁原始碼存在一些疑似密碼的資訊。從這件事情出發，我們分別延伸探討了兩個工程師應該注意的議題：</p>
 
@@ -232,6 +232,19 @@
           <div class="relative-posts__cells">
   
             <section class="card">
+              <a href="/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20171211/cover.png)"></div>
+                <h3 class="card__title">
+                  Exim RCE 資安通報 (CVE-2017-16943)
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Exim/" class="card__tag">Exim</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/資安新聞/">資安新聞</a></small>
+            </section>
+  
+            <section class="card">
               <a href="/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957/">
                 <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20170103/web2py.png)"></div>
                 <h3 class="card__title">
@@ -255,19 +268,6 @@
                 <a href="/blog/tag/IoT/" class="card__tag">IoT</a><a href="/blog/tag/DDoS/" class="card__tag">DDoS</a>
               </div>
               <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20160922/Accellion.jpeg)"></div>
-                <h3 class="card__title">
-                  Accellion File Transfer Appliance 弱點報告
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Facebook/" class="card__tag">Facebook</a><a href="/blog/tag/BugBounty/" class="card__tag">BugBounty</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
             </section>
   
           </div>

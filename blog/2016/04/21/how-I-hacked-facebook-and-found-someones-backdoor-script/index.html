@@ -98,12 +98,12 @@
               <article class="article">
           <p>by <a href="http://blog.orange.tw/">Orange Tsai</a></p>
 
-<p><a href="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">How I Hacked Facebook, and Found Someone’s Backdoor Script</a> (English Version)<br />
+<p><a href="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">How I Hacked Facebook, and Found Someone’s Backdoor Script</a> (English Version)  <br />
 <a href="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/">滲透 Facebook 的思路與發現</a> (中文版本)</p>
 
 <hr />
 
-<h3 id="section">寫在故事之前</h3>
+<h3 id="寫在故事之前">寫在故事之前</h3>
 
 <p>身為一位滲透測試人員，比起 Client Side 的弱點我更喜歡 Server Side 的攻擊，能夠直接的控制伺服器、獲得權限操作 SHELL 才爽 &lt;(￣︶￣)&gt;</p>
 
@@ -132,20 +132,20 @@
 <ol>
   <li>對多數大公司而言，”<strong>網路邊界</strong>” 是比較難顧及、容易出現問題的一塊，當公司規模越大，同時擁有數千、數萬台機器在線，網管很難顧及到每台機器。在攻防裡，防守要防的是一個面，但攻擊只需找個一個點就可以突破，所以防守方相對處於弱勢，攻擊者只要找到一台位於網路邊界的機器入侵進去就可以開始在內網進行滲透了!</li>
   <li>對於 “<strong>連網設備</strong>” 的安全意識相對薄弱，由於連網設備通常不會提供 SHELL 給管理員做進一步的操作，只能由設備本身所提供的介面設定，所以通常對於設備的防禦都是從網路層來抵擋，但如遇到設備本身的 0-Day 或者是 1-Day 可能連被入侵了都不自覺。</li>
-  <li>人的安全，隨著 “<strong>社工庫</strong>” 的崛起，有時可以讓一次滲透的流程變得異常簡單，從公開資料找出公司員工列表，再從社工庫找到可以登入 VPN 的員工密碼就可以開始進行內網滲透，尤其當社工庫數量越來越多 “<strong>量變成質變</strong>” 時只要關鍵人物的密碼在社工庫中可找到，那企業的安全性就全然突破 :P
+  <li>人的安全，隨著 “<strong>社工庫</strong>” 的崛起，有時可以讓一次滲透的流程變得異常簡單，從公開資料找出公司員工列表，再從社工庫找到可以登入 VPN 的員工密碼就可以開始進行內網滲透，尤其當社工庫數量越來越多 “<strong>量變成質變</strong>” 時只要關鍵人物的密碼在社工庫中可找到，那企業的安全性就全然突破 :P<br />
 <br /></li>
 </ol>
 
 <p>理所當然在尋找 Facebook 弱點時會以平常進行滲透的思路進行，在開始搜集資料時除了針對 Facebook 本身域名查詢外也對註冊信箱進行 Reverse Whois 意外發現了個奇妙的域名名稱</p>
 
-<pre><code>tfbnw.net
-</code></pre>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>tfbnw.net
+</code></pre></div></div>
 
-<p>TFBNW 似乎是 “<strong>TheFacebook Network</strong>” 的縮寫<br />
+<p>TFBNW 似乎是 “<strong>TheFacebook Network</strong>” 的縮寫  <br />
 再藉由公開資料發現存在下面這台這台伺服器</p>
 
-<pre><code>vpn.tfbnw.net
-</code></pre>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vpn.tfbnw.net
+</code></pre></div></div>
 
 <p>哇! vpn.tfbnw.net 看起來是個 Juniper SSL VPN 的登入介面，不過版本滿新的沒有直接可利用的弱點，不過這也成為了進入後面故事的開端。</p>
 
@@ -163,14 +163,14 @@
 
 <hr />
 
-<h3 id="section-1">弱點發現</h3>
+<h3 id="弱點發現">弱點發現</h3>
 
 <p>在同網段中，發現一台特別的伺服器</p>
 
-<pre><code>files.fb.com
-</code></pre>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>files.fb.com
+</code></pre></div></div>
 
-<p><img src="/assets/img/blog/20160421/1.jpg" alt="files.fb.com" />
+<p><img src="/assets/img/blog/20160421/1.jpg" alt="files.fb.com" /><br />
 <em>↑ files.fb.com 登入介面</em></p>
 
 <p><br /></p>
@@ -199,7 +199,7 @@
 
 <p>首先是解密 IonCude 的部分，許多設備為了防止自己的產品被檢視所以會將原始碼加密，不過好在 FTA 上的 IonCude 版本沒到最新，可以使用現成的工具解密，不過由於 PHP 版本的問題，細節部份以及數值運算等可能要靠自己修復一下，不然有點難看…</p>
 
-<p>經過簡單的原始碼審查後發現，好找的弱點應該都被 Rapid7 找走了 T^T<br />
+<p>經過簡單的原始碼審查後發現，好找的弱點應該都被 Rapid7 找走了 T^T  <br />
 而需要認證才能觸發的漏洞又不怎麼好用，只好認真點往深層一點的地方挖掘!</p>
 
 <p>經過幾天的認真挖掘，最後總共發現了七個弱點，其中包含了</p>
@@ -222,7 +222,7 @@
 
 <p>詳細的弱點細節會待 Full Disclosure Policy 後公布!</p>
 
-<p><img src="/assets/img/blog/20160421/2.jpg" alt="shell on facebook" />
+<p><img src="/assets/img/blog/20160421/2.jpg" alt="shell on facebook" /><br />
 <em>↑ 使用 Pre-Auth SQL Injection 寫入 Webshell</em></p>
 
 <p><br /></p>
@@ -241,19 +241,19 @@
 
 <hr />
 
-<h3 id="section-2">似乎有點奇怪?</h3>
+<h3 id="似乎有點奇怪">似乎有點奇怪?</h3>
 
 <p>正當收集證據準備回報 Facebook 安全團隊時，從網頁日誌中似乎看到一些奇怪的痕跡。</p>
 
 <p>首先是在 “<strong>/var/opt/apache/php_error_log</strong>” 中看到一些奇怪的 PHP 錯誤訊息，從錯誤訊息來看似乎像是邊改 Code 邊執行所產生的錯誤?</p>
 
-<p><img src="/assets/img/blog/20160421/3.jpg" alt="PHP error log" />
+<p><img src="/assets/img/blog/20160421/3.jpg" alt="PHP error log" /><br />
 <em>↑ PHP error log</em></p>
 
-<p><br />
+<p><br /><br />
 跟隨錯誤訊息的路徑去看發現疑似前人留下的 Webshell 後門</p>
 
-<p><img src="/assets/img/blog/20160421/4.jpg" alt="Webshell on facebook server" />
+<p><img src="/assets/img/blog/20160421/4.jpg" alt="Webshell on facebook server" /><br />
 <em>↑ Webshell on facebook server</em></p>
 
 <p><br /></p>
@@ -288,17 +288,17 @@
 
 <span class="c1">// 省略...</span></code></pre></div>
 
-<p>前幾個就是很標準的 PHP 一句話木馬<br />
+<p>前幾個就是很標準的 PHP 一句話木馬  <br />
 其中比較特別的是 “<strong>sclient_user_class_standard.inc</strong>” 這個檔案</p>
 
 <p>include_once 中 “<strong>sclient_user_class_standard.inc.orig</strong>” 為原本對密碼進行驗證的 PHP 程式，駭客做了一個 Proxy 在中間並在進行一些重要操作時先把 GET, POST, COOKIE 的值記錄起來</p>
 
 <p>整理一下，駭客做了一個 Proxy 在密碼驗證的地方，並且記錄 Facebook 員工的帳號密碼，並且將記錄到的密碼放置在 Web 目錄下，駭客每隔一段時間使用   wget 抓取</p>
 
-<pre><code>wget https://files.fb.com/courier/B3dKe9sQaa0L.log
-</code></pre>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget https://files.fb.com/courier/B3dKe9sQaa0L.log
+</code></pre></div></div>
 
-<p><img src="/assets/img/blog/20160421/5.jpg" alt="logged password" /><br />
+<p><img src="/assets/img/blog/20160421/5.jpg" alt="logged password" /><br /><br />
 <em>↑ Logged passwords</em></p>
 
 <p><br /></p>
@@ -321,7 +321,7 @@
   <li>駭客在進行一些指令操作時沒顧慮到 STDERR ，導致網頁日誌中很多指令的錯誤訊息，從中可以觀察駭客做了哪些操作</li>
 </ol>
 
-<p><br />
+<p><br /><br />
 從 access.log 可以觀察到的每隔數日駭客會將記錄到的帳號密碼清空</p>
 
 <div class="highlight"><pre><code class="language-prolog" data-lang="prolog"><span class="mf">192.168.54.13</span> <span class="o">-</span> <span class="o">-</span> <span class="mi">17955</span> <span class="p">[</span><span class="nv">Sat</span><span class="p">,</span> <span class="mi">23</span> <span class="nv">Jan</span> <span class="mi">2016</span> <span class="mi">19</span><span class="s-Atom">:</span><span class="mi">04</span><span class="s-Atom">:</span><span class="mi">10</span> <span class="o">+</span><span class="mi">0000</span> <span class="p">|</span> <span class="mi">1453575850</span><span class="p">]</span> <span class="s2">&quot;GET /courier/custom_template/1000/bN3dl0Aw.php?c=./sshpass -p &#39;********&#39; ssh -v -o StrictHostKeyChecking=no soggycat@localhost &#39;cp /home/seos/courier/B3dKe9sQaa0L.log /home/seos/courier/B3dKe9sQaa0L.log.2; echo &gt; /home/seos/courier/B3dKe9sQaa0L.log&#39; 2&gt;/dev/stdout HTTP/1.1&quot;</span> <span class="mi">200</span> <span class="mi">2559</span> <span class="p">...</span></code></pre></div>
@@ -352,7 +352,7 @@ dig a acme.facebook.com
 
 <p>使用 Shell Script 進行內網掃描但忘記把 STDERR 導掉XD</p>
 
-<p><img src="/assets/img/blog/20160421/6.jpg" alt="Port Scanning" />
+<p><img src="/assets/img/blog/20160421/6.jpg" alt="Port Scanning" /><br />
 <br /></p>
 
 <p>嘗試對內部 LDAP 進行連接</p>
@@ -362,7 +362,7 @@ sh: -c: line 0: `ldapsearch -v -x -H ldaps://ldap.thefacebook.com -b CN=svc-acce
 
 <p><br /></p>
 
-<p>嘗試訪問內部網路資源<br />
+<p>嘗試訪問內部網路資源  <br />
 ( 看起來 Mail OWA 可以直接訪問 …)</p>
 
 <div class="highlight"><pre><code class="language-text" data-lang="text">--20:38:09--  https://mail.thefacebook.com/
@@ -420,18 +420,18 @@ base64: invalid input</code></pre></div>
 
 <hr />
 
-<h3 id="section-3">後記</h3>
+<h3 id="後記">後記</h3>
 
 <p>在收集完足夠證據後便立即回報給 Facebook 安全團隊，回報內容除了漏洞細節外，還附上相對應的 Log 、截圖以及時間紀錄xD</p>
 
 <p>從伺服器中的日誌可以發現有兩個時間點是明顯駭客在操作系統的時間，一個是七月初、另個是九月中旬</p>
 
-<p>七月初的動作從紀錄中來看起來比較偏向 “逛” 伺服器，但九月中旬的操作就比較惡意了，除了逛街外，還放置了密碼 Logger 等，至於兩個時間點的 “駭客” 是不是同一個人就不得而知了 :P<br />
+<p>七月初的動作從紀錄中來看起來比較偏向 “逛” 伺服器，但九月中旬的操作就比較惡意了，除了逛街外，還放置了密碼 Logger 等，至於兩個時間點的 “駭客” 是不是同一個人就不得而知了 :P  <br />
 而七月發生的時機點正好接近 CVE-2015-2857 Exploit 公佈前，究竟是透過 1-Day 還是無 0-Day 入侵系統也無從得知了。</p>
 
 <p><br /></p>
 
-<p>這件事情就記錄到這裡，總體來說這是一個非常有趣的經歷xD<br />
+<p>這件事情就記錄到這裡，總體來說這是一個非常有趣的經歷xD  <br />
 也讓我有這個機會可以來寫寫關於滲透的一些文章 :P</p>
 
 <p>最後也感謝 Bug Bounty 及胸襟寬闊的 Facebook 安全團隊 讓我可以完整記錄這起事件 : )</p>
@@ -510,6 +510,19 @@ base64: invalid input</code></pre></div>
           <div class="relative-posts__cells">
   
             <section class="card">
+              <a href="/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20171211/cover.png)"></div>
+                <h3 class="card__title">
+                  Exim RCE 資安通報 (CVE-2017-16943)
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Exim/" class="card__tag">Exim</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/資安新聞/">資安新聞</a></small>
+            </section>
+  
+            <section class="card">
               <a href="/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957/">
                 <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20170103/web2py.png)"></div>
                 <h3 class="card__title">
@@ -533,19 +546,6 @@ base64: invalid input</code></pre></div>
                 <a href="/blog/tag/IoT/" class="card__tag">IoT</a><a href="/blog/tag/DDoS/" class="card__tag">DDoS</a>
               </div>
               <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20160922/Accellion.jpeg)"></div>
-                <h3 class="card__title">
-                  Accellion File Transfer Appliance 弱點報告
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Facebook/" class="card__tag">Facebook</a><a href="/blog/tag/BugBounty/" class="card__tag">BugBounty</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
             </section>
   
           </div>

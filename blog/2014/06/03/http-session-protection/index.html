@@ -96,7 +96,7 @@
           
               </section>
               <article class="article">
-          <h3 id="section">前言</h3>
+          <h3 id="前言">前言</h3>
 
 <p>大家還記得四月份的 <a href="http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/">OpenSSL Heartbleed</a> 事件嗎？當時除了網站本身以外，受害最嚴重的就屬 VPN Server 了。國內外不少駭客不眠不休利用 Heartbleed 漏洞竊取 VPN Server 的管理者 Session Cookie，運氣好的話就可以直接登入大企業的內網。</p>
 
@@ -104,7 +104,7 @@
 
 <!-- more -->
 
-<h3 id="session-cookie">什麼是 Session？什麼是 Cookie？</h3>
+<h3 id="什麼是-session什麼是-cookie">什麼是 Session？什麼是 Cookie？</h3>
 
 <p>在談 Session 之前，我們要先瞭解 Cookie。你知道網站是如何辨識我們的身份嗎？為什麼我們輸入完帳號密碼之後，網站就知道我們是誰呢？就是利用 Cookie。Cookie 是網站在瀏覽器中存放的資料，內容包括使用者在網站上的偏好設定、或者是登入的 Session ID。網站利用 Session ID 來辨認訪客的身份。</p>
 
@@ -122,7 +122,7 @@
 
 <p>我們以下一一介紹。</p>
 
-<h4 id="session-prediction--session-id">Session Prediction (猜測 Session ID)</h4>
+<h4 id="session-prediction-猜測-session-id">Session Prediction (猜測 Session ID)</h4>
 
 <p>Session ID 如同我們前面所說的，就如同是會員卡的編號。只要知道 Session ID，就可以成為這個使用者。如果 Session ID 的長度、複雜度、雜亂度不夠，就能夠被攻擊者猜測。攻擊者只要寫程式不斷暴力計算 Session ID，就有機會得到有效的 Session ID 而竊取使用者帳號。</p>
 
@@ -144,7 +144,7 @@
 
 <p>使用 Session ID 分析程式進行分析，評估是否無法被預測。如果沒有 100% 的把握自己撰寫的 Session ID 產生機制是安全的，不妨使用內建的 Session ID 產生 function，通常都有一定程度的安全。</p>
 
-<h4 id="session-hijacking--session-id">Session Hijacking (竊取 Session ID)</h4>
+<h4 id="session-hijacking-竊取-session-id">Session Hijacking (竊取 Session ID)</h4>
 
 <p>竊取 Session ID 是最常見的攻擊手法。攻擊者可以利用多種方式竊取 Cookie 獲取 Session ID：</p>
 
@@ -173,7 +173,7 @@
   <li>在需要權限的頁面請使用者重新輸入密碼</li>
 </ul>
 
-<h4 id="session-fixation--session-id">Session Fixation (固定 Session ID)</h4>
+<h4 id="session-fixation-固定-session-id">Session Fixation (固定 Session ID)</h4>
 
 <p>攻擊者誘使受害者使用特定的 Session ID 登入網站，而攻擊者就能取得受害者的身分。</p>
 
@@ -193,7 +193,7 @@
   <li>禁止將 Session ID 使用 URL (GET) 方式來傳遞</li>
 </ul>
 
-<h3 id="session-">Session 防護</h3>
+<h3 id="session-防護">Session 防護</h3>
 
 <p>那要怎麼防範攻擊呢？當然會有人說，會員卡不要掉不就沒事了嗎？當然我們沒辦法確保用戶不會因為各種方式導致 Cookie 遭竊（XSS、惡意程式等），因此最後一道防線就是網站的 Session 保護。一張會員卡上如果沒有任何可識別的個人資料，當然任何人撿去了都可以用。如果上面有照片跟簽名呢？偷走會員卡的人在進入俱樂部的時候，在門口就會因為照片跟本人不符而被擋下來。Session 保護也是一樣，怎麼讓我們的 Session 保護機制也能辨識身分呢？答案是利用每個使用者特有的識別資訊。</p>
 
@@ -231,7 +231,7 @@
   <li>逾時</li>
 </ol>
 
-<h3 id="section-1">管理者有避免使用者帳號遭竊的責任</h3>
+<h3 id="管理者有避免使用者帳號遭竊的責任">管理者有避免使用者帳號遭竊的責任</h3>
 
 <p>使用者帳號遭竊一直以來都是顯著的問題，但卻鮮少有網站針對 Session 的機制進行保護。攻擊者可以輕鬆使用 <a href="http://codebutler.github.io/firesheep/">firesheep</a> 之類的工具竊取帳號。國外已經有不少網站偵測到 Session 可能遭竊時將帳號強制登出，但國內目前還鮮少網站實作此防禦，設備商的 Web 管理介面更少針對 Session 進行保護。如果 VPN Server 等設備有偵測 Session ID 的偽造，在 <a href="http://devco.re/blog/2014/04/11/openssl-heartbleed-how-to-hack-how-to-protect/">OpenSSL Heartbleed</a> 事件時就不會有那麼慘重的損失了。</p>
 
@@ -294,6 +294,19 @@
           <div class="relative-posts__cells">
   
             <section class="card">
+              <a href="/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20171211/cover.png)"></div>
+                <h3 class="card__title">
+                  Exim RCE 資安通報 (CVE-2017-16943)
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Exim/" class="card__tag">Exim</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/資安新聞/">資安新聞</a></small>
+            </section>
+  
+            <section class="card">
               <a href="/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957/">
                 <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20170103/web2py.png)"></div>
                 <h3 class="card__title">
@@ -317,19 +330,6 @@
                 <a href="/blog/tag/IoT/" class="card__tag">IoT</a><a href="/blog/tag/DDoS/" class="card__tag">DDoS</a>
               </div>
               <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20160922/Accellion.jpeg)"></div>
-                <h3 class="card__title">
-                  Accellion File Transfer Appliance 弱點報告
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Facebook/" class="card__tag">Facebook</a><a href="/blog/tag/BugBounty/" class="card__tag">BugBounty</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
             </section>
   
           </div>

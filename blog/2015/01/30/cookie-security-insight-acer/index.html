@@ -96,7 +96,7 @@
           
               </section>
               <article class="article">
-          <h3 id="section">前言</h3>
+          <h3 id="前言">前言</h3>
 
 <p>Cookie 是開發網頁應用程式很常利用的東西，它是為了解決 HTTP stateless 特性但又需要有互動而產生的。開發者想把什麼資訊暫存在用戶瀏覽器都可以透過 Cookie 來完成，只要資訊量不大於約 4KB 的限制就沒問題。在這樣的空間裡，可以放購物車內的暫存商品、可以儲存讀者閱讀記錄以精準推薦產品、當然也可以寫入一些認證資訊讓使用者能保持登入狀態。</p>
 
@@ -104,7 +104,7 @@
 
 <!-- more -->
 
-<h3 id="section-1">問題與回報</h3>
+<h3 id="問題與回報">問題與回報</h3>
 
 <p>會想要聊這個議題，主要是因為最近很紅的宏碁雲端售票系統就是採用 Cookie 認證。上週在註冊該網站時看了一下 Cookie，發現該網站沒有使用 <a href="http://devco.re/blog/2014/06/03/http-session-protection/">Session 機制</a>的跡象，也就是單純利用 Cookie 的值來認證。</p>
 
@@ -116,11 +116,11 @@
 
 <p>昨天早上收到了平台回報宏碁雲端售票已經<a href="https://vulreport.net/vulnerability/detail/284">修復的消息</a>，既然已經修復且公開了，就順便講解這個問題的細節吧！希望其他開發者可以從中體會到攻擊者的思維，進而做洽當的防禦。</p>
 
-<h3 id="section-2">驗證及危害</h3>
+<h3 id="驗證及危害">驗證及危害</h3>
 
 <p>為了方便驗證解說這個問題，這邊特別用兩個不存在的身分證字號在宏碁雲端售票申請帳號，分別是 Z288252522 和 Z239398899。測試目的是登入帳號 Z288252522 後看看是否能利用上述 Cookie 問題讀取 Z239398899 的個資。</p>
 
-<p>首先登入帳號 Z288252522，找到一個會回傳個資的頁面：<br />
+<p>首先登入帳號 Z288252522，找到一個會回傳個資的頁面：<br /><br />
 https://www.jody-ticket.com.tw/UTK0196_.aspx</p>
 
 <p><a href="https://lh4.googleusercontent.com/-Sr6zlrJiMdQ/VMtTpyzELnI/AAAAAAAAAxA/VmWdgS82gVQ/w485-h548-no/user_A_data.png"><img src="https://lh4.googleusercontent.com/-Sr6zlrJiMdQ/VMtTpyzELnI/AAAAAAAAAxA/VmWdgS82gVQ/w485-h548-no/user_A_data.png" alt="第一個使用者個資" title="第一個使用者個資" /></a></p>
@@ -147,7 +147,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx</p>
 
 <p>說到這邊，也許有人會質疑要猜中註冊帳戶的身分證字號是有難度的，但其實要列舉出全台灣可能在使用的身分證字號並不困難，再加上宏碁雲端的硬體其實是很不錯的，事實也證明它能夠在<a href="https://tw.news.yahoo.com/%E6%B1%9F%E8%95%99%E5%8A%A0%E5%A0%B4%E5%94%AE%E7%A5%A8-%E9%A7%AD%E5%AE%A2%E6%94%BB%E6%93%8A4000%E8%90%AC%E6%AC%A1-041458504.html">短時間處理四千萬個請求系統仍保持穩定</a>，只要攻擊者網路不要<a href="http://www.cna.com.tw/news/afe/201501250162-1.aspx">卡在自家巷子口</a>，多機器多線程佈下去猜身分證字號效率應該很可觀！</p>
 
-<h3 id="section-3">建議原則</h3>
+<h3 id="建議原則">建議原則</h3>
 
 <p>這次的問題是兩個弱點的組合攻擊：</p>
 
@@ -181,7 +181,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx</p>
 
 <p>沒想到信手拈來就是三不一沒有，前面再加個勾勾，感覺好像很厲害呢！</p>
 
-<h3 id="section-4">結論</h3>
+<h3 id="結論">結論</h3>
 
 <p>由於 Cookie 存在瀏覽器端，有被竄改的可能，所以如果網站使用 Cookie 認證就會有一些安全上的風險。本篇就以宏碁雲端售票為例，說明這種小疏忽可能會造成被盜用帳號的風險。開發者在面對使用者可以改變的變數一定要特別小心處理，做好該有的防護，還是老話一句：使用者傳來的資料皆不可信！只要掌握這個原則，開發出來的產品就能夠少很多很多風險！</p>
 
@@ -243,6 +243,19 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx</p>
           <div class="relative-posts__cells">
   
             <section class="card">
+              <a href="/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20171211/cover.png)"></div>
+                <h3 class="card__title">
+                  Exim RCE 資安通報 (CVE-2017-16943)
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Exim/" class="card__tag">Exim</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/資安新聞/">資安新聞</a></small>
+            </section>
+  
+            <section class="card">
               <a href="/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957/">
                 <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20170103/web2py.png)"></div>
                 <h3 class="card__title">
@@ -266,19 +279,6 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx</p>
                 <a href="/blog/tag/IoT/" class="card__tag">IoT</a><a href="/blog/tag/DDoS/" class="card__tag">DDoS</a>
               </div>
               <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20160922/Accellion.jpeg)"></div>
-                <h3 class="card__title">
-                  Accellion File Transfer Appliance 弱點報告
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Facebook/" class="card__tag">Facebook</a><a href="/blog/tag/BugBounty/" class="card__tag">BugBounty</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
             </section>
   
           </div>

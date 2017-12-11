@@ -98,7 +98,7 @@
               <article class="article">
           <p>by <a href="http://blog.orange.tw/">Orange Tsai</a></p>
 
-<p><a href="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">How I Hacked Facebook, and Found Someone’s Backdoor Script</a> (English Version)<br />
+<p><a href="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">How I Hacked Facebook, and Found Someone’s Backdoor Script</a> (English Version)  <br />
 <a href="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/">滲透 Facebook 的思路與發現</a> (中文版本)</p>
 
 <hr />
@@ -132,20 +132,20 @@
 <ol>
   <li>For most enterprises, “<strong>Network Boundary</strong>” is a rather difficult part to take care of. When the scale of a company has grown large, there are tens of thousands of routers, servers, computers for the MIS to handle, it’s impossible to build up a perfect mechanism of protection. Security attacks can only be defended with general rules, but a successful attack only needs a tiny weak spot. That’s why luck is often on the attacker’s side: a vulnerable server on the “border” is enough to grant a ticket to the internal network!</li>
   <li>Lack of awareness in “<strong>Networking Equipment</strong>” protection. Most networking equipment doesn’t offer delicate SHELL controls and can only be configured on the user interface. Oftentimes the protection of these devices is built on the Network Layer. However, users might not even notice if these devices were compromised by 0-Day or 1-Day attacks.</li>
-  <li>Security of people: now we have witnessed the emergence of the “<strong>Breached Database</strong>” (aka “<strong>Social Engineering Database</strong>” in China), these leaked data sometimes makes the penetration difficulty incredibly low. Just connect to the breach database, find a user credential with VPN access…then voilà! You can proceed with penetrating the internal network. This is especially true when the scope of the data breach is so huge that the Key Man’s password can be found in the breached data. If this happens, then the security of the victim company will become nothing. :P<br />
+  <li>Security of people: now we have witnessed the emergence of the “<strong>Breached Database</strong>” (aka “<strong>Social Engineering Database</strong>” in China), these leaked data sometimes makes the penetration difficulty incredibly low. Just connect to the breach database, find a user credential with VPN access…then voilà! You can proceed with penetrating the internal network. This is especially true when the scope of the data breach is so huge that the Key Man’s password can be found in the breached data. If this happens, then the security of the victim company will become nothing. :P  <br />
 <br /></li>
 </ol>
 
 <p>For sure, when looking for the vulnerabilities on Facebook, I followed the thinking of the penetration tests which I was used to. When I was doing some recon and research, not only did I look up the domain names of Facebook itself, but also tried Reverse Whois. And to my surprise, I found an INTERESTING domain name:</p>
 
-<pre><code>tfbnw.net
-</code></pre>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>tfbnw.net
+</code></pre></div></div>
 
-<p>TFBNW seemed to stand for “<strong>TheFacebook Network</strong>”<br />
+<p>TFBNW seemed to stand for “<strong>TheFacebook Network</strong>”  <br />
 Then I found bellow server through public data</p>
 
-<pre><code>vpn.tfbnw.net
-</code></pre>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vpn.tfbnw.net
+</code></pre></div></div>
 
 <p>WOW. When I accessed vpn.tfbnw.net there’s the Juniper SSL VPN login interface. But its version seemed to be quite new and there was no vulnerability can be directly exploited…nevertheless, it brought up the beginning of the following story.</p>
 
@@ -167,13 +167,13 @@ Then I found bellow server through public data</p>
 
 <p>I found a special server among these C Class IPs.</p>
 
-<pre><code>files.fb.com
-</code></pre>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>files.fb.com
+</code></pre></div></div>
 
-<p><img src="/assets/img/blog/20160421/1.jpg" alt="files.fb.com" />
+<p><img src="/assets/img/blog/20160421/1.jpg" alt="files.fb.com" /><br />
 <em>↑ Login Interface of files.fb.com</em></p>
 
-<p><br />
+<p><br /><br />
 Judging from the LOGO and Footer, this seems to be Accellion’s Secure File Transfer (hereafter known as FTA)</p>
 
 <p>FTA is a product which enables secure file transfer, online file sharing and syncing, as well as integration with Single Sign-on mechanisms including AD, LDAP and Kerberos. The Enterprise version even supports SSL VPN service.</p>
@@ -198,7 +198,7 @@ Judging from the LOGO and Footer, this seems to be Accellion’s Secure File Tra
 
 <p>First I tried to decrypt IonCube encryption. In order to avoid being reviewed by the hackers, a lot of network equipment vendors will encrypt their product source codes. Fortunately, the IonCube version used by FTA was not up to date and could be decrypted with ready-made tools. But I still  had to fix some details, or it’s gonna be messy…</p>
 
-<p>After a simple review, I thought Rapid7 should have already got the easier vulnerabilities. T^T<br />
+<p>After a simple review, I thought Rapid7 should have already got the easier vulnerabilities. T^T  <br />
 And the vulnerabilities which needed to be triggered were not easy to exploit. Therefore I need to look deeper!</p>
 
 <p>Finally, I found 7 vulnerabilities, including</p>
@@ -221,10 +221,10 @@ And the vulnerabilities which needed to be triggered were not easy to exploit. T
 
 <p>More details will be published after full disclosure policy!</p>
 
-<p><img src="/assets/img/blog/20160421/2.jpg" alt="shell on facebook" />
+<p><img src="/assets/img/blog/20160421/2.jpg" alt="shell on facebook" /><br />
 <em>↑ Using Pre-Auth SQL Injection to Write Webshell</em></p>
 
-<p><br />
+<p><br /><br />
 After taking control of the server successfully, the first thing is to check whether the server environment is friendly to you. To stay on the server longer, you have to be familiar with the environments, restrictions, logs, etc and try hard not to be detected. :P</p>
 
 <p>There are some restrictions on the server:</p>
@@ -243,16 +243,16 @@ After taking control of the server successfully, the first thing is to check whe
 
 <p>While collecting vulnerability details and evidences for reporting to Facebook, I found some strange things on web log.</p>
 
-<p>First of all I found some strange PHP error messages in “<strong>/var/opt/apache/php_error_log</strong>”<br />
+<p>First of all I found some strange PHP error messages in “<strong>/var/opt/apache/php_error_log</strong>”  <br />
 These error messages seemed to be caused by modifying codes online?</p>
 
-<p><img src="/assets/img/blog/20160421/3.jpg" alt="PHP error log" />
+<p><img src="/assets/img/blog/20160421/3.jpg" alt="PHP error log" /><br />
 <em>↑ PHP error log</em></p>
 
-<p><br />
+<p><br /><br />
 I followed the PHP paths in error messages and ended up with discovering suspicious WEBSHELL files left by previous “visitors”.</p>
 
-<p><img src="/assets/img/blog/20160421/4.jpg" alt="Webshell on facebook server" />
+<p><img src="/assets/img/blog/20160421/4.jpg" alt="Webshell on facebook server" /><br />
 <em>↑ Webshell on facebook server</em></p>
 
 <p>some contents of the files are as follows:</p>
@@ -291,10 +291,10 @@ I followed the PHP paths in error messages and ended up with discovering suspici
 
 <p>A brief summary, the hacker created a proxy on the credential page to log the credentials of Facebook employees. These logged passwords were stored under web directory for the hacker to use WGET every once in a while</p>
 
-<pre><code>wget https://files.fb.com/courier/B3dKe9sQaa0L.log
-</code></pre>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget https://files.fb.com/courier/B3dKe9sQaa0L.log
+</code></pre></div></div>
 
-<p><img src="/assets/img/blog/20160421/5.jpg" alt="logged password" /><br />
+<p><img src="/assets/img/blog/20160421/5.jpg" alt="logged password" /><br /><br />
 <em>↑ Logged passwords</em></p>
 
 <p><br /></p>
@@ -317,7 +317,7 @@ I followed the PHP paths in error messages and ended up with discovering suspici
   <li>When the hacker was sending out commands, he didn’t take care of STDERR, and left a lot of command error messages in web log which the hacker’s operations could be seen</li>
 </ol>
 
-<p><br />
+<p><br /><br />
 From access.log, every few days the hacker will clear all the credentials he logged</p>
 
 <div class="highlight"><pre><code class="language-prolog" data-lang="prolog"><span class="mf">192.168.54.13</span> <span class="o">-</span> <span class="o">-</span> <span class="mi">17955</span> <span class="p">[</span><span class="nv">Sat</span><span class="p">,</span> <span class="mi">23</span> <span class="nv">Jan</span> <span class="mi">2016</span> <span class="mi">19</span><span class="s-Atom">:</span><span class="mi">04</span><span class="s-Atom">:</span><span class="mi">10</span> <span class="o">+</span><span class="mi">0000</span> <span class="p">|</span> <span class="mi">1453575850</span><span class="p">]</span> <span class="s2">&quot;GET /courier/custom_template/1000/bN3dl0Aw.php?c=./sshpass -p &#39;********&#39; ssh -v -o StrictHostKeyChecking=no soggycat@localhost &#39;cp /home/seos/courier/B3dKe9sQaa0L.log /home/seos/courier/B3dKe9sQaa0L.log.2; echo &gt; /home/seos/courier/B3dKe9sQaa0L.log&#39; 2&gt;/dev/stdout HTTP/1.1&quot;</span> <span class="mi">200</span> <span class="mi">2559</span> <span class="p">...</span></code></pre></div>
@@ -346,8 +346,8 @@ dig a acme.facebook.com
 
 <p><br /></p>
 
-<p>Use ShellScript to scan internal network but forgot to redirect STDERR XD
-<img src="/assets/img/blog/20160421/6.jpg" alt="Port Scanning" />
+<p>Use ShellScript to scan internal network but forgot to redirect STDERR XD<br />
+<img src="/assets/img/blog/20160421/6.jpg" alt="Port Scanning" /><br />
 <br /></p>
 
 <p>Attempt to connect internal LDAP server</p>
@@ -357,7 +357,7 @@ sh: -c: line 0: `ldapsearch -v -x -H ldaps://ldap.thefacebook.com -b CN=svc-acce
 
 <p><br /></p>
 
-<p>Attempt to access internal server <br />
+<p>Attempt to access internal server   <br />
 (Looked like Mail OWA could be accessed directly…)</p>
 
 <div class="highlight"><pre><code class="language-text" data-lang="text">--20:38:09--  https://mail.thefacebook.com/
@@ -419,12 +419,12 @@ base64: invalid input</code></pre></div>
 
 <p>Also, from the log on the server, there were two periods that the system was obviously operated by the hacker, one in the beginning of July and one in mid-September</p>
 
-<p>the July one seemed to be a server “dorking” and the September one seemed more vicious. Other than server “dorking” keyloggers were also implemented. As for the identities of these two hackers, were they the same person? Your guess is as good as mine. :P<br />
+<p>the July one seemed to be a server “dorking” and the September one seemed more vicious. Other than server “dorking” keyloggers were also implemented. As for the identities of these two hackers, were they the same person? Your guess is as good as mine. :P  <br />
 The time July incident happened to take place right before the announcement of CVE-2015-2857 exploit. Whether it was an invasion of 1-day exploitation or unknown 0-day ones were left in question.</p>
 
 <p><br /></p>
 
-<p>Here’s the end of the story, and, generally speaking, it was a rather interesting experience xD<br />
+<p>Here’s the end of the story, and, generally speaking, it was a rather interesting experience xD  <br />
 Thanks to this event, it inspired me to write some articles about penetration :P</p>
 
 <p>Last but not least, I would like to thank Bug Bounty and tolerant Facebook Security Team so that I could fully write down this incident : )</p>

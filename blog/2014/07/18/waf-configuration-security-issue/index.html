@@ -102,7 +102,7 @@
 
 <!-- more -->
 
-<h3 id="waf-">WAF 搭配不佳的設定會帶來什麼危害？</h3>
+<h3 id="waf-搭配不佳的設定會帶來什麼危害">WAF 搭配不佳的設定會帶來什麼危害？</h3>
 
 <p>以常見的 mod_proxy 搭配 mod_security 的方案來看，通常使用 Reverse Proxy 或 Transparent Proxy 為其架構，透過 Proxy 的方式在 Client 與 Web Server 之間，對 HTTP Request / Response 進行過濾；以 HTTP Request 為例，當 WAF 偵測到 Client 端的請求中有 SQL Injection 語法時候，將會阻斷這個連線防止駭客攻擊。</p>
 
@@ -116,7 +116,7 @@
 
 <p><a href="https://lh3.googleusercontent.com/-hlQZaYZcEZE/U8jvhb5DHoI/AAAAAAAAAjw/jb2tUe10cl8/s2560/2014-07-11-waf-configuration-security-issue-02.png"><img src="https://lh3.googleusercontent.com/-hlQZaYZcEZE/U8jvhb5DHoI/AAAAAAAAAjw/jb2tUe10cl8/w784-h233-no/2014-07-11-waf-configuration-security-issue-02.png" alt="因為 WAF 而繞過 IP 限制" title="因為 WAF 而繞過 IP 限制" /></a></p>
 
-<h3 id="section">實際案例</h3>
+<h3 id="實際案例">實際案例</h3>
 
 <p>我們以常見的 Web Server 整合包 XAMPP 為例，在預設的 http-xampp.conf 設定檔中限制了一些管理頁面只能由 Private IP 存取，如 /security 、 /webalizer 、 /phpmyadmin 、 /server-status 、 /server-info 等，此時 WAF 的 IP 若為 Private IP，依 XAMPP 預設設定，WAF 將可以存取這些受 IP 限制的資源，當 WAF 存取完資源後又將內容回傳給 Client 端。</p>
 
@@ -143,7 +143,7 @@
 
 <p><a href="https://lh6.googleusercontent.com/-22UDz3CWOzw/U8jvig8XCfI/AAAAAAAAAkM/JlDEr1YQXL4/s2560/2014-07-11-waf-configuration-security-issue-09.png"><img src="https://lh6.googleusercontent.com/-22UDz3CWOzw/U8jvig8XCfI/AAAAAAAAAkM/JlDEr1YQXL4/w860-h678-no/2014-07-11-waf-configuration-security-issue-09.png" alt="網站記錄分析工具 webalizer" title="網站記錄分析工具 webalizer" /></a></p>
 
-<h3 id="section-1">小結</h3>
+<h3 id="小結">小結</h3>
 
 <p>如果建置了 WAF，有關 IP 的設定必須要從 WAF 支援的 HTTP Header 中取出使用者的 IP (REMOTE_ADDR)，才能讓原本網站的 IP 限制生效。在這種設定錯誤或是對 WAF 架構不瞭解的情況下，WAF 反而成為駭客繞過 Private IP 限制的跳板，就如同為駭客開了一個後門。因此在使用資安設備時，必須瞭解其架構。別讓資安設備、安全機制，反而使得伺服器更不安全。</p>
 
@@ -203,6 +203,19 @@
           <div class="relative-posts__cells">
   
             <section class="card">
+              <a href="/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20171211/cover.png)"></div>
+                <h3 class="card__title">
+                  Exim RCE 資安通報 (CVE-2017-16943)
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Exim/" class="card__tag">Exim</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/資安新聞/">資安新聞</a></small>
+            </section>
+  
+            <section class="card">
               <a href="/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957/">
                 <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20170103/web2py.png)"></div>
                 <h3 class="card__title">
@@ -226,19 +239,6 @@
                 <a href="/blog/tag/IoT/" class="card__tag">IoT</a><a href="/blog/tag/DDoS/" class="card__tag">DDoS</a>
               </div>
               <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20160922/Accellion.jpeg)"></div>
-                <h3 class="card__title">
-                  Accellion File Transfer Appliance 弱點報告
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Facebook/" class="card__tag">Facebook</a><a href="/blog/tag/BugBounty/" class="card__tag">BugBounty</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
             </section>
   
           </div>

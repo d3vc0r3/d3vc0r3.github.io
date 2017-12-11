@@ -113,7 +113,7 @@
 
 <!-- more -->
 
-<h3 id="section">攻擊手法示範</h3>
+<h3 id="攻擊手法示範">攻擊手法示範</h3>
 
 <p>大家都說 OpenSSL Heartbleed 漏洞可望為本年度最嚴重的漏洞，到底有多嚴重呢？我相信沒有看到攻擊的範例是沒有感覺的。大家可以先看看以下的影片，利用最先釋出的兩個簡單的 PoC exploit （弱點利用程式）「ssltest.py」以及「check-ssl-heartbleed.pl」，來檢測伺服器是否有 Heartbleed 問題。檢測的同時可以獲取伺服器記憶體中的資訊，其中就可能包含了機敏資訊。</p>
 
@@ -127,7 +127,7 @@
 
 <p>如果是檢測一個有漏洞的網站，這個工具會直接把記憶體的內容顯示出來，其中可能包括 http 傳輸的資料、帳號密碼、私密金鑰等。在這個例子中，攻擊程式讀取到使用者送出的 form，若其中包含個資將會被一覽無遺，非常危險。</p>
 
-<p><a href="https://lh4.googleusercontent.com/-csGMcT5ue6k/U0kWbdd0BTI/AAAAAAAAARI/_eJXbANavDw/s2560/2014-04-11-openssl-heartbleed-detail-02-ssltest.py-data.png"><img src="https://lh4.googleusercontent.com/-csGMcT5ue6k/U0kWbdd0BTI/AAAAAAAAARI/_eJXbANavDw/w896-h678-no/2014-04-11-openssl-heartbleed-detail-02-ssltest.py-data.png" alt="利用 ssltest.py 抓出記憶體中的資料，其中包括 HTTP 傳輸內容。" title="利用 ssltest.py 抓出記憶體中的資料，其中包括 HTTP 傳輸內容。" />
+<p><a href="https://lh4.googleusercontent.com/-csGMcT5ue6k/U0kWbdd0BTI/AAAAAAAAARI/_eJXbANavDw/s2560/2014-04-11-openssl-heartbleed-detail-02-ssltest.py-data.png"><img src="https://lh4.googleusercontent.com/-csGMcT5ue6k/U0kWbdd0BTI/AAAAAAAAARI/_eJXbANavDw/w896-h678-no/2014-04-11-openssl-heartbleed-detail-02-ssltest.py-data.png" alt="利用 ssltest.py 抓出記憶體中的資料，其中包括 HTTP 傳輸內容。" title="利用 ssltest.py 抓出記憶體中的資料，其中包括 HTTP 傳輸內容。" /><br />
 </a></p>
 
 <p>另一個工具 <a href="https://github.com/noxxi/p5-scripts/blob/master/check-ssl-heartbleed.pl">check-ssl-heartbleed.pl</a> 可以使用 -R 參數做更有效的利用。直接執行指令可以快速顯示伺服器有無問題。</p>
@@ -142,7 +142,7 @@
 
 <p>除了這種利用方法之外，還有更多情況是直接把使用者登入的帳號密碼直接顯示出來的，因此如果伺服器沒有做好防禦或更新，整個網站的使用者資料都可以因此外洩。這也是為什麼我們一直強調伺服器管理者必須要更新金鑰、全站使用者帳號密碼等，以防有心人士借此撈取資料。</p>
 
-<h3 id="heartbleed-">誰在利用 Heartbleed 漏洞竊取資料呢？</h3>
+<h3 id="誰在利用-heartbleed-漏洞竊取資料呢">誰在利用 Heartbleed 漏洞竊取資料呢？</h3>
 
 <p>由 github 上面的 <a href="https://github.com/openssl/openssl/commit/4817504d069b4c5082161b02a22116ad75f822b1">commit 記錄</a>，出問題的那行程式碼是在 2011-12-31 22:59:57 commit 的，不知道是開發者太累還是 NSA 的陰謀。根據 Bloomberg 的<a href="http://www.bloomberg.com/news/2014-04-11/nsa-said-to-have-used-heartbleed-bug-exposing-consumers.html">報導</a>指出，知情人士表示 NSA 早在<strong>兩年前</strong>就已經知道此漏洞，並且<strong>利用這個漏洞竊取許多網站的機敏資料</strong>。這代表 NSA 在一開始就知道這個漏洞，令人不禁有其他聯想。</p>
 
@@ -152,41 +152,41 @@
 
 <p>在之前<a href="http://hitcon.org">台灣駭客年會 (HITCON)</a> 2013 的講師 Rahul Sasi (Garage4Hackers) 公布了<a href="https://bitbucket.org/fb1h2s/cve-2014-0160/src/bba16b3eedef0e92bd91fea496b00c92eb515e29/Heartbeat_scanner.py?at=master">大量掃描 Heartbleed 漏洞的程式</a>，也可以供研究人員自行研究，或者是尋找自己管理的主機中有多少包含這個風險的。</p>
 
-<h3 id="section-1">常見問題</h3>
+<h3 id="常見問題">常見問題</h3>
 
-<h3 id="openssl-iis--heartbleed-">OpenSSL 是什麼？IIS 會受 Heartbleed 漏洞影響嗎？</h3>
+<h3 id="openssl-是什麼iis-會受-heartbleed-漏洞影響嗎">OpenSSL 是什麼？IIS 會受 Heartbleed 漏洞影響嗎？</h3>
 
 <p><a href="https://www.openssl.org">OpenSSL</a> 是一個函式庫（Library），在 UNIX 系列的服務若有使用 SSL，通常都會使用 OpenSSL。因此這次的漏洞並未影響微軟 IIS。</p>
 
-<h3 id="openssl-098">我使用 OpenSSL 0.9.8，太好了我用舊版我好安全！</h3>
+<h3 id="我使用-openssl-098太好了我用舊版我好安全">我使用 OpenSSL 0.9.8，太好了我用舊版我好安全！</h3>
 
 <p>你聽過 <a href="http://en.wikipedia.org/wiki/Transport_Layer_Security#BEAST_attack">BEAST</a>, <a href="http://en.wikipedia.org/wiki/BREACH_%28security_exploit%29">BREACH</a>, <a href="http://en.wikipedia.org/wiki/CRIME_%28security_exploit%29">CRIME</a>, <a href="http://www.isg.rhul.ac.uk/tls/Lucky13.html">Lucky 13</a> 嗎？</p>
 
-<h3 id="https">我沒有使用 HTTPS，所以我很安全！</h3>
+<h3 id="我沒有使用-https所以我很安全">我沒有使用 HTTPS，所以我很安全！</h3>
 
 <p>。。。</p>
 
-<h3 id="http-server">只有網頁伺服器（HTTP Server）會受影響嗎？</h3>
+<h3 id="只有網頁伺服器http-server會受影響嗎">只有網頁伺服器（HTTP Server）會受影響嗎？</h3>
 
 <p>不只！只要使用 OpenSSL 支援 STARTTLS 的服務都在影響範圍，包括 HTTPS、IMAPS、POPS、SMTPS 等伺服器。</p>
 
-<h3 id="section-2">只有自己架設的伺服器會受影響嗎？</h3>
+<h3 id="只有自己架設的伺服器會受影響嗎">只有自己架設的伺服器會受影響嗎？</h3>
 
 <p>當然不只！目前已經出現各大設備廠商都遭遇到這樣的問題。各大設備廠商、作業系統等影響狀況，可以參閱以下文章。</p>
 
-<p>CERT: OpenSSL heartbeat extension read overflow discloses sensitive information
+<p>CERT: OpenSSL heartbeat extension read overflow discloses sensitive information<br />
 <a href="http://www.kb.cert.org/vuls/byvendor?searchview&amp;Query=FIELD+Reference=720951&amp;SearchOrder=4">http://www.kb.cert.org/vuls/byvendor?searchview&amp;Query=FIELD+Reference=720951&amp;SearchOrder=4</a></p>
 
 <p>廠商的設備目前狀況特別嚴重，因為所有同個版本的設備都會受影響，而在廠商釋出更新之前，只能被動的等待更新。若沒有繼續簽訂維護約的設備，也只能繼續跟廠商簽約更新，或者是看廠商是否可以直接提供更新檔。如果有 VPN Server 等服務更要注意，如果被攻擊者取得帳號密碼，等於如入無人之境，直接使用你的帳號登入到企業內網，不可不慎。</p>
 
-<h3 id="section-3">各家系統更新的速度？</h3>
+<h3 id="各家系統更新的速度">各家系統更新的速度？</h3>
 
 <p>引述自好朋友 Ant 的<a href="http://blog.gcos.me/2014-04-10_openssl-cve-2014-0160-security-issue.html">文章</a>，各家作業系統、網站的更新速度，代表著企業重視資安的程度以及針對資安事件緊急應變的效率，也可以作為我們挑選系統、網站、廠商的依據。</p>
 
 <blockquote>
   <p>二、作業系統的更新進度</p>
 
-  <p>從資安事件的處理可以推敲出各作業系統商對於緊急事件的反應速度。
+  <p>從資安事件的處理可以推敲出各作業系統商對於緊急事件的反應速度。<br />
 時間軸，按照修復的先後排列：</p>
 
   <ol>
@@ -197,7 +197,7 @@
     <li>Arch Linux 約在 2014年4月7日 20:36 正式修復。</li>
     <li>Debian 約在 2014年4月7日 21:45 正式修復。</li>
     <li>FreeBSD 約在 2014年4月7日 21:46 正式修復。</li>
-    <li>Ubuntu 約在 2014年4月7日 21:48 正式修復。
+    <li>Ubuntu 約在 2014年4月7日 21:48 正式修復。<br />
 (2014年4月8日分隔區)</li>
     <li>Fedora 約在 2014年4月8日 00:33 正式修復。</li>
     <li>CentOS 約在 2014年4月8日 02:49 正式修復。</li>
@@ -206,90 +206,96 @@
     <li>Gentoo 約在 2014年4月8日 09:36 正式修復。</li>
   </ol>
 
-  <p>重點整理：
-1. RedHat 修復的速度比 OpenSSL 官方還快。
-2. RedHat 派系的修復時間，除了 RedHat 外都算慢，如 Fedora 及 CentOS、Scentific，他們都比 RedHat 慢 16 小時以上。
-3. Debian 派系的修復時間，如 Debian 及 Ubuntu，都比 RedHat 慢上至少 12 小時以上。
-4. Gentoo 是列表中修復最慢的。
-5. 若以資安黃金 6 小時來說，Fedora、CentOS、OpenSUSE、Scentific 及 Gentoo 都不及格。</p>
+  <p>重點整理：</p>
+  <ol>
+    <li>RedHat 修復的速度比 OpenSSL 官方還快。</li>
+    <li>RedHat 派系的修復時間，除了 RedHat 外都算慢，如 Fedora 及 CentOS、Scentific，他們都比 RedHat 慢 16 小時以上。</li>
+    <li>Debian 派系的修復時間，如 Debian 及 Ubuntu，都比 RedHat 慢上至少 12 小時以上。</li>
+    <li>Gentoo 是列表中修復最慢的。</li>
+    <li>若以資安黃金 6 小時來說，Fedora、CentOS、OpenSUSE、Scentific 及 Gentoo 都不及格。</li>
+  </ol>
 
   <p>三、大公司更新的速度</p>
 
   <p>同樣地，從資安事件的處理可以推敲出各公司對於緊急事件的反應速度。</p>
 
-  <p>雲端相關公司
-* Cloudflare 約在 2014年4月7日 11時修復。
-* DigitalOcean 約在 2014年4月8日 12時修復。
-* AWS 約在 2014年4月8日 12時修復。
-* Linode 約在 2014年4月8日 14時修復。
-* Heroku 約在 2014年4月8日 16時修復。</p>
+  <p>雲端相關公司</p>
+  <ul>
+    <li>Cloudflare 約在 2014年4月7日 11時修復。</li>
+    <li>DigitalOcean 約在 2014年4月8日 12時修復。</li>
+    <li>AWS 約在 2014年4月8日 12時修復。</li>
+    <li>Linode 約在 2014年4月8日 14時修復。</li>
+    <li>Heroku 約在 2014年4月8日 16時修復。</li>
+  </ul>
 
-  <p>有些公司直到 2014年4月8日 16時都還沒修復。此時已離官方正式修復整整一天，也比上述機器數很多的雲端相關公司還慢。這些公司為，
-* Yahoo.com / Flickr.com
-* Kaspersky.com (資安公司)
-* stackoverflow.com
-* stackexchange .com
-* php.net</p>
+  <p>有些公司直到 2014年4月8日 16時都還沒修復。此時已離官方正式修復整整一天，也比上述機器數很多的雲端相關公司還慢。這些公司為，</p>
+  <ul>
+    <li>Yahoo.com / Flickr.com</li>
+    <li>Kaspersky.com (資安公司)</li>
+    <li>stackoverflow.com</li>
+    <li>stackexchange .com</li>
+    <li>php.net</li>
+  </ul>
 </blockquote>
 
 <p>感謝 StackNG 的補充：Cloudflare 於 2014 年 4 月 7 日 11 時公告，但在漏洞公告之前已經修復。</p>
 
-<h3 id="section-4">目前還有哪些伺服器有問題呢？</h3>
+<h3 id="目前還有哪些伺服器有問題呢">目前還有哪些伺服器有問題呢？</h3>
 
 <p>根據 <a href="https://zmap.io/">ZMap</a> 的<a href="https://zmap.io/heartbleed/">研究報告</a>指出，他們針對 <a href="http://s3.amazonaws.com/alexa-static/top-1m.csv.zip">Alexa 前一百萬個網站</a>進行檢測，大約有 36% 的伺服器支援 TLS、7.6% 的伺服器含有此漏洞。ZMap 並提供了一個<a href="https://zmap.io/heartbleed/vulnerable.html">完整的清單</a>列出在 2014/4/11 17:00 尚未修復漏洞的網站。</p>
 
 <p><a href="https://lh3.googleusercontent.com/-5iuzr3g9s3U/U0lID8GrS4I/AAAAAAAAARw/Mi673wz-Jhc/s2560/2014-04-11-openssl-heartbleed-detail-06.png"><img src="https://lh3.googleusercontent.com/-5iuzr3g9s3U/U0lID8GrS4I/AAAAAAAAARw/Mi673wz-Jhc/w979-h586-no/2014-04-11-openssl-heartbleed-detail-06.png" alt="ZMap.io Heartbleed vulnerable domains" title="ZMap.io Heartbleed vulnerable domains" /></a></p>
 
-<h3 id="section-5">有什麼值得測試的網站呢？</h3>
+<h3 id="有什麼值得測試的網站呢">有什麼值得測試的網站呢？</h3>
 
 <p><a href="https://lh4.googleusercontent.com/-CiDaDbmxMK0/U0lGuQ6J1iI/AAAAAAAAARg/cZQSD4k7F40/s2560/2014-04-11-openssl-heartbleed-detail-05.jpg"><img src="https://lh4.googleusercontent.com/-CiDaDbmxMK0/U0lGuQ6J1iI/AAAAAAAAARg/cZQSD4k7F40/w687-h422-no/2014-04-11-openssl-heartbleed-detail-05.jpg" alt="OpenSSL Heartbleed with a beer!" title="OpenSSL Heartbleed with a beer!" /></a></p>
 
 <p>via <a href="https://www.facebook.com/photo.php?fbid=10201756684385494">Facebook</a></p>
 
-<h3 id="openssl-">我要怎麼更新 OpenSSL 呢？</h3>
+<h3 id="我要怎麼更新-openssl-呢">我要怎麼更新 OpenSSL 呢？</h3>
 
 <p>根據不同的 Linux Distribution 有不同的更新方式，若有自己客製化一些程式設定，可能就需要自行更新。以下我們簡單介紹更新步驟：</p>
 
 <p>RedHat / CentOS / Fedora 系列更新套件：</p>
 
-<pre><code>yum update
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>yum update
 yum update openssl #只更新 OpenSSL
-</code></pre>
+</code></pre></div></div>
 
 <p>Debian / Ubuntu 系列更新套件：</p>
 
-<pre><code>sudo apt-get update
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo apt-get update
 sudo apt-get dist-upgrade
-</code></pre>
+</code></pre></div></div>
 
 <p>若只要更新 OpenSSL 則可以執行以下指令</p>
 
-<pre><code>sudo apt-get install --only-upgrade openssl
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo apt-get install --only-upgrade openssl
 sudo apt-get install --only-upgrade libssl1.0.0
-</code></pre>
+</code></pre></div></div>
 
 <p>注意 OpenSSL 是否已經更新為修復的版本：</p>
 
-<pre><code>rpm -q -a | grep "openssl"  # RedHat
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>rpm -q -a | grep "openssl"  # RedHat
 dpkg -l | grep "openssl"    # Debian
-</code></pre>
+</code></pre></div></div>
 
 <p>接著請記得撤銷原本的簽章金鑰，重新簽署，並記得提交 CSR (Certificate Signing Request) 給 CA (Certification Authority)。</p>
 
-<pre><code>openssl req -new -newkey rsa:2048 -nodes -keyout hostname.key -out hostname.csr
-</code></pre>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>openssl req -new -newkey rsa:2048 -nodes -keyout hostname.key -out hostname.csr
+</code></pre></div></div>
 
 <p>結束後記得重新啟動相關服務</p>
 
-<pre><code>sudo service httpd restart      # RedHat
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo service httpd restart      # RedHat
 sudo service apache2 restart    # Debian
-</code></pre>
+</code></pre></div></div>
 
 <p>最後再使用檢測工具看自己的網頁伺服器或其他相關服務是否已經不在漏洞受害範圍。</p>
 
-<h3 id="ids-">我無法更新我的伺服器，我該怎麼在 IDS 偵測攻擊呢？</h3>
+<h3 id="我無法更新我的伺服器我該怎麼在-ids-偵測攻擊呢">我無法更新我的伺服器，我該怎麼在 IDS 偵測攻擊呢？</h3>
 
-<p>若你使用 Snort IDS，官方已經釋出 SID 30510 到 30517 來偵測，並且在 Community Rules 中也有包含。
+<p>若你使用 Snort IDS，官方已經釋出 SID 30510 到 30517 來偵測，並且在 Community Rules 中也有包含。<br />
 <a href="http://www.snort.org/snort-rules/#community">http://www.snort.org/snort-rules/#community</a></p>
 
 <div class="highlight"><pre><code class="language-console" data-lang="console"><span class="gp">#</span> SIDs <span class="m">30510</span> through <span class="m">30517</span> address detection of the heartbleed attack 
@@ -346,11 +352,11 @@ sudo service apache2 restart    # Debian
 <span class="go">drop, service ssl; reference:cve,2014-0160; classtype:attempted-recon; sid:30517; </span>
 <span class="go">rev:3;)</span></code></pre></div>
 
-<h3 id="section-6">民眾與管理者應對措施</h3>
+<h3 id="民眾與管理者應對措施">民眾與管理者應對措施</h3>
 
 <p>不少朋友來信、留言洽詢，到底自己該怎麼針對這次的漏洞應變？我們簡單就一般民眾以及系統管理者說明。</p>
 
-<h3 id="section-7">一般民眾應對措施</h3>
+<h3 id="一般民眾應對措施">一般民眾應對措施</h3>
 
 <ul>
   <li>注意常用的重要網站服務，是否有針對 Heartbleed 漏洞的更新措施。不少大公司都有發出公告、公告信等。</li>
@@ -360,7 +366,7 @@ sudo service apache2 restart    # Debian
   <li>若使用的網站服務就是不更新，<strong>一天一信友善提醒管理者</strong>。</li>
 </ul>
 
-<h3 id="section-8">系統管理者應對措施</h3>
+<h3 id="系統管理者應對措施">系統管理者應對措施</h3>
 
 <ul>
   <li>更新 OpenSSL 至 1.0.1g 或 1.0.2-beta2，並密切注意有無後續更新。</li>
@@ -371,7 +377,7 @@ sudo service apache2 restart    # Debian
 
 <p>許多業者抱持著僥倖的心態，想說外洩的目標不會輪到自己。如果大家看到這幾天<strong>全世界資安人員 / 駭客不眠不休的撈取資料</strong>，應該會徹底消滅僥倖的想法乖乖做好防護。在漏洞揭露的頭幾天，就已經陸續看到不少駭客進入 Google、Facebook、Yahoo! 等伺服器，並且撰寫大規模掃描工具大量攻擊。除非你有把握自己的伺服器沒有任何連線，不然還是請乖乖更新吧。</p>
 
-<h3 id="section-9">大事件，大啟示</h3>
+<h3 id="大事件大啟示">大事件，大啟示</h3>
 
 <p>還記得之前我們提到的「<a href="http://devco.re/blog/2014/03/14/3rd-party-software-security-issues/">使用第三方套件所要擔負的資安風險</a>」？這次的事件就是一個血淋淋的案例。不管是廠商、社群、個人開發者的粗心失誤，或者是國家機器 NSA 的強力滲透，使用各種第三方的套件都需要承擔極大的風險。但可悲的是，我們卻無法不使用。從這次的事件我們可以學到幾件事情：</p>
 
@@ -442,6 +448,19 @@ sudo service apache2 restart    # Debian
           <div class="relative-posts__cells">
   
             <section class="card">
+              <a href="/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20171211/cover.png)"></div>
+                <h3 class="card__title">
+                  Exim RCE 資安通報 (CVE-2017-16943)
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Exim/" class="card__tag">Exim</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/資安新聞/">資安新聞</a></small>
+            </section>
+  
+            <section class="card">
               <a href="/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957/">
                 <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20170103/web2py.png)"></div>
                 <h3 class="card__title">
@@ -465,19 +484,6 @@ sudo service apache2 restart    # Debian
                 <a href="/blog/tag/IoT/" class="card__tag">IoT</a><a href="/blog/tag/DDoS/" class="card__tag">DDoS</a>
               </div>
               <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20160922/Accellion.jpeg)"></div>
-                <h3 class="card__title">
-                  Accellion File Transfer Appliance 弱點報告
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Facebook/" class="card__tag">Facebook</a><a href="/blog/tag/BugBounty/" class="card__tag">BugBounty</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
             </section>
   
           </div>

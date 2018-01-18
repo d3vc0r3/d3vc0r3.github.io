@@ -4,7 +4,7 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2017-12-11T22:16:29+08:00</updated>
+ <updated>2018-01-18T16:49:50+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name>DEVCORE</name>
@@ -157,7 +157,7 @@ This store makes &lt;code class=&quot;highlighter-rouge&quot;&gt;if (!store_exte
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;Keep sending msg until extension and bug triggered&lt;br /&gt;
- In this way, while we keep sending huge messages, &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block&lt;/code&gt; gets freed after the extension. In the malloc.c of glibc (so called ptmalloc), system manages a linked list of freed memory chunks, which is called unsortbin. Freed chunks are put into unsortbin if it is not the last chunk on the heap. In step 2, &lt;code class=&quot;highlighter-rouge&quot;&gt;dkim_exim_verify_init&lt;/code&gt; allocated chunks after &lt;code class=&quot;highlighter-rouge&quot;&gt;next-&amp;gt;text&lt;/code&gt;. Therefore, this chunk is put into unsortbin and the pointers of linked list are stored into the first 16 bytes of chunk (on x86-64). The location written is exactly &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block-&amp;gt;next&lt;/code&gt;, and therefore &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block-&amp;gt;next&lt;/code&gt; is overwritten to &lt;code class=&quot;highlighter-rouge&quot;&gt;unsortbin&lt;/code&gt; inside &lt;code class=&quot;highlighter-rouge&quot;&gt;main_arena&lt;/code&gt; of libc (linked list pointer &lt;code class=&quot;highlighter-rouge&quot;&gt;fd&lt;/code&gt; points back to &lt;code class=&quot;highlighter-rouge&quot;&gt;unsortbin&lt;/code&gt; if no other freed chunk exists). &lt;br /&gt;
+ In this way, while we keep sending huge messages, &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block&lt;/code&gt; gets freed after the extension. In the malloc.c of glibc (so called ptmalloc2), system manages a linked list of freed memory chunks, which is called unsorted bin. Freed chunks are put into unsorted bin if it is not the last chunk on the heap. In step 2, &lt;code class=&quot;highlighter-rouge&quot;&gt;dkim_exim_verify_init&lt;/code&gt; allocated chunks after &lt;code class=&quot;highlighter-rouge&quot;&gt;next-&amp;gt;text&lt;/code&gt;. Therefore, this chunk is put into unsorted bin and the pointers of linked list are stored into the first 16 bytes of chunk (on x86-64). The location written is exactly &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block-&amp;gt;next&lt;/code&gt;, and therefore &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block-&amp;gt;next&lt;/code&gt; is overwritten to &lt;code class=&quot;highlighter-rouge&quot;&gt;unsorted bin&lt;/code&gt; inside &lt;code class=&quot;highlighter-rouge&quot;&gt;main_arena&lt;/code&gt; of libc (linked list pointer &lt;code class=&quot;highlighter-rouge&quot;&gt;fd&lt;/code&gt; points back to &lt;code class=&quot;highlighter-rouge&quot;&gt;unsorted bin&lt;/code&gt; if no other freed chunk exists). &lt;br /&gt;
 &lt;img src=&quot;/assets/img/blog/20171211/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;Keep sending msg for the next extension&lt;br /&gt;
@@ -171,7 +171,7 @@ This store makes &lt;code class=&quot;highlighter-rouge&quot;&gt;if (!store_exte
 &lt;/ol&gt;
 
 &lt;h4 id=&quot;exploit-for-default-configured-exim&quot;&gt;Exploit for default configured exim&lt;/h4&gt;
-&lt;p&gt;When dkim is disabled, the PoC above fails because &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block&lt;/code&gt; is the last chunk on heap. This makes the system merge it into a big chunk called &lt;strong&gt;top chunk&lt;/strong&gt; rather than unsortbin.&lt;br /&gt;
+&lt;p&gt;When dkim is disabled, the PoC above fails because &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block&lt;/code&gt; is the last chunk on heap. This makes the system merge it into a big chunk called &lt;strong&gt;top chunk&lt;/strong&gt; rather than unsorted bin.&lt;br /&gt;
 The illustrations below describe the difference of heap layout:&lt;br /&gt;
 &lt;img src=&quot;/assets/img/blog/20171211/8.png&quot; alt=&quot;&quot; /&gt;&lt;br /&gt;
 &lt;img src=&quot;/assets/img/blog/20171211/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
@@ -181,7 +181,7 @@ The illustrations below describe the difference of heap layout:&lt;br /&gt;
 &lt;p&gt;After running out of &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block&lt;/code&gt;:&lt;/p&gt;
 &lt;ol&gt;
   &lt;li&gt;Use DATA command to send lots of data&lt;br /&gt;
- Send huge data, make the chunk big and extend many times. After several extension, it calls &lt;code class=&quot;highlighter-rouge&quot;&gt;store_get&lt;/code&gt; to retrieve a bigger store and then releases the old one. This repeats many times if the data is long enough. Therefore, we have a big chunk in unsortbin.&lt;/li&gt;
+ Send huge data, make the chunk big and extend many times. After several extension, it calls &lt;code class=&quot;highlighter-rouge&quot;&gt;store_get&lt;/code&gt; to retrieve a bigger store and then releases the old one. This repeats many times if the data is long enough. Therefore, we have a big chunk in unsorted bin.&lt;/li&gt;
   &lt;li&gt;End DATA transfer and start a new email&lt;br /&gt;
  Restart to send an email with BDAT command after the heap chunk is prepared.&lt;/li&gt;
   &lt;li&gt;Adjust &lt;code class=&quot;highlighter-rouge&quot;&gt;yield_length&lt;/code&gt; again&lt;br /&gt;
@@ -191,7 +191,7 @@ The illustrations below describe the difference of heap layout:&lt;br /&gt;
 &lt;p&gt;Finally the heap layout is like:&lt;br /&gt;
 &lt;img src=&quot;/assets/img/blog/20171211/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;And now we can go back to the step 2 at the beginning and create the same situation. When &lt;code class=&quot;highlighter-rouge&quot;&gt;next-&amp;gt;text&lt;/code&gt; is freed, it goes back to unsortbin and we are able to overwrite libc global variables again.&lt;br /&gt;
+&lt;p&gt;And now we can go back to the step 2 at the beginning and create the same situation. When &lt;code class=&quot;highlighter-rouge&quot;&gt;next-&amp;gt;text&lt;/code&gt; is freed, it goes back to unsorted bin and we are able to overwrite libc global variables again.&lt;br /&gt;
 The following is the PoC for default configured exim:&lt;/p&gt;
 &lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# CVE-2017-16943 PoC by meh at DEVCORE&lt;/span&gt;
 &lt;span class=&quot;c&quot;&gt;# pip install pwntools&lt;/span&gt;
@@ -2636,9 +2636,9 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
         &lt;span class=&quot;nx&quot;&gt;object&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;innerHTML&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;foobar&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
     &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
 &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
-&lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-上述的跨來源操作同樣違反了 SOP，應當被拒絕執行。但他卻能在有風險的 WebView 上被執行，造成風險。&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;上述的跨來源操作同樣違反了 SOP，應當被拒絕執行。但他卻能在有風險的 WebView 上被執行，造成風險。&lt;/p&gt;
 
 &lt;h4 id=&quot;防範-1&quot;&gt;防範&lt;/h4&gt;
 
@@ -2662,7 +2662,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;下面我們製作了一段結合中間人攻擊與 addJavascriptInterface 漏洞，模擬使用者手機被入侵的影片：&lt;/p&gt;
 
-&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;http://www.youtube.com/embed/reKEu-Ajo50&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
+&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;https://www.youtube.com/embed/reKEu-Ajo50&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
 
 &lt;p&gt;從影片的最後可以看到，攻擊者取得存在漏洞的應用程式權限，並取得裡面的機敏資料。&lt;/p&gt;
 
@@ -2773,7 +2773,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;詳細的實作流程請參考下面影片：&lt;/p&gt;
 
-&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;http://www.youtube.com/embed/RUsHcZi2hIU&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
+&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;https://www.youtube.com/embed/RUsHcZi2hIU&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
 
 &lt;p&gt;我們團隊也在 CGI 環境下執行幾種程式語言進行測試，發現用到以下 function 時會讀取到環境變數（date 只是範例，可代換為其他系統指令），因此若伺服器在 CGI 環境下使用這些 function，會為伺服器本身帶來嚴重風險。&lt;/p&gt;
 
@@ -2810,7 +2810,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;同時，有另一批人發現某些作業系統在進行 DHCP 連線時，會將 DHCP 伺服器傳入的一些資訊塞入到環境變數中。於是，若建置一個惡意 DHCP 伺服器，對其連線的使用者就有很高的機會遭受攻擊。我們實際做了實驗攻擊一般使用者，在使用者建立連線的當下放置後門，實驗過程如下影片：&lt;/p&gt;
 
-&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;http://www.youtube.com/embed/rSj1v8pFVKg&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
+&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;https://www.youtube.com/embed/rSj1v8pFVKg&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
 
 &lt;p&gt;&lt;br /&gt;&lt;br /&gt;
 我們也分別測試了在不同作業系統下是否會受到惡意 DHCP 伺服器影響，基本上，常見的 un*x 系統開機後自動連線基本上都會中招。&lt;/p&gt;
@@ -4710,7 +4710,7 @@ hmac 值用來驗證 cookie 是否合法。&lt;br /&gt;&lt;br /&gt;
 
 &lt;p&gt;讓我們來看看吧！&lt;/p&gt;
 
-&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;http://www.youtube.com/embed/kFGzu0-cIxE&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
+&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;https://www.youtube.com/embed/kFGzu0-cIxE&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
 
 &lt;p&gt;首先利用 &lt;a href=&quot;http://pastebin.com/WmxzjkXJ&quot;&gt;ssltest.py&lt;/a&gt; 來測試，來看伺服器是否有被 heartbleed 漏洞影響，fbi.gov 在第三天已經修復這個問題。&lt;/p&gt;
 
@@ -5833,7 +5833,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;打開閱讀列表之後，我們赫然發現裡面被加了非常多廣告的頁面！&lt;/p&gt;
 
 &lt;p&gt;可以看以下影片示範：&lt;/p&gt;
-&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;http://www.youtube.com/embed/E-BGf1MwecU&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
+&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;https://www.youtube.com/embed/E-BGf1MwecU&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
 
 &lt;p&gt;這是怎麼做到的呢？就是一種利用 JavaScript 控制滑鼠點擊的變形應用。點選「網頁檢閱器」或是「開發者工具」，會看到一段奇怪的 JavaScript 控制滑鼠的點擊行為。&lt;/p&gt;
 

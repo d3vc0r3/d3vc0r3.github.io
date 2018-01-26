@@ -4,11 +4,266 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Thu, 18 Jan 2018 16:49:50 +0800</lastBuildDate>
-        <pubDate>Thu, 18 Jan 2018 16:49:50 +0800</pubDate>
+        <lastBuildDate>Fri, 26 Jan 2018 17:32:17 +0800</lastBuildDate>
+        <pubDate>Fri, 26 Jan 2018 17:32:17 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>Sandstorm Security Review</title>
+                <description>&lt;p&gt;&lt;a href=&quot;/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200-en/&quot;&gt;Sandstorm Security Review&lt;/a&gt; (English Version)  &lt;br /&gt;
+&lt;a href=&quot;/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200/&quot;&gt;一次在 Sandstorm 跳脫沙箱的滲透經驗&lt;/a&gt; (中文版本)&lt;/p&gt;
+
+&lt;h2 id=&quot;introduction&quot;&gt;Introduction&lt;/h2&gt;
+
+&lt;p&gt;In early 2017, we had a pentesting target protected with &lt;a href=&quot;https://sandstorm.io/&quot;&gt;Sandstorm&lt;/a&gt;. Sandstorm is a web-based platform which allows users to install their web apps, such as WordPress, GitLab, etc. The main feature of Sandstorm is that it containerizes every app in its own sandbox. Therefore, even though we had found several vulnerabilities of the apps, we still could not put a threat to the server.&lt;/p&gt;
+
+&lt;p&gt;In order to leverage the vulnerabilities, we put part of efforts into review of Sandstorm’s source codes, and tried to escape the sandbox to impact the whole server. Finally, we found a number of uncommon and interesting vulnerabilities, and received CVE IDs as follows:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;CVE-2017-6198 (Denial of Service)&lt;/li&gt;
+  &lt;li&gt;CVE-2017-6199 (Bypassing Authorization Schema)&lt;/li&gt;
+  &lt;li&gt;CVE-2017-6200 (Insecure Direct Object References)&lt;/li&gt;
+  &lt;li&gt;CVE-2017-6201 (Server-Side Request Forgery)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;exploitation-details&quot;&gt;Exploitation Details&lt;/h2&gt;
+
+&lt;h3 id=&quot;cve-2017-6198&quot;&gt;CVE-2017-6198&lt;/h3&gt;
+
+&lt;p&gt;This is a DoS created by system resource exhaustion. The root cause is that Sandstorm does not have a comprehensive policy to limit the amount of resource used by every apps run on it. In &lt;code class=&quot;highlighter-rouge&quot;&gt;src/sandstorm/supervisor.c++&lt;/code&gt; only the maximum number of files opened by each process was limited. See the codes below:&lt;/p&gt;
+
+&lt;div class=&quot;language-c++ highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;SupervisorMain&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setResourceLimits&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rlimit&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;limit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;memset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;limit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;sizeof&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;limit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;limit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rlim_cur&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1024&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;limit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rlim_max&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;4096&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;KJ_SYSCALL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setrlimit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;RLIMIT_NOFILE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;limit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Ref: &lt;a href=&quot;https://github.com/sandstorm-io/sandstorm/blob/v0.202/src/sandstorm/supervisor.c++#L824&quot;&gt;https://github.com/sandstorm-io/sandstorm/blob/v0.202/src/sandstorm/supervisor.c++#L824&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Since supervisor does not restrict the amount of subprocesses and storage usage, attackers can raise a resource exhaustion attack to crash the server by simply uploading a malicious app which keeps calling fork() (aka the “fork bomb”) or consumes huge storage space.&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2017-6199&quot;&gt;CVE-2017-6199&lt;/h3&gt;
+
+&lt;p&gt;Usually Sandstorm will designate unique permissions to the specific members of a certain organization, and the default membership validation method is to check user’s email address and see whether the string after &lt;code class=&quot;highlighter-rouge&quot;&gt;@&lt;/code&gt; exists in their white list. See the codes below:&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;identity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;services&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;email&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;email&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;toLowerCase&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;split&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;@&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;pop&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;===&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;emailDomain&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Ref: &lt;a href=&quot;https://github.com/sandstorm-io/sandstorm/blob/v0.202/shell/packages/sandstorm-db/db.js#L1112&quot;&gt;https://github.com/sandstorm-io/sandstorm/blob/v0.202/shell/packages/sandstorm-db/db.js#L1112&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Therefore, when an attacker fills in an email like &lt;code class=&quot;highlighter-rouge&quot;&gt;demo@devco.re,ccc@aaa.bbb&lt;/code&gt; and the system will automatically consider the attacker a member of the &lt;code class=&quot;highlighter-rouge&quot;&gt;aaa.bbb&lt;/code&gt; organization.&lt;/p&gt;
+
+&lt;p&gt;Another key factor that contributes to the successful attack lies in one of the features when users log on Sandstorm. Users does not need to set up passwords for Sandstorm. Each time when the users need to log onto the service, they only need to fill in their email address, and they’ll receive a set of random unique password for login. The reason why the example above works is because the system treats &lt;code class=&quot;highlighter-rouge&quot;&gt;demo@devco.re,ccc@aaa.bbb&lt;/code&gt; as a user from aaa.bbb domain, and the random password will be sent to the two email addresses, &lt;code class=&quot;highlighter-rouge&quot;&gt;demo@devco.re&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;ccc@aaa.bbb&lt;/code&gt; As long as one can receive the password, they can log in to use the service.&lt;/p&gt;
+
+&lt;p&gt;Below is a quick demonstration:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;On Sandstorm, restrict access to users from domain &lt;code class=&quot;highlighter-rouge&quot;&gt;aaa.bbb&lt;/code&gt; only.&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180126/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;On login page, fill in &lt;code class=&quot;highlighter-rouge&quot;&gt;demo@devco.re,ccc@aaa.bbb&lt;/code&gt; for the email field.&lt;br /&gt;
+(Note: at the front end, the email field is checked with HTML5 validation, but it is not further checked for validity at the back end)&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180126/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Retrieve random password in demo@devco.re mailbox.&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180126/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Login successful. &lt;code class=&quot;highlighter-rouge&quot;&gt;demo@devco.re,ccc@aaa.bbb&lt;/code&gt; is considered as a user and member of &lt;code class=&quot;highlighter-rouge&quot;&gt;aaa.bbb&lt;/code&gt; organization!&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180126/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;In our pentesting, the target website allowed users from validated domains to install their own apps. Therefore, through this bypass exploit, further attacks could be accomplished by combining other vulnerabilities described in this blog post (CVE-2017-6198, CVE-2017-6200, CVE-2017-6201).&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2017-6200&quot;&gt;CVE-2017-6200&lt;/h3&gt;
+
+&lt;p&gt;This is an interesting vulnerability. Totally two little validation flaws were exploited to initiate this attack!&lt;br /&gt;
+On Sandstorm, owners of each Grain (Sandstorm container, in short, an app sandbox) can download their backup data for the app. But because of the two vulnerabilities in the packing process, an attacker can pack the files under the &lt;code class=&quot;highlighter-rouge&quot;&gt;/etc&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;/run&lt;/code&gt; directories located on the server outside the sandbox. The security issues were as follows:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;The packing process has hid &lt;code class=&quot;highlighter-rouge&quot;&gt;/var&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;/proc&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;/etc&lt;/code&gt; and other sensitive directories, but did not hide &lt;code class=&quot;highlighter-rouge&quot;&gt;/etc.host&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;/run.host&lt;/code&gt; these two directories. These directories are the aliases for the directories &lt;code class=&quot;highlighter-rouge&quot;&gt;/etc&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;/run&lt;/code&gt; on the server respectively, which are relatively newer features.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;The system will pack the legitimate files, have them sorted out, and create zip packages through the standard input interface. The separation between files are determined by line-breaks (&lt;code class=&quot;highlighter-rouge&quot;&gt;\n&lt;/code&gt;). As a result, when a line-break string appears in the file name, illegal path file names can be injected and packed with zip. Although the app checks whether there is a line-break in the file name, but the directory name was not checked.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Ref: &lt;a href=&quot;https://github.com/sandstorm-io/sandstorm/blob/v0.202/src/sandstorm/backup.c%2B%2B#L271&quot;&gt;https://github.com/sandstorm-io/sandstorm/blob/v0.202/src/sandstorm/backup.c%2B%2B#L271&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;By using these two vulnerabilities together, the attacker simply has to create a directory in the sandbox &lt;code class=&quot;highlighter-rouge&quot;&gt;/var/exp\n/etc.host/passwd\n&lt;/code&gt; , then backup files containing &lt;code class=&quot;highlighter-rouge&quot;&gt;/etc/passwd&lt;/code&gt; on the server can be retrieved through backup downloading function.&lt;/p&gt;
+
+&lt;p&gt;Screenshot of a real-world scenario:&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;First, create a new directory in Grain &lt;code class=&quot;highlighter-rouge&quot;&gt;/var/exp\n/etc.host/passwd\n&lt;/code&gt;, and use the Grain Backup function to download the backup file.&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180126/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;After unzipping the backup file, from &lt;code class=&quot;highlighter-rouge&quot;&gt;etc.host&lt;/code&gt; we’ll see &lt;code class=&quot;highlighter-rouge&quot;&gt;/etc/passwd&lt;/code&gt; of the server outside the sandbox.&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180126/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;cve-2017-6201&quot;&gt;CVE-2017-6201&lt;/h3&gt;
+
+&lt;p&gt;This is a classic SSRF (Server-Side Request Forgery) issue. Sandstorm allow installation of apps from arbitrary sources, and an attacker can simply let the server access a certain location by providing an installation URL. The problem was identified on &lt;code class=&quot;highlighter-rouge&quot;&gt;https://[target]/install/xxxChangeItEveryTimexxx?url=http://127.0.0.1:22/&lt;/code&gt; This sample link confirms whether the server’s port 22 is open.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20180126/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+&lt;center&gt;(Parse Error, which implies server’s port 22 is open)&lt;/center&gt;
+
+&lt;h2 id=&quot;follow-up-updates&quot;&gt;Follow-up Updates&lt;/h2&gt;
+
+&lt;p&gt;After we reported the vulnerabilities, Sandstorm fixed it immediately and then published an article:&lt;br /&gt;
+&lt;a href=&quot;https://sandstorm.io/news/2017-03-02-security-review&quot;&gt;https://sandstorm.io/news/2017-03-02-security-review&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Through this pentesting experience, we consider Sandstorm a safe platform with outstanding security mechanisms. This is mainly attributed to its fundamental design rationale: to assume that every app installed is malicious. With this vigilant assumption, Sandstorm’s defence mechanisms for the core system become comprehensive and watertight. Apart from the server-side protection, some common client-side attacks (such as XSS, CSRF) are handled properly by Sandstorm’s unique countermeasures, such as host name randomization. That is, it is very difficult for attackers to sabotage the server by simply manipulating the apps, and so does privilege escalation through attacking at the client-side.&lt;/p&gt;
+
+&lt;p&gt;Nevertheless, such an impressive platform still had some minor mistakes which led to security issues. Most of the vulnerabilities found this time are improper usages of libraries or negligence of existing defence architecture while introducing new features. These types of vulnerability are also common in our other projects. We would like to take the opportunity to remind developers, always present a comprehensive security review especially when developing new features to avoid vulnerabilities caused by the gaps between defence mechanisms.&lt;/p&gt;
+
+</description>
+                <link>https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200-en/</link>
+                <guid>https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200-en</guid>
+                <pubDate>Fri, 26 Jan 2018 00:00:00 +0800</pubDate>
+        </item>
+
+        <item>
+                <title>一次在 Sandstorm 跳脫沙箱的滲透經驗</title>
+                <description>&lt;p&gt;&lt;a href=&quot;/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200-en/&quot;&gt;Sandstorm Security Review&lt;/a&gt; (English Version)  &lt;br /&gt;
+&lt;a href=&quot;/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200/&quot;&gt;一次在 Sandstorm 跳脫沙箱的滲透經驗&lt;/a&gt; (中文版本)&lt;/p&gt;
+
+&lt;h2 id=&quot;前言&quot;&gt;前言&lt;/h2&gt;
+
+&lt;p&gt;2017 年初，我們有個滲透測試專案，專案的標的架構在 &lt;a href=&quot;https://sandstorm.io/&quot;&gt;Sandstorm&lt;/a&gt; 之上。Sandstorm 是一款 Web 平台，使用者可以輕易的在該平台安裝各種 Web App（如 WordPress、GitLab…），該平台最大的特色在於這些 App 都是在沙箱中執行。因此，即使我們測試中找到多項 App 弱點，也無法對平台本身造成威脅。&lt;/p&gt;
+
+&lt;p&gt;為了讓弱點效益最大化，我們將一部分精力轉移到研究 Sandstorm 原始碼，目的是跳脫 App 的沙箱環境看有沒有機會影響整台伺服器。最後，我們找到了幾個少見且有趣的弱點，並申請 CVE 編號如下：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;阻斷服務攻擊（Denial of Service），CVE-2017-6198&lt;/li&gt;
+  &lt;li&gt;繞過授權模式（Bypassing Authorization Schema），CVE-2017-6199&lt;/li&gt;
+  &lt;li&gt;不安全的直接存取物件（Insecure Direct Object References），CVE-2017-6200&lt;/li&gt;
+  &lt;li&gt;服務端請求偽造（Server-Side Request Forgery），CVE-2017-6201&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;漏洞細節&quot;&gt;漏洞細節&lt;/h2&gt;
+
+&lt;h3 id=&quot;cve-2017-6198&quot;&gt;CVE-2017-6198&lt;/h3&gt;
+
+&lt;p&gt;這是一個消耗系統資源造成的 DoS。起因是 Sandstorm 並未完善限制每個 App 所能使用的資源，在 &lt;code class=&quot;highlighter-rouge&quot;&gt;src/sandstorm/supervisor.c++&lt;/code&gt; 僅限制了每個程序能夠打開的最多檔案數，相關程式碼如下：&lt;/p&gt;
+
+&lt;div class=&quot;language-c++ highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;SupervisorMain&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setResourceLimits&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rlimit&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;limit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;memset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;limit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;sizeof&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;limit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;limit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rlim_cur&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1024&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;limit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rlim_max&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;4096&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;KJ_SYSCALL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setrlimit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;RLIMIT_NOFILE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;limit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Ref: &lt;a href=&quot;https://github.com/sandstorm-io/sandstorm/blob/v0.202/src/sandstorm/supervisor.c++#L824&quot;&gt;https://github.com/sandstorm-io/sandstorm/blob/v0.202/src/sandstorm/supervisor.c++#L824&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;由於 supervisor 未限制子程序數量以及未限制儲存空間用量，因此攻擊者只要讓 App 不斷執行 fork（通常稱為 Fork Bomb）或是大量使用硬碟空間，就會造成伺服器資源不足而中斷服務。&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2017-6199&quot;&gt;CVE-2017-6199&lt;/h3&gt;
+
+&lt;p&gt;通常 Sandstorm 會設定特定組織成員才能擁有特殊的權限，而系統預設的組織成員判斷方式是檢查使用者 email 中「@」符號最後的字串是否在白名單內，相關程式碼如下：&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;identity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;services&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;email&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;email&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;toLowerCase&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;split&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;@&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;pop&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;===&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;emailDomain&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Ref: &lt;a href=&quot;https://github.com/sandstorm-io/sandstorm/blob/v0.202/shell/packages/sandstorm-db/db.js#L1112&quot;&gt;https://github.com/sandstorm-io/sandstorm/blob/v0.202/shell/packages/sandstorm-db/db.js#L1112&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;因此，當攻擊者填入的 email 為 &lt;code class=&quot;highlighter-rouge&quot;&gt;demo@devco.re,ccc@aaa.bbb&lt;/code&gt;，系統便會將攻擊者視為 &lt;code class=&quot;highlighter-rouge&quot;&gt;aaa.bbb&lt;/code&gt; 組織的使用者。&lt;/p&gt;
+
+&lt;p&gt;這項攻擊得以成功還有另外一個關鍵點，發生在 Sandstorm 登入的一個特色上。使用 Sandstorm 服務不需要設定密碼，使用者每次欲登入時填入 email，系統便會發送一組每次皆不同的隨機密碼作為登入使用。上述的例子之所以能夠成功，就是因為系統將 &lt;code class=&quot;highlighter-rouge&quot;&gt;demo@devco.re,ccc@aaa.bbb&lt;/code&gt; 視為一個 aaa.bbb 網域的使用者，而隨機密碼會發送到 &lt;code class=&quot;highlighter-rouge&quot;&gt;demo@devco.re&lt;/code&gt; 以及 &lt;code class=&quot;highlighter-rouge&quot;&gt;ccc@aaa.bbb&lt;/code&gt; 兩個不同信箱中，只要可以收到密碼就可以登入使用服務。&lt;/p&gt;
+
+&lt;p&gt;直接案例說明：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;在 Sandstorm 限定只有用 &lt;code class=&quot;highlighter-rouge&quot;&gt;aaa.bbb&lt;/code&gt; 網域才可以登入。&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180126/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;登入處 email 欄位填入 &lt;code class=&quot;highlighter-rouge&quot;&gt;demo@devco.re,ccc@aaa.bbb&lt;/code&gt;。（註：email 欄位在前端有用 HTML5 Validation，但後端並無檢查 email 是否合法）&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180126/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;在 demo@devco.re 信箱收到隨機密碼。&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180126/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;成功登入，&lt;code class=&quot;highlighter-rouge&quot;&gt;demo@devco.re,ccc@aaa.bbb&lt;/code&gt; 被視為一個使用者，且為 &lt;code class=&quot;highlighter-rouge&quot;&gt;aaa.bbb&lt;/code&gt; 組織成員！&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180126/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;在我們的滲透測試中，標的網站是允許認證的網域使用者自行安裝 App 的。因此透過這項繞過弱點，攻擊者可以再搭配本篇其他漏洞（CVE-2017-6198、CVE-2017-6200、CVE-2017-6201）做更進一步的攻擊。&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2017-6200&quot;&gt;CVE-2017-6200&lt;/h3&gt;
+
+&lt;p&gt;這是一個有趣的弱點，總共組合了兩個驗證上的小疏忽才能達成攻擊！&lt;br /&gt;
+在 Sandstorm 中每個 Grain（Sandstorm container，簡單來說就是一個 App 沙箱）的擁有者都可以下載該 App 的備份資料，但由於打包流程中存在兩個弱點，因此攻擊者可以打包沙箱外伺服器的 &lt;code class=&quot;highlighter-rouge&quot;&gt;/etc&lt;/code&gt; 和 &lt;code class=&quot;highlighter-rouge&quot;&gt;/run&lt;/code&gt; 下的檔案。發生的問題如下：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;打包的流程隱藏了 &lt;code class=&quot;highlighter-rouge&quot;&gt;/var&lt;/code&gt;、&lt;code class=&quot;highlighter-rouge&quot;&gt;/proc&lt;/code&gt;、&lt;code class=&quot;highlighter-rouge&quot;&gt;/etc&lt;/code&gt; 等敏感目錄，卻沒有隱藏 &lt;code class=&quot;highlighter-rouge&quot;&gt;/etc.host&lt;/code&gt; 及 &lt;code class=&quot;highlighter-rouge&quot;&gt;/run.host&lt;/code&gt; 這兩個目錄。這兩個目錄分別是伺服器下 &lt;code class=&quot;highlighter-rouge&quot;&gt;/etc&lt;/code&gt; 和 &lt;code class=&quot;highlighter-rouge&quot;&gt;/run&lt;/code&gt; 的別名，是較後期的功能。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;系統會將欲打包的合法檔案整理出來透過標準輸入介面傳給 zip 打包，而判斷檔案和檔案間的區隔是靠換行符號(&lt;code class=&quot;highlighter-rouge&quot;&gt;\n&lt;/code&gt;)。因此，當檔名中出現換行符號，可以插入非法的路徑檔名藉由 zip 打包。程式雖然有檢查檔名是否存在換行符，卻疏忽了檢查目錄名。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Ref: &lt;a href=&quot;https://github.com/sandstorm-io/sandstorm/blob/v0.202/src/sandstorm/backup.c%2B%2B#L271&quot;&gt;https://github.com/sandstorm-io/sandstorm/blob/v0.202/src/sandstorm/backup.c%2B%2B#L271&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;綜合上述兩個弱點，攻擊者只要在沙箱內建立一個目錄 &lt;code class=&quot;highlighter-rouge&quot;&gt;/var/exp\n/etc.host/passwd\n&lt;/code&gt;，就可以透過下載備份的功能取得含有伺服器 &lt;code class=&quot;highlighter-rouge&quot;&gt;/etc/passwd&lt;/code&gt; 檔案的備份檔。&lt;/p&gt;
+
+&lt;p&gt;實際情境截圖：&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;先在 Grain 裡新建目錄 &lt;code class=&quot;highlighter-rouge&quot;&gt;/var/exp\n/etc.host/passwd\n&lt;/code&gt;，並用 Grain Backup 的功能下載備份檔。&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180126/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;解開備份檔後在 &lt;code class=&quot;highlighter-rouge&quot;&gt;etc.host&lt;/code&gt; 目錄下看到沙箱外伺服器的 &lt;code class=&quot;highlighter-rouge&quot;&gt;/etc/passwd&lt;/code&gt;&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180126/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;cve-2017-6201&quot;&gt;CVE-2017-6201&lt;/h3&gt;
+
+&lt;p&gt;這是經典的 SSRF（Server-Side Request Forgery）問題，在 Sandstorm 安裝 App 流程沒有限制安裝來源，攻擊者提供一個安裝 URL 就能讓伺服器存取該位置。該問題發生在 &lt;code class=&quot;highlighter-rouge&quot;&gt;https://[target]/install/xxxChangeItEveryTimexxx?url=http://127.0.0.1:22/&lt;/code&gt;，這個範例連結得以確認伺服器的 22 port 是否開啟。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20180126/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+&lt;center&gt;（Parse Error，代表伺服器 22 port 開啟）&lt;/center&gt;
+
+&lt;h2 id=&quot;後續&quot;&gt;後續&lt;/h2&gt;
+
+&lt;p&gt;在提交弱點後，Sandstorm 官方非常迅速修正了弱點，並且發表了一篇文章：&lt;br /&gt;
+&lt;a href=&quot;https://sandstorm.io/news/2017-03-02-security-review&quot;&gt;https://sandstorm.io/news/2017-03-02-security-review&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;在這次滲透經驗中，我們認為 Sandstorm 是一款安全、有出色防禦機制的平台。主要原因取決於它的一個核心設計理念：就是假設使用者安裝的 App 都是惡意的。以這樣的前提出發去保護核心系統的安全，建立起來的防禦機制自然是全面且完善的。除了伺服器本身的保護，一些常見的客戶端攻擊（例如：XSS、CSRF）也透過 Sandstorm 特殊的隨機 hostname 等機制保護的很好。因此攻擊者很難從 App 本身去破壞伺服器，也很難透過攻擊客戶端去提升使用者的權限。&lt;/p&gt;
+
+&lt;p&gt;儘管是如此優秀的平台，仍舊會因一些小地方疏忽導致攻擊者有機可乘。這次發現弱點的地方多半在於 library 的誤用和新功能的撰寫沒有考慮到舊有防禦架構。這在其他專案也是常見的問題，藉機也提醒開發者在開發新功能時應做全面的安全檢視，以避免防禦落差所導致的弱點。&lt;/p&gt;
+
+</description>
+                <link>https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200/</link>
+                <guid>https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200</guid>
+                <pubDate>Fri, 26 Jan 2018 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>Road to Exim RCE - Abusing Unsafe Memory Allocator in the Most Popular MTA</title>
@@ -131,30 +386,24 @@ This store makes &lt;code class=&quot;highlighter-rouge&quot;&gt;if (!store_exte
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;ol&gt;
-  &lt;li&gt;
-    &lt;p&gt;Running out of &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block&lt;/code&gt;&lt;br /&gt;
+  &lt;li&gt;Running out of &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block&lt;/code&gt;&lt;br /&gt;
  In order to achieve code execution, we need to make the &lt;code class=&quot;highlighter-rouge&quot;&gt;next-&amp;gt;text&lt;/code&gt; get the first store of a block. That is, running out of &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block&lt;/code&gt; and making &lt;code class=&quot;highlighter-rouge&quot;&gt;store_get&lt;/code&gt; allocate a new block. Therefore, we send a long message &lt;code class=&quot;highlighter-rouge&quot;&gt;&#39;a&#39;*0x1250+&#39;\x7f&#39;&lt;/code&gt; with an unprintable character to cut &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block&lt;/code&gt;, making &lt;code class=&quot;highlighter-rouge&quot;&gt;yield_length&lt;/code&gt; less than 0x100.&lt;br /&gt;
-&lt;img src=&quot;/assets/img/blog/20171211/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
-  &lt;/li&gt;
+ &lt;img src=&quot;/assets/img/blog/20171211/2.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
   &lt;li&gt;Starts BDAT data transfer&lt;br /&gt;
  After that, we send BDAT command to start data transfer. At the beginning, &lt;code class=&quot;highlighter-rouge&quot;&gt;next&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;next-&amp;gt;text&lt;/code&gt; are allocated by &lt;code class=&quot;highlighter-rouge&quot;&gt;store_get&lt;/code&gt;. &lt;br /&gt;
  &lt;img src=&quot;/assets/img/blog/20171211/3.png&quot; alt=&quot;&quot; /&gt;&lt;br /&gt;
  The function &lt;code class=&quot;highlighter-rouge&quot;&gt;dkim_exim_verify_init&lt;/code&gt; is called sequentially and it also calls &lt;code class=&quot;highlighter-rouge&quot;&gt;store_get&lt;/code&gt;. Notice that this function uses &lt;strong&gt;ANOTHER &lt;code class=&quot;highlighter-rouge&quot;&gt;store_pool&lt;/code&gt;&lt;/strong&gt;, so it allocates from heap without changing &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block&lt;/code&gt; which &lt;code class=&quot;highlighter-rouge&quot;&gt;next-&amp;gt;text&lt;/code&gt; also points to.&lt;br /&gt;
-&lt;a href=&quot;https://github.com/Exim/exim/blob/e924c08b7d031b712013a7a897e2d430b302fe6c/src/src/receive.c#L1734&quot;&gt;receive.c: 1734 receive_msg&lt;/a&gt;
+ &lt;a href=&quot;https://github.com/Exim/exim/blob/e924c08b7d031b712013a7a897e2d430b302fe6c/src/src/receive.c#L1734&quot;&gt;receive.c: 1734 receive_msg&lt;/a&gt;
     &lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;smtp_input&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;smtp_batched_input&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dkim_disable_verify&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
    &lt;span class=&quot;n&quot;&gt;dkim_exim_verify_init&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;chunking_state&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CHUNKING_OFFERED&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
   &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;Call &lt;code class=&quot;highlighter-rouge&quot;&gt;store_getc&lt;/code&gt; inside &lt;code class=&quot;highlighter-rouge&quot;&gt;bdat_getc&lt;/code&gt;&lt;br /&gt;
+  &lt;li&gt;Call &lt;code class=&quot;highlighter-rouge&quot;&gt;store_getc&lt;/code&gt; inside &lt;code class=&quot;highlighter-rouge&quot;&gt;bdat_getc&lt;/code&gt;&lt;br /&gt;
  Then, we send a BDAT command without SIZE. Exim complains about the incorrect command and cuts the &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block&lt;/code&gt; with &lt;code class=&quot;highlighter-rouge&quot;&gt;store_get&lt;/code&gt; in &lt;code class=&quot;highlighter-rouge&quot;&gt;string_printing&lt;/code&gt;. &lt;br /&gt;
-&lt;img src=&quot;/assets/img/blog/20171211/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
-  &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;Keep sending msg until extension and bug triggered&lt;br /&gt;
+ &lt;img src=&quot;/assets/img/blog/20171211/4.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
+  &lt;li&gt;Keep sending msg until extension and bug triggered&lt;br /&gt;
  In this way, while we keep sending huge messages, &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block&lt;/code&gt; gets freed after the extension. In the malloc.c of glibc (so called ptmalloc2), system manages a linked list of freed memory chunks, which is called unsorted bin. Freed chunks are put into unsorted bin if it is not the last chunk on the heap. In step 2, &lt;code class=&quot;highlighter-rouge&quot;&gt;dkim_exim_verify_init&lt;/code&gt; allocated chunks after &lt;code class=&quot;highlighter-rouge&quot;&gt;next-&amp;gt;text&lt;/code&gt;. Therefore, this chunk is put into unsorted bin and the pointers of linked list are stored into the first 16 bytes of chunk (on x86-64). The location written is exactly &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block-&amp;gt;next&lt;/code&gt;, and therefore &lt;code class=&quot;highlighter-rouge&quot;&gt;current_block-&amp;gt;next&lt;/code&gt; is overwritten to &lt;code class=&quot;highlighter-rouge&quot;&gt;unsorted bin&lt;/code&gt; inside &lt;code class=&quot;highlighter-rouge&quot;&gt;main_arena&lt;/code&gt; of libc (linked list pointer &lt;code class=&quot;highlighter-rouge&quot;&gt;fd&lt;/code&gt; points back to &lt;code class=&quot;highlighter-rouge&quot;&gt;unsorted bin&lt;/code&gt; if no other freed chunk exists). &lt;br /&gt;
-&lt;img src=&quot;/assets/img/blog/20171211/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
-  &lt;/li&gt;
+ &lt;img src=&quot;/assets/img/blog/20171211/5.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
   &lt;li&gt;Keep sending msg for the next extension&lt;br /&gt;
  When the next extension occurs, &lt;code class=&quot;highlighter-rouge&quot;&gt;store_get&lt;/code&gt; tries to cut from &lt;code class=&quot;highlighter-rouge&quot;&gt;main_arena&lt;/code&gt;, which makes attackers able to overwrite all global variables below main_arena.&lt;/li&gt;
   &lt;li&gt;Overwrite global variables in libc&lt;/li&gt;
@@ -5374,9 +5623,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 
 &lt;p&gt;由發送內容可看出這個 request 因為違反了「img-src https:」規則而將「http://devco.re/」這個來源擋掉。經由此方式，可一邊修改網站一邊觀察是否仍有不符合 CSP 規範之處，等到所有違規的內容都修正完畢後，再將 CSP 套用到正式上線環境。&lt;/p&gt;
 
-&lt;p&gt;由於宣告方式非常多種，在這邊就不一一條列，若有興趣可前往 &lt;a href=&quot;http://content-security-policy.com/&quot;&gt;Content Security Policy Reference &amp;amp; Examples&lt;/a&gt;、&lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Security/CSP/Using_Content_Security_Policy&quot;&gt;Using Content Security Policy - Security | MDN&lt;/a&gt; 等網頁，有更完整的使用情境與範例可供參考。另外也有 &lt;a href=&quot;http://benvinegar.github.io/csp-talk-2013/&quot;&gt;Slide&lt;/a&gt; (by Ben Vinegar) 跟 &lt;a href=&quot;https://www.youtube.com/watch?v=pocsv39pNXA&quot;&gt;YouTube 影片&lt;/a&gt; (by Adam Barth) 可參考。&lt;/p&gt;
-
-&lt;p&gt;若欲使用 CSP 卻一直未能成功時，可到 &lt;a href=&quot;http://www.cspplayground.com/csp_validator&quot;&gt;Content Security Policy Playground&lt;/a&gt; 驗證您所寫的設定是否正確。&lt;/p&gt;
+&lt;p&gt;由於宣告方式非常多種，在這邊就不一一條列，若有興趣可前往 &lt;a href=&quot;https://content-security-policy.com/&quot;&gt;Content Security Policy Reference &amp;amp; Examples&lt;/a&gt;、&lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP&quot;&gt;Using Content Security Policy - Security | MDN&lt;/a&gt; 等網頁，有更完整的使用情境與範例可供參考。另外也有 &lt;a href=&quot;http://benvinegar.github.io/csp-talk-2013/&quot;&gt;Slide&lt;/a&gt; (by Ben Vinegar) 跟 &lt;a href=&quot;https://www.youtube.com/watch?v=pocsv39pNXA&quot;&gt;YouTube 影片&lt;/a&gt; (by Adam Barth) 可參考。&lt;/p&gt;
 
 &lt;h3 id=&quot;csp-實際使用案例&quot;&gt;CSP 實際使用案例&lt;/h3&gt;
 
@@ -5384,7 +5631,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 
 &lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-WPU1UT9T6WA/Ux6DrfiQ_EI/AAAAAAAAALc/s0XmlPFKmoc/w1169-h758-no/http-headers-github-and-mega.jpg&quot; title=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-WPU1UT9T6WA/Ux6DrfiQ_EI/AAAAAAAAALc/s0XmlPFKmoc/w1169-h758-no/http-headers-github-and-mega.jpg&quot; alt=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot; title=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
-&lt;p&gt;另一項知名使用案例是 Google 明定&lt;a href=&quot;http://developer.chrome.com/extensions/contentSecurityPolicy&quot;&gt;開發 Chrome Extension 時必須使用 CSP&lt;/a&gt;，以追求更高的安全性。Mozilla 也在 &lt;a href=&quot;https://wiki.mozilla.org/Security/CSP/Specification&quot;&gt;MozillaWiki 開了一頁&lt;/a&gt;存放相關技術細節。若您想觀察其他使用案例，可使用 Chrome Inspector 或 curl 觀察以下幾個網站：&lt;a href=&quot;https://lastpass.com/&quot;&gt;LastPass&lt;/a&gt;，&lt;a href=&quot;https://support.twitter.com/&quot;&gt;Twitter Help Center&lt;/a&gt;，&lt;a href=&quot;https://adblockplus.org/en/chrome&quot;&gt;Adblock Plus&lt;/a&gt;，&lt;a href=&quot;https://www.sendsafely.com/&quot;&gt;Sendsafely&lt;/a&gt;，&lt;a href=&quot;http://likealyzer.com/&quot;&gt;LikeAlyzer&lt;/a&gt;。&lt;/p&gt;
+&lt;p&gt;另一項知名使用案例是 Google 明定&lt;a href=&quot;https://developer.chrome.com/extensions/contentSecurityPolicy&quot;&gt;開發 Chrome Extension 時必須使用 CSP&lt;/a&gt;，以追求更高的安全性。Mozilla 也在 &lt;a href=&quot;https://wiki.mozilla.org/Security/CSP/Specification&quot;&gt;MozillaWiki 開了一頁&lt;/a&gt;存放相關技術細節。若您想觀察其他使用案例，可使用 Chrome Inspector 或 curl 觀察以下幾個網站：&lt;a href=&quot;https://lastpass.com/&quot;&gt;LastPass&lt;/a&gt;，&lt;a href=&quot;https://twitter.com/&quot;&gt;Twitter&lt;/a&gt;，&lt;a href=&quot;https://1password.com/&quot;&gt;1Password&lt;/a&gt;。&lt;/p&gt;
 
 &lt;h3 id=&quot;csp-常見誤用案例&quot;&gt;CSP 常見誤用案例&lt;/h3&gt;
 

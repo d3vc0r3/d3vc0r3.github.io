@@ -4,11 +4,264 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Thu, 08 Feb 2018 11:58:24 +0800</lastBuildDate>
-        <pubDate>Thu, 08 Feb 2018 11:58:24 +0800</pubDate>
+        <lastBuildDate>Tue, 06 Mar 2018 23:37:01 +0800</lastBuildDate>
+        <pubDate>Tue, 06 Mar 2018 23:37:01 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>Exim Off-by-one RCE: Exploiting CVE-2018-6789 with Fully Mitigations Bypassing</title>
+                <description>&lt;h2 id=&quot;overview&quot;&gt;Overview&lt;/h2&gt;
+&lt;p&gt;We reported an overflow vulnerability in the base64 decode function of &lt;a href=&quot;https://www.exim.org/&quot;&gt;&lt;strong&gt;Exim&lt;/strong&gt;&lt;/a&gt; on 5 February, 2018, identified as &lt;a href=&quot;https://exim.org/static/doc/security/CVE-2018-6789.txt&quot;&gt;CVE-2018-6789&lt;/a&gt;. This bug exists since the first commit of exim, hence &lt;strong&gt;ALL versions&lt;/strong&gt; are affected. According to our research, it can be leveraged to gain &lt;strong&gt;Pre-auth Remote Code Execution&lt;/strong&gt; and at least 400k servers are at risk. Patched version 4.90.1 is already released and we suggest to upgrade exim immediately.&lt;/p&gt;
+
+&lt;h2 id=&quot;affected&quot;&gt;Affected&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;All Exim versions below 4.90.1&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;one-byte-overflow-in-base64-decoding&quot;&gt;One byte overflow in base64 decoding&lt;/h1&gt;
+
+&lt;h3 id=&quot;vulnerability-analysis&quot;&gt;Vulnerability Analysis&lt;/h3&gt;
+
+&lt;p&gt;This is a calculation mistake of decode buffer length in &lt;code class=&quot;highlighter-rouge&quot;&gt;b64decode&lt;/code&gt; function:&lt;br /&gt;
+&lt;a href=&quot;https://github.com/Exim/exim/blob/master/src/src/base64.c#L153&quot;&gt;base64.c: 153 b64decode&lt;/a&gt;&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;b64decode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;uschar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;uschar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;**&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ptr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;y&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;uschar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;result&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;store_get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Ustrlen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ptr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;result&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;// perform decoding
+&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;As shown above, exim allocates a buffer of &lt;code class=&quot;highlighter-rouge&quot;&gt;3*(len/4)+1&lt;/code&gt; bytes to store decoded base64 data. However, when the input is not a valid base64 string and the length is &lt;code class=&quot;highlighter-rouge&quot;&gt;4n+3&lt;/code&gt;, exim allocates &lt;code class=&quot;highlighter-rouge&quot;&gt;3n+1&lt;/code&gt; but consumes &lt;code class=&quot;highlighter-rouge&quot;&gt;3n+2&lt;/code&gt; bytes while decoding. This causes one byte heap overflow (aka off-by-one).&lt;br /&gt;
+Generally, this bug is harmless because the memory overwritten is usually unused. However, this byte overwrites some critical data when the string fits some specific length. In addition, this byte is controllable, which makes exploitation more feasible.&lt;br /&gt;
+Base64 decoding is such a fundamental function and therefore this bug can be triggered easily, causing remote code execution.&lt;br /&gt;
+&lt;a id=&quot;back&quot;&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;exploitation&quot;&gt;Exploitation&lt;/h3&gt;
+&lt;p&gt;To estimate the severity of this bug, we developed an exploit targeting SMTP daemon of exim. The exploitation mechanism used to achieve pre-auth remote code execution is described in the following paragraphs. In order to leverage this one byte overflow, it is necessary to trick memory management mechanism. It is highly recommended to have basic knowledge of heap exploitation &lt;a href=&quot;#heap_exp&quot;&gt;[ref]&lt;/a&gt; before reading this section.&lt;/p&gt;
+
+&lt;p&gt;We developed the exploit with:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Debian(stretch)&lt;/strong&gt; and &lt;strong&gt;Ubuntu(zesty)&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;SMTP daemon of Exim4 package&lt;/strong&gt; installed with apt-get (4.89/4.88)&lt;/li&gt;
+  &lt;li&gt;Config enabled (uncommented in default config) &lt;strong&gt;CRAM-MD5 authenticator&lt;/strong&gt; (any other authenticator using base64 also works)&lt;/li&gt;
+  &lt;li&gt;Basic SMTP commands (&lt;strong&gt;EHLO, MAIL FROM/RCPT TO&lt;/strong&gt;) and &lt;strong&gt;AUTH&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&quot;memory-allocation&quot;&gt;Memory allocation&lt;/h4&gt;
+
+&lt;p&gt;First, we review the source code and search for useful memory allocation. As we mentioned in the &lt;a href=&quot;&quot;&gt;previous article&lt;/a&gt;, exim uses self-defined functions for dynamic allocation:&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;extern&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;BOOL&lt;/span&gt;    &lt;span class=&quot;n&quot;&gt;store_extend_3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;  &lt;span class=&quot;cm&quot;&gt;/* The */&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;extern&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;    &lt;span class=&quot;n&quot;&gt;store_free_3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;     &lt;span class=&quot;cm&quot;&gt;/* value of the */&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;extern&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;store_get_3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;         &lt;span class=&quot;cm&quot;&gt;/* 2nd arg is   */&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;extern&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;store_get_perm_3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;    &lt;span class=&quot;cm&quot;&gt;/* __FILE__ in  */&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;extern&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;store_malloc_3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;      &lt;span class=&quot;cm&quot;&gt;/* every call,  */&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;extern&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;    &lt;span class=&quot;n&quot;&gt;store_release_3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;  &lt;span class=&quot;cm&quot;&gt;/* so give its  */&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;extern&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;    &lt;span class=&quot;n&quot;&gt;store_reset_3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;    &lt;span class=&quot;cm&quot;&gt;/* correct type */&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;Function &lt;code class=&quot;highlighter-rouge&quot;&gt;store_free()&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;store_malloc()&lt;/code&gt; calls &lt;code class=&quot;highlighter-rouge&quot;&gt;malloc()&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;free()&lt;/code&gt; of glibc directly. Glibc takes a slightly bigger (&lt;code class=&quot;highlighter-rouge&quot;&gt;0x10&lt;/code&gt; bytes) &lt;strong&gt;chunk&lt;/strong&gt; and stores its metadata in the first &lt;code class=&quot;highlighter-rouge&quot;&gt;0x10&lt;/code&gt; bytes (x86-64) on every allocation, and then returns the location of &lt;code class=&quot;highlighter-rouge&quot;&gt;data&lt;/code&gt;. The following illustration describes structure of chunk:&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180306/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Metadata includes size of previous chunk (the one exactly above in memory), size of current block and some flags. The first three bits of &lt;code class=&quot;highlighter-rouge&quot;&gt;size&lt;/code&gt; are used to store flags. In this example, size of &lt;code class=&quot;highlighter-rouge&quot;&gt;0x81&lt;/code&gt; implies current chunk is &lt;code class=&quot;highlighter-rouge&quot;&gt;0x80&lt;/code&gt; bytes and the previous chunk is in use.&lt;br /&gt;
+Most of released chunks used in exim are put into a doubly linked list called &lt;strong&gt;unsorted bin&lt;/strong&gt;. Glibc maintains it according to the flags, and merges adjacent released chunks into a bigger chunk to avoid fragmentation. For every allocation request, glibc checks these chunks in an FIFO (first in, first-out) order and reuses the chunks.&lt;/p&gt;
+
+&lt;p&gt;For some performance issues, exim maintains its own linked list structure with &lt;code class=&quot;highlighter-rouge&quot;&gt;store_get()&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;store_release()&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;store_extend()&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;store_reset()&lt;/code&gt;.&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180306/2.png&quot; alt=&quot;architecture of storeblock&quot; /&gt;&lt;br /&gt;
+The main feature of storeblocks is that every block is at least &lt;code class=&quot;highlighter-rouge&quot;&gt;0x2000&lt;/code&gt; bytes, which becomes a restriction to our exploitation. Note that a storeblock is also the &lt;code class=&quot;highlighter-rouge&quot;&gt;data&lt;/code&gt; of a chunk. Therefore, if we look into the memory, it is like:&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180306/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Here we list functions used to arrange heap data:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;EHLO hostname&lt;br /&gt;
+  For each EHLO(or HELO) command, exim stores the pointer of hostname in &lt;code class=&quot;highlighter-rouge&quot;&gt;sender_host_name&lt;/code&gt;.
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;store_free()&lt;/code&gt; old name&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;store_malloc()&lt;/code&gt; for new name&lt;/li&gt;
+    &lt;/ul&gt;
+
+    &lt;p&gt;&lt;a href=&quot;https://github.com/Exim/exim/blob/master/src/src/smtp_in.c#L1833&quot;&gt;smtp_in.c: 1833 check_helo&lt;/a&gt;&lt;/p&gt;
+    &lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  &lt;span class=&quot;mi&quot;&gt;1839&lt;/span&gt; &lt;span class=&quot;cm&quot;&gt;/* Discard any previous helo name */&lt;/span&gt;
+  &lt;span class=&quot;mi&quot;&gt;1840&lt;/span&gt;
+  &lt;span class=&quot;mi&quot;&gt;1841&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sender_helo_name&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;NULL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;mi&quot;&gt;1842&lt;/span&gt;   &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;mi&quot;&gt;1843&lt;/span&gt;   &lt;span class=&quot;n&quot;&gt;store_free&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sender_helo_name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;mi&quot;&gt;1844&lt;/span&gt;   &lt;span class=&quot;n&quot;&gt;sender_helo_name&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;NULL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;mi&quot;&gt;1845&lt;/span&gt;   &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+  &lt;span class=&quot;mi&quot;&gt;1884&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;yield&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;sender_helo_name&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;string_copy_malloc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;start&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;mi&quot;&gt;1885&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;yield&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Unrecognized command&lt;br /&gt;
+  For every unrecognized command with unprintable characters, exim allocates a buffer to convert it to printable
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;store_get()&lt;/code&gt; to store error message&lt;/li&gt;
+    &lt;/ul&gt;
+
+    &lt;p&gt;&lt;a href=&quot;https://github.com/Exim/exim/blob/master/src/src/smtp_in.c#L5725&quot;&gt;smtp_in.c: 5725 smtp_setup_msg&lt;/a&gt;&lt;/p&gt;
+    &lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  &lt;span class=&quot;mi&quot;&gt;5725&lt;/span&gt;   &lt;span class=&quot;n&quot;&gt;done&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;synprot_error&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;L_smtp_syntax_error&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;500&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;NULL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;mi&quot;&gt;5726&lt;/span&gt;     &lt;span class=&quot;n&quot;&gt;US&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;unrecognized command&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;AUTH&lt;br /&gt;
+  In most authentication procedure, exim uses base64 encoding to communicate with client. The encode and decode string are stored in a buffer allocated by &lt;code class=&quot;highlighter-rouge&quot;&gt;store_get()&lt;/code&gt;.
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;store_get()&lt;/code&gt; for strings&lt;/li&gt;
+      &lt;li&gt;can contain unprintable characters, NULL bytes&lt;/li&gt;
+      &lt;li&gt;not necessarily null terminated&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Reset in EHLO/HELO, MAIL, RCPT&lt;br /&gt;
+  When a command is done correctly, &lt;code class=&quot;highlighter-rouge&quot;&gt;smtp_reset()&lt;/code&gt; is called. This function calls &lt;code class=&quot;highlighter-rouge&quot;&gt;store_reset()&lt;/code&gt; to reset block chain to a &lt;strong&gt;reset point&lt;/strong&gt;, which means all storeblocks allocated by &lt;code class=&quot;highlighter-rouge&quot;&gt;store_get()&lt;/code&gt; after last command are released.
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;store_reset()&lt;/code&gt; to reset point (set at the beginning of function)&lt;/li&gt;
+      &lt;li&gt;release blocks added at a time&lt;/li&gt;
+    &lt;/ul&gt;
+
+    &lt;p&gt;&lt;a href=&quot;https://github.com/Exim/exim/blob/master/src/src/smtp_in.c#L3771&quot;&gt;smtp_in.c: 3771 smtp_setup_msg&lt;/a&gt;&lt;/p&gt;
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  3771 int
+  3772 smtp_setup_msg(void)
+  3773 {
+  3774 int done = 0;
+  3775 BOOL toomany = FALSE;
+  3776 BOOL discarded = FALSE;
+  3777 BOOL last_was_rej_mail = FALSE;
+  3778 BOOL last_was_rcpt = FALSE;
+  3779 void *reset_point = store_get(0);
+  3780
+  3781 DEBUG(D_receive) debug_printf(&quot;smtp_setup_msg entered\n&quot;);
+  3782
+  3783 /* Reset for start of new message. We allow one RSET not to be counted as a
+  3784 nonmail command, for those MTAs that insist on sending it between every
+  3785 message. Ditto for EHLO/HELO and for STARTTLS, to allow for going in and out of
+  3786 TLS between messages (an Exim client may do this if it has messages queued up
+  3787 for the host). Note: we do NOT reset AUTH at this point. */
+  3788
+  3789 smtp_reset(reset_point);
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&quot;exploit-steps&quot;&gt;Exploit steps&lt;/h4&gt;
+&lt;p&gt;To leverage this off-by-one, the chunk beneath decoded base64 data should be freed easily and controllable. After several attempts, we found that &lt;code class=&quot;highlighter-rouge&quot;&gt;sender_host_name&lt;/code&gt; is a better choice. We arrange the heap layout to leave a freed chunk above &lt;code class=&quot;highlighter-rouge&quot;&gt;sender_host_name&lt;/code&gt; for the base64 data.&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20180306/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;Put a huge chunk into unsorted bin&lt;br /&gt;
+ First of all, we send a EHLO message with huge hostname to make it allocate and deallocate, leaving a &lt;code class=&quot;highlighter-rouge&quot;&gt;0x6060&lt;/code&gt; length (3 storeblocks long) chunk in unsorted bin.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Cut the first storeblock&lt;br /&gt;
+ Then we send an unrecognized string to trigger &lt;code class=&quot;highlighter-rouge&quot;&gt;store_get()&lt;/code&gt; and allocate a storeblock inside the freed chunk.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Cut the second storeblock and release the first one&lt;br /&gt;
+ We send a EHLO message again to get the second storeblock. The first block is freed sequentially because of the &lt;code class=&quot;highlighter-rouge&quot;&gt;smtp_reset&lt;/code&gt; called after EHLO is done.&lt;/p&gt;
+
+    &lt;p&gt;After the heap layout is prepared, we can use the off-by-one to overwrite the original chunk size. We modify &lt;code class=&quot;highlighter-rouge&quot;&gt;0x2021&lt;/code&gt; to &lt;code class=&quot;highlighter-rouge&quot;&gt;0x20f1&lt;/code&gt;, which slightly extends the chunk.&lt;/p&gt;
+
+    &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20180306/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Send base64 data and trigger off-by-one&lt;br /&gt;
+ To trigger off-by-one, we start an AUTH command to send base64 data. The overflow byte precisely overwrites the first byte of next chunk and extends the next chunk.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Forge a reasonable chunk size&lt;br /&gt;
+ Because the chunk is extended, the start of next chunk of is changed to somewhere inside of the original one. Therefore, we need to make it &lt;strong&gt;seems like&lt;/strong&gt; a normal chunk to pass sanity checks in glibc. We send another base64 string here, because it requires &lt;code class=&quot;highlighter-rouge&quot;&gt;NULL&lt;/code&gt; byte and unprintable character to forge chunk size.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Release the extended chunk&lt;br /&gt;
+ To control the content of extended chunk, we need to release the chunk first because we cannot edit it directly. That is, we should send a new EHLO message to release the old host name. However, normal EHLO message calls &lt;code class=&quot;highlighter-rouge&quot;&gt;smtp_reset&lt;/code&gt; after it succeeds, which possibly makes program abort or crash. To avoid this, we send an &lt;strong&gt;invalid&lt;/strong&gt; host name such as &lt;code class=&quot;highlighter-rouge&quot;&gt;a+&lt;/code&gt;.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Overwrite the &lt;strong&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;next&lt;/code&gt;&lt;/strong&gt; pointer of overlapped storeblock&lt;/p&gt;
+
+    &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20180306/6.png&quot; alt=&quot;&quot; /&gt;&lt;br /&gt;
+ After the chunk is released, we can retrieve it with AUTH and overwrite part of overlapped storeblock. Here we use a trick called &lt;strong&gt;partial write&lt;/strong&gt;. With this, we can modify the pointer without breaking &lt;strong&gt;ASLR&lt;/strong&gt; (Address space layout randomization). We partially changed the &lt;code class=&quot;highlighter-rouge&quot;&gt;next&lt;/code&gt; pointer to a storeblock containing ACL (Access Control List) strings. The ACL strings are pointed by a set of global pointers such as:&lt;/p&gt;
+    &lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; &lt;span class=&quot;n&quot;&gt;uschar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;acl_smtp_auth&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+ &lt;span class=&quot;n&quot;&gt;uschar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;acl_smtp_data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+ &lt;span class=&quot;n&quot;&gt;uschar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;acl_smtp_etrn&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+ &lt;span class=&quot;n&quot;&gt;uschar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;acl_smtp_expn&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+ &lt;span class=&quot;n&quot;&gt;uschar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;acl_smtp_helo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+ &lt;span class=&quot;n&quot;&gt;uschar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;acl_smtp_mail&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+ &lt;span class=&quot;n&quot;&gt;uschar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;acl_smtp_quit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+ &lt;span class=&quot;n&quot;&gt;uschar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;acl_smtp_rcpt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
+    &lt;p&gt;These pointers are initialized at the beginning of exim process, set according to the configure. For example, if there is a line &lt;code class=&quot;highlighter-rouge&quot;&gt;acl_smtp_mail = acl_check_mail&lt;/code&gt; in the configure, the pointer &lt;code class=&quot;highlighter-rouge&quot;&gt;acl_smtp_mail&lt;/code&gt; points to the string &lt;code class=&quot;highlighter-rouge&quot;&gt;acl_check_mail&lt;/code&gt;. Whenever MAIL FROM is used, exim performs an ACL check, which expands &lt;code class=&quot;highlighter-rouge&quot;&gt;acl_check_mail&lt;/code&gt; first. While expanding, exim tries to execute commands if it encounters &lt;code class=&quot;highlighter-rouge&quot;&gt;${run{cmd}}&lt;/code&gt;, so we achieve code execution as long as we control the ACL strings. In addition, we do not need to hijack program control flow directly and therefore we can bypass mitigations such as &lt;strong&gt;PIE&lt;/strong&gt; (Position Independent Executables), &lt;strong&gt;NX&lt;/strong&gt; easily.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Reset storeblocks and retrieve the ACL storeblock&lt;br /&gt;
+ Now the ACL storeblock is in the linked list chain. It will be released once &lt;code class=&quot;highlighter-rouge&quot;&gt;smtp_reset()&lt;/code&gt; is triggered, and then we can retrieve it again by allocating multiple blocks.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Overwrite ACL strings and trigger ACL check&lt;br /&gt;
+ Finally, we overwrite the whole block containing ACL strings. Now we send commands such as EHLO, MAIL, RCPT to trigger ACL checks. Once we touch an acl defined in the configure, we achieve remote code execution.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;fix&quot;&gt;Fix&lt;/h2&gt;
+&lt;p&gt;Upgrade to 4.90.1 or above&lt;/p&gt;
+
+&lt;h2 id=&quot;timeline&quot;&gt;Timeline&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;5 February, 2018 09:10 Reported to Exim&lt;/li&gt;
+  &lt;li&gt;6 February, 2018 23:23 CVE received&lt;/li&gt;
+  &lt;li&gt;10 February, 2018 18:00 Patch released&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;credits&quot;&gt;Credits&lt;/h2&gt;
+&lt;p&gt;Vulnerabilities found by Meh, DEVCORE research team.&lt;br /&gt;
+meh [at] devco [dot] re&lt;/p&gt;
+
+&lt;h2 id=&quot;reference&quot;&gt;Reference&lt;/h2&gt;
+
+&lt;p&gt;https://exim.org/static/doc/security/CVE-2018-6789.txt&lt;br /&gt;
+https://git.exim.org/exim.git/commit/cf3cd306062a08969c41a1cdd32c6855f1abecf1&lt;br /&gt;
+https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-6789&lt;br /&gt;
+http://www.openwall.com/lists/oss-security/2018/02/07/2&lt;/p&gt;
+
+&lt;p&gt;&lt;a id=&quot;heap_exp&quot;&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;h4 id=&quot;heap-exploitation-materials-return&quot;&gt;Heap exploitation materials &lt;a href=&quot;#back&quot;&gt;[return]&lt;/a&gt;&lt;/h4&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://heap-exploitation.dhavalkapil.com/&quot;&gt;Heap Exploitation&lt;/a&gt;: A tutorial of heap exploitation by Dhaval Kapil&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/shellphish/how2heap&quot;&gt;how2heap&lt;/a&gt;: A repo for learning heap exploitation by Shellphish&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.slideshare.net/AngelBoy1/heap-exploitation-51891400&quot;&gt;Heap exploitation&lt;/a&gt;: (Chinese) A slide introducing basic glibc heap exploitation by Angelboy&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.slideshare.net/AngelBoy1/advanced-heap-exploitaion&quot;&gt;Advanced heap exploitation&lt;/a&gt;: (Chinese) A slide of advanced heap exploitation techniques by Angelboy&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://googleprojectzero.blogspot.tw/2014/08/the-poisoned-nul-byte-2014-edition.html&quot;&gt;The poisoned NUL byte&lt;/a&gt;: An article of Null byte off-by-one exploitation by Project Zero&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+                <link>https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789-en/</link>
+                <guid>https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789-en</guid>
+                <pubDate>Tue, 06 Mar 2018 00:00:00 +0800</pubDate>
+        </item>
+
+        <item>
+                <title>Exim 任意代碼執行漏洞 (CVE-2018-6789)</title>
+                <description>&lt;h2 id=&quot;內容&quot;&gt;內容&lt;/h2&gt;
+
+&lt;p&gt;今年我們向 Exim 回報了一個位於 base64 解碼函式的溢出漏洞，編號為 &lt;strong&gt;CVE-2018-6789&lt;/strong&gt;。此漏洞從 Exim 專案開始時即存在，因此&lt;strong&gt;影響 Exim 的所有版本&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;根據我們的研究，攻擊者可利用此漏洞達成&lt;strong&gt;遠端任意代碼執行，並且不需任何認證&lt;/strong&gt;，至少有 40 萬台 Exim 伺服器受此漏洞影響並存在被攻擊的風險。我們建議立即將 Exim &lt;strong&gt;升級至 4.90.1 版&lt;/strong&gt;以免遭受攻擊。&lt;/p&gt;
+
+&lt;h2 id=&quot;細節&quot;&gt;細節&lt;/h2&gt;
+
+&lt;p&gt;詳細的技術細節請參閱我們的 Advisory：&lt;br /&gt;
+&lt;a href=&quot;https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789-en/&quot;&gt;https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789-en/&lt;/a&gt;&lt;/p&gt;
+
+</description>
+                <link>https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789/</link>
+                <guid>https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789</guid>
+                <pubDate>Tue, 06 Mar 2018 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>Sandstorm Security Review</title>
@@ -570,7 +823,7 @@ https://lists.exim.org/lurker/message/20171125.034842.d1d75cac.en.html&lt;/p&gt;
 &lt;h2 id=&quot;細節&quot;&gt;細節&lt;/h2&gt;
 
 &lt;p&gt;詳細的技術細節請參閱我們的 Advisory：&lt;br /&gt;
-https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943-en/&lt;/p&gt;
+&lt;a href=&quot;https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943-en/&quot;&gt;https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943-en/&lt;/a&gt;&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943/</link>
                 <guid>https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943</guid>

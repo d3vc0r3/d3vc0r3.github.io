@@ -4,11 +4,519 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Sun, 30 Sep 2018 22:43:16 +0800</lastBuildDate>
-        <pubDate>Sun, 30 Sep 2018 22:43:16 +0800</pubDate>
+        <lastBuildDate>Wed, 16 Jan 2019 20:04:05 +0800</lastBuildDate>
+        <pubDate>Wed, 16 Jan 2019 20:04:05 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>Hacking Jenkins Part 1 - Play with Dynamic Routing (EN)</title>
+                <description>&lt;p&gt;&lt;a href=&quot;/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;In software engineering, the &lt;a href=&quot;https://en.wikipedia.org/wiki/Continuous_integration&quot;&gt;Continuous Integration&lt;/a&gt; and &lt;a href=&quot;https://en.wikipedia.org/wiki/Continuous_delivery&quot;&gt;Continuous Delivery&lt;/a&gt; is a best practice for developers to reduce routine works. In the CI/CD, the most well-known tool is Jenkins. Due to its ease of use, awesome Pipeline system and integration of Container, Jenkins is also the most widely used CI/CD application in the world. According to the &lt;a href=&quot;https://snyk.io/blog/jvm-ecosystem-report-2018-tools&quot;&gt;JVM Ecosystem Report&lt;/a&gt; by Snyk in 2018, Jenkins held about 60% market share on the survey of CI/CD server.&lt;/p&gt;
+
+&lt;p&gt;For Red Teamers, Jenkins is also the battlefield that every hacker would like to control. If someone takes control of the Jenkins server, he can gain amounts of source code and credential, or even control the Jenkins node! In our DEVCORE Red Team cases, there are also several cases that the whole corporation is compromised from simply a Jenkins server as our entry point!&lt;/p&gt;
+
+&lt;p&gt;This article is mainly about a brief security review on Jenkins in the last year. During this review, we found 5 vulnerabilities including:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://jenkins.io/security/advisory/2018-07-18/#SECURITY-914&quot;&gt;CVE-2018-1999002 - Arbitrary file read vulnerability&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://jenkins.io/security/advisory/2018-06-25/#SECURITY-915&quot;&gt;CVE-2018-1000600 - CSRF and missing permission checks in GitHub Plugin&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://jenkins.io/security/advisory/2018-08-15/#SECURITY-1071&quot;&gt;CVE-2018-1999046 - Unauthorized users could access agent logs&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://jenkins.io/security/advisory/2018-12-05/#SECURITY-595&quot;&gt;CVE-2018-1000861 - Code execution through crafted URLs&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://jenkins.io/security/advisory/2019-01-08/#jenkins-security-advisory-2019-01-08&quot;&gt;CVE-2019-pending - Sandbox Bypass in Script Security and Pipeline Plugins&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Among them, the more discussed one is the vulnerability CVE-2018-1999002. This is an arbitrary file read vulnerability through an unusual attack vector! Tencent YunDing security lab has written a &lt;a href=&quot;https://cloud.tencent.com/developer/article/1165414&quot;&gt;detailed advisory&lt;/a&gt; about that, and also demonstrated how to exploit this vulnerability from arbitrary file reading to RCE on a real Jenkins site which found from &lt;a href=&quot;https://www.shodan.io/search?query=jenkins&quot;&gt;Shodan&lt;/a&gt;!&lt;/p&gt;
+
+&lt;p&gt;However, we are not going to discuss that in this article. Instead, this post is about another vulnerability found while digging into Stapler framework in order to find a way to bypass the least privilege requirement &lt;code class=&quot;highlighter-rouge&quot;&gt;ANONYMOUS_READ=True&lt;/code&gt; of CVE-2018-1999002! If you merely take a look at the advisory description, you may be curious – Is it reality to gain code execution with just a crafted URL?&lt;/p&gt;
+
+&lt;p&gt;From my own perspective, this vulnerability is just an Access Control List(ACL) bypass, but because this is a problem of the architecture rather than a single program, there are various ways to exploit this bug! In order to pay off the design debt, Jenkins team also takes lots of efforts (patches in &lt;a href=&quot;https://github.com/jenkinsci/jenkins/commit/47f38d714c99e1841fb737ad1005618eb26ed852&quot;&gt;Jenkins side&lt;/a&gt; and &lt;a href=&quot;https://github.com/stapler/stapler/commit/28e8eba822a0df9dcd64d20eb63d8ab5f6ee2980&quot;&gt;Stapler side&lt;/a&gt;) to fix that. The patch not only introduces a new routing blacklist and whitelist but also extends the original &lt;a href=&quot;https://wiki.jenkins.io/display/JENKINS/Plugins+affected+by+the+SECURITY-595+fix&quot;&gt;Service Provider Interface (SPI)&lt;/a&gt; to protect Jenkins’ routing. Now let’s figure out why Jenkins need to make such a huge code modification!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;review-scope&quot;&gt;Review Scope&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;This is not a complete code review (An overall security review takes lots of time…), so this review just aims at high impact bugs. The review scope includes:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Jenkins Core&lt;/li&gt;
+  &lt;li&gt;Stapler Web Framework&lt;/li&gt;
+  &lt;li&gt;Suggested Plugins&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;During the installation, Jenkins asks whether you want to install suggested plugins such as Git, GitHub, SVN and Pipeline. Basically, most people choose yes, or they will get an inconvenient and hard-to-use Jenkins.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190116/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190116/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;privilege-levels&quot;&gt;Privilege Levels&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;Because the vulnerability is an ACL bypass, we need to introduce the privilege level in Jenkins first! In Jenkins, there are different kinds of ACL roles, Jenkins even has a specialized plugin &lt;a href=&quot;https://plugins.jenkins.io/matrix-auth&quot;&gt;Matrix Authorization Strategy Plugin&lt;/a&gt;(also in the suggested plugin list) to configure the detailed permission per project. From an attacker’s view, we roughly classify the ACL into 3 types:&lt;/p&gt;
+
+&lt;h3 id=&quot;1-full-access&quot;&gt;1. Full Access&lt;/h3&gt;
+
+&lt;p&gt;You can fully control Jenkins. Once the attacker gets this permission, he can execute arbitrary Groovy code via &lt;a href=&quot;http://jenkins.local/script&quot;&gt;Script Console&lt;/a&gt;!&lt;/p&gt;
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;uname -a&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;execute&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;text&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;This is the most hacker-friendly scenario, but it’s hard to see this configuration publicly now due to the increase of security awareness and lots of bots scanning all the IPv4.&lt;/p&gt;
+
+&lt;h3 id=&quot;2-read-only-mode&quot;&gt;2. Read-only Mode&lt;/h3&gt;
+
+&lt;p&gt;This can be enabled from the &lt;a href=&quot;http://jenkins.local/configureSecurity&quot;&gt;Configure Global Security&lt;/a&gt; and check the radio box:&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;Allow anonymous read access&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Under this mode, all contents are visible and readable. Such as agent logs and job/node information. For attackers, the best benefit of this mode is the accessibility of a bunch of private source codes! However, the attacker cannot do anything further or execute Groovy scripts!&lt;/p&gt;
+
+&lt;p&gt;Although this is not the default setting, for DevOps, they may still open this option for automations. According to a little survey on &lt;a href=&quot;https://www.shodan.io/search?query=jenkins&quot;&gt;Shodan&lt;/a&gt;, there are about 12% servers enabled this mode! We will call this mode &lt;code class=&quot;highlighter-rouge&quot;&gt;ANONYMOUS_READ=True&lt;/code&gt; in the following sections.&lt;/p&gt;
+
+&lt;h3 id=&quot;3-authenticated-mode&quot;&gt;3. Authenticated Mode&lt;/h3&gt;
+
+&lt;p&gt;This is the default mode. Without a valid credential, you can’t see any information! We will use &lt;code class=&quot;highlighter-rouge&quot;&gt;ANONYMOUS_READ=False&lt;/code&gt; to call this mode in following sections.&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;vulnerability-analysis&quot;&gt;Vulnerability Analysis&lt;/h2&gt;
+
+&lt;p&gt;To explain this vulnerability, we will start with Jenkins’ &lt;a href=&quot;https://jenkins.io/doc/developer/handling-requests/routing/&quot;&gt;Dynamic Routing&lt;/a&gt;. In order to provide developers more flexibilities, Jenkins uses a naming convention to resolve the URL and invoke the method dynamically. Jenkins first tokenizes all the URL by &lt;code class=&quot;highlighter-rouge&quot;&gt;/&lt;/code&gt;, and begins from &lt;a href=&quot;https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/jenkins/model/Jenkins.java&quot;&gt;jenkins.model.Jenkins&lt;/a&gt; as the entry point to match the token one by one. If the token matches (1)public class member or (2)public class method correspond to following naming conventions, Jenkins invokes recursively!&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;ol&gt;
+    &lt;li&gt;get&lt;token&gt;()&lt;/token&gt;&lt;/li&gt;
+    &lt;li&gt;get&lt;token&gt;(String)&lt;/token&gt;&lt;/li&gt;
+    &lt;li&gt;get&lt;token&gt;(Int)&lt;/token&gt;&lt;/li&gt;
+    &lt;li&gt;get&lt;token&gt;(Long)&lt;/token&gt;&lt;/li&gt;
+    &lt;li&gt;get&lt;token&gt;(StaplerRequest)&lt;/token&gt;&lt;/li&gt;
+    &lt;li&gt;getDynamic(String, …)&lt;/li&gt;
+    &lt;li&gt;doDynamic(…)&lt;/li&gt;
+    &lt;li&gt;do&lt;token&gt;(...)&lt;/token&gt;&lt;/li&gt;
+    &lt;li&gt;js&lt;token&gt;(...)&lt;/token&gt;&lt;/li&gt;
+    &lt;li&gt;Class method with @WebMethod annotation&lt;/li&gt;
+    &lt;li&gt;Class method with @JavaScriptMethod annotation&lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;It looks like Jenkins provides developers a lot of flexibility. However, too much freedom is not always a good thing. There are two problems based on this naming convention!&lt;/p&gt;
+
+&lt;h3 id=&quot;1-everything-is-the-subclass-of-javalangobject&quot;&gt;1. Everything is the Subclass of &lt;code class=&quot;highlighter-rouge&quot;&gt;java.lang.Object&lt;/code&gt;&lt;/h3&gt;
+
+&lt;p&gt;In Java, everything is a subclass of &lt;a href=&quot;https://docs.oracle.com/javase/7/docs/api/java/lang/Object.html&quot;&gt;java.lang.Object&lt;/a&gt;. Therefore, all objects must exist the method - &lt;code class=&quot;highlighter-rouge&quot;&gt;getClass()&lt;/code&gt;, and the name of &lt;code class=&quot;highlighter-rouge&quot;&gt;getClass()&lt;/code&gt; just matches the naming convention rule &lt;code class=&quot;highlighter-rouge&quot;&gt;#1&lt;/code&gt;! So the method &lt;code class=&quot;highlighter-rouge&quot;&gt;getClass()&lt;/code&gt; can be also invoked during Jenkins dynamic routing!&lt;/p&gt;
+
+&lt;h3 id=&quot;2-whitelist-bypass&quot;&gt;2. Whitelist Bypass&lt;/h3&gt;
+
+&lt;p&gt;As mentioned before, the biggest difference between &lt;code class=&quot;highlighter-rouge&quot;&gt;ANONYMOUS_READ=True&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;ANONYMOUS_READ=False&lt;/code&gt; is, if the flag set to &lt;code class=&quot;highlighter-rouge&quot;&gt;False&lt;/code&gt;, the entry point will do one more check in &lt;a href=&quot;https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/jenkins/model/Jenkins.java#L4682&quot;&gt;jenkins.model.Jenkins#getTarget()&lt;/a&gt;. The check is a white-list based URL prefix check and here is the list:&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;final&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ImmutableSet&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ALWAYS_READABLE_PATHS&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ImmutableSet&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;of&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/login&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/logout&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/accessDenied&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/adjuncts/&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/error&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/oops&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/signup&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/tcpSlaveAgentListener&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/federatedLoginService/&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/securityRealm&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/instance-identity&quot;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;That means you are restricted to those entrances, but if you can find a cross reference from the white-list entrance jump to other objects, you can still bypass this URL prefix check! It seems a little bit hard to understand. Let’s give a simple example to demonstrate the dynamic routing:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;http://jenkin.local/adjuncts/whatever/class/classLoader/resource/index.jsp/content
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The above URL will invoke following methods in sequence!&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;jenkins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;Jenkins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getAdjuncts&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;whatever&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getClass&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getClassLoader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getResource&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;index.jsp&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getContent&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;This execution chain seems smooth, but sadly, it can not retrieve the result. Therefore, this is not a potential risk, but it’s still a good case to understand the mechanism!&lt;/p&gt;
+
+&lt;p&gt;Once we realize the principle, the remaining part is like solving a maze. &lt;a href=&quot;https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/jenkins/model/Jenkins.java&quot;&gt;jenkins.model.Jenkins&lt;/a&gt; is the entry point. Every member in this object can references to a new object, so our work is to chain the object layer by layer till the exit door, that is, the dangerous method invocation!&lt;/p&gt;
+
+&lt;p&gt;By the way, the saddest thing is that this vulnerability cannot invoke the SETTER, otherwise this would definitely be another interesting classLoader manipulation bug just like &lt;a href=&quot;https://cwiki.apache.org/confluence/display/WW/S2-020&quot;&gt;Struts2 RCE&lt;/a&gt; and &lt;a href=&quot;https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2010-1622&quot;&gt;Spring Framework RCE&lt;/a&gt;!!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;how-to-exploit&quot;&gt;How to Exploit?&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;How to exploit? In brief, the whole thing this bug can achieve is to use cross reference objects to bypass ACL policy. To leverage it, we need to find a proper gadget so that we can invoke the object we prefer in this object-forest more conveniently! Here we choose the gadget:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;/securityRealm/user/[username]/descriptorByName/[descriptor_name]/
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The gadget will invoke following methods sequencely.&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;jenkins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;Jenkins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getSecurityRealm&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getUser&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;])&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getDescriptorByName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;descriptor_name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;])&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;In Jenkins, all configurable objects will extend the type &lt;a href=&quot;https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/Descriptor.java&quot;&gt;hudson.model.Descriptor&lt;/a&gt;. And, any class who extends the &lt;code class=&quot;highlighter-rouge&quot;&gt;Descriptor&lt;/code&gt; type is accessible by method &lt;a href=&quot;https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/DescriptorByNameOwner.java#L51&quot;&gt;hudson.model.DescriptorByNameOwner#getDescriptorByName(String)&lt;/a&gt;. In general, there are totally about 500 class types can be accessed! But due to the architecture of Jenkins. Most developers will check the permission before the dangerous action again. So even we can find a object reference to the &lt;a href=&quot;http://jenkins.local/script&quot;&gt;Script Console&lt;/a&gt;, without the permission &lt;code class=&quot;highlighter-rouge&quot;&gt;Jenkins.RUN_SCRIPTS&lt;/code&gt;, we still can’t do anything :(&lt;/p&gt;
+
+&lt;p&gt;Even so, this vulnerability can still be considered as a stepping stone to bypass the first ACL restriction and to chain other bugs. We will show 3 vulnerability-chains as our case study! (Although we just show 3 cases, there are more than 3! If you are intersted, it’s highly recommended to find others by yourself :P )&lt;/p&gt;
+
+&lt;p&gt;P.S. It should be noted that in the method &lt;code class=&quot;highlighter-rouge&quot;&gt;getUser([username])&lt;/code&gt;, it will invoke &lt;code class=&quot;highlighter-rouge&quot;&gt;getOrCreateById(...)&lt;/code&gt; with &lt;code class=&quot;highlighter-rouge&quot;&gt;create&lt;/code&gt; flag set to &lt;code class=&quot;highlighter-rouge&quot;&gt;True&lt;/code&gt;. This result to the creation of a temporary user in memory(which will be listed in the user list but can’t sign in). Although it’s harmless, it is still recognized as a security issue in &lt;a href=&quot;https://jenkins.io/security/advisory/2018-10-10/&quot;&gt;SECURITY-1128&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;1-pre-auth-user-information-leakage&quot;&gt;1. Pre-auth User Information Leakage&lt;/h3&gt;
+
+&lt;p&gt;While testing Jenkins, it’s a common scenario that you want to perform a brute-force attack but you don’t know which account you can try(a valid credential can read the source at least so it’s worth to be the first attempt).&lt;/p&gt;
+
+&lt;p&gt;In this situation, this vulnerability is useful!&lt;br /&gt;
+Due to the lack of permission check on search functionality. By modifying the &lt;code class=&quot;highlighter-rouge&quot;&gt;keyword&lt;/code&gt; from a to z, an attacker can list all users on Jenkins!&lt;/p&gt;
+
+&lt;h4 id=&quot;poc&quot;&gt;PoC:&lt;/h4&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;http://jenkins.local/securityRealm/user/admin/search/index?q=[keyword]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190116/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Also, this vulnerability can be also chained with &lt;a href=&quot;https://jenkins.io/security/advisory/2017-10-11/#user-remote-api-disclosed-users-email-addresses&quot;&gt;SECURITY-514&lt;/a&gt; which reported by &lt;code class=&quot;highlighter-rouge&quot;&gt;Ananthapadmanabhan S R&lt;/code&gt; to leak user’s email address! Such as:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;http://jenkins.local/securityRealm/user/admin/api/xml
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;2-chained-with-cve-2018-1000600-to-a-pre-auth-fully-responded-ssrf&quot;&gt;2. Chained with CVE-2018-1000600 to a Pre-auth Fully-responded SSRF&lt;/h3&gt;
+
+&lt;p&gt;The next bug is &lt;a href=&quot;https://jenkins.io/security/advisory/2018-06-25/#SECURITY-915&quot;&gt;CVE-2018-1000600&lt;/a&gt;, this bug is reported by &lt;a href=&quot;https://twitter.com/orange_8361&quot;&gt;Orange Tsai&lt;/a&gt;(Yes, it’s me :P). About this vulnerability, the official description is:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;CSRF vulnerability and missing permission checks in GitHub Plugin allowed capturing credentials&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;It can extract any stored credentials with known credentials ID in Jenkins. But the credentials ID is a random UUID if there is no user-supplied value provided. So it seems impossible to exploit this?(Or if someone know how to obtain credentials ID, please tell me!)&lt;/p&gt;
+
+&lt;p&gt;Although it can’t extract any credentials without known credentials ID, there is still another attack primitive - a fully-response SSRF! We all know how hard it is to exploit a Blind SSRF, so that’s why a fully-responded SSRF is so valuable!&lt;/p&gt;
+
+&lt;h4 id=&quot;poc-1&quot;&gt;PoC:&lt;/h4&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;http://jenkins.local/securityRealm/user/admin/descriptorByName/org.jenkinsci.plugins.github.config.GitHubTokenCredentialsCreator/createTokenByPassword
+?apiUrl=http://169.254.169.254/%23
+&amp;amp;login=orange
+&amp;amp;password=tsai
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190116/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;3-pre-auth-remote-code-execution&quot;&gt;3. Pre-auth Remote Code Execution&lt;/h3&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;PLEASE DON’T BULLSHIT, WHERE IS THE RCE!!!&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;In order to maximize the impact, I also find an &lt;strong&gt;INTERESTING&lt;/strong&gt; remote code execution can be chained with this vulnerability to a well-deserved pre-auth RCE! But it’s still on the responsible disclosure process. Please wait and see the Part 2! (Will be published on February 19th :P)&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;todo&quot;&gt;TODO&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;Here is my todo list which can make this vulnerability more perfect. If you find any of them please tell me, really appreciate it :P&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Get the &lt;code class=&quot;highlighter-rouge&quot;&gt;Plugin&lt;/code&gt; object reference under &lt;code class=&quot;highlighter-rouge&quot;&gt;ANONYMOUS_READ=False&lt;/code&gt;. If this can be done, it can bypass the ACL restriction of &lt;a href=&quot;https://jenkins.io/security/advisory/2018-07-18/#SECURITY-914&quot;&gt;CVE-2018-1999002&lt;/a&gt; and &lt;a href=&quot;https://jenkins.io/security/advisory/2018-02-14/#SECURITY-705&quot;&gt;CVE-2018-6356&lt;/a&gt; to a indeed pre-auth arbitrary file reading!&lt;/li&gt;
+  &lt;li&gt;Find another gadget to invoke the method &lt;code class=&quot;highlighter-rouge&quot;&gt;getDescriptorByName(String)&lt;/code&gt; under &lt;code class=&quot;highlighter-rouge&quot;&gt;ANONYMOUS_READ=False&lt;/code&gt;. In order to fix &lt;a href=&quot;https://jenkins.io/security/advisory/2018-08-15/#SECURITY-672&quot;&gt;SECURITY-672&lt;/a&gt;, Jenkins applies a &lt;a href=&quot;https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/User.java#L1026&quot;&gt;check&lt;/a&gt; on &lt;a href=&quot;https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/User.java&quot;&gt;hudson.model.User&lt;/a&gt; to ensure the least privilege &lt;code class=&quot;highlighter-rouge&quot;&gt;Jenkins.READ&lt;/code&gt;. So the original gadget will fail after Jenkins version 2.138.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;acknowledgement&quot;&gt;Acknowledgement&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;Thanks Jenkins Security team especially Daniel Beck for the coordination and bug fixing! Here is the brief timeline:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;May 30, 2018 - Report vulnerabilities to Jenkins&lt;/li&gt;
+  &lt;li&gt;Jun 15, 2018 - Jenkins patched the bug and assigned CVE-2018-1000600&lt;/li&gt;
+  &lt;li&gt;Jul 18, 2018 - Jenkins patched the bug and assigned CVE-2018-1999002&lt;/li&gt;
+  &lt;li&gt;Aug 15, 2018 - Jenkins patched the bug and assigned CVE-2018-1999046&lt;/li&gt;
+  &lt;li&gt;Dec 05, 2018 - Jenkins patched the bug and assigned CVE-2018-1000861&lt;/li&gt;
+  &lt;li&gt;Dec 20, 2018 - Report Groovy vulnerability to Jenkins&lt;/li&gt;
+  &lt;li&gt;Jan 08, 2019 - Jenkins patched Groovy vulnerability and assigned CVE-2019-???????&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+                <link>https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en/</link>
+                <guid>https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en</guid>
+                <pubDate>Wed, 16 Jan 2019 00:00:00 +0800</pubDate>
+        </item>
+
+        <item>
+                <title>Hacking Jenkins Part 1 - Play with Dynamic Routing</title>
+                <description>&lt;p&gt;&lt;a href=&quot;/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;在軟體工程中, &lt;a href=&quot;https://en.wikipedia.org/wiki/Continuous_integration&quot;&gt;Continuous Integration&lt;/a&gt; 及 &lt;a href=&quot;https://en.wikipedia.org/wiki/Continuous_delivery&quot;&gt;Continuous Delivery&lt;/a&gt; 一直都被譽為是軟體開發上的必備流程, 有多少優點就不多談, 光是幫助開發者減少許多雜事就是很大的優勢了! 而在 CI/CD 的領域中, Jenkins 是最為老牌且廣為人知的一套工具, 由於它的易用性, 強大的 Pipeline 系統以及對於容器完美的整合使得 Jenkins 也成為目前最多人使用的 CI/CD 應用, 根據 Snyk 在 2018 年所做出的 &lt;a href=&quot;https://snyk.io/blog/jvm-ecosystem-report-2018-tools&quot;&gt;JVM 生態報告&lt;/a&gt; 中, Jenkins 在 CI/CD 應用中約佔六成的市佔率!&lt;/p&gt;
+
+&lt;p&gt;對於 &lt;a href=&quot;https://devco.re/services/red-team&quot;&gt;紅隊演練(Red Team)&lt;/a&gt; 來說, Jenkins 更是兵家必爭之地, 只要能掌握企業暴露在外的 Jenkins 即可掌握大量的原始碼, 登入憑證甚至控制大量的 Jenkins 節點! 在過去 DEVCORE 所經手過的滲透案子中也出現過數次由 Jenkins 當成進入點, 一步一步從一個小裂縫將目標撕開到完整滲透整間公司的經典案例!&lt;/p&gt;
+
+&lt;p&gt;這篇文章主要是分享去年中針對 Jenkins 所做的一次簡單 Security Review, 過程中共發現了五個 CVE:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://jenkins.io/security/advisory/2018-07-18/#SECURITY-914&quot;&gt;CVE-2018-1999002 - Arbitrary file read vulnerability&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://jenkins.io/security/advisory/2018-06-25/#SECURITY-915&quot;&gt;CVE-2018-1000600 - CSRF and missing permission checks in GitHub Plugin&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://jenkins.io/security/advisory/2018-08-15/#SECURITY-1071&quot;&gt;CVE-2018-1999046 - Unauthorized users could access agent logs&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://jenkins.io/security/advisory/2018-12-05/#SECURITY-595&quot;&gt;CVE-2018-1000861 - Code execution through crafted URLs&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://jenkins.io/security/advisory/2019-01-08/#jenkins-security-advisory-2019-01-08&quot;&gt;CVE-2019-pending - Sandbox Bypass in Script Security and Pipeline Plugins&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;其中比較被大家所討論的應該是 CVE-2018-1999002, 這是一個在 Windows 下的任意檔案讀取, 由於攻擊方式稍微有趣所以討論聲量較高一點, 這個弱點在外邊也有人做了詳細的分析, 詳情可以參考由騰訊雲鼎實驗室所做的分析(&lt;a href=&quot;https://cloud.tencent.com/developer/article/1165414&quot;&gt;Jenkins 任意文件读取漏洞分析&lt;/a&gt;), 他們也成功的展示從 &lt;a href=&quot;https://www.shodan.io/search?query=jenkins&quot;&gt;Shodan&lt;/a&gt; 找到一台未修補的 Jenkins 實現任意讀檔到遠端代碼執行取得權限的過程!&lt;/p&gt;
+
+&lt;p&gt;但這篇文章要提的並不是這個, 而是當時為了嘗試繞過 CVE-2018-1999002 所需的最小權限 Overall/Read 時跟進 Jenkins 所使用的核心框架 Stapler 挖掘所發現的另外一個問題 - CVE-2018-1000861! 如果光從官方的漏洞敘述應該會覺得很神奇, 真的可以光從隨便一個網址去達成代碼執行嗎?&lt;/p&gt;
+
+&lt;p&gt;針對這個漏洞, 我的觀點是它就是一個存取控制清單(ACL)上的繞過, 但由於這是 Jenkins 架構上的問題並不是單一的程式編寫失誤, 進而導致了這個漏洞利用上的多樣性! 而為了這個技術債, Jenkins 官方也花費了一番心力(&lt;a href=&quot;https://github.com/jenkinsci/jenkins/commit/47f38d714c99e1841fb737ad1005618eb26ed852&quot;&gt;Jenkins Patch&lt;/a&gt; 及 &lt;a href=&quot;https://github.com/stapler/stapler/commit/28e8eba822a0df9dcd64d20eb63d8ab5f6ee2980&quot;&gt;Stapler Patch&lt;/a&gt;)去修復這個漏洞, 不但在原有的架構上介紹了新的路由黑名單及白名單, 也擴展了原有架構的 &lt;a href=&quot;https://wiki.jenkins.io/display/JENKINS/Plugins+affected+by+the+SECURITY-595+fix&quot;&gt;Service Provider Interface (SPI)&lt;/a&gt; 去保護 Jenkins 路由, 下面就來解釋為何 Jenkins 要花了那麼多心力去修復這個漏洞!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;代碼審查範圍&quot;&gt;代碼審查範圍&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;首先要聲明的是, 這並不是一次完整的代碼審查(畢竟要做一次太花時間了…), 因此只針對高風險漏洞進行挖掘, 著眼的範圍包括:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Jenkins 核心&lt;/li&gt;
+  &lt;li&gt;Stapler 網頁框架&lt;/li&gt;
+  &lt;li&gt;建議安裝插件&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Jenkins 在安裝過程中會詢問是否安裝建議的套件(像是 Git, GitHub, SVN 與 Pipeline… 等等), 基本上大多數人都會同意不然就只會得到一個半殘的 Jenkins 很不方便XD&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190116/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190116/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;jenkins-中的權限機制&quot;&gt;Jenkins 中的權限機制&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;因為這是一個基於 ACL 上的繞過, 所以在解釋漏洞之前, 先來介紹一下 Jenkins 中的權限機制! 在 Jenkins 中有數種不同的角色權限, 甚至有專門的 &lt;a href=&quot;https://plugins.jenkins.io/matrix-auth&quot;&gt;Matrix Authorization Strategy Plugin&lt;/a&gt; (同為建議安裝套件)可針對各專案進行細部的權限設定, 從攻擊者的角度我們粗略分成三種:&lt;/p&gt;
+
+&lt;h3 id=&quot;1-full-access&quot;&gt;1. Full Access&lt;/h3&gt;
+&lt;p&gt;對於 Jenkins 有完整的控制權, 可對 Jenkins 做任何事! 基本上有這個權限即可透過 &lt;a href=&quot;http://jenkins.local/script&quot;&gt;Script Console&lt;/a&gt; 介面使用 Groovy 執行任意代碼!&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;uname -a&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;execute&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;text&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這個權限對於駭客來說也是最渴望得到的權限, 但基本上由於安全意識的提升及網路上各種殭屍網路對全網進行掃描, 這種配置已經很少見(或只見於內網)&lt;/p&gt;
+
+&lt;h3 id=&quot;2-read-only-mode&quot;&gt;2. Read-only Mode&lt;/h3&gt;
+
+&lt;p&gt;可從 &lt;a href=&quot;http://jenkins.local/configureSecurity&quot;&gt;Configure Global Security&lt;/a&gt; 介面中勾選下面選項來開啟這個模式&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;Allow anonymous read access&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;在這個模式下, 所有的內容皆是可讀的, 例如可看到工作日誌或是一些 job/node 等敏感資訊, 對於攻擊者來說在這個模式下最大的好處就是可以獲得大量的原始碼! 但與 Full Access 模式最大的差異則是無法進行更進一步的操作或是執行 Groovy 代碼以取得控制權!&lt;/p&gt;
+
+&lt;p&gt;雖然這不是 Jenkins 的預設設定, 但對於一些習慣自動化的 DevOps 來說還是有可能開啟這個選項, 根據實際在 &lt;a href=&quot;https://www.shodan.io/search?query=jenkins&quot;&gt;Shodan&lt;/a&gt; 上的調查約 12% 的機器還是開啟這個選項! 以下使用 &lt;code class=&quot;highlighter-rouge&quot;&gt;ANONYMOUS_READ=True&lt;/code&gt; 來代稱這個模式&lt;/p&gt;
+
+&lt;h3 id=&quot;3-authenticated-mode&quot;&gt;3. Authenticated Mode&lt;/h3&gt;
+
+&lt;p&gt;這是 Jenkins 預設安裝好的設定, 在沒有一組有效的帳號密碼狀況下無法看到任何資訊及進行任何操作! 以下使用 &lt;code class=&quot;highlighter-rouge&quot;&gt;ANONYMOUS_READ=False&lt;/code&gt; 來代稱此模式&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;漏洞分析&quot;&gt;漏洞分析&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;整個漏洞要從 Jenkins 的 &lt;a href=&quot;https://jenkins.io/doc/developer/handling-requests/routing/&quot;&gt;動態路由&lt;/a&gt; 講起, 為了給開發者更大的彈性, Jenkins(嚴格來講是 Stapler)使用了一套 Naming Convention 去匹配路由及動態的執行! 首先 Jenkins 以 &lt;code class=&quot;highlighter-rouge&quot;&gt;/&lt;/code&gt; 為分隔將 URL 符號化, 接著由 &lt;a href=&quot;https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/jenkins/model/Jenkins.java&quot;&gt;jenkins.model.Jenkins&lt;/a&gt; 為入口點開始往下搜尋, 如果符號符合 (1) Public 屬性的成員或是 (2) Public 屬性的方法符合下列命名規則, 則調用並繼續往下呼叫:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;ol&gt;
+    &lt;li&gt;get&lt;token&gt;()&lt;/token&gt;&lt;/li&gt;
+    &lt;li&gt;get&lt;token&gt;(String)&lt;/token&gt;&lt;/li&gt;
+    &lt;li&gt;get&lt;token&gt;(Int)&lt;/token&gt;&lt;/li&gt;
+    &lt;li&gt;get&lt;token&gt;(Long)&lt;/token&gt;&lt;/li&gt;
+    &lt;li&gt;get&lt;token&gt;(StaplerRequest)&lt;/token&gt;&lt;/li&gt;
+    &lt;li&gt;getDynamic(String, …)&lt;/li&gt;
+    &lt;li&gt;doDynamic(…)&lt;/li&gt;
+    &lt;li&gt;do&lt;token&gt;(...)&lt;/token&gt;&lt;/li&gt;
+    &lt;li&gt;js&lt;token&gt;(...)&lt;/token&gt;&lt;/li&gt;
+    &lt;li&gt;擁有 @WebMethod 標註的方法&lt;/li&gt;
+    &lt;li&gt;擁有 @JavaScriptMethod 標註的方法&lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;看起來 Jenkins 給予開發者很大程度的自由去訪問各個物件, 但過於自由總是不好的，根據這種調用方式這裡就出現了兩個問題!&lt;/p&gt;
+
+&lt;h3 id=&quot;1-萬物皆繼承-javalangobject&quot;&gt;1. 萬物皆繼承 java.lang.Object&lt;/h3&gt;
+&lt;p&gt;在 Java 中, 所有的物件皆繼承 &lt;a href=&quot;https://docs.oracle.com/javase/7/docs/api/java/lang/Object.html&quot;&gt;java.lang.Object&lt;/a&gt; 這個類別, 因此所有在 Java 中的物件皆存在著 &lt;code class=&quot;highlighter-rouge&quot;&gt;getClass()&lt;/code&gt; 這個方法! 而恰巧這個方法又符合命名規則 &lt;code class=&quot;highlighter-rouge&quot;&gt;#1&lt;/code&gt;, 因此 &lt;code class=&quot;highlighter-rouge&quot;&gt;getClass()&lt;/code&gt; 可在 Jenkins 調用鏈中被動態呼叫!&lt;/p&gt;
+
+&lt;h3 id=&quot;2-跨物件操作導致白名單繞過&quot;&gt;2. 跨物件操作導致白名單繞過&lt;/h3&gt;
+
+&lt;p&gt;前面所提到的 &lt;code class=&quot;highlighter-rouge&quot;&gt;ANONYMOUS_READ&lt;/code&gt;, 其中 &lt;code class=&quot;highlighter-rouge&quot;&gt;True&lt;/code&gt; 與 &lt;code class=&quot;highlighter-rouge&quot;&gt;False&lt;/code&gt; 間最大的不同在於當在禁止的狀況下, 最初的入口點會透過 &lt;a href=&quot;https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/jenkins/model/Jenkins.java#L4682&quot;&gt;jenkins.model.Jenkins#getTarget()&lt;/a&gt; 多做一個基於白名單的 URL 前綴檢查, 這個白名單如下:&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;final&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ImmutableSet&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ALWAYS_READABLE_PATHS&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ImmutableSet&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;of&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/login&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/logout&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/accessDenied&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/adjuncts/&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/error&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/oops&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/signup&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/tcpSlaveAgentListener&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/federatedLoginService/&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/securityRealm&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;/instance-identity&quot;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這也代表著一開始可選的入口限制更嚴格選擇更少, 但如果能在一個白名單上的入口找到其他物件參考, 跳到非白名單上的成員豈不可以繞過前述的 URL 前綴限制? 可能有點難理解, 這裡先來一個簡單的範例來解釋 Jenkins 的動態路由機制:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;http://jenkin.local/adjuncts/whatever/class/classLoader/resource/index.jsp/content
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;以上網址會依序執行下列方法&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;jenkins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;Jenkins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getAdjuncts&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;whatever&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; 
+&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getClass&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getClassLoader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getResource&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;index.jsp&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getContent&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;上面的執行鏈一個串一個雖然看起來很流暢, 但難過的是無法取得回傳內容, 因此嚴格來說不能算是一個風險, 但這個例子對於理解整個漏洞核心卻有很大的幫助!&lt;/p&gt;
+
+&lt;p&gt;在了解原理後, 剩下的事就像是在解一個迷宮, 從 &lt;a href=&quot;https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/jenkins/model/Jenkins.java&quot;&gt;jenkins.model.Jenkins&lt;/a&gt; 這個入口點開始, 物件中的每個成員又可以參考到一個新的物件, 接著要做的就是想辦法把中間錯綜複雜各種物件與物件間的關聯找出來, 一層一層的串下去直到迷宮出口 - 也就是危險的函數呼叫!&lt;/p&gt;
+
+&lt;p&gt;值得一提的是, 這個漏洞最可惜的地方應該是無法針對 SETTER 進行操作, 不然的話應該就又是另外一個有趣的 &lt;a href=&quot;https://cwiki.apache.org/confluence/display/WW/S2-020&quot;&gt;Struts2 RCE&lt;/a&gt; 或是 &lt;a href=&quot;https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2010-1622&quot;&gt;Spring Framework RCE&lt;/a&gt; 了!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;如何利用&quot;&gt;如何利用&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;所以該如何利用這個漏洞呢? 簡單說, 這個漏洞所能做到的事情就只是透過物件間的參考去繞過 ACL 政策, 但在此之前我們必須先找到一個好的跳板好讓我們可以更方便的在物件中跳來跳去, 這裡我們選用了下面這個跳板:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;/securityRealm/user/[username]/descriptorByName/[descriptor_name]/
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這個跳板會依序執行下面方法&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;jenkins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;Jenkins&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getSecurityRealm&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getUser&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;username&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;])&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getDescriptorByName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;descriptor_name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;])&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;在 Jenkins 中可以被操作的物件都會繼承一個 &lt;a href=&quot;https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/Descriptor.java&quot;&gt;hudson.model.Descriptor&lt;/a&gt; 類別, 而繼承這個類別的物件都可以透過 &lt;a href=&quot;https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/DescriptorByNameOwner.java#L51&quot;&gt;hudson.model.DescriptorByNameOwner#getDescriptorByName(String)&lt;/a&gt; 去存取, 所以總體來說, 可透過這個跳板取得在 Jenkins 中約 500 個 Despicable 的物件類別!&lt;/p&gt;
+
+&lt;p&gt;不過雖是如此, 由於 Jenkins 的設計模式, 大部分開發者在危險動作之前都會再做一次權限檢查, 所以即使可呼叫到 &lt;a href=&quot;http://jenkins.local/script&quot;&gt;Script Console&lt;/a&gt; 但在沒有 &lt;code class=&quot;highlighter-rouge&quot;&gt;Jenkins.RUN_SCRIPTS&lt;/code&gt; 權限的情況下也無法做任何事 :(&lt;/p&gt;
+
+&lt;p&gt;但這個漏洞依然不失成為一個很好的膠水去繞過第一層的 ACL 限制串起其他的漏洞, 為後續的利用開啟了一道窗! 以下我們給出三個串出漏洞鏈的例子!&lt;br /&gt;
+(雖然只介紹三種, 但由於這個漏洞玩法非常自由可串的絕不只如此, 推薦有興趣的同學可在尋找更多的漏洞鏈!)&lt;/p&gt;
+
+&lt;p&gt;P.S. 值得注意的一點是, 在 &lt;code class=&quot;highlighter-rouge&quot;&gt;getUser([username])&lt;/code&gt; 的實現中會呼叫到 &lt;code class=&quot;highlighter-rouge&quot;&gt;getOrCreateById(...)&lt;/code&gt; 並且傳入 &lt;code class=&quot;highlighter-rouge&quot;&gt;create=True&lt;/code&gt; 導致在記憶體中創造出一個暫存使用者(會出現在使用者列表但無法進行登入操作), 雖然無用不過也被當成一個漏洞記錄在 &lt;a href=&quot;https://jenkins.io/security/advisory/2018-10-10/&quot;&gt;SECURITY-1128&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;1-免登入的使用者資訊洩漏&quot;&gt;1. 免登入的使用者資訊洩漏&lt;/h3&gt;
+
+&lt;p&gt;在測試 Jenkins 時, 最怕的就是要進行字典檔攻擊時卻不知道該攻擊哪個帳號, 畢竟帳號永遠比密碼難猜! 這時這個漏洞就很好用了XD&lt;/p&gt;
+
+&lt;p&gt;由於 Jenkins 對搜尋的功能並沒有加上適當的權限檢查, 因此在 &lt;code class=&quot;highlighter-rouge&quot;&gt;ANONYMOUS_READ=False&lt;/code&gt; 的狀況下可以透過修改 &lt;code class=&quot;highlighter-rouge&quot;&gt;keyword&lt;/code&gt; 參數從 a 到 z 去列舉出所有使用者!&lt;/p&gt;
+
+&lt;h4 id=&quot;poc&quot;&gt;PoC:&lt;/h4&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;http://jenkins.local/securityRealm/user/admin/search/index?q=[keyword]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190116/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;除此之外也可搭配由 &lt;code class=&quot;highlighter-rouge&quot;&gt;Ananthapadmanabhan S R&lt;/code&gt; 所回報的 &lt;a href=&quot;https://jenkins.io/security/advisory/2017-10-11/#user-remote-api-disclosed-users-email-addresses&quot;&gt;SECURITY-514&lt;/a&gt; 進一步取得使用者信箱, 如:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;http://jenkins.local/securityRealm/user/admin/api/xml
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;2-與-cve-2018-1000600-搭配成免登入且有完整回顯的-ssrf&quot;&gt;2. 與 CVE-2018-1000600 搭配成免登入且有完整回顯的 SSRF&lt;/h3&gt;
+
+&lt;p&gt;下一個要串的漏洞則是 &lt;a href=&quot;https://jenkins.io/security/advisory/2018-06-25/#SECURITY-915&quot;&gt;CVE-2018-1000600&lt;/a&gt;, 這是一個由 &lt;a href=&quot;https://twitter.com/orange_8361&quot;&gt;Orange Tsai&lt;/a&gt;(對就是我XD) 所回報的漏洞, 關於這個漏洞官方的描述是:&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;CSRF vulnerability and missing permission checks in GitHub Plugin allowed capturing credentials&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;在已知 Credentials ID 的情形下可以洩漏任意 Jenkins 儲存的帳密, 但 Credentials ID 在沒指定的情況下會是一組隨機的 UUID 所以造成要利用這個漏洞似乎變得不太可能 (如果有人知道怎麼取得 Credentials ID 請告訴我!)&lt;/p&gt;
+
+&lt;p&gt;雖然在不知道 Credentials ID 的情況下無法洩漏任何帳密, 但這個漏洞其實不只這樣, 還有另一個玩法! 關於這個漏洞最大的危害其實不是 CSRF, 而是 SSRF!&lt;/p&gt;
+
+&lt;p&gt;不僅如此, 這個 SSRF 還是一個有回顯的 SSRF! 沒有回顯的 SSRF 要利用起來有多困難我想大家都知道 :P 因此一個有回顯的 SSRF 也就顯得何其珍貴!&lt;/p&gt;
+
+&lt;h4 id=&quot;poc-1&quot;&gt;PoC:&lt;/h4&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;http://jenkins.local/securityRealm/user/admin/descriptorByName/org.jenkinsci.plugins.github.config.GitHubTokenCredentialsCreator/createTokenByPassword
+?apiUrl=http://169.254.169.254/%23
+&amp;amp;login=orange
+&amp;amp;password=tsai
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190116/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;3-未認證的遠端代碼執行&quot;&gt;3. 未認證的遠端代碼執行&lt;/h3&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;所以廢話少說, RCE 在哪?&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;為了最大程度的去利用這個漏洞, 我也挖了一個&lt;strong&gt;非常有趣&lt;/strong&gt;的 RCE 可以與這個漏洞搭配使用成為一個真正意義上不用認證的 RCE! 但由於這個漏洞目前還在 Responsible Disclosure 的時程內, 就請先期待 Hacking Jenkins Part 2 囉!&lt;br /&gt;
+(預計二月中釋出!)&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;todo&quot;&gt;TODO&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;這裡是一些我想繼續研究的方向, 可以讓這個漏洞變得更完美! 如果你發現了下面任何一個的解法請務必告訴我, 我會很感激的XD&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;在 &lt;code class=&quot;highlighter-rouge&quot;&gt;ANONYMOUS_READ=False&lt;/code&gt; 的權限下拿到 &lt;code class=&quot;highlighter-rouge&quot;&gt;Plugin&lt;/code&gt; 的物件參考, 如果拿到的可以繞過 &lt;a href=&quot;https://jenkins.io/security/advisory/2018-07-18/#SECURITY-914&quot;&gt;CVE-2018-1999002&lt;/a&gt; 與 &lt;a href=&quot;https://jenkins.io/security/advisory/2018-02-14/#SECURITY-705&quot;&gt;CVE-2018-6356&lt;/a&gt; 所需的最小權限限制, 成為一個真正意義上的免登入任意讀檔!&lt;/li&gt;
+  &lt;li&gt;在 &lt;code class=&quot;highlighter-rouge&quot;&gt;ANONYMOUS_READ=False&lt;/code&gt; 的權限下找出另一組跳板去呼叫 &lt;code class=&quot;highlighter-rouge&quot;&gt;getDescriptorByName(String)&lt;/code&gt;. 為了修復 &lt;a href=&quot;https://jenkins.io/security/advisory/2018-08-15/#SECURITY-672&quot;&gt;SECURITY-672&lt;/a&gt;, Jenkins 從 2.138 開始對 &lt;a href=&quot;https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/User.java&quot;&gt;hudson.model.User&lt;/a&gt; 增加判斷 &lt;code class=&quot;highlighter-rouge&quot;&gt;Jenkins.READ&lt;/code&gt; 的&lt;a href=&quot;https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/User.java#L1026&quot;&gt;檢查&lt;/a&gt;, 導致原有的跳板失效!&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;致謝&quot;&gt;致謝&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;最後, 感謝 Jenkins Security 團隊尤其是 Daniel Beck 的溝通協調與漏洞修復! 這裡是一個簡單的回報時間軸:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;May 30, 2018 - 回報漏洞給 Jenkins&lt;/li&gt;
+  &lt;li&gt;Jun 15, 2018 - Jenkins 修補並分配 CVE-2018-1000600&lt;/li&gt;
+  &lt;li&gt;Jul 18, 2018 - Jenkins 修補並分配 CVE-2018-1999002&lt;/li&gt;
+  &lt;li&gt;Aug 15, 2018 - Jenkins 修復並分配 CVE-2018-1999046&lt;/li&gt;
+  &lt;li&gt;Dec 05, 2018 - Jenkins 修補並分配 CVE-2018-1000861&lt;/li&gt;
+  &lt;li&gt;Dec 20, 2018 - 回報 Groovy 漏洞給 Jenkins&lt;/li&gt;
+  &lt;li&gt;Jan 08, 2019 - Jenkins 修復 Groovy 漏洞並分配 CVE-2019-???????&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+                <link>https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/</link>
+                <guid>https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing</guid>
+                <pubDate>Wed, 16 Jan 2019 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>Exim Off-by-one RCE: Exploiting CVE-2018-6789 with Fully Mitigations Bypassing</title>
@@ -32,8 +540,8 @@
 &lt;span class=&quot;n&quot;&gt;uschar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;result&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;store_get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Ustrlen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 
 &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ptr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;result&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;span class=&quot;c1&quot;&gt;// perform decoding
-&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;// perform decoding&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;p&gt;As shown above, exim allocates a buffer of &lt;code class=&quot;highlighter-rouge&quot;&gt;3*(len/4)+1&lt;/code&gt; bytes to store decoded base64 data. However, when the input is not a valid base64 string and the length is &lt;code class=&quot;highlighter-rouge&quot;&gt;4n+3&lt;/code&gt;, exim allocates &lt;code class=&quot;highlighter-rouge&quot;&gt;3n+1&lt;/code&gt; but consumes &lt;code class=&quot;highlighter-rouge&quot;&gt;3n+2&lt;/code&gt; bytes while decoding. This causes one byte heap overflow (aka off-by-one).&lt;br /&gt;
@@ -613,9 +1121,9 @@ This store makes &lt;code class=&quot;highlighter-rouge&quot;&gt;if (!store_exte
 
 &lt;h3 id=&quot;exploitation&quot;&gt;Exploitation&lt;/h3&gt;
 &lt;p&gt;The following is the Proof-of-Concept(PoC) python script of this vulnerability. This PoC controls the control flow of SMTP server and sets instruction pointer to &lt;code class=&quot;highlighter-rouge&quot;&gt;0xdeadbeef&lt;/code&gt;. For fuzzing issue, we did change the runtime configuration of exim. As a result, this PoC works only when &lt;strong&gt;dkim&lt;/strong&gt; is enabled. We use it as an example because the situation is less complicated. The version with default configuration is also exploitable, and we will discuss it at the end of this section.&lt;/p&gt;
-&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# CVE-2017-16943 PoC by meh at DEVCORE&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# pip install pwntools&lt;/span&gt;
-&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;# CVE-2017-16943 PoC by meh at DEVCORE
+# pip install pwntools
+&lt;/span&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
 
 &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;remote&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;127.0.0.1&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;25&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 
@@ -690,9 +1198,9 @@ The illustrations below describe the difference of heap layout:&lt;br /&gt;
 
 &lt;p&gt;And now we can go back to the step 2 at the beginning and create the same situation. When &lt;code class=&quot;highlighter-rouge&quot;&gt;next-&amp;gt;text&lt;/code&gt; is freed, it goes back to unsorted bin and we are able to overwrite libc global variables again.&lt;br /&gt;
 The following is the PoC for default configured exim:&lt;/p&gt;
-&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# CVE-2017-16943 PoC by meh at DEVCORE&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# pip install pwntools&lt;/span&gt;
-&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;# CVE-2017-16943 PoC by meh at DEVCORE
+# pip install pwntools
+&lt;/span&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
 
 &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;remote&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;localhost&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;25&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 
@@ -1005,10 +1513,10 @@ https://lists.exim.org/lurker/message/20171125.034842.d1d75cac.en.html&lt;/p&gt;
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:note1&quot;&gt;
-      &lt;p&gt;其實 CVE-2016-3957 並非不安全的設計，在跟 CVE team 溝通的過程中發現 web2py 開始使用 JSON 取代 Pickle [&lt;a href=&quot;https://github.com/web2py/web2py/commit/0820926b500a321060ef6a76ce89fd35a252f8b0&quot;&gt;Ref&lt;/a&gt;]，因此判定 web2py 認為目前的設計是不洽當的，給予此編號。後來官方因故將 Pickle 改了回來，不過在沒有洩漏加密字串的前提下已經是安全的了。&amp;nbsp;&lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;其實 CVE-2016-3957 並非不安全的設計，在跟 CVE team 溝通的過程中發現 web2py 開始使用 JSON 取代 Pickle [&lt;a href=&quot;https://github.com/web2py/web2py/commit/0820926b500a321060ef6a76ce89fd35a252f8b0&quot;&gt;Ref&lt;/a&gt;]，因此判定 web2py 認為目前的設計是不洽當的，給予此編號。後來官方因故將 Pickle 改了回來，不過在沒有洩漏加密字串的前提下已經是安全的了。 &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:note2&quot;&gt;
-      &lt;p&gt;在自行架設的 web2py 環境中只會執行一次，沒有去細追 web2py 官方網站為何執行兩次。&amp;nbsp;&lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;在自行架設的 web2py 環境中只會執行一次，沒有去細追 web2py 官方網站為何執行兩次。 &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
@@ -2827,10 +3335,10 @@ This is DEMO page.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:note1&quot;&gt;
-      &lt;p&gt;Dynamic Render Paths 目前並沒有中文翻譯，因為問題之精髓在於要產生的樣板路徑是可變動的，因此筆者認為動態樣板路徑這個翻譯較為貼切。&amp;nbsp;&lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;Dynamic Render Paths 目前並沒有中文翻譯，因為問題之精髓在於要產生的樣板路徑是可變動的，因此筆者認為動態樣板路徑這個翻譯較為貼切。 &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:note2&quot;&gt;
-      &lt;p&gt;筆者測試的環境為 Rails 4.1.4，其他 Rails 版本有可能需要用 ../../../../../etc/passwd 跳脫目前目錄。&amp;nbsp;&lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;筆者測試的環境為 Rails 4.1.4，其他 Rails 版本有可能需要用 ../../../../../etc/passwd 跳脫目前目錄。 &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
@@ -3450,10 +3958,10 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:note2&quot;&gt;
-      &lt;p&gt;若手動執行 dhclient，則會遭到漏洞影響。&amp;nbsp;&lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&amp;nbsp;&lt;a href=&quot;#fnref:note2:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;sup&gt;2&lt;/sup&gt;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;若手動執行 dhclient，則會遭到漏洞影響。 &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt; &lt;a href=&quot;#fnref:note2:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;sup&gt;2&lt;/sup&gt;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:note1&quot;&gt;
-      &lt;p&gt;系統環境變數會受到影響，但無法被攻擊者利用。&amp;nbsp;&lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;系統環境變數會受到影響，但無法被攻擊者利用。 &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
@@ -3892,10 +4400,10 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:note1&quot;&gt;
-      &lt;p&gt;Google 基於效能及有效性的考量，在 Android 系統上預設停用&lt;a href=&quot;https://code.google.com/p/android/issues/detail?id=68643&quot;&gt;憑證撤銷檢查&lt;/a&gt;&lt;br /&gt;&amp;nbsp;&lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;Google 基於效能及有效性的考量，在 Android 系統上預設停用&lt;a href=&quot;https://code.google.com/p/android/issues/detail?id=68643&quot;&gt;憑證撤銷檢查&lt;/a&gt;&lt;br /&gt; &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:note2&quot;&gt;
-      &lt;p&gt;OWASP 的 Android 範例中，內含的 PUB_KEY 是錯誤的 (最後更改日期 2014/08/14)&amp;nbsp;&lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;OWASP 的 Android 範例中，內含的 PUB_KEY 是錯誤的 (最後更改日期 2014/08/14) &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;

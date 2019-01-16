@@ -1,0 +1,507 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>Hacking Jenkins Part 1 - Play with Dynamic Routing | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <meta name="description" property="og:description" content="這篇文章主要是分享去年中針對 Jenkins 所做的一次簡單 Security Review, 過程中共發現了五個 CVE 如下： CVE-2018-1999002(Arbitrary file read vulnerability), CVE-2018-1000600(CSRF and missing permission checks in GitHub Plugin), CVE-2018-1999046(Unauthorized users could access agent logs), CVE-2018-1000861(Code execution through crafted URLs), CVE-2019-pending(Sandbox Bypass in Script Security and Pipeline Plugins)" />
+    <meta name="keywords" content="Advisory, CVE-2018-1999002, CVE-2018-1000600, CVE-2018-1999046, CVE-2018-1000861" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="Hacking Jenkins Part 1 - Play with Dynamic Routing | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20190116/cover.jpg" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="Hacking Jenkins Part 1 - Play with Dynamic Routing | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="這篇文章主要是分享去年中針對 Jenkins 所做的一次簡單 Security Review, 過程中共發現了五個 CVE 如下： CVE-2018-1999002(Arbitrary file read vulnerability), CVE-2018-1000600(CSRF and missing permission checks in GitHub Plugin), CVE-2018-1999046(Unauthorized users could access agent logs), CVE-2018-1000861(Code execution through crafted URLs), CVE-2019-pending(Sandbox Bypass in Script Security and Pipeline Plugins)">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20190116/cover.jpg">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+    <link rel="publisher" href="https://plus.google.com/118439315679478709768/" />
+
+  </head>
+  <body>
+    <div class="page">
+      <div class="container--wrapper">
+        <div class="topbar">
+          <div class="topbar__brand">
+            <a href="/">
+                <div class="logo">
+                  DEVCORE 戴夫寇爾
+                </div></a>
+            <p class="slogan">
+              我們提供<a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務
+            </p>
+          </div>
+          <div class="drawer" id="drawer">
+            <div class="drawer__container">
+              <nav class="main-menu">
+                <div class="hidden">
+                  主選單
+                </div>
+                <a href="/services/penetration-test" class="main-menu__link mobile-only">滲透測試</a>
+                <a href="/services/red-team" class="main-menu__link mobile-only">紅隊演練</a>
+                <a href="/services/security-consulting" class="main-menu__link mobile-only">資安顧問</a>
+                <a href="/services/security-training" class="main-menu__link mobile-only">教育訓練</a>
+                <a href="/about/" class="main-menu__link">駭客思維</a><a href="/blog/" class="main-menu__link">最新訊息</a><a href="/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">搜尋</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
+              </nav>
+              <a href="/contact/" class="drawer__contact button--dense">聯絡我們</a>
+              <nav class="lang-menu">
+                <div class="lang-menu__label">
+                  語言:
+                </div>
+                <a href="/" class="lang-menu__link">中文</a>
+                <a href="/en/" class="lang-menu__link">English</a>
+              </nav>
+            </div>
+          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
+            <div class="bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </button>
+        </div>
+      </div><main role="main">
+
+
+          <div class="container--wrapper">
+            <div class="container">
+              <section class="blog-header">
+                <small class="blog-header__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+                <img src="https://devco.re/assets/img/blog/20190116/cover.jpg" class="blog-header__image" alt="Hacking Jenkins Part 1 - Play with Dynamic Routing" />
+                <h1 class="blog-header__title">
+                  Hacking Jenkins Part 1 - Play with Dynamic Routing
+                </h1>
+                <div class="blog-header__tags">
+                  
+                  <a href="/blog/tag/Advisory/" class="blog-header__tag">Advisory</a><a href="/blog/tag/CVE/" class="blog-header__tag">CVE</a><a href="/blog/tag/infoleak/" class="blog-header__tag">infoleak</a><a href="/blog/tag/SSRF/" class="blog-header__tag">SSRF</a>
+                </div>
+          
+          
+                <p class="blog-header__info">
+                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/blog/author/orange" class="author-name">Orange Tsai</a> <time class="date">on 2019-01-16 </time>
+                </p>
+          
+              </section>
+              <article class="article">
+          <p><a href="/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en/">English Version</a><br />
+<a href="/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/">中文版本</a></p>
+
+<p>在軟體工程中, <a href="https://en.wikipedia.org/wiki/Continuous_integration">Continuous Integration</a> 及 <a href="https://en.wikipedia.org/wiki/Continuous_delivery">Continuous Delivery</a> 一直都被譽為是軟體開發上的必備流程, 有多少優點就不多談, 光是幫助開發者減少許多雜事就是很大的優勢了! 而在 CI/CD 的領域中, Jenkins 是最為老牌且廣為人知的一套工具, 由於它的易用性, 強大的 Pipeline 系統以及對於容器完美的整合使得 Jenkins 也成為目前最多人使用的 CI/CD 應用, 根據 Snyk 在 2018 年所做出的 <a href="https://snyk.io/blog/jvm-ecosystem-report-2018-tools">JVM 生態報告</a> 中, Jenkins 在 CI/CD 應用中約佔六成的市佔率!</p>
+
+<p>對於 <a href="https://devco.re/services/red-team">紅隊演練(Red Team)</a> 來說, Jenkins 更是兵家必爭之地, 只要能掌握企業暴露在外的 Jenkins 即可掌握大量的原始碼, 登入憑證甚至控制大量的 Jenkins 節點! 在過去 DEVCORE 所經手過的滲透案子中也出現過數次由 Jenkins 當成進入點, 一步一步從一個小裂縫將目標撕開到完整滲透整間公司的經典案例!</p>
+
+<p>這篇文章主要是分享去年中針對 Jenkins 所做的一次簡單 Security Review, 過程中共發現了五個 CVE:</p>
+
+<ul>
+  <li><a href="https://jenkins.io/security/advisory/2018-07-18/#SECURITY-914">CVE-2018-1999002 - Arbitrary file read vulnerability</a></li>
+  <li><a href="https://jenkins.io/security/advisory/2018-06-25/#SECURITY-915">CVE-2018-1000600 - CSRF and missing permission checks in GitHub Plugin</a></li>
+  <li><a href="https://jenkins.io/security/advisory/2018-08-15/#SECURITY-1071">CVE-2018-1999046 - Unauthorized users could access agent logs</a></li>
+  <li><a href="https://jenkins.io/security/advisory/2018-12-05/#SECURITY-595">CVE-2018-1000861 - Code execution through crafted URLs</a></li>
+  <li><a href="https://jenkins.io/security/advisory/2019-01-08/#jenkins-security-advisory-2019-01-08">CVE-2019-pending - Sandbox Bypass in Script Security and Pipeline Plugins</a></li>
+</ul>
+
+<p>其中比較被大家所討論的應該是 CVE-2018-1999002, 這是一個在 Windows 下的任意檔案讀取, 由於攻擊方式稍微有趣所以討論聲量較高一點, 這個弱點在外邊也有人做了詳細的分析, 詳情可以參考由騰訊雲鼎實驗室所做的分析(<a href="https://cloud.tencent.com/developer/article/1165414">Jenkins 任意文件读取漏洞分析</a>), 他們也成功的展示從 <a href="https://www.shodan.io/search?query=jenkins">Shodan</a> 找到一台未修補的 Jenkins 實現任意讀檔到遠端代碼執行取得權限的過程!</p>
+
+<p>但這篇文章要提的並不是這個, 而是當時為了嘗試繞過 CVE-2018-1999002 所需的最小權限 Overall/Read 時跟進 Jenkins 所使用的核心框架 Stapler 挖掘所發現的另外一個問題 - CVE-2018-1000861! 如果光從官方的漏洞敘述應該會覺得很神奇, 真的可以光從隨便一個網址去達成代碼執行嗎?</p>
+
+<p>針對這個漏洞, 我的觀點是它就是一個存取控制清單(ACL)上的繞過, 但由於這是 Jenkins 架構上的問題並不是單一的程式編寫失誤, 進而導致了這個漏洞利用上的多樣性! 而為了這個技術債, Jenkins 官方也花費了一番心力(<a href="https://github.com/jenkinsci/jenkins/commit/47f38d714c99e1841fb737ad1005618eb26ed852">Jenkins Patch</a> 及 <a href="https://github.com/stapler/stapler/commit/28e8eba822a0df9dcd64d20eb63d8ab5f6ee2980">Stapler Patch</a>)去修復這個漏洞, 不但在原有的架構上介紹了新的路由黑名單及白名單, 也擴展了原有架構的 <a href="https://wiki.jenkins.io/display/JENKINS/Plugins+affected+by+the+SECURITY-595+fix">Service Provider Interface (SPI)</a> 去保護 Jenkins 路由, 下面就來解釋為何 Jenkins 要花了那麼多心力去修復這個漏洞!</p>
+
+<p><br /></p>
+
+<h2 id="代碼審查範圍">代碼審查範圍</h2>
+<hr />
+
+<p>首先要聲明的是, 這並不是一次完整的代碼審查(畢竟要做一次太花時間了…), 因此只針對高風險漏洞進行挖掘, 著眼的範圍包括:</p>
+
+<ul>
+  <li>Jenkins 核心</li>
+  <li>Stapler 網頁框架</li>
+  <li>建議安裝插件</li>
+</ul>
+
+<p>Jenkins 在安裝過程中會詢問是否安裝建議的套件(像是 Git, GitHub, SVN 與 Pipeline… 等等), 基本上大多數人都會同意不然就只會得到一個半殘的 Jenkins 很不方便XD</p>
+
+<p><img src="/assets/img/blog/20190116/1.png" alt="" /></p>
+
+<p><img src="/assets/img/blog/20190116/2.png" alt="" /></p>
+
+<p><br /></p>
+
+<h2 id="jenkins-中的權限機制">Jenkins 中的權限機制</h2>
+<hr />
+
+<p>因為這是一個基於 ACL 上的繞過, 所以在解釋漏洞之前, 先來介紹一下 Jenkins 中的權限機制! 在 Jenkins 中有數種不同的角色權限, 甚至有專門的 <a href="https://plugins.jenkins.io/matrix-auth">Matrix Authorization Strategy Plugin</a> (同為建議安裝套件)可針對各專案進行細部的權限設定, 從攻擊者的角度我們粗略分成三種:</p>
+
+<h3 id="1-full-access">1. Full Access</h3>
+<p>對於 Jenkins 有完整的控制權, 可對 Jenkins 做任何事! 基本上有這個權限即可透過 <a href="http://jenkins.local/script">Script Console</a> 介面使用 Groovy 執行任意代碼!</p>
+
+<div class="language-groovy highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">print</span> <span class="s2">"uname -a"</span><span class="o">.</span><span class="na">execute</span><span class="o">().</span><span class="na">text</span>
+</code></pre></div></div>
+
+<p>這個權限對於駭客來說也是最渴望得到的權限, 但基本上由於安全意識的提升及網路上各種殭屍網路對全網進行掃描, 這種配置已經很少見(或只見於內網)</p>
+
+<h3 id="2-read-only-mode">2. Read-only Mode</h3>
+
+<p>可從 <a href="http://jenkins.local/configureSecurity">Configure Global Security</a> 介面中勾選下面選項來開啟這個模式</p>
+<blockquote>
+  <p>Allow anonymous read access</p>
+</blockquote>
+
+<p>在這個模式下, 所有的內容皆是可讀的, 例如可看到工作日誌或是一些 job/node 等敏感資訊, 對於攻擊者來說在這個模式下最大的好處就是可以獲得大量的原始碼! 但與 Full Access 模式最大的差異則是無法進行更進一步的操作或是執行 Groovy 代碼以取得控制權!</p>
+
+<p>雖然這不是 Jenkins 的預設設定, 但對於一些習慣自動化的 DevOps 來說還是有可能開啟這個選項, 根據實際在 <a href="https://www.shodan.io/search?query=jenkins">Shodan</a> 上的調查約 12% 的機器還是開啟這個選項! 以下使用 <code class="highlighter-rouge">ANONYMOUS_READ=True</code> 來代稱這個模式</p>
+
+<h3 id="3-authenticated-mode">3. Authenticated Mode</h3>
+
+<p>這是 Jenkins 預設安裝好的設定, 在沒有一組有效的帳號密碼狀況下無法看到任何資訊及進行任何操作! 以下使用 <code class="highlighter-rouge">ANONYMOUS_READ=False</code> 來代稱此模式</p>
+
+<p><br /></p>
+
+<h2 id="漏洞分析">漏洞分析</h2>
+<hr />
+
+<p>整個漏洞要從 Jenkins 的 <a href="https://jenkins.io/doc/developer/handling-requests/routing/">動態路由</a> 講起, 為了給開發者更大的彈性, Jenkins(嚴格來講是 Stapler)使用了一套 Naming Convention 去匹配路由及動態的執行! 首先 Jenkins 以 <code class="highlighter-rouge">/</code> 為分隔將 URL 符號化, 接著由 <a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/jenkins/model/Jenkins.java">jenkins.model.Jenkins</a> 為入口點開始往下搜尋, 如果符號符合 (1) Public 屬性的成員或是 (2) Public 屬性的方法符合下列命名規則, 則調用並繼續往下呼叫:</p>
+
+<blockquote>
+  <ol>
+    <li>get<token>()</token></li>
+    <li>get<token>(String)</token></li>
+    <li>get<token>(Int)</token></li>
+    <li>get<token>(Long)</token></li>
+    <li>get<token>(StaplerRequest)</token></li>
+    <li>getDynamic(String, …)</li>
+    <li>doDynamic(…)</li>
+    <li>do<token>(...)</token></li>
+    <li>js<token>(...)</token></li>
+    <li>擁有 @WebMethod 標註的方法</li>
+    <li>擁有 @JavaScriptMethod 標註的方法</li>
+  </ol>
+</blockquote>
+
+<p>看起來 Jenkins 給予開發者很大程度的自由去訪問各個物件, 但過於自由總是不好的，根據這種調用方式這裡就出現了兩個問題!</p>
+
+<h3 id="1-萬物皆繼承-javalangobject">1. 萬物皆繼承 java.lang.Object</h3>
+<p>在 Java 中, 所有的物件皆繼承 <a href="https://docs.oracle.com/javase/7/docs/api/java/lang/Object.html">java.lang.Object</a> 這個類別, 因此所有在 Java 中的物件皆存在著 <code class="highlighter-rouge">getClass()</code> 這個方法! 而恰巧這個方法又符合命名規則 <code class="highlighter-rouge">#1</code>, 因此 <code class="highlighter-rouge">getClass()</code> 可在 Jenkins 調用鏈中被動態呼叫!</p>
+
+<h3 id="2-跨物件操作導致白名單繞過">2. 跨物件操作導致白名單繞過</h3>
+
+<p>前面所提到的 <code class="highlighter-rouge">ANONYMOUS_READ</code>, 其中 <code class="highlighter-rouge">True</code> 與 <code class="highlighter-rouge">False</code> 間最大的不同在於當在禁止的狀況下, 最初的入口點會透過 <a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/jenkins/model/Jenkins.java#L4682">jenkins.model.Jenkins#getTarget()</a> 多做一個基於白名單的 URL 前綴檢查, 這個白名單如下:</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">ImmutableSet</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">ALWAYS_READABLE_PATHS</span> <span class="o">=</span> <span class="n">ImmutableSet</span><span class="o">.</span><span class="na">of</span><span class="o">(</span>
+    <span class="s">"/login"</span><span class="o">,</span>
+    <span class="s">"/logout"</span><span class="o">,</span>
+    <span class="s">"/accessDenied"</span><span class="o">,</span>
+    <span class="s">"/adjuncts/"</span><span class="o">,</span>
+    <span class="s">"/error"</span><span class="o">,</span>
+    <span class="s">"/oops"</span><span class="o">,</span>
+    <span class="s">"/signup"</span><span class="o">,</span>
+    <span class="s">"/tcpSlaveAgentListener"</span><span class="o">,</span>
+    <span class="s">"/federatedLoginService/"</span><span class="o">,</span>
+    <span class="s">"/securityRealm"</span><span class="o">,</span>
+    <span class="s">"/instance-identity"</span>
+<span class="o">);</span>
+</code></pre></div></div>
+
+<p>這也代表著一開始可選的入口限制更嚴格選擇更少, 但如果能在一個白名單上的入口找到其他物件參考, 跳到非白名單上的成員豈不可以繞過前述的 URL 前綴限制? 可能有點難理解, 這裡先來一個簡單的範例來解釋 Jenkins 的動態路由機制:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://jenkin.local/adjuncts/whatever/class/classLoader/resource/index.jsp/content
+</code></pre></div></div>
+
+<p>以上網址會依序執行下列方法</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">jenkins</span><span class="o">.</span><span class="na">model</span><span class="o">.</span><span class="na">Jenkins</span><span class="o">.</span><span class="na">getAdjuncts</span><span class="o">(</span><span class="s">"whatever"</span><span class="o">)</span> 
+<span class="o">.</span><span class="na">getClass</span><span class="o">()</span>
+<span class="o">.</span><span class="na">getClassLoader</span><span class="o">()</span>
+<span class="o">.</span><span class="na">getResource</span><span class="o">(</span><span class="s">"index.jsp"</span><span class="o">)</span>
+<span class="o">.</span><span class="na">getContent</span><span class="o">()</span>
+</code></pre></div></div>
+
+<p>上面的執行鏈一個串一個雖然看起來很流暢, 但難過的是無法取得回傳內容, 因此嚴格來說不能算是一個風險, 但這個例子對於理解整個漏洞核心卻有很大的幫助!</p>
+
+<p>在了解原理後, 剩下的事就像是在解一個迷宮, 從 <a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/jenkins/model/Jenkins.java">jenkins.model.Jenkins</a> 這個入口點開始, 物件中的每個成員又可以參考到一個新的物件, 接著要做的就是想辦法把中間錯綜複雜各種物件與物件間的關聯找出來, 一層一層的串下去直到迷宮出口 - 也就是危險的函數呼叫!</p>
+
+<p>值得一提的是, 這個漏洞最可惜的地方應該是無法針對 SETTER 進行操作, 不然的話應該就又是另外一個有趣的 <a href="https://cwiki.apache.org/confluence/display/WW/S2-020">Struts2 RCE</a> 或是 <a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2010-1622">Spring Framework RCE</a> 了!</p>
+
+<p><br /></p>
+
+<h2 id="如何利用">如何利用</h2>
+<hr />
+
+<p>所以該如何利用這個漏洞呢? 簡單說, 這個漏洞所能做到的事情就只是透過物件間的參考去繞過 ACL 政策, 但在此之前我們必須先找到一個好的跳板好讓我們可以更方便的在物件中跳來跳去, 這裡我們選用了下面這個跳板:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/securityRealm/user/[username]/descriptorByName/[descriptor_name]/
+</code></pre></div></div>
+
+<p>這個跳板會依序執行下面方法</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">jenkins</span><span class="o">.</span><span class="na">model</span><span class="o">.</span><span class="na">Jenkins</span><span class="o">.</span><span class="na">getSecurityRealm</span><span class="o">()</span>
+<span class="o">.</span><span class="na">getUser</span><span class="o">([</span><span class="n">username</span><span class="o">])</span>
+<span class="o">.</span><span class="na">getDescriptorByName</span><span class="o">([</span><span class="n">descriptor_name</span><span class="o">])</span>
+</code></pre></div></div>
+
+<p>在 Jenkins 中可以被操作的物件都會繼承一個 <a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/Descriptor.java">hudson.model.Descriptor</a> 類別, 而繼承這個類別的物件都可以透過 <a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/DescriptorByNameOwner.java#L51">hudson.model.DescriptorByNameOwner#getDescriptorByName(String)</a> 去存取, 所以總體來說, 可透過這個跳板取得在 Jenkins 中約 500 個 Despicable 的物件類別!</p>
+
+<p>不過雖是如此, 由於 Jenkins 的設計模式, 大部分開發者在危險動作之前都會再做一次權限檢查, 所以即使可呼叫到 <a href="http://jenkins.local/script">Script Console</a> 但在沒有 <code class="highlighter-rouge">Jenkins.RUN_SCRIPTS</code> 權限的情況下也無法做任何事 :(</p>
+
+<p>但這個漏洞依然不失成為一個很好的膠水去繞過第一層的 ACL 限制串起其他的漏洞, 為後續的利用開啟了一道窗! 以下我們給出三個串出漏洞鏈的例子!<br />
+(雖然只介紹三種, 但由於這個漏洞玩法非常自由可串的絕不只如此, 推薦有興趣的同學可在尋找更多的漏洞鏈!)</p>
+
+<p>P.S. 值得注意的一點是, 在 <code class="highlighter-rouge">getUser([username])</code> 的實現中會呼叫到 <code class="highlighter-rouge">getOrCreateById(...)</code> 並且傳入 <code class="highlighter-rouge">create=True</code> 導致在記憶體中創造出一個暫存使用者(會出現在使用者列表但無法進行登入操作), 雖然無用不過也被當成一個漏洞記錄在 <a href="https://jenkins.io/security/advisory/2018-10-10/">SECURITY-1128</a></p>
+
+<p><br /></p>
+
+<h3 id="1-免登入的使用者資訊洩漏">1. 免登入的使用者資訊洩漏</h3>
+
+<p>在測試 Jenkins 時, 最怕的就是要進行字典檔攻擊時卻不知道該攻擊哪個帳號, 畢竟帳號永遠比密碼難猜! 這時這個漏洞就很好用了XD</p>
+
+<p>由於 Jenkins 對搜尋的功能並沒有加上適當的權限檢查, 因此在 <code class="highlighter-rouge">ANONYMOUS_READ=False</code> 的狀況下可以透過修改 <code class="highlighter-rouge">keyword</code> 參數從 a 到 z 去列舉出所有使用者!</p>
+
+<h4 id="poc">PoC:</h4>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://jenkins.local/securityRealm/user/admin/search/index?q=[keyword]
+</code></pre></div></div>
+
+<p><img src="/assets/img/blog/20190116/3.png" alt="" /></p>
+
+<p>除此之外也可搭配由 <code class="highlighter-rouge">Ananthapadmanabhan S R</code> 所回報的 <a href="https://jenkins.io/security/advisory/2017-10-11/#user-remote-api-disclosed-users-email-addresses">SECURITY-514</a> 進一步取得使用者信箱, 如:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://jenkins.local/securityRealm/user/admin/api/xml
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="2-與-cve-2018-1000600-搭配成免登入且有完整回顯的-ssrf">2. 與 CVE-2018-1000600 搭配成免登入且有完整回顯的 SSRF</h3>
+
+<p>下一個要串的漏洞則是 <a href="https://jenkins.io/security/advisory/2018-06-25/#SECURITY-915">CVE-2018-1000600</a>, 這是一個由 <a href="https://twitter.com/orange_8361">Orange Tsai</a>(對就是我XD) 所回報的漏洞, 關於這個漏洞官方的描述是:</p>
+<blockquote>
+  <p>CSRF vulnerability and missing permission checks in GitHub Plugin allowed capturing credentials</p>
+</blockquote>
+
+<p>在已知 Credentials ID 的情形下可以洩漏任意 Jenkins 儲存的帳密, 但 Credentials ID 在沒指定的情況下會是一組隨機的 UUID 所以造成要利用這個漏洞似乎變得不太可能 (如果有人知道怎麼取得 Credentials ID 請告訴我!)</p>
+
+<p>雖然在不知道 Credentials ID 的情況下無法洩漏任何帳密, 但這個漏洞其實不只這樣, 還有另一個玩法! 關於這個漏洞最大的危害其實不是 CSRF, 而是 SSRF!</p>
+
+<p>不僅如此, 這個 SSRF 還是一個有回顯的 SSRF! 沒有回顯的 SSRF 要利用起來有多困難我想大家都知道 :P 因此一個有回顯的 SSRF 也就顯得何其珍貴!</p>
+
+<h4 id="poc-1">PoC:</h4>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://jenkins.local/securityRealm/user/admin/descriptorByName/org.jenkinsci.plugins.github.config.GitHubTokenCredentialsCreator/createTokenByPassword
+?apiUrl=http://169.254.169.254/%23
+&amp;login=orange
+&amp;password=tsai
+</code></pre></div></div>
+
+<p><img src="/assets/img/blog/20190116/4.png" alt="" /></p>
+
+<p><br /></p>
+
+<h3 id="3-未認證的遠端代碼執行">3. 未認證的遠端代碼執行</h3>
+
+<blockquote>
+  <p>所以廢話少說, RCE 在哪?</p>
+</blockquote>
+
+<p>為了最大程度的去利用這個漏洞, 我也挖了一個<strong>非常有趣</strong>的 RCE 可以與這個漏洞搭配使用成為一個真正意義上不用認證的 RCE! 但由於這個漏洞目前還在 Responsible Disclosure 的時程內, 就請先期待 Hacking Jenkins Part 2 囉!<br />
+(預計二月中釋出!)</p>
+
+<p><br /></p>
+
+<h2 id="todo">TODO</h2>
+<hr />
+
+<p>這裡是一些我想繼續研究的方向, 可以讓這個漏洞變得更完美! 如果你發現了下面任何一個的解法請務必告訴我, 我會很感激的XD</p>
+
+<ul>
+  <li>在 <code class="highlighter-rouge">ANONYMOUS_READ=False</code> 的權限下拿到 <code class="highlighter-rouge">Plugin</code> 的物件參考, 如果拿到的可以繞過 <a href="https://jenkins.io/security/advisory/2018-07-18/#SECURITY-914">CVE-2018-1999002</a> 與 <a href="https://jenkins.io/security/advisory/2018-02-14/#SECURITY-705">CVE-2018-6356</a> 所需的最小權限限制, 成為一個真正意義上的免登入任意讀檔!</li>
+  <li>在 <code class="highlighter-rouge">ANONYMOUS_READ=False</code> 的權限下找出另一組跳板去呼叫 <code class="highlighter-rouge">getDescriptorByName(String)</code>. 為了修復 <a href="https://jenkins.io/security/advisory/2018-08-15/#SECURITY-672">SECURITY-672</a>, Jenkins 從 2.138 開始對 <a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/User.java">hudson.model.User</a> 增加判斷 <code class="highlighter-rouge">Jenkins.READ</code> 的<a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/User.java#L1026">檢查</a>, 導致原有的跳板失效!</li>
+</ul>
+
+<p><br /></p>
+
+<h2 id="致謝">致謝</h2>
+<hr />
+
+<p>最後, 感謝 Jenkins Security 團隊尤其是 Daniel Beck 的溝通協調與漏洞修復! 這裡是一個簡單的回報時間軸:</p>
+
+<ul>
+  <li>May 30, 2018 - 回報漏洞給 Jenkins</li>
+  <li>Jun 15, 2018 - Jenkins 修補並分配 CVE-2018-1000600</li>
+  <li>Jul 18, 2018 - Jenkins 修補並分配 CVE-2018-1999002</li>
+  <li>Aug 15, 2018 - Jenkins 修復並分配 CVE-2018-1999046</li>
+  <li>Dec 05, 2018 - Jenkins 修補並分配 CVE-2018-1000861</li>
+  <li>Dec 20, 2018 - 回報 Groovy 漏洞給 Jenkins</li>
+  <li>Jan 08, 2019 - Jenkins 修復 Groovy 漏洞並分配 CVE-2019-???????</li>
+</ul>
+
+
+              </article>
+              <p class="sns-widgets">
+                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
+              </p>
+          
+              <div class="heading--side-lined">
+                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/blog/author/orange" class="blog-author-name">Orange Tsai</a> 
+              </div>
+              <p class="blog-author-info">
+                I am Orange : )
+              </p>
+          
+              <div class="heading--side-lined">
+                讀者留言
+              </div>
+              <div class="blog-comments">
+                
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+              </div>
+            </div>
+          </div>
+
+
+
+
+
+
+</main>
+      <div class="container--wrapper">
+
+        <div class="relative-posts">
+          <div class="heading--side-lined container">
+            最新消息
+          </div>
+          <div class="relative-posts__cells">
+  
+            <section class="card">
+              <a href="/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20190116/cover.jpg)"></div>
+                <h3 class="card__title">
+                  Hacking Jenkins Part 1 - Play with Dynamic Routing
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a><a href="/blog/tag/infoleak/" class="card__tag">infoleak</a><a href="/blog/tag/SSRF/" class="card__tag">SSRF</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20180306/cover.png)"></div>
+                <h3 class="card__title">
+                  Exim 任意代碼執行漏洞 (CVE-2018-6789)
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/Exim/" class="card__tag">Exim</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/資安新聞/">資安新聞</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20180126/cover.png)"></div>
+                <h3 class="card__title">
+                  一次在 Sandstorm 跳脫沙箱的滲透經驗
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a><a href="/blog/tag/Vulnerability/" class="card__tag">Vulnerability</a><a href="/blog/tag/IDOR/" class="card__tag">IDOR</a><a href="/blog/tag/Pentest/" class="card__tag">Pentest</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+            </section>
+  
+          </div>
+        </div>
+
+
+        <div class="contact-section container">
+          <h2 class="contact-section__title">
+            用最真實的攻擊，驗證企業的防禦
+          </h2>
+          <a href="/contact/" class="home-contact__button button--dense">聯絡我們</a>
+        </div>
+
+        <footer class="main-footer">
+          <div class="main-footer__about">
+            戴夫寇爾提供<br class="mobile-only" /><a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務<br />在<a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a>或<a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>上追蹤我們的<a href="/blog/" class="link">最新訊息</a><br />瞭解更多戴夫寇爾的<a href="/about/" class="link">駭客思維</a>
+          </div>
+          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
+                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://plus.google.com/118439315679478709768/posts" class="main-footer__sns">
+                <svg class="icon-googleplus icon"><use xlink:href="#icon-googleplus" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
+                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
+          </div>
+          <address class="main-footer__address">
+            <ul class="list--unstyled">
+              <li>
+                地址 10487 台北市中山區復興北路 168 號 10 樓
+              </li>
+              <li>
+                Email contact@devco.re
+              </li>
+              <li>
+                電話 02-2718-0156
+              </li>
+              <li>
+                統編 53955237
+              </li>
+            </ul>
+          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2019 DEVCORE 戴夫寇爾</small>
+        </footer>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
+
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+
+  </body>
+</html>
+
+
+
+

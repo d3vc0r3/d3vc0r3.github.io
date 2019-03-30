@@ -139,15 +139,15 @@
 
 <p>舉例來說，我寫了一個小程式，偵測這些常見的 HTTP Header 判斷 IP。並且使用 <a href="http://portswigger.net/burp/">Burp Suite</a> 這個工具來修改 HTTP Request。</p>
 
-<p><a href="https://lh4.googleusercontent.com/-OLYyle4PQ48/U5lB8SLR_DI/AAAAAAAAAc4/yHvzlGfNAAs/s2400/2014-06-12-client-ip-detection-01-detech-user-ip.png"><img src="https://lh4.googleusercontent.com/-OLYyle4PQ48/U5lB8SLR_DI/AAAAAAAAAc4/yHvzlGfNAAs/w897-h678-no/2014-06-12-client-ip-detection-01-detech-user-ip.png" alt="顯示目前 IP 以及相關 header" title="顯示目前 IP 以及相關 header" /></a></p>
+<p><a href="/assets/img/blog/20140619/2014-06-12-client-ip-detection-01-detech-user-ip.png"><img src="/assets/img/blog/20140619/2014-06-12-client-ip-detection-01-detech-user-ip.png" alt="顯示目前 IP 以及相關 header" title="顯示目前 IP 以及相關 header" /></a></p>
 
 <p>頁面上顯示目前我目前的 IP「49.50.68.17」，並且其他的 header 是空的。但如果我今天使用 Burp Suite 之類的 Proxy 工具自行竄改封包，加上 X-Forwarded-For 或是 Client-IP header：</p>
 
-<p><a href="https://lh5.googleusercontent.com/-GC77ijJxN-U/U5lB8NrnGwI/AAAAAAAAAdA/pqJDjoxUeu0/s2400/2014-06-12-client-ip-detection-02-burp-suite-add-http-header.png"><img src="https://lh5.googleusercontent.com/-GC77ijJxN-U/U5lB8NrnGwI/AAAAAAAAAdA/pqJDjoxUeu0/w744-h480-no/2014-06-12-client-ip-detection-02-burp-suite-add-http-header.png" alt="使用 Burp Suite 修改 HTTP Request Header" title="使用 Burp Suite 修改 HTTP Request Header" /></a></p>
+<p><a href="/assets/img/blog/20140619/2014-06-12-client-ip-detection-02-burp-suite-add-http-header.png"><img src="/assets/img/blog/20140619/2014-06-12-client-ip-detection-02-burp-suite-add-http-header.png" alt="使用 Burp Suite 修改 HTTP Request Header" title="使用 Burp Suite 修改 HTTP Request Header" /></a></p>
 
 <p>修改完畢之後，再到原本的顯示 IP 介面，會發現網頁錯將我竄改的 header 當作正確的資料填入。</p>
 
-<p><a href="https://lh3.googleusercontent.com/-hHA7NtX_9KI/U5lB8Nn1VjI/AAAAAAAAAc0/umHpFoGWDDo/s2400/2014-06-12-client-ip-detection-03-detech-user-ip.png"><img src="https://lh3.googleusercontent.com/-hHA7NtX_9KI/U5lB8Nn1VjI/AAAAAAAAAc0/umHpFoGWDDo/w897-h678-no/2014-06-12-client-ip-detection-03-detech-user-ip.png" alt="顯示遭到竄改的 HTTP Header" /></a></p>
+<p><a href="/assets/img/blog/20140619/2014-06-12-client-ip-detection-03-detech-user-ip.png"><img src="/assets/img/blog/20140619/2014-06-12-client-ip-detection-03-detech-user-ip.png" alt="顯示遭到竄改的 HTTP Header" /></a></p>
 
 <h3 id="使用代理伺服器-proxy-的情況">使用代理伺服器 Proxy 的情況</h3>
 
@@ -189,7 +189,7 @@
 
 <p>在我們測試的過程中，通常我們都會讓瀏覽器自帶 X-Forwarded-For，並且自行填入 IP。常常會發現有一些網站出現如下的警告…</p>
 
-<p><a href="https://lh4.googleusercontent.com/-mWMLyw8Z924/U5lB8y19t5I/AAAAAAAAAc8/PgGRibfggZM/s2400/2014-06-12-client-ip-detection-04-discuz-user-ip.png"><img src="https://lh4.googleusercontent.com/-mWMLyw8Z924/U5lB8y19t5I/AAAAAAAAAc8/PgGRibfggZM/w268-h139-no/2014-06-12-client-ip-detection-04-discuz-user-ip.png" alt="Discuz! 顯示 IP 錯誤" /></a></p>
+<p><a href="/assets/img/blog/20140619/2014-06-12-client-ip-detection-04-discuz-user-ip.png"><img src="/assets/img/blog/20140619/2014-06-12-client-ip-detection-04-discuz-user-ip.png" alt="Discuz! 顯示 IP 錯誤" /></a></p>
 
 <p>有沒有搞錯？「上次登入位置 127.0.0.1」？沒錯，這個是知名論壇套件「<a href="http://www.discuz.net/">Discuz!</a>」的功能，抓取 IP 的功能也是不安全的寫法。也有這樣的經驗，之前開著 X-Forwarded-For 的 header 到一些網站，竟然直接出現管理者後台！</p>
 

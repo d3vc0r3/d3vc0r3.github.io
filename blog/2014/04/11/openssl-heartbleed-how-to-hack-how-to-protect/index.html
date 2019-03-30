@@ -124,20 +124,20 @@
 
 <p>首先利用 <a href="http://pastebin.com/WmxzjkXJ">ssltest.py</a> 來測試，來看伺服器是否有被 heartbleed 漏洞影響，fbi.gov 在第三天已經修復這個問題。</p>
 
-<p><a href="https://lh3.googleusercontent.com/-EeW6B_aOR7s/U0kWbYnPIPI/AAAAAAAAAQ8/o-WQ5rGGpOs/s2560/2014-04-11-openssl-heartbleed-detail-01-ssltest.py.png"><img src="https://lh3.googleusercontent.com/-EeW6B_aOR7s/U0kWbYnPIPI/AAAAAAAAAQ8/o-WQ5rGGpOs/w896-h678-no/2014-04-11-openssl-heartbleed-detail-01-ssltest.py.png" alt="利用 ssltest.py 來測試伺服器是否有 Heartbleed 漏洞。" title="利用 ssltest.py 來測試伺服器是否有 Heartbleed 漏洞。" /></a></p>
+<p><a href="/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-01-ssltest.py.png"><img src="/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-01-ssltest.py.png" alt="利用 ssltest.py 來測試伺服器是否有 Heartbleed 漏洞。" title="利用 ssltest.py 來測試伺服器是否有 Heartbleed 漏洞。" /></a></p>
 
 <p>如果是檢測一個有漏洞的網站，這個工具會直接把記憶體的內容顯示出來，其中可能包括 http 傳輸的資料、帳號密碼、私密金鑰等。在這個例子中，攻擊程式讀取到使用者送出的 form，若其中包含個資將會被一覽無遺，非常危險。</p>
 
-<p><a href="https://lh4.googleusercontent.com/-csGMcT5ue6k/U0kWbdd0BTI/AAAAAAAAARI/_eJXbANavDw/s2560/2014-04-11-openssl-heartbleed-detail-02-ssltest.py-data.png"><img src="https://lh4.googleusercontent.com/-csGMcT5ue6k/U0kWbdd0BTI/AAAAAAAAARI/_eJXbANavDw/w896-h678-no/2014-04-11-openssl-heartbleed-detail-02-ssltest.py-data.png" alt="利用 ssltest.py 抓出記憶體中的資料，其中包括 HTTP 傳輸內容。" title="利用 ssltest.py 抓出記憶體中的資料，其中包括 HTTP 傳輸內容。" /><br />
+<p><a href="/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-02-ssltest.py-data.png"><img src="/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-02-ssltest.py-data.png" alt="利用 ssltest.py 抓出記憶體中的資料，其中包括 HTTP 傳輸內容。" title="利用 ssltest.py 抓出記憶體中的資料，其中包括 HTTP 傳輸內容。" /><br />
 </a></p>
 
 <p>另一個工具 <a href="https://github.com/noxxi/p5-scripts/blob/master/check-ssl-heartbleed.pl">check-ssl-heartbleed.pl</a> 可以使用 -R 參數做更有效的利用。直接執行指令可以快速顯示伺服器有無問題。</p>
 
-<p><a href="https://lh6.googleusercontent.com/-899EwdZRGgc/U0kWbbuSqLI/AAAAAAAAARE/1MUSueVzmV8/s2560/2014-04-11-openssl-heartbleed-detail-03-check-ssl-heartbleed.pl.png"><img src="https://lh6.googleusercontent.com/-899EwdZRGgc/U0kWbbuSqLI/AAAAAAAAARE/1MUSueVzmV8/w896-h678-no/2014-04-11-openssl-heartbleed-detail-03-check-ssl-heartbleed.pl.png" alt="利用 check-ssl-heartbleed.pl 來檢查伺服器是否有 heartbleed 問題。" title="利用 check-ssl-heartbleed.pl 來檢查伺服器是否有 heartbleed 問題。" /></a></p>
+<p><a href="/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-03-check-ssl-heartbleed.pl.png"><img src="/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-03-check-ssl-heartbleed.pl.png" alt="利用 check-ssl-heartbleed.pl 來檢查伺服器是否有 heartbleed 問題。" title="利用 check-ssl-heartbleed.pl 來檢查伺服器是否有 heartbleed 問題。" /></a></p>
 
 <p>如果使用「-R」參數並且指定特定的正規表示式，可以抓出想要獲取的資料。例如 Cookie、帳號密碼等。以此例，我們知道這個網站提供 <a href="http://www.phpmyadmin.net">phpMyAdmin</a> 套件，因此直接鎖定「pmaPass」資料來抓取，沒想到第一次就抓到了。</p>
 
-<p><a href="https://lh3.googleusercontent.com/-r_BgZxi8iAY/U0kWcfBjHtI/AAAAAAAAARM/UJ2o6sOlgx8/s2560/2014-04-11-openssl-heartbleed-detail-04-check-ssl-heartbleed.pl-data.png"><img src="https://lh3.googleusercontent.com/-r_BgZxi8iAY/U0kWcfBjHtI/AAAAAAAAARM/UJ2o6sOlgx8/w896-h678-no/2014-04-11-openssl-heartbleed-detail-04-check-ssl-heartbleed.pl-data.png" alt="利用 check-ssl-heartbleed.pl 抓出特定機敏資料。" title="利用 check-ssl-heartbleed.pl 抓出特定機敏資料。" /></a></p>
+<p><a href="/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-04-check-ssl-heartbleed.pl-data.png"><img src="/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-04-check-ssl-heartbleed.pl-data.png" alt="利用 check-ssl-heartbleed.pl 抓出特定機敏資料。" title="利用 check-ssl-heartbleed.pl 抓出特定機敏資料。" /></a></p>
 
 <p>接著攻擊者只要把這個獲取到的 Cookie 存入自己的瀏覽器中，就可以如影片中盜用這個帳號。是否很危險呢？</p>
 
@@ -245,11 +245,11 @@
 
 <p>根據 <a href="https://zmap.io/">ZMap</a> 的<a href="https://zmap.io/heartbleed/">研究報告</a>指出，他們針對 <a href="http://s3.amazonaws.com/alexa-static/top-1m.csv.zip">Alexa 前一百萬個網站</a>進行檢測，大約有 36% 的伺服器支援 TLS、7.6% 的伺服器含有此漏洞。ZMap 並提供了一個<a href="https://zmap.io/heartbleed/vulnerable.html">完整的清單</a>列出在 2014/4/11 17:00 尚未修復漏洞的網站。</p>
 
-<p><a href="https://lh3.googleusercontent.com/-5iuzr3g9s3U/U0lID8GrS4I/AAAAAAAAARw/Mi673wz-Jhc/s2560/2014-04-11-openssl-heartbleed-detail-06.png"><img src="https://lh3.googleusercontent.com/-5iuzr3g9s3U/U0lID8GrS4I/AAAAAAAAARw/Mi673wz-Jhc/w979-h586-no/2014-04-11-openssl-heartbleed-detail-06.png" alt="ZMap.io Heartbleed vulnerable domains" title="ZMap.io Heartbleed vulnerable domains" /></a></p>
+<p><a href="/assets/img/blog/20140411/s2560/2014-04-11-openssl-heartbleed-detail-06.png"><img src="/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-06.png" alt="ZMap.io Heartbleed vulnerable domains" title="ZMap.io Heartbleed vulnerable domains" /></a></p>
 
 <h3 id="有什麼值得測試的網站呢">有什麼值得測試的網站呢？</h3>
 
-<p><a href="https://lh4.googleusercontent.com/-CiDaDbmxMK0/U0lGuQ6J1iI/AAAAAAAAARg/cZQSD4k7F40/s2560/2014-04-11-openssl-heartbleed-detail-05.jpg"><img src="https://lh4.googleusercontent.com/-CiDaDbmxMK0/U0lGuQ6J1iI/AAAAAAAAARg/cZQSD4k7F40/w687-h422-no/2014-04-11-openssl-heartbleed-detail-05.jpg" alt="OpenSSL Heartbleed with a beer!" title="OpenSSL Heartbleed with a beer!" /></a></p>
+<p><a href="/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-05.jpg"><img src="/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-05.jpg" alt="OpenSSL Heartbleed with a beer!" title="OpenSSL Heartbleed with a beer!" /></a></p>
 
 <p>via <a href="https://www.facebook.com/photo.php?fbid=10201756684385494">Facebook</a></p>
 

@@ -13,13 +13,13 @@
     <meta property="og:title" content="手機應用程式開發上被忽略的 SSL 處理 | DEVCORE 戴夫寇爾" />
     <meta property="og:url" content="https://devco.re/blog/2014/08/15/ssl-mishandling-on-mobile-app-development/" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lh5.googleusercontent.com/Fd1iUVkdWXPxlYucic4NznDQT9L4CQCR2gYL3KI-2Qs=w514-h686-no" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20140815/no_ssl_is_never_safe.png" />
     <meta name="twitter:card" content="summary">
     <meta name="twitter:site" content="d3vc0r3">
     <meta name="twitter:title" content="手機應用程式開發上被忽略的 SSL 處理 | DEVCORE 戴夫寇爾">
     <meta name="twitter:description" content="在手機應用程式上，使用 HTTPS 連線來保護敏感訊息的傳遞是甚為重要的一環。但許多手機應用程式開發商在這個部分並沒有妥善處理好，以下我們就幾個常見的成因做基本的探討。">
     <meta name="twitter:creator" content="d3vc0r3">
-    <meta name="twitter:image:src" content="https://lh5.googleusercontent.com/Fd1iUVkdWXPxlYucic4NznDQT9L4CQCR2gYL3KI-2Qs=w514-h686-no">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20140815/no_ssl_is_never_safe.png">
     <meta name="twitter:domain" content="devco.re">
     <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
     <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
@@ -81,7 +81,7 @@
             <div class="container">
               <section class="blog-header">
                 <small class="blog-header__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
-                <img src="https://lh5.googleusercontent.com/Fd1iUVkdWXPxlYucic4NznDQT9L4CQCR2gYL3KI-2Qs=w514-h686-no" class="blog-header__image" alt="Credit: http://natashenka.ca/printable-ssl-posters/" />
+                <img src="https://devco.re/assets/img/blog/20140815/no_ssl_is_never_safe.png" class="blog-header__image" alt="Credit: http://natashenka.ca/printable-ssl-posters/" />
                 <h1 class="blog-header__title">
                   手機應用程式開發上被忽略的 SSL 處理
                 </h1>
@@ -100,7 +100,7 @@
           <p>在網路上傳輸敏感資訊時，通常會使用 HTTPS 協定，讓客戶端與伺服器端對資料進行 SSL 加密處理，以降低資料在傳輸過程中被監聽或中間人攻擊的風險。HTTPS 的重要性逐漸被重視，Google 除了預設開啟 HTTPS 之外，未來更會將 <a href="http://googlewebmastercentral.blogspot.tw/2014/08/https-as-ranking-signal.html">HTTPS 的網站搜尋排名加分</a>。但為了確保傳輸的安全，過程中客戶端會核對伺服器的憑證鏈 (certificate chain) 是否有效，若判定為無效時會作出警告。(詳見<a href="http://en.wikipedia.org/wiki/Secure_Sockets_Layer">Wikipedia</a>)</p>
 
 <!-- more -->
-<p><img src="https://lh5.googleusercontent.com/-3KUlB8qAxng/U-oq77eBmvI/AAAAAAAAAlw/Ul4v9jNaSXY/w846-h577-no/desktop_browser_insecure_warning.png" alt="Desktop 警告圖" /><br />
+<p><img src="/assets/img/blog/20140815/desktop_browser_insecure_warning.png" alt="Desktop 警告圖" /><br />
 而在手機應用程式上 HTTPS 同樣重要，例如網路銀行、線上購物等。系統同樣會做憑證核對，但對被判定為無效的憑證就需要開發者作出額外的處理了。許多手機應用程式開發商在這個部分並沒有妥善處理好，以下我們就幾個常見的成因做基本的探討。</p>
 
 <h3 id="會被系統判定為無效的常見成因">會被系統判定為無效的常見成因？</h3>
@@ -112,8 +112,8 @@
 <h4 id="2-相關憑證未被預載到系統中">2. 相關憑證未被預載到系統中</h4>
 <p>以 GCA 簽發的 SSL 憑證為例，在 Windows 上被判定為有效，但在 iOS 系統上卻因為 CA 不在系統的預載清單中而被判定為無效。</p>
 
-<p><img src="https://lh4.googleusercontent.com/-1Aeo7DIPjMg/U-o1hpl5ZTI/AAAAAAAAAmk/jodyNvjqpTs/w741-h654-no/windows_recognize_gca.png" alt="Windows" /><br />
-<img src="https://lh4.googleusercontent.com/kXM1zDdNKQitgCAvIqIkTAz8fgi_QgPA3rBb8kP49jg=w457-h686-no" alt="iPhone" /></p>
+<p><img src="/assets/img/blog/20140815/windows_recognize_gca.png" alt="Windows" /><br />
+<img src="/assets/img/blog/20140815/iphone_unknown_ca.png" alt="iPhone" /></p>
 
 <h4 id="3-使用自行簽發的憑證">3. 使用自行簽發的憑證</h4>
 <p>這種情況常出現在應用程式開發階段的內部測試環境中，由於是內部測試環境一般都不會花錢去申請憑證。</p>

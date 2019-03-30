@@ -103,26 +103,26 @@
 
 <!-- more -->
 
-<p><a href="https://lh3.googleusercontent.com/-ECwrgluiQyQ/U0PMyB-vJEI/AAAAAAAAAPo/D5K9nPbpiKg/s2560/php.net_insecure_direct_object_reference_00_1337day.png"><img src="https://lh3.googleusercontent.com/-ECwrgluiQyQ/U0PMyB-vJEI/AAAAAAAAAPo/D5K9nPbpiKg/w822-h645-no/php.net_insecure_direct_object_reference_00_1337day.png" alt="1337day 漏洞交易網站" title="1337day 漏洞交易網站" /><br />
+<p><a href="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_00_1337day.png"><img src="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_00_1337day.png" alt="1337day 漏洞交易網站" title="1337day 漏洞交易網站" /><br />
 </a></p>
 
 <p>可以看到這個弱點是不公開的，想要知道內容的話要支付 82 美元相當於新台幣 3500 元呢！在強烈的好奇心屈使之下，自己打開工具來找看看：</p>
 
-<p><a href="https://lh5.googleusercontent.com/-3RsKEJngblM/U0PMyFTMzGI/AAAAAAAAAPw/v9zN3MBAs7U/s2560/php.net_insecure_direct_object_reference_01_source_code.png"><img src="https://lh5.googleusercontent.com/-3RsKEJngblM/U0PMyFTMzGI/AAAAAAAAAPw/v9zN3MBAs7U/w926-h678-no/php.net_insecure_direct_object_reference_01_source_code.png" alt="PHP 官方網站原始碼" title="PHP 官方網站原始碼" /></a></p>
+<p><a href="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_01_source_code.png"><img src="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_01_source_code.png" alt="PHP 官方網站原始碼" title="PHP 官方網站原始碼" /></a></p>
 
 <p>透過簡單的分析和一點點運氣，找到了 「<a href="http://www.php.net/cached.php">http://www.php.net/cached.php</a>」 這隻程式，發現它傳入了「t」和「f」這兩個參數。「t」直覺上就是個 rand 數值，而「f」應該就是檔案位置了。這時候對 f 參數小小修改一下，神奇的事情發生了：</p>
 
-<p><a href="https://lh4.googleusercontent.com/-9x_SEH82fsw/U0PMyelwW3I/AAAAAAAAAPs/yJWXMg_UQiU/s2560/php.net_insecure_direct_object_reference_02_cached.php.png"><img src="https://lh4.googleusercontent.com/-9x_SEH82fsw/U0PMyelwW3I/AAAAAAAAAPs/yJWXMg_UQiU/w928-h678-no/php.net_insecure_direct_object_reference_02_cached.php.png" alt="cached.php 讀取原始碼" title="cached.php 讀取原始碼" /></a></p>
+<p><a href="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_02_cached.php.png"><img src="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_02_cached.php.png" alt="cached.php 讀取原始碼" title="cached.php 讀取原始碼" /></a></p>
 
 <p>index.php 的原始碼被完整的讀出來，當然也要來看一下 cached.php 是怎麼寫的：</p>
 
-<p><a href="https://lh5.googleusercontent.com/-eOvfw-K2CHg/U0PMy_oHw6I/AAAAAAAAAQA/EXK1c8AFd-k/s2560/php.net_insecure_direct_object_reference_03_cached.php_view_source.png"><img src="https://lh5.googleusercontent.com/-eOvfw-K2CHg/U0PMy_oHw6I/AAAAAAAAAQA/EXK1c8AFd-k/w861-h678-no/php.net_insecure_direct_object_reference_03_cached.php_view_source.png" alt="cached.php 檢視原始碼" title="cached.php 檢視原始碼" /></a></p>
+<p><a href="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_03_cached.php_view_source.png"><img src="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_03_cached.php_view_source.png" alt="cached.php 檢視原始碼" title="cached.php 檢視原始碼" /></a></p>
 
 <p>可以看到此處並未對 $_GET[“f”] 進行檢查，所以修改了 $_GET[“f”] 後，與 $abs 組合完，最後就直接丟入 readfile 讀取檔案。比較值得研究的是這邊使用了 realpath 與 strncmp 來比較 f 及 DOCUMENT_ROOT，確保 $abs 只能在網站目錄之下，所以無法使用 ../../ (<a href="https://www.owasp.org/index.php/Path_Traversal">Path Traversal</a>) 的方式跳脫目錄進行更進一步的滲透。</p>
 
 <p>最後我們將此發現回報給 security@php.net ，得到的回應是他們是「故意的 (intentional)」。且後來也知道 PHP 官網是開放原始碼（Open Source）的，可以到 <a href="http://git.php.net/?p=web/php.git;a=tree">http://git.php.net/?p=web/php.git;a=tree</a> 下載整個官網的原始碼。</p>
 
-<p><a href="https://lh3.googleusercontent.com/-6dFKFRG7_Y4/U0PMzE-jk2I/AAAAAAAAAP8/lbpvS0Z2TpA/s2560/php.net_insecure_direct_object_reference_04_php_team_response.png"><img src="https://lh3.googleusercontent.com/-6dFKFRG7_Y4/U0PMzE-jk2I/AAAAAAAAAP8/lbpvS0Z2TpA/w731-h332-no/php.net_insecure_direct_object_reference_04_php_team_response.png" alt="PHP.NET 官網團隊回應" title="PHP.NET 官網團隊回應" /></a></p>
+<p><a href="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_04_php_team_response.png"><img src="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_04_php_team_response.png" alt="PHP.NET 官網團隊回應" title="PHP.NET 官網團隊回應" /></a></p>
 
 <p>雖然在這個案例中並沒有造成實質上的危害，沒有帳號、密碼、系統設定等機敏資料，但若把此種寫法用在其他地方，則可能造成很大的資安風險。就連 PHP 官方網站都有這樣的失誤，身為開發人員的你們更不可不慎！</p>
 

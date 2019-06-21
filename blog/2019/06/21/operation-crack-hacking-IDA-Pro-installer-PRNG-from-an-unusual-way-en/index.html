@@ -1,0 +1,340 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>Operation Crack: Hacking IDA Pro Installer PRNG from an Unusual Way | DEVCORE</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <meta name="description" property="og:description" content="Is it possible to install IDA Pro without kowning installation password? Linux or MacOS version can find the password directly; Windows version only need 10 minutes to calculate the password. The following is the detailed process." />
+    <meta name="keywords" content="Advisory, IDA Pro, PRNG" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="Operation Crack: Hacking IDA Pro Installer PRNG from an Unusual Way | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20190621/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="Operation Crack: Hacking IDA Pro Installer PRNG from an Unusual Way | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="Is it possible to install IDA Pro without kowning installation password? Linux or MacOS version can find the password directly; Windows version only need 10 minutes to calculate the password. The following is the detailed process.">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20190621/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+    <link rel="publisher" href="https://plus.google.com/118439315679478709768/" />
+
+  </head>
+  <body>
+    <div class="page">
+      <div class="container--wrapper">
+        <div class="topbar">
+          <div class="topbar__brand">
+            <a href="/en/">
+                <div class="logo">
+                  DEVCORE
+                </div></a>
+            <p class="slogan">
+              We offer professional <a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services
+            </p>
+          </div>
+          <div class="drawer" id="drawer">
+            <div class="drawer__container">
+              <nav class="main-menu">
+                <div class="hidden">
+                  Menu
+                </div>
+                <a href="/en/services/penetration-test" class="main-menu__link mobile-only">Penetration Testing</a>
+                <a href="/en/services/red-team" class="main-menu__link mobile-only">Red Team Assessment</a>
+                <a href="/en/services/security-consulting" class="main-menu__link mobile-only">Consulting</a>
+                <a href="/en/services/security-training" class="main-menu__link mobile-only">Training</a>
+                <a href="/en/about/" class="main-menu__link">Hackers</a><a href="/en/blog/" class="main-menu__link">News</a><a href="/en/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">Search</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
+              </nav>
+              <a href="/en/contact/" class="drawer__contact button--dense">Contact</a>
+              <nav class="lang-menu">
+                <div class="lang-menu__label">
+                  Lang:
+                </div>
+                <a href="/" class="lang-menu__link">中文</a>
+                <a href="/en/" class="lang-menu__link">English</a>
+              </nav>
+            </div>
+          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
+            <div class="bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </button>
+        </div>
+      </div><main role="main">
+
+
+          <div class="container--wrapper">
+            <div class="container">
+              <section class="blog-header">
+                <small class="blog-header__category"><a href="/en/blog/category/Tech Editorials/">Tech Editorials</a></small>
+                <img src="https://devco.re/assets/img/blog/20190621/cover.png" class="blog-header__image" alt="Operation Crack: Hacking IDA Pro Installer PRNG from an Unusual Way" />
+                <h1 class="blog-header__title">
+                  Operation Crack: Hacking IDA Pro Installer PRNG from an Unusual Way
+                </h1>
+                <div class="blog-header__tags">
+                  
+                  <a href="/en/blog/tag/Advisory/" class="blog-header__tag">Advisory</a>
+                </div>
+          
+          
+                <p class="blog-header__info">
+                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/shaolinhsu.jpg)"></span> <a href="/en/blog/author/shaolin" class="author-name">Shaolin</a> <time class="date">on 2019-06-21 </time>
+                </p>
+          
+              </section>
+              <article class="article">
+          <p><a href="/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en/">English Version</a><br />
+<a href="/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way/">中文版本</a></p>
+
+<h2 id="introduction">Introduction</h2>
+
+<p>Today, we are going to talk about the installation password of Hex-Rays IDA Pro, which is the most famous decompiler. What is installation password? Generally, customers receive a custom installer and installation password after they purchase IDA Pro. The installation password is required during installation process. However, if someday we find a leaked IDA Pro installer, is it still possible to install without an installation password? This is an interesting topic.</p>
+
+<p>After brainstorming with our team members, we verified the answer: Yes! With a Linux or MacOS version installer, we can easily find the password directly. With a Windows version installer, we only need 10 minutes to calculate the password. The following is the detailed process:</p>
+
+<h3 id="-linux-and-macos-version">* Linux and MacOS version</h3>
+
+<p>The first challenge is Linux and MacOS version. The installer is built with an installer creation tool called InstallBuilder. We found the plaintext installation password directly in the program memory of the running IDA Pro installer. Mission complete!</p>
+
+<p><img src="/assets/img/blog/20190621/1.png" alt="" /></p>
+
+<p>This problem is fixed after we reported through Hex-Rays. <a href="https://blog.bitrock.com/2019/02/installbuilder-1920-released.html">BitRock</a> released InstallBuilder 19.2.0 with the protection of installation password on 2019/02/11.</p>
+
+<h3 id="-windows-version">* Windows version</h3>
+
+<p>It gets harder on Windows version because the installer is built with <a href="http://www.jrsoftware.org/isinfo.php">Inno Setup</a>, which store its password with <a href="http://www.jrsoftware.org/ishelp/index.php?topic=setup_password">160-bit SHA-1 hash</a>. Therefore, we cannot get the password simply with static or dynamic analyzing the installer, and brute force is apparently not an effective way. But the situation is different if we can grasp the methodology of password generation, which lets us enumerate the password more effectively!</p>
+
+<p>Although we have realized we need to find how Hex-Rays generate password, it is still really difficult, as we do not know what language the random number generator is implemented with. There are at least <a href="https://rosettacode.org/wiki/Random_number_generator_(included)">88 random number generators</a> known. It is such a great variation.</p>
+
+<p>We first tried to find the charset used by random number generator. We collected all leaked installation passwords, such as hacking team’s password, which is leaked by WikiLeaks.</p>
+
+<ul>
+  <li>FgVQyXZY2XFk (<a href="https://wikileaks.org/hackingteam/emails/emailid/62729">link</a>)</li>
+  <li>7ChFzSbF4aik (<a href="https://wikileaks.org/hackingteam/emails/emailid/311769">link</a>)</li>
+  <li>ZFdLqEM2QMVe (<a href="https://wikileaks.org/hackingteam/emails/emailid/62956">link</a>)</li>
+  <li>6VYGSyLguBfi (<a href="https://wikileaks.org/hackingteam/emails/emailid/70250">link</a>)</li>
+</ul>
+
+<p>From the collected passwords we can summarize the charset:<br />
+<code class="highlighter-rouge">23456789ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz</code></p>
+
+<p>The missing of <code class="highlighter-rouge">1</code>, <code class="highlighter-rouge">I</code>, <code class="highlighter-rouge">l</code>, <code class="highlighter-rouge">0</code>, <code class="highlighter-rouge">O</code>, <code class="highlighter-rouge">o</code>, <code class="highlighter-rouge">N</code>, <code class="highlighter-rouge">n</code> seems to make sense because they are confusing characters.<br />
+Next, we guess the possible charset ordering like these:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>23456789ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz
+ABCDEFGHJKLMPQRSTUVWXYZ23456789abcdefghijkmpqrstuvwxyz
+23456789abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ
+abcdefghijkmpqrstuvwxyz23456789ABCDEFGHJKLMPQRSTUVWXYZ
+abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ23456789
+ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz23456789
+</code></pre></div></div>
+
+<p>Lastly, we picked some common languages（c/php/python/perl）to implement a random number generator and enumerate all the combinations. Then we examined whether the collected passwords appears in the combinations. For example, here is a generator written in C language:</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include&lt;stdio.h&gt;
+#include&lt;stdlib.h&gt;
+</span>
+<span class="kt">char</span> <span class="n">_a</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"23456789ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz"</span><span class="p">;</span>
+<span class="kt">char</span> <span class="n">_b</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"ABCDEFGHJKLMPQRSTUVWXYZ23456789abcdefghijkmpqrstuvwxyz"</span><span class="p">;</span>
+<span class="kt">char</span> <span class="n">_c</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"23456789abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ"</span><span class="p">;</span>
+<span class="kt">char</span> <span class="n">_d</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"abcdefghijkmpqrstuvwxyz23456789ABCDEFGHJKLMPQRSTUVWXYZ"</span><span class="p">;</span>
+<span class="kt">char</span> <span class="n">_e</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ23456789"</span><span class="p">;</span>
+<span class="kt">char</span> <span class="n">_f</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz23456789"</span><span class="p">;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+        <span class="kt">char</span> <span class="n">bufa</span><span class="p">[</span><span class="mi">21</span><span class="p">]</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+        <span class="kt">char</span> <span class="n">bufb</span><span class="p">[</span><span class="mi">21</span><span class="p">]</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+        <span class="kt">char</span> <span class="n">bufc</span><span class="p">[</span><span class="mi">21</span><span class="p">]</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+        <span class="kt">char</span> <span class="n">bufd</span><span class="p">[</span><span class="mi">21</span><span class="p">]</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+        <span class="kt">char</span> <span class="n">bufe</span><span class="p">[</span><span class="mi">21</span><span class="p">]</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+        <span class="kt">char</span> <span class="n">buff</span><span class="p">[</span><span class="mi">21</span><span class="p">]</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+
+        <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span>
+        <span class="k">while</span><span class="p">(</span><span class="n">i</span><span class="o">&lt;</span><span class="mh">0x100000000</span><span class="p">)</span>
+        <span class="p">{</span>
+                <span class="n">srand</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+
+                <span class="k">for</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">n</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">n</span><span class="o">&lt;</span><span class="mi">20</span><span class="p">;</span><span class="n">n</span><span class="o">++</span><span class="p">)</span>
+                <span class="p">{</span>
+                        <span class="kt">int</span> <span class="n">key</span><span class="o">=</span> <span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="mi">54</span><span class="p">;</span>
+                        <span class="n">bufa</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">=</span><span class="n">_a</span><span class="p">[</span><span class="n">key</span><span class="p">];</span>
+                        <span class="n">bufb</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">=</span><span class="n">_b</span><span class="p">[</span><span class="n">key</span><span class="p">];</span>
+                        <span class="n">bufc</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">=</span><span class="n">_c</span><span class="p">[</span><span class="n">key</span><span class="p">];</span>
+                        <span class="n">bufd</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">=</span><span class="n">_d</span><span class="p">[</span><span class="n">key</span><span class="p">];</span>
+                        <span class="n">bufe</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">=</span><span class="n">_e</span><span class="p">[</span><span class="n">key</span><span class="p">];</span>
+                        <span class="n">buff</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">=</span><span class="n">_f</span><span class="p">[</span><span class="n">key</span><span class="p">];</span>
+
+                <span class="p">}</span>
+                <span class="n">printf</span><span class="p">(</span><span class="s">"%s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">bufa</span><span class="p">);</span>
+                <span class="n">printf</span><span class="p">(</span><span class="s">"%s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">bufb</span><span class="p">);</span>
+                <span class="n">printf</span><span class="p">(</span><span class="s">"%s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">bufc</span><span class="p">);</span>
+                <span class="n">printf</span><span class="p">(</span><span class="s">"%s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">bufd</span><span class="p">);</span>
+                <span class="n">printf</span><span class="p">(</span><span class="s">"%s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">bufe</span><span class="p">);</span>
+                <span class="n">printf</span><span class="p">(</span><span class="s">"%s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="n">buff</span><span class="p">);</span>
+                <span class="n">i</span><span class="o">=</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">;</span>
+        <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>After a month, we finally generated the IDA Pro installation passwords successfully with Perl, and the correct charset ordering is <code class="highlighter-rouge">abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ23456789</code>. For example, we can generate the hacking team’s leaked password <code class="highlighter-rouge">FgVQyXZY2XFk</code> with the following script:</p>
+
+<div class="language-perl highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env perl</span>
+<span class="c1">#</span>
+<span class="nv">@_e</span> <span class="o">=</span> <span class="nb">split</span> <span class="sr">//</span><span class="p">,</span><span class="s">"abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ23456789"</span><span class="p">;</span>
+
+<span class="nv">$i</span><span class="o">=</span><span class="mi">3326487116</span><span class="p">;</span>
+<span class="nb">srand</span><span class="p">(</span><span class="nv">$i</span><span class="p">);</span>
+<span class="nv">$pw</span><span class="o">=</span><span class="s">""</span><span class="p">;</span>
+
+<span class="k">for</span><span class="p">(</span><span class="nv">$i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="nv">$i</span><span class="o">&lt;</span><span class="mi">12</span><span class="p">;</span><span class="o">++</span><span class="nv">$i</span><span class="p">)</span>
+<span class="p">{</span>
+        <span class="nv">$key</span> <span class="o">=</span> <span class="nb">rand</span> <span class="mi">54</span><span class="p">;</span>
+        <span class="nv">$pw</span> <span class="o">=</span> <span class="nv">$pw</span> <span class="o">.</span> <span class="nv">$_e</span><span class="p">[</span><span class="nv">$key</span><span class="p">];</span>
+<span class="p">}</span>
+<span class="k">print</span> <span class="s">"$i $pw\n"</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>With this, we can build a dictionary of installation password, which effectively increase the efficiency of brute force attack. Generally, we can compute the password of one installer in 10 minutes.</p>
+
+<p>We have reported this issue to Hex-Rays, and they promised to harden the installation password immediately.</p>
+
+<h2 id="summary">Summary</h2>
+
+<p>In this article, we discussed the possibility of installing IDA Pro without owning installation password. In the end, we found plaintext password in the program memory of Linux and MacOS version. On the other hand, we determined the password generation methodology of Windows version. Therefore, we can build a dictionary to accelerate brute force attack. Finally, we can get one password at a reasonable time.</p>
+
+<p>We really enjoy this process: surmise wisely and prove it with our best. It can broaden our experience no matter the result is correct or not. This is why we took a whole month to verify such a difficult surmise. We also take this attitude in our <a href="https://devco.re/en/services/red-team">Red Team Assessment</a>. You would love to give it a try!</p>
+
+<p>Lastly, we would like to thank for the friendly and rapid response from Hex-Rays. Although this issue is not included in <a href="https://www.hex-rays.com/bugbounty.shtml">Security Bug Bounty Program</a>, they still generously awarded us IDA Pro Linux and MAC version, and upgraded the Windows version for us. We really appreciate it.</p>
+
+<h2 id="timeline">Timeline</h2>
+
+<ul>
+  <li>Jan 31, 2019 - Report to Hex-Rays</li>
+  <li>Feb 01, 2019 - Hex-Rays promised to harden the installation password and reported to BitRock</li>
+  <li>Feb 11, 2019 - BitRock released InstallBuilder 19.2.0</li>
+</ul>
+
+
+              </article>
+              <p class="sns-widgets">
+                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
+              </p>
+          
+              <div class="heading--side-lined">
+                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/shaolinhsu.jpg)"></span> <a href="/en/blog/author/shaolin" class="blog-author-name">Shaolin</a> 
+              </div>
+              <p class="blog-author-info">
+                喜愛資訊技術、喜歡跟別人走不一樣的路。有一點點智障的熱血人，期望能利用資訊的力量對世界有所貢獻。
+              </p>
+          
+              <div class="heading--side-lined">
+                Comments
+              </div>
+              <div class="blog-comments">
+                
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+              </div>
+            </div>
+          </div>
+
+
+
+
+
+
+</main>
+      <div class="container--wrapper">
+
+
+        <div class="contact-section container">
+          <h2 class="contact-section__title">
+            Put your defenses to the test with authentic attacks
+          </h2>
+          <a href="/en/contact/" class="home-contact__button button--dense">Contact us now</a>
+        </div>
+
+        <footer class="main-footer">
+          <div class="main-footer__about">
+            DEVCORE offers professional<br class="mobile-only" /><a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services.<br />For <a href="/en/blog/" class="link">latest updates</a>, follow us on <a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a> or <a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>.
+          </div>
+          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
+                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://plus.google.com/118439315679478709768/posts" class="main-footer__sns">
+                <svg class="icon-googleplus icon"><use xlink:href="#icon-googleplus" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
+                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
+          </div>
+          <address class="main-footer__address">
+            <ul class="list--unstyled">
+              <li>
+                10F., No.168, Fuxing N. Rd., Zhongshan Dist., Taipei City 10487, Taiwan (R.O.C.)
+              </li>
+              <li>
+                contact@devco.re
+              </li>
+              <li>
+                +886-2-2718-0156
+              </li>
+            </ul>
+          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2019 DEVCORE</small>
+        </footer>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
+
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+
+  </body>
+</html>
+
+
+
+

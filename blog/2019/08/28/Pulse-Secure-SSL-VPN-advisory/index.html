@@ -5,21 +5,21 @@
     <meta charset="utf-8" />
     <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>具備駭客思維的滲透測試專家 | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <title>Pulse Secure SSL VPN 資安通報 | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
     <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
-    <meta name="description" property="og:description" content="戴夫寇爾從駭客思維出發，模擬攻擊者的手法爲企業執行滲透測試；提供資安教育訓練讓開發者從攻擊中瞭解如何防禦。爲企業的資安防護做最嚴格的把關。" />
-    <meta name="keywords" content="滲透測試,教育訓練,顧問服務,資安" />
+    <meta name="description" property="og:description" content="在我們對 Pulse Secure SSL VPN 的安全研究中，共發現了下列七個弱點：CVE-2019-11507,CVE-2019-11508,CVE-2019-11510,CVE-2019-11538,CVE-2019-11539,CVE-2019-11540,CVE-2019-11542" />
+    <meta name="keywords" content="Advisory, VPN, RCE, CVE-2019-11507, CVE-2019-11508, CVE-2019-11510, CVE-2019-11538, CVE-2019-11539, CVE-2019-11540, CVE-2019-11542" />
     <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
-    <meta property="og:title" content="具備駭客思維的滲透測試專家 | DEVCORE 戴夫寇爾" />
-    <meta property="og:url" content="https://devco.re/" />
+    <meta property="og:title" content="Pulse Secure SSL VPN 資安通報 | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2019/08/28/Pulse-Secure-SSL-VPN-advisory/" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://devco.re/assets/themes/devcore-v2/images/main.png" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20190828/cover.png" />
     <meta name="twitter:card" content="summary">
     <meta name="twitter:site" content="d3vc0r3">
-    <meta name="twitter:title" content="具備駭客思維的滲透測試專家 | DEVCORE 戴夫寇爾">
-    <meta name="twitter:description" content="戴夫寇爾從駭客思維出發，模擬攻擊者的手法爲企業執行滲透測試；提供資安教育訓練讓開發者從攻擊中瞭解如何防禦。爲企業的資安防護做最嚴格的把關。">
+    <meta name="twitter:title" content="Pulse Secure SSL VPN 資安通報 | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="在我們對 Pulse Secure SSL VPN 的安全研究中，共發現了下列七個弱點：CVE-2019-11507,CVE-2019-11508,CVE-2019-11510,CVE-2019-11538,CVE-2019-11539,CVE-2019-11540,CVE-2019-11542">
     <meta name="twitter:creator" content="d3vc0r3">
-    <meta name="twitter:image:src" content="https://devco.re/assets/themes/devcore-v2/images/main.png">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20190828/cover.png">
     <meta name="twitter:domain" content="devco.re">
     <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
     <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
@@ -27,19 +27,22 @@
     <meta name='yandex-verification' content='4561963cf1d18fe3' />
     <meta property="fb:admins" content="120968921404653" />
 
-    <link rel="canonical" href="https://devco.re/"/>
+    <link rel="canonical" href="https://devco.re/blog/2019/08/28/Pulse-Secure-SSL-VPN-advisory/"/>
     <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
 
   </head>
-  <body class="index zh">
+  <body>
     <div class="page">
       <div class="container--wrapper">
         <div class="topbar">
           <div class="topbar__brand">
             <a href="/">
-                <h1 class="logo">
+                <div class="logo">
                   DEVCORE 戴夫寇爾
-                </h1></a>
+                </div></a>
+            <p class="slogan">
+              我們提供<a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務
+            </p>
           </div>
           <div class="drawer" id="drawer">
             <div class="drawer__container">
@@ -70,36 +73,122 @@
             </div>
           </button>
         </div>
-      </div>
-      <main role="main">
-        <section class="billboard">
-          <div class="billboard__image-wrapper">
-            <picture class="billboard__image"><source media="(min-width: 900px)" srcset="/assets/themes/devcore-v2/images/cover-desktop.jpg" /><img src="/assets/themes/devcore-v2/images/cover-mobile.jpg" alt="Cover mobile" /></picture>
-          </div>
-          <div class="billboard__text-wrapper">
-            <p class="billboard__title">
-              你面對的是<a href="/about/">駭客</a><br>我們也是
-            </p>
-            <h2 class="billboard__sub-title">
-              戴夫寇爾以真實的<br>
-              <a href="/services/penetration-test">滲透測試</a>、<a href="/services/red-team">紅隊演練</a>、<a href="/services/security-consulting">顧問服務</a>、<a href="/services/security-training">教育訓練</a>
-              <br>
-              保護你的商業價值
-            </h2>
-          </div>
-          <a class="billboard__forward" data-scroll="" href="#home-news-anchor">
-            <div class="text">
-              最新訊息
+      </div><main role="main">
+
+
+          <div class="container--wrapper">
+            <div class="container">
+              <section class="blog-header">
+                <small class="blog-header__category"><a href="/blog/category/資安新聞/">資安新聞</a></small>
+                <img src="https://devco.re/assets/img/blog/20190828/cover.png" class="blog-header__image" alt="Pulse Secure SSL VPN 資安通報" />
+                <h1 class="blog-header__title">
+                  Pulse Secure SSL VPN 資安通報
+                </h1>
+                <div class="blog-header__tags">
+                  
+                  <a href="/blog/tag/Advisory/" class="blog-header__tag">Advisory</a><a href="/blog/tag/VPN/" class="blog-header__tag">VPN</a><a href="/blog/tag/RCE/" class="blog-header__tag">RCE</a>
+                </div>
+          
+          
+                <p class="blog-header__info">
+                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/shaolinhsu.jpg)"></span> <a href="/blog/author/shaolin" class="author-name">Shaolin</a> <time class="date">on 2019-08-28 </time>
+                </p>
+          
+              </section>
+              <article class="article">
+          <h3 id="內容">內容</h3>
+
+<p>在我們對 Pulse Secure SSL VPN 的安全研究中，共發現了下列七個弱點。組合利用有機會取得 SSL VPN 設備的最高權限，可讓攻擊者進入用戶內網，甚至控制每個透過 SSL VPN 連線的使用者裝置。</p>
+
+<ul>
+  <li>CVE-2019-11507: Cross-Site Scripting</li>
+  <li>CVE-2019-11508: Post-auth Unrestricted File Upload</li>
+  <li>CVE-2019-11510: Pre-auth Arbitrary File Reading</li>
+  <li>CVE-2019-11538: Post-auth(user) Arbitrary File Reading</li>
+  <li>CVE-2019-11539: Post-auth(admin) Command Injection</li>
+  <li>CVE-2019-11540: Session Hijacking</li>
+  <li>CVE-2019-11542: Post-auth(admin) Stack Buffer Overflow</li>
+</ul>
+
+<p>受影響的版本如下：</p>
+
+<ul>
+  <li>Pulse Connect Secure 9.0R1 - 9.0R3.3</li>
+  <li>Pulse Connect Secure 8.3R1 - 8.3R7</li>
+  <li>Pulse Connect Secure 8.2R1 - 8.2R12</li>
+  <li>Pulse Connect Secure 8.1R1 - 8.1R15</li>
+  <li>Pulse Policy Secure 9.0R1 - 9.0R3.3</li>
+  <li>Pulse Policy Secure 5.4R1 - 5.4R7</li>
+  <li>Pulse Policy Secure 5.3R1 - 5.3R12</li>
+  <li>Pulse Policy Secure 5.2R1 - 5.2R12</li>
+  <li>Pulse Policy Secure 5.1R1 - 5.1R15</li>
+</ul>
+
+<p>目前已經出現攻擊者對全世界設備進行大規模掃描，請 Pulse Secure SSL VPN 用戶<strong>儘速更新</strong>，需要更新的版本資源可參考<a href="https://kb.pulsesecure.net/articles/Pulse_Security_Advisories/SA44101">原廠 Pulse Secure 的公告</a>。</p>
+
+<h3 id="細節">細節</h3>
+
+<p>我們將在近日公布技術細節</p>
+
+<h3 id="附註">附註</h3>
+
+<p>目前亦發現攻擊者對我們之前發表的 <a href="https://devco.re/blog/2019/08/09/Fortigate-SSL-VPN-advisory/">Fortigate SSL VPN</a> 及 <a href="https://devco.re/blog/2019/07/17/Palo-Alto-GlobalProtect-advisory/">Palo Alto GlobalProtect</a> 弱點進行大規模掃描，再次提醒請用戶儘速更新以上 SSL VPN 設備至最新版。</p>
+
+              </article>
+              <p class="sns-widgets">
+                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
+              </p>
+          
+              <div class="heading--side-lined">
+                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/shaolinhsu.jpg)"></span> <a href="/blog/author/shaolin" class="blog-author-name">Shaolin</a> 
+              </div>
+              <p class="blog-author-info">
+                喜愛資訊技術、喜歡跟別人走不一樣的路。有一點點智障的熱血人，期望能利用資訊的力量對世界有所貢獻。
+              </p>
+          
+              <div class="heading--side-lined">
+                讀者留言
+              </div>
+              <div class="blog-comments">
+                
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+              </div>
             </div>
-            <svg class="icon-angle-down icon"><use xlink:href="#icon-angle-down" /></svg></a>
-        </section>
-        <div class="container--wrapper">
-          <div class="heading--side-lined container mobile-only">
+          </div>
+
+
+
+
+
+
+</main>
+      <div class="container--wrapper">
+
+        <div class="relative-posts">
+          <div class="heading--side-lined container">
             最新消息
           </div>
-          <div id="home-news-anchor"></div>
-          <div class="home-news">
-
+          <div class="relative-posts__cells">
+  
             <section class="card">
               <a href="/blog/2019/08/28/Pulse-Secure-SSL-VPN-advisory/">
                 <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20190828/cover.png)"></div>
@@ -110,8 +199,9 @@
   
                 <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/VPN/" class="card__tag">VPN</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a>
               </div>
+              <small class="card__category"><a href="/blog/category/資安新聞/">資安新聞</a></small>
             </section>
-
+  
             <section class="card">
               <a href="/blog/2019/08/09/Fortigate-SSL-VPN-advisory/">
                 <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20190807/cover.png)"></div>
@@ -122,8 +212,9 @@
   
                 <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/VPN/" class="card__tag">VPN</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a>
               </div>
+              <small class="card__category"><a href="/blog/category/資安新聞/">資安新聞</a></small>
             </section>
-
+  
             <section class="card">
               <a href="/blog/2019/07/23/devcore-201907-recruit/">
                 <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20150819/devcore_office_1.jpg)"></div>
@@ -134,30 +225,20 @@
   
                 <a href="/blog/tag/公告/" class="card__tag">公告</a><a href="/blog/tag/徵才/" class="card__tag">徵才</a>
               </div>
+              <small class="card__category"><a href="/blog/category/最新消息/">最新消息</a></small>
             </section>
-
-            <section class="card">
-              <a href="/blog/2019/07/17/Palo-Alto-GlobalProtect-advisory/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20190717/cover.png)"></div>
-                <h3 class="card__title">
-                  Palo Alto GlobalProtect 資安通報
-                </h3></a>
-              <div class="card__tags">
   
-                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/VPN/" class="card__tag">VPN</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a>
-              </div>
-            </section>
-
           </div>
         </div>
-</main>
-      <div class="container--wrapper">
+
+
         <div class="contact-section container">
           <h2 class="contact-section__title">
             用最真實的攻擊，驗證企業的防禦
           </h2>
           <a href="/contact/" class="home-contact__button button--dense">聯絡我們</a>
         </div>
+
         <footer class="main-footer">
           <div class="main-footer__about">
             戴夫寇爾提供<br class="mobile-only" /><a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務<br />在<a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a>或<a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>上追蹤我們的<a href="/blog/" class="link">最新訊息</a><br />瞭解更多戴夫寇爾的<a href="/about/" class="link">駭客思維</a>
@@ -204,8 +285,10 @@
 
 
 
+
   </body>
 </html>
+
 
 
 

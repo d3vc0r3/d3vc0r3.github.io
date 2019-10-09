@@ -4,13 +4,375 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2019-09-02T21:55:25+08:00</updated>
+ <updated>2019-10-09T15:15:09+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name>DEVCORE</name>
    <email>contact [at] devco.re</email>
  </author>
 
+ 
+ <entry>
+   <title>以攻擊者的角度制定防禦策略</title>
+   <link href="https://devco.re/blog/2019/10/09/def-strategy/"/>
+   <updated>2019-10-09T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2019/10/09/def-strategy</id>
+   <content type="html">&lt;style type=&quot;text/css&quot;&gt;
+    table {
+        display: block;
+        width: 100%;
+        overflow: auto;
+        word-break: normal;
+        word-break: keep-all;
+        font-size: smaller;
+    }
+
+    table th {
+        font-weight: bold
+    }
+
+    table th,
+    table td {
+        padding: 5px 11px;
+        border: 1px solid #ddd;
+    }
+
+    table tr {
+        background-color: #fff;
+        border-top: 1px solid #ccc;
+    }
+
+    table tr:nth-child(2n) {
+        background-color: #f8f8f8;
+    }
+&lt;/style&gt;
+
+&lt;h2 id=&quot;前言&quot;&gt;前言&lt;/h2&gt;
+&lt;p&gt;這篇文章源自於公司今年第一次試辦的研討會 &lt;a href=&quot;https://devco.re/conf/2019/&quot;&gt;DEVCORE Conference 2019&lt;/a&gt;，我們決定另外寫成 blog 分享出來，讓無法參加的朋友也可以從不同角度重新思考防禦策略。&lt;/p&gt;
+
+&lt;p&gt;會想在純技術導向的研討會中加入策略面的議題，其實跟今年研討會的主軸「&lt;strong&gt;從策略擬定控制，從控制反映意識&lt;/strong&gt;」有關。如果企業缺乏長遠正確的資安策略，除了投入的資源無法達到企業預期的效益、一線資安人員疲於奔命外，管理階層在資訊不對稱的情況下認為投入的資源已經足夠安全，最終形成惡性循環，只能在每次資安事故後跟著時下流行選擇最夯資安的產品。&lt;/p&gt;
+
+&lt;h2 id=&quot;理想中的防禦策略&quot;&gt;理想中的防禦策略&lt;/h2&gt;
+&lt;p&gt;而最廣為人知的防禦策略可能是縱深防禦，以不同類型的控制措施 (設備、制度、服務) 減少敵人入侵的可能性、儘量減少單一控制措施失效造成的風險。然而，這個概念有幾個需要思考的重點&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;防護邊界遠大於企業的想像：導致無法掌握企業可能的入侵點。&lt;/li&gt;
+  &lt;li&gt;對資安設備認知錯誤：這讓敵人可以繞過資安設備，或是設備沒有發揮企業預期的效用。&lt;/li&gt;
+  &lt;li&gt;管理程序不夠落實：導致控制措施產生新的漏洞，譬如預設密碼沒有更改，導致 VPN 或網路設備可以直接被存取。&lt;/li&gt;
+  &lt;li&gt;忽視重要資產相關性：只將防禦資源投注在重要資產本身，而輕忽與其相連的資產。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;這一連串的疏忽，可能成為攻擊者入侵的路徑，就是所謂的瑞士起司模型 （Swiss Cheese Model)，因此企業期望透過風險評鑑 (Risk Assessment) 來盤點出可能的疏失，並且在權衡資源下，確保將重心放在高風險需要優先處理的項目。&lt;/p&gt;
+
+&lt;p&gt;但我們想聊聊這個工具在實務上有它難以完善之處，以及從攻擊者的角度是怎樣看待這個擬訂防禦策略核心工具，我們會針對一下議題依序說明&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;真實風險其實複雜的難以評估&lt;/li&gt;
+  &lt;li&gt;現行風險評鑑方式可能的偏差&lt;/li&gt;
+  &lt;li&gt;從攻擊者的角度改善風險評鑑&lt;/li&gt;
+  &lt;li&gt;挑選適合的方法改善風險評鑑&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;真實的風險其實複雜的難以評鑑&quot;&gt;真實的風險其實複雜的難以評鑑&lt;/h2&gt;
+&lt;p&gt;在這裡我們引述 ITGovernance 對於風險評鑑的定義：&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;Risk Assessment – the process of identifying, analyzing and evaluating risk – is the only way to ensure that the cyber security controls you choose are appropriate to the risks your organization faces.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;風險評鑑的精髓在於後半段的&lt;strong&gt;確保所選擇的控制措施是否適切於企業真正面臨的風險&lt;/strong&gt;，但多數的企業只完成前半段&lt;strong&gt;識別、分析及評估風險&lt;/strong&gt;，導致風險評鑑的成效無法完全發揮；而要達到風險評鑑的精髓，得先了解&lt;strong&gt;真實的風險&lt;/strong&gt;的組成的要素&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;真實風險 = { 威脅來源、意圖、威脅、弱點、機率、相依性、資產價值、控制措施 }
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;威脅來源(Threat Agent)：造成威脅或使用弱點的來源個體，例如：組織型犯罪、駭客組織、國家資助犯罪、競爭對手、駭客、內部員工或天災等。&lt;/li&gt;
+  &lt;li&gt;意圖(Intent)：威脅來源的想達到的目的，例如：取得個人資料、盜取商業機密、破壞企業/個人形象、造成財物損失等。&lt;/li&gt;
+  &lt;li&gt;威脅(Threat)：達成意圖的方式，例如：惡意程式、社交工程、DDoS、利用系統漏洞等。&lt;/li&gt;
+  &lt;li&gt;弱點(Vulnerability)：指資產能被威脅利用的弱點，例如：漏洞未更新、人員疏忽、組態設定不當、網路區隔配置錯誤等。&lt;/li&gt;
+  &lt;li&gt;機率(Probability)：指弱點的易用度或可能發生的機率，例如：CVSS 3.0分數、過去對於某個弱點發生頻率的統計等。&lt;/li&gt;
+  &lt;li&gt;相依性(Correlation)：資產彼此間的關聯，例如：網路拓樸、虛擬化的關係、集中派版系統、防毒中控主機等。&lt;/li&gt;
+  &lt;li&gt;資產價值(Value)：企業認定該資產在 C、I、A 及法律衝擊下，所具有的價值，例如：核心系統及資料、一般操作資料、實體設備等。&lt;/li&gt;
+  &lt;li&gt;控制措施(Countermeasure)：用來降低企業面臨風險的措施，例如：資安設備、管理制度、教育訓練等。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;然而，多數企業在評估企業風險時，為求方便，會將風險評鑑的參數簡化成 {&lt;strong&gt;弱點、機率、資產價值&lt;/strong&gt;}，忽略了與敵人相關的參數 {威脅來源、意圖、威脅、戰略價值}；接下來的兩個例子將說明忽略後造成風險評鑑的偏差，包含了&lt;strong&gt;資產價值的輕忽&lt;/strong&gt;及&lt;strong&gt;輕忽漏洞利用的可能性&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;h2 id=&quot;現實風險評鑑可能的偏差&quot;&gt;現實風險評鑑可能的偏差&lt;/h2&gt;
+&lt;h3 id=&quot;敵人在意的是戰略價值而不僅是資產價值&quot;&gt;敵人在意的是戰略價值而不僅是資產價值&lt;/h3&gt;
+
+&lt;p&gt;透過風險評鑑可以識別出資產可能面臨的風險，並且作為預算或資源投入優先順序的參考，一般可以分為 3 個優先等級：&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;優先處理「高衝擊、高機率」 (項次 1、項次 2) 的風險：通常是超出企業可接受風險的威脅，藉由控制措施將風險下降到可接受的程度，這部分通常是企業資源優先或持續投入的重點。&lt;/li&gt;
+  &lt;li&gt;次之是「高衝擊、低機率 」(項次 3、項次 4)的風險：此等級是屬於需要持續關注避免升高的風險，如果企業預算仍有餘裕，應該投入的第二個等級。&lt;/li&gt;
+  &lt;li&gt;最後是「低衝擊、低機率 」(項次 5、項次 6)的風險：看起來對企業不會有立即危害，一般不需特別關注或投入資源。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;項次&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;資產名稱&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;價值&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;威脅&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;弱點&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;衝擊&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;機率&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;風險&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;1&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;交易資料&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;蓄意破壞&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;建築物管制不足&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;strong&gt;27&lt;/strong&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;2&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;用戶個資&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;勒贖軟體加密&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;無法上 patch&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;strong&gt;27&lt;/strong&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;轉帳系統&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;軟體失效&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;遭到 DDoS 攻擊&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;2&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;18&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;4&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;核心系統&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;軟體失效&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;維護服務時間過長&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;1&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;9&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;5&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;版本更新系統&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;未經授權存取&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;橫向移動&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;2&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;1&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;6&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;6&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;內部差勤系統&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;1&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;系統入侵&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;無法上 patch&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;1&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;2&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;2&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;然而，對敵人而言，選擇欲攻下的灘頭堡時，看重的是&lt;strong&gt;資產的戰略價值&lt;/strong&gt;，而與資產本身的價值沒有必然的關係，如上表項次 6 的內部差勤系統如果是能串接到敵人主要的標的，對他來說就是一個必定會設法取得控制權的資產，而這時可以發現經由簡化版的風險評鑑並不容易呈現這個資產所面臨的風險。&lt;/p&gt;
+
+&lt;h3 id=&quot;低估弱點可利用機率&quot;&gt;低估弱點可利用機率&lt;/h3&gt;
+&lt;p&gt;防守方在使用分險評鑑時，另一個問題是無法準確的估計弱點的可利用機率，雖然市面上已經有許多弱點管理軟體可以協助，但面對真實攻擊時，敵人不會只利用已知的漏洞或是 OWASP TOP10，甚至自行研發 0-day。因此，當企業已經進行一定程度的防護措施後，如果不曾經歷資安事故或缺乏正確的認知，往往認為應該不會有這麼厲害的駭客可以突破既有的防護措施，但從歷來的資安事故及我們服務的經驗告訴我們，其實電影裡面演的都是真的！！&lt;/p&gt;
+
+&lt;h2 id=&quot;從攻擊者的角度改善風險評鑑&quot;&gt;從攻擊者的角度改善風險評鑑&lt;/h2&gt;
+&lt;p&gt;很多人以為攻擊者的角度指的是漏洞挖掘，其實並不全然。攻擊者對於想竊取的資產，也是經過縝密的規劃及反～覆～觀～察～，他們一樣有策略、技法跟工具。而 &lt;a href=&quot;https://attack.mitre.org/&quot;&gt;MITRE ATT&amp;amp;CK&lt;/a&gt; 就是一個對於已知攻擊策略及技巧具備完整定義及收集的框架，它可以用來協助建立威脅情資 (Threat Intelligence)、改善防守方的偵測及分析、強化模擬敵人及紅隊演練等，相關的使用方式都在其官網上可以找到，細節我們不在這邊介紹。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20191009/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們可以將已經發生的資安事故 (Incident) 或紅隊演練對應到 ATT&amp;amp;CK Enterprise Framework 中，並且評估目前所建置的控制措施是否可以減緩、阻擋或偵測這些技巧。以下圖為例，淺綠色方塊是紅隊演練所採用的技巧、紅色方塊則是資安事故使用的技巧，企業可以同時比對多個資安事故或是紅隊演練的結果，找出交集的淺黃色區塊，即是企業可以優先強化的控制措施或是預算應該投入之處。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20191009/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這邊有個需要特別注意的地方，ATT&amp;amp;CK Enterprise Framework 作為一個驗證防守方控制措施的有效性是一個非常好的框架，然而不建議利用這個框架的特定技巧作為限制紅隊演練的情境，要記得「當使用 ATT&amp;amp;CK 時要注意有其偏差，這可能會將已知的攻擊行為優先於未知的攻擊行為」，正如同紅隊演練的精神，是透過無所不用其極的方式找到可以成功的入侵方式，因此我們會建議給予紅隊演練團隊最自由的發揮空間，才能真正找出企業可能的盲點。&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;Remember any ATT&amp;amp;CK-mapped data has biases:You’re prioritizing known adversary behavior over the unknown.&lt;br /&gt;
+－ Katie Nickels, Threat Intelligence Lead @ The MITRE Corporation&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2 id=&quot;挑選適合的方法改善防禦策略&quot;&gt;挑選適合的方法改善防禦策略&lt;/h2&gt;
+&lt;p&gt;那麼在我們了解敵人會使用的策略、技巧之後，企業要如何挑選改善防禦策略的方法？理想上，我們建議如果預算許可，&lt;a href=&quot;https://devco.re/services/red-team#service-content-3&quot;&gt;這類型&lt;/a&gt;的企業至少應該執行一次高強度的紅隊演練，來全面性的盤點企業面臨的威脅，但現實上並非每個企業都有足夠的預算。因此，在不同的條件下，可以使用不同的方法來改善防禦策略，我們建議可以從以下幾個因素進行評估：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;時間：執行這個方法所需要的時間。&lt;/li&gt;
+  &lt;li&gt;成本：利用這個方法需要付出的成本 (包含金錢、名聲)。&lt;/li&gt;
+  &lt;li&gt;真實性：所採用的方法是否能真實反映現實的威脅。&lt;/li&gt;
+  &lt;li&gt;範圍：所採用的方法能涵蓋範圍是否足以代表企業整體狀況。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;這邊我們以風險評鑑、弱點掃描、滲透測試、模擬攻擊、紅隊演練及資安事件作為改善防禦策略的方法，而分別就上述六個項目給予相對的分數，並且依照&lt;strong&gt;真實性、範圍、成本及時間作為排序的優先序&lt;/strong&gt;(順序依企業的狀況有所不同）。而我們會這樣排序的原因是：一個好的方法應該要&lt;strong&gt;與真實世界的攻擊相仿&lt;/strong&gt;而且在整個過程上&lt;strong&gt;足以發現企業整體資安的狀況&lt;/strong&gt;，最後才是考慮所花費的成本及時間。&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;方法&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;真實性&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;範圍&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;成本&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;時間&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;資安事件&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;5&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;4&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;5&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;5&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;紅隊演練&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;5&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;4&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;4&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;5&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;模擬攻擊&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;5&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;2&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;滲透測試&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;弱點掃描&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;2&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;5&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;1&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;2&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;風險評鑑&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;1&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;4&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;1&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;1&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;到這裡，除了資安事件外，大致可以決定要用來協助評估防禦策略所應該選擇的方法。更重要的是在使用這些方法後，要將結果反饋回風險評鑑中，因為相較於其他方法風險評鑑是一個最簡單且廣泛的方法，這有助於企業持續將資源投注在重大的風險上。&lt;/p&gt;
+
+&lt;h2 id=&quot;案例&quot;&gt;案例&lt;/h2&gt;
+&lt;p&gt;最後，我們以一個紅隊演練案例中所發現控制措施的疏漏，來改善企業的風險評鑑方式。同時，我們將入侵的成果對應至 ISO27001:2013 的本文要求及控制項目，這些項目可以視為以攻擊者的角度稽核企業的管理制度，更能反映制度的落實情形。&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;項目&lt;/th&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;發現&lt;/th&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;本文/附錄&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;1&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;核心系統盤點未完整&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;本文 4.3 決定 ISMS 範圍&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;2&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;監控範圍不足&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;本文 4.2 關注方之需要與期望&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;不同系統使用相同帳號密碼&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;附錄 A.9.4.3 通行碼管理系統&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;4&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;管理帳號存在密碼規則&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;附錄 A.9.4.3 通行碼管理系統&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;5&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;AD 重大漏洞未修補&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;附錄 A.12.6.1 技術脆弱性管理&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;6&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;未限制來源 IP&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;附錄 A.9.4.1 系統存取限制&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;7&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;次要網站防護不足&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;附錄 A.14.1.1 資訊安全要求事項分析及規格&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;8&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;VPN 網段存取內部系統&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;附錄 A.13.1.3 網路區隔&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;另外，從演練的結果可以發現下表項次 1 及項次 2 的機率都被證實會發生且位於入侵核心資產的路徑上，因此衝擊及機率均應該由原本的 2 提升為 3，這導致項次 1 的風險值超過了企業原本設定的可接受風險 (27)；另外，儘管在演練結果中清楚的知道項次 2 的內部差勤系統是必然可以成功入侵且間接控制核心資產的系統，其風險值仍遠低於企業會進行處理的風險，這正是我們前面所提到低估戰略價值的問題，因此我們會建議，&lt;strong&gt;在紅隊演練路徑上可以獲得核心資產的風險項目，都應該視為不可接受風險來進行處理&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;項次&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;資產名稱&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;價值&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;威脅&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;弱點&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;衝擊&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;機率&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;風險&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;1&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;版本更新系統&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;未經授權存取&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;橫向移動&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;strong&gt;3&lt;/strong&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;strong&gt;3&lt;/strong&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;strong&gt;27&lt;/strong&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;2&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;內部差勤系統&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;1&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;系統入侵&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;無法上 patch&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;strong&gt;3&lt;/strong&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;strong&gt;3&lt;/strong&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;strong&gt;9&lt;/strong&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;最後，引用 &lt;a href=&quot;/blog/author/shaolin/&quot;&gt;Shaolin&lt;/a&gt; 在研討會上的結語&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;紅隊演練的精髓不是在告訴你有多脆弱，在於真正壞人闖入時你可以獨當一面擋下。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;希望各位都能找到可以持續改善防禦策略的方法，讓企業的環境更加安全。&lt;/p&gt;
+</content>
+ </entry>
  
  <entry>
    <title>Attacking SSL VPN - Part 3: The Golden Pulse Secure SSL VPN RCE Chain, with Twitter as Case Study!</title>

@@ -1,0 +1,611 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>以攻擊者的角度制定防禦策略 | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <meta name="description" property="og:description" content="企業期望透過風險評鑑 (Risk Assessment) 來盤點出可能的疏失，我們想聊聊從攻擊者的角度是怎樣看待這個擬訂防禦策略核心工具" />
+    <meta name="keywords" content="DEVCORE CONF, Strategy" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="以攻擊者的角度制定防禦策略 | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2019/10/09/def-strategy/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20191009/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="以攻擊者的角度制定防禦策略 | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="企業期望透過風險評鑑 (Risk Assessment) 來盤點出可能的疏失，我們想聊聊從攻擊者的角度是怎樣看待這個擬訂防禦策略核心工具">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20191009/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2019/10/09/def-strategy/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+  </head>
+  <body>
+    <div class="page">
+      <div class="container--wrapper">
+        <div class="topbar">
+          <div class="topbar__brand">
+            <a href="/">
+                <div class="logo">
+                  DEVCORE 戴夫寇爾
+                </div></a>
+            <p class="slogan">
+              我們提供<a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務
+            </p>
+          </div>
+          <div class="drawer" id="drawer">
+            <div class="drawer__container">
+              <nav class="main-menu">
+                <div class="hidden">
+                  主選單
+                </div>
+                <a href="/services/penetration-test" class="main-menu__link mobile-only">滲透測試</a>
+                <a href="/services/red-team" class="main-menu__link mobile-only">紅隊演練</a>
+                <a href="/services/security-consulting" class="main-menu__link mobile-only">資安顧問</a>
+                <a href="/services/security-training" class="main-menu__link mobile-only">教育訓練</a>
+                <a href="/about/" class="main-menu__link">駭客思維</a><a href="/blog/" class="main-menu__link">最新訊息</a><a href="/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">搜尋</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
+              </nav>
+              <a href="/contact/" class="drawer__contact button--dense">聯絡我們</a>
+              <nav class="lang-menu">
+                <div class="lang-menu__label">
+                  語言:
+                </div>
+                <a href="/" class="lang-menu__link">中文</a>
+                <a href="/en/" class="lang-menu__link">English</a>
+              </nav>
+            </div>
+          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
+            <div class="bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </button>
+        </div>
+      </div><main role="main">
+
+
+          <div class="container--wrapper">
+            <div class="container">
+              <section class="blog-header">
+                <small class="blog-header__category"><a href="/blog/category/科普文章/">科普文章</a></small>
+                <img src="https://devco.re/assets/img/blog/20191009/cover.png" class="blog-header__image" alt="以攻擊者的角度制定防禦策略" />
+                <h1 class="blog-header__title">
+                  以攻擊者的角度制定防禦策略
+                </h1>
+                <div class="blog-header__tags">
+                  
+                  <a href="/blog/tag/DEVCORE CONF/" class="blog-header__tag">DEVCORE CONF</a><a href="/blog/tag/Strategy/" class="blog-header__tag">Strategy</a>
+                </div>
+          
+          
+                <p class="blog-header__info">
+                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/aaron.jpg)"></span> <a href="/blog/author/aaron" class="author-name">Aaron</a> <time class="date">on 2019-10-09 </time>
+                </p>
+          
+              </section>
+              <article class="article">
+          <style type="text/css">
+    table {
+        display: block;
+        width: 100%;
+        overflow: auto;
+        word-break: normal;
+        word-break: keep-all;
+        font-size: smaller;
+    }
+
+    table th {
+        font-weight: bold
+    }
+
+    table th,
+    table td {
+        padding: 5px 11px;
+        border: 1px solid #ddd;
+    }
+
+    table tr {
+        background-color: #fff;
+        border-top: 1px solid #ccc;
+    }
+
+    table tr:nth-child(2n) {
+        background-color: #f8f8f8;
+    }
+</style>
+
+<h2 id="前言">前言</h2>
+<p>這篇文章源自於公司今年第一次試辦的研討會 <a href="https://devco.re/conf/2019/">DEVCORE Conference 2019</a>，我們決定另外寫成 blog 分享出來，讓無法參加的朋友也可以從不同角度重新思考防禦策略。</p>
+
+<p>會想在純技術導向的研討會中加入策略面的議題，其實跟今年研討會的主軸「<strong>從策略擬定控制，從控制反映意識</strong>」有關。如果企業缺乏長遠正確的資安策略，除了投入的資源無法達到企業預期的效益、一線資安人員疲於奔命外，管理階層在資訊不對稱的情況下認為投入的資源已經足夠安全，最終形成惡性循環，只能在每次資安事故後跟著時下流行選擇最夯資安的產品。</p>
+
+<h2 id="理想中的防禦策略">理想中的防禦策略</h2>
+<p>而最廣為人知的防禦策略可能是縱深防禦，以不同類型的控制措施 (設備、制度、服務) 減少敵人入侵的可能性、儘量減少單一控制措施失效造成的風險。然而，這個概念有幾個需要思考的重點</p>
+<ul>
+  <li>防護邊界遠大於企業的想像：導致無法掌握企業可能的入侵點。</li>
+  <li>對資安設備認知錯誤：這讓敵人可以繞過資安設備，或是設備沒有發揮企業預期的效用。</li>
+  <li>管理程序不夠落實：導致控制措施產生新的漏洞，譬如預設密碼沒有更改，導致 VPN 或網路設備可以直接被存取。</li>
+  <li>忽視重要資產相關性：只將防禦資源投注在重要資產本身，而輕忽與其相連的資產。</li>
+</ul>
+
+<p>這一連串的疏忽，可能成為攻擊者入侵的路徑，就是所謂的瑞士起司模型 （Swiss Cheese Model)，因此企業期望透過風險評鑑 (Risk Assessment) 來盤點出可能的疏失，並且在權衡資源下，確保將重心放在高風險需要優先處理的項目。</p>
+
+<p>但我們想聊聊這個工具在實務上有它難以完善之處，以及從攻擊者的角度是怎樣看待這個擬訂防禦策略核心工具，我們會針對一下議題依序說明</p>
+<ul>
+  <li>真實風險其實複雜的難以評估</li>
+  <li>現行風險評鑑方式可能的偏差</li>
+  <li>從攻擊者的角度改善風險評鑑</li>
+  <li>挑選適合的方法改善風險評鑑</li>
+</ul>
+
+<h2 id="真實的風險其實複雜的難以評鑑">真實的風險其實複雜的難以評鑑</h2>
+<p>在這裡我們引述 ITGovernance 對於風險評鑑的定義：</p>
+<blockquote>
+  <p>Risk Assessment – the process of identifying, analyzing and evaluating risk – is the only way to ensure that the cyber security controls you choose are appropriate to the risks your organization faces.</p>
+</blockquote>
+
+<p>風險評鑑的精髓在於後半段的<strong>確保所選擇的控制措施是否適切於企業真正面臨的風險</strong>，但多數的企業只完成前半段<strong>識別、分析及評估風險</strong>，導致風險評鑑的成效無法完全發揮；而要達到風險評鑑的精髓，得先了解<strong>真實的風險</strong>的組成的要素</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>真實風險 = { 威脅來源、意圖、威脅、弱點、機率、相依性、資產價值、控制措施 }
+</code></pre></div></div>
+
+<ul>
+  <li>威脅來源(Threat Agent)：造成威脅或使用弱點的來源個體，例如：組織型犯罪、駭客組織、國家資助犯罪、競爭對手、駭客、內部員工或天災等。</li>
+  <li>意圖(Intent)：威脅來源的想達到的目的，例如：取得個人資料、盜取商業機密、破壞企業/個人形象、造成財物損失等。</li>
+  <li>威脅(Threat)：達成意圖的方式，例如：惡意程式、社交工程、DDoS、利用系統漏洞等。</li>
+  <li>弱點(Vulnerability)：指資產能被威脅利用的弱點，例如：漏洞未更新、人員疏忽、組態設定不當、網路區隔配置錯誤等。</li>
+  <li>機率(Probability)：指弱點的易用度或可能發生的機率，例如：CVSS 3.0分數、過去對於某個弱點發生頻率的統計等。</li>
+  <li>相依性(Correlation)：資產彼此間的關聯，例如：網路拓樸、虛擬化的關係、集中派版系統、防毒中控主機等。</li>
+  <li>資產價值(Value)：企業認定該資產在 C、I、A 及法律衝擊下，所具有的價值，例如：核心系統及資料、一般操作資料、實體設備等。</li>
+  <li>控制措施(Countermeasure)：用來降低企業面臨風險的措施，例如：資安設備、管理制度、教育訓練等。</li>
+</ul>
+
+<p>然而，多數企業在評估企業風險時，為求方便，會將風險評鑑的參數簡化成 {<strong>弱點、機率、資產價值</strong>}，忽略了與敵人相關的參數 {威脅來源、意圖、威脅、戰略價值}；接下來的兩個例子將說明忽略後造成風險評鑑的偏差，包含了<strong>資產價值的輕忽</strong>及<strong>輕忽漏洞利用的可能性</strong>。</p>
+
+<h2 id="現實風險評鑑可能的偏差">現實風險評鑑可能的偏差</h2>
+<h3 id="敵人在意的是戰略價值而不僅是資產價值">敵人在意的是戰略價值而不僅是資產價值</h3>
+
+<p>透過風險評鑑可以識別出資產可能面臨的風險，並且作為預算或資源投入優先順序的參考，一般可以分為 3 個優先等級：</p>
+<ol>
+  <li>優先處理「高衝擊、高機率」 (項次 1、項次 2) 的風險：通常是超出企業可接受風險的威脅，藉由控制措施將風險下降到可接受的程度，這部分通常是企業資源優先或持續投入的重點。</li>
+  <li>次之是「高衝擊、低機率 」(項次 3、項次 4)的風險：此等級是屬於需要持續關注避免升高的風險，如果企業預算仍有餘裕，應該投入的第二個等級。</li>
+  <li>最後是「低衝擊、低機率 」(項次 5、項次 6)的風險：看起來對企業不會有立即危害，一般不需特別關注或投入資源。</li>
+</ol>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center">項次</th>
+      <th style="text-align: center">資產名稱</th>
+      <th style="text-align: center">價值</th>
+      <th style="text-align: center">威脅</th>
+      <th style="text-align: center">弱點</th>
+      <th style="text-align: center">衝擊</th>
+      <th style="text-align: center">機率</th>
+      <th style="text-align: center">風險</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center">1</td>
+      <td style="text-align: center">交易資料</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">蓄意破壞</td>
+      <td style="text-align: center">建築物管制不足</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center"><strong>27</strong></td>
+    </tr>
+    <tr>
+      <td style="text-align: center">2</td>
+      <td style="text-align: center">用戶個資</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">勒贖軟體加密</td>
+      <td style="text-align: center">無法上 patch</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center"><strong>27</strong></td>
+    </tr>
+    <tr>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">轉帳系統</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">軟體失效</td>
+      <td style="text-align: center">遭到 DDoS 攻擊</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">2</td>
+      <td style="text-align: center">18</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">4</td>
+      <td style="text-align: center">核心系統</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">軟體失效</td>
+      <td style="text-align: center">維護服務時間過長</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">1</td>
+      <td style="text-align: center">9</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">5</td>
+      <td style="text-align: center">版本更新系統</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">未經授權存取</td>
+      <td style="text-align: center">橫向移動</td>
+      <td style="text-align: center">2</td>
+      <td style="text-align: center">1</td>
+      <td style="text-align: center">6</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">6</td>
+      <td style="text-align: center">內部差勤系統</td>
+      <td style="text-align: center">1</td>
+      <td style="text-align: center">系統入侵</td>
+      <td style="text-align: center">無法上 patch</td>
+      <td style="text-align: center">1</td>
+      <td style="text-align: center">2</td>
+      <td style="text-align: center">2</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>然而，對敵人而言，選擇欲攻下的灘頭堡時，看重的是<strong>資產的戰略價值</strong>，而與資產本身的價值沒有必然的關係，如上表項次 6 的內部差勤系統如果是能串接到敵人主要的標的，對他來說就是一個必定會設法取得控制權的資產，而這時可以發現經由簡化版的風險評鑑並不容易呈現這個資產所面臨的風險。</p>
+
+<h3 id="低估弱點可利用機率">低估弱點可利用機率</h3>
+<p>防守方在使用分險評鑑時，另一個問題是無法準確的估計弱點的可利用機率，雖然市面上已經有許多弱點管理軟體可以協助，但面對真實攻擊時，敵人不會只利用已知的漏洞或是 OWASP TOP10，甚至自行研發 0-day。因此，當企業已經進行一定程度的防護措施後，如果不曾經歷資安事故或缺乏正確的認知，往往認為應該不會有這麼厲害的駭客可以突破既有的防護措施，但從歷來的資安事故及我們服務的經驗告訴我們，其實電影裡面演的都是真的！！</p>
+
+<h2 id="從攻擊者的角度改善風險評鑑">從攻擊者的角度改善風險評鑑</h2>
+<p>很多人以為攻擊者的角度指的是漏洞挖掘，其實並不全然。攻擊者對於想竊取的資產，也是經過縝密的規劃及反～覆～觀～察～，他們一樣有策略、技法跟工具。而 <a href="https://attack.mitre.org/">MITRE ATT&amp;CK</a> 就是一個對於已知攻擊策略及技巧具備完整定義及收集的框架，它可以用來協助建立威脅情資 (Threat Intelligence)、改善防守方的偵測及分析、強化模擬敵人及紅隊演練等，相關的使用方式都在其官網上可以找到，細節我們不在這邊介紹。</p>
+
+<p><img src="/assets/img/blog/20191009/1.png" alt="" /></p>
+
+<p>我們可以將已經發生的資安事故 (Incident) 或紅隊演練對應到 ATT&amp;CK Enterprise Framework 中，並且評估目前所建置的控制措施是否可以減緩、阻擋或偵測這些技巧。以下圖為例，淺綠色方塊是紅隊演練所採用的技巧、紅色方塊則是資安事故使用的技巧，企業可以同時比對多個資安事故或是紅隊演練的結果，找出交集的淺黃色區塊，即是企業可以優先強化的控制措施或是預算應該投入之處。</p>
+
+<p><img src="/assets/img/blog/20191009/2.png" alt="" /></p>
+
+<p>這邊有個需要特別注意的地方，ATT&amp;CK Enterprise Framework 作為一個驗證防守方控制措施的有效性是一個非常好的框架，然而不建議利用這個框架的特定技巧作為限制紅隊演練的情境，要記得「當使用 ATT&amp;CK 時要注意有其偏差，這可能會將已知的攻擊行為優先於未知的攻擊行為」，正如同紅隊演練的精神，是透過無所不用其極的方式找到可以成功的入侵方式，因此我們會建議給予紅隊演練團隊最自由的發揮空間，才能真正找出企業可能的盲點。</p>
+<blockquote>
+  <p>Remember any ATT&amp;CK-mapped data has biases:You’re prioritizing known adversary behavior over the unknown.<br />
+－ Katie Nickels, Threat Intelligence Lead @ The MITRE Corporation</p>
+</blockquote>
+
+<h2 id="挑選適合的方法改善防禦策略">挑選適合的方法改善防禦策略</h2>
+<p>那麼在我們了解敵人會使用的策略、技巧之後，企業要如何挑選改善防禦策略的方法？理想上，我們建議如果預算許可，<a href="https://devco.re/services/red-team#service-content-3">這類型</a>的企業至少應該執行一次高強度的紅隊演練，來全面性的盤點企業面臨的威脅，但現實上並非每個企業都有足夠的預算。因此，在不同的條件下，可以使用不同的方法來改善防禦策略，我們建議可以從以下幾個因素進行評估：</p>
+<ul>
+  <li>時間：執行這個方法所需要的時間。</li>
+  <li>成本：利用這個方法需要付出的成本 (包含金錢、名聲)。</li>
+  <li>真實性：所採用的方法是否能真實反映現實的威脅。</li>
+  <li>範圍：所採用的方法能涵蓋範圍是否足以代表企業整體狀況。</li>
+</ul>
+
+<p>這邊我們以風險評鑑、弱點掃描、滲透測試、模擬攻擊、紅隊演練及資安事件作為改善防禦策略的方法，而分別就上述六個項目給予相對的分數，並且依照<strong>真實性、範圍、成本及時間作為排序的優先序</strong>(順序依企業的狀況有所不同）。而我們會這樣排序的原因是：一個好的方法應該要<strong>與真實世界的攻擊相仿</strong>而且在整個過程上<strong>足以發現企業整體資安的狀況</strong>，最後才是考慮所花費的成本及時間。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center">方法</th>
+      <th style="text-align: center">真實性</th>
+      <th style="text-align: center">範圍</th>
+      <th style="text-align: center">成本</th>
+      <th style="text-align: center">時間</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center">資安事件</td>
+      <td style="text-align: center">5</td>
+      <td style="text-align: center">4</td>
+      <td style="text-align: center">5</td>
+      <td style="text-align: center">5</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">紅隊演練</td>
+      <td style="text-align: center">5</td>
+      <td style="text-align: center">4</td>
+      <td style="text-align: center">4</td>
+      <td style="text-align: center">5</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">模擬攻擊</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">5</td>
+      <td style="text-align: center">2</td>
+      <td style="text-align: center">3</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">滲透測試</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">3</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">弱點掃描</td>
+      <td style="text-align: center">2</td>
+      <td style="text-align: center">5</td>
+      <td style="text-align: center">1</td>
+      <td style="text-align: center">2</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">風險評鑑</td>
+      <td style="text-align: center">1</td>
+      <td style="text-align: center">4</td>
+      <td style="text-align: center">1</td>
+      <td style="text-align: center">1</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>到這裡，除了資安事件外，大致可以決定要用來協助評估防禦策略所應該選擇的方法。更重要的是在使用這些方法後，要將結果反饋回風險評鑑中，因為相較於其他方法風險評鑑是一個最簡單且廣泛的方法，這有助於企業持續將資源投注在重大的風險上。</p>
+
+<h2 id="案例">案例</h2>
+<p>最後，我們以一個紅隊演練案例中所發現控制措施的疏漏，來改善企業的風險評鑑方式。同時，我們將入侵的成果對應至 ISO27001:2013 的本文要求及控制項目，這些項目可以視為以攻擊者的角度稽核企業的管理制度，更能反映制度的落實情形。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center">項目</th>
+      <th style="text-align: left">發現</th>
+      <th style="text-align: left">本文/附錄</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center">1</td>
+      <td style="text-align: left">核心系統盤點未完整</td>
+      <td style="text-align: left">本文 4.3 決定 ISMS 範圍</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">2</td>
+      <td style="text-align: left">監控範圍不足</td>
+      <td style="text-align: left">本文 4.2 關注方之需要與期望</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">3</td>
+      <td style="text-align: left">不同系統使用相同帳號密碼</td>
+      <td style="text-align: left">附錄 A.9.4.3 通行碼管理系統</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">4</td>
+      <td style="text-align: left">管理帳號存在密碼規則</td>
+      <td style="text-align: left">附錄 A.9.4.3 通行碼管理系統</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">5</td>
+      <td style="text-align: left">AD 重大漏洞未修補</td>
+      <td style="text-align: left">附錄 A.12.6.1 技術脆弱性管理</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">6</td>
+      <td style="text-align: left">未限制來源 IP</td>
+      <td style="text-align: left">附錄 A.9.4.1 系統存取限制</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">7</td>
+      <td style="text-align: left">次要網站防護不足</td>
+      <td style="text-align: left">附錄 A.14.1.1 資訊安全要求事項分析及規格</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">8</td>
+      <td style="text-align: left">VPN 網段存取內部系統</td>
+      <td style="text-align: left">附錄 A.13.1.3 網路區隔</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>另外，從演練的結果可以發現下表項次 1 及項次 2 的機率都被證實會發生且位於入侵核心資產的路徑上，因此衝擊及機率均應該由原本的 2 提升為 3，這導致項次 1 的風險值超過了企業原本設定的可接受風險 (27)；另外，儘管在演練結果中清楚的知道項次 2 的內部差勤系統是必然可以成功入侵且間接控制核心資產的系統，其風險值仍遠低於企業會進行處理的風險，這正是我們前面所提到低估戰略價值的問題，因此我們會建議，<strong>在紅隊演練路徑上可以獲得核心資產的風險項目，都應該視為不可接受風險來進行處理</strong>。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center">項次</th>
+      <th style="text-align: center">資產名稱</th>
+      <th style="text-align: center">價值</th>
+      <th style="text-align: center">威脅</th>
+      <th style="text-align: center">弱點</th>
+      <th style="text-align: center">衝擊</th>
+      <th style="text-align: center">機率</th>
+      <th style="text-align: center">風險</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center">1</td>
+      <td style="text-align: center">版本更新系統</td>
+      <td style="text-align: center">3</td>
+      <td style="text-align: center">未經授權存取</td>
+      <td style="text-align: center">橫向移動</td>
+      <td style="text-align: center"><strong>3</strong></td>
+      <td style="text-align: center"><strong>3</strong></td>
+      <td style="text-align: center"><strong>27</strong></td>
+    </tr>
+    <tr>
+      <td style="text-align: center">2</td>
+      <td style="text-align: center">內部差勤系統</td>
+      <td style="text-align: center">1</td>
+      <td style="text-align: center">系統入侵</td>
+      <td style="text-align: center">無法上 patch</td>
+      <td style="text-align: center"><strong>3</strong></td>
+      <td style="text-align: center"><strong>3</strong></td>
+      <td style="text-align: center"><strong>9</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>最後，引用 <a href="/blog/author/shaolin/">Shaolin</a> 在研討會上的結語</p>
+<blockquote>
+  <p>紅隊演練的精髓不是在告訴你有多脆弱，在於真正壞人闖入時你可以獨當一面擋下。</p>
+</blockquote>
+
+<p>希望各位都能找到可以持續改善防禦策略的方法，讓企業的環境更加安全。</p>
+
+              </article>
+              <p class="sns-widgets">
+                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
+              </p>
+          
+              <div class="heading--side-lined">
+                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/aaron.jpg)"></span> <a href="/blog/author/aaron" class="blog-author-name">Aaron</a> 
+              </div>
+              <p class="blog-author-info">
+                曾在大型組織擔任資安受駭者，因此嘗盡苦頭、受盡折磨、懷疑人生。<br />希望能透過最接近真實威脅的技術能量，協助企業找出有效的防禦策略，讓投入資安產業的人邁向健康開朗的人生。
+              </p>
+          
+              <div class="heading--side-lined">
+                讀者留言
+              </div>
+              <div class="blog-comments">
+                
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+              </div>
+            </div>
+          </div>
+
+
+
+
+
+
+</main>
+      <div class="container--wrapper">
+
+        <div class="relative-posts">
+          <div class="heading--side-lined container">
+            最新消息
+          </div>
+          <div class="relative-posts__cells">
+  
+            <section class="card">
+              <a href="/blog/2019/10/09/def-strategy/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20191009/cover.png)"></div>
+                <h3 class="card__title">
+                  以攻擊者的角度制定防禦策略
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/DEVCORE CONF/" class="card__tag">DEVCORE CONF</a><a href="/blog/tag/Strategy/" class="card__tag">Strategy</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2019/08/28/Pulse-Secure-SSL-VPN-advisory/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20190828/cover.png)"></div>
+                <h3 class="card__title">
+                  Pulse Secure SSL VPN 資安通報
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/VPN/" class="card__tag">VPN</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/資安新聞/">資安新聞</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2019/08/09/Fortigate-SSL-VPN-advisory/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20190807/cover.png)"></div>
+                <h3 class="card__title">
+                  Fortigate SSL VPN 資安通報
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/VPN/" class="card__tag">VPN</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/資安新聞/">資安新聞</a></small>
+            </section>
+  
+          </div>
+        </div>
+
+
+        <div class="contact-section container">
+          <h2 class="contact-section__title">
+            用最真實的攻擊，驗證企業的防禦
+          </h2>
+          <a href="/contact/" class="home-contact__button button--dense">聯絡我們</a>
+        </div>
+
+        <footer class="main-footer">
+          <div class="main-footer__about">
+            戴夫寇爾提供<br class="mobile-only" /><a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務<br />在<a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a>或<a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>上追蹤我們的<a href="/blog/" class="link">最新訊息</a><br />瞭解更多戴夫寇爾的<a href="/about/" class="link">駭客思維</a>
+          </div>
+          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
+                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
+                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
+          </div>
+          <address class="main-footer__address">
+            <ul class="list--unstyled">
+              <li>
+                地址 10487 台北市中山區復興北路 168 號 10 樓
+              </li>
+              <li>
+                Email contact@devco.re
+              </li>
+              <li>
+                電話 02-2718-0156
+              </li>
+              <li>
+                統編 53955237
+              </li>
+            </ul>
+          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2019 DEVCORE 戴夫寇爾</small>
+        </footer>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
+
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+
+  </body>
+</html>
+
+
+
+

@@ -4,13 +4,148 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2019-10-09T15:15:09+08:00</updated>
+ <updated>2019-10-24T18:56:56+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name>DEVCORE</name>
    <email>contact [at] devco.re</email>
  </author>
 
+ 
+ <entry>
+   <title>DEVCORE 紅隊的進化，與下一步</title>
+   <link href="https://devco.re/blog/2019/10/24/evolution-of-DEVCORE-red-team-and-the-next/"/>
+   <updated>2019-10-24T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2019/10/24/evolution-of-DEVCORE-red-team-and-the-next</id>
+   <content type="html">&lt;h2 id=&quot;前言&quot;&gt;前言&lt;/h2&gt;
+
+&lt;p&gt;「紅隊演練」近年來漸漸開始被大家提及，也開始有一些廠商推出紅隊服務。不過關於在台灣紅隊是怎麼做的就比較少人公開分享，身為第一個在台灣推紅隊演練的公司，我想就根據這兩年多來的實戰經驗，分享為什麼我們要做紅隊、我們面臨到的問題、以及在我們心中認為紅隊成員應該具備的特質。最後再分享我們現階段看到的企業資安問題，期望未來我們也可以透過紅隊演練來幫助企業補足那些問題。&lt;/p&gt;
+
+&lt;p&gt;這一篇是我在 &lt;a href=&quot;https://devco.re/conf/2019/&quot;&gt;DEVCORE Conference 2019&lt;/a&gt; 所分享的主題。研討會事前調查想聽內容時有些朋友希望我們能介紹 DEVCORE 的紅隊，還有運作方式和案例，所以我抽出一些素材整理成這場演講。下面是投影片連結，其中有些內部系統畫面不對外公開，僅在研討會分享敬請見諒。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;/conf/2019/slides/devcore-conf-2019-shaolin-DEVCORE%20%E7%B4%85%E9%9A%8A%E7%9A%84%E9%80%B2%E5%8C%96%EF%BC%8C%E8%88%87%E4%B8%8B%E4%B8%80%E6%AD%A5.pdf&quot;&gt;DEVCORE 紅隊的進化，與下一步 － Shaolin (DEVCORE CONF 2019)&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;為什麼要紅隊演練&quot;&gt;為什麼要紅隊演練？&lt;/h2&gt;
+
+&lt;p&gt;一言以蔽之，就是我們漸漸體會到：&lt;strong&gt;對大企業而言，單純的滲透測試並不是最有效益的&lt;/strong&gt;。從過去上百次滲透測試經驗中，我們往往能在專案初期的偵查階段，發現企業邊界存在嚴重弱點，進而進入內網繞過層層防禦攻擊主要目標。越是龐大的企業，這種狀況會越明顯，因為他們通常有很多對外的網站、網路設備，每一個都可能是風險，即使主要網站防護很完備，駭客只需要從這麼多目標中找到一個問題，就可以對企業造成傷害。今天就算企業對每個服務都獨立做了一次滲透測試，在真實世界中，還是有可能從第三方服務、廠商供應鏈、社交工程等途徑入侵。所以有可能投注很多資源做測試，結果還是發生資安事件。&lt;/p&gt;
+
+&lt;p&gt;於是，我們推出了紅隊演練，希望透過真實的演練幫助企業找到整體架構中脆弱的地方。因此，這個服務關注的是&lt;strong&gt;企業整體的安全性&lt;/strong&gt;，而不再只是單一的網站。&lt;/p&gt;
+
+&lt;p&gt;紅隊演練目標通常是一個情境，例如：駭客有沒有辦法取得民眾個資甚至是信用卡卡號？在演練過程中紅隊會無所不用其極的嘗試驗證企業在乎的情境有沒有可能發生。以剛剛的例子來說，我們會想辦法找到一條路徑取得存放這些訊息的資料庫，去驗證有沒有辦法取得個資及卡號。一般來說，卡號部分都會經過加密，因此在拿下資料庫後我們也會嘗試看看有沒有辦法還原這些卡號。有時候除了找到還原的方法，我們甚至會在過程中發現其他路徑可取得卡號，可能是工程師的 debug 資訊會記錄卡號，或是備份檔在 NAS 裡面有完整卡號，這些可能是連資安負責人都不知道的資訊，也是企業評估風險的盲點。&lt;/p&gt;
+
+&lt;p&gt;到這邊，紅隊演練的效益就很明顯了，紅隊能協助企業全盤評估潛在的重大風險，不再像過去只是單一面向的測試特定網站。除了找到弱點，紅隊更在乎幫企業&lt;strong&gt;驗證入侵的可行性&lt;/strong&gt;，方便企業評估風險以及擬定防禦策略。最後，紅隊往往也能夠在演練過程當中&lt;strong&gt;找出企業風險評估忽略的地方&lt;/strong&gt;，例如剛剛例子提到的備份 NAS，就可能是沒有列入核心系統但又相當重要的伺服器，這一塊也是 DEVCORE 這幾年來確實幫助到客戶的地方。&lt;/p&gt;
+
+&lt;h2 id=&quot;devcore-紅隊的編制&quot;&gt;DEVCORE 紅隊的編制&lt;/h2&gt;
+
+&lt;p&gt;基本上，DEVCORE 的紅隊成員都是可以獨當一面的，在執行一般專案時成員間並沒有顯著差異。但在演練範圍比較大的狀況下，就會開始有明顯的分工作業，各組也會專精技能增加團隊效率。目前我們的編制共分為五組：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20191024/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;簡單介紹職責如下：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Intelligence (偵查)，負責情報偵查，他們會去收集跟目標有關的所有資訊，包括 IP 網段、網站個別使用的技術，甚至是洩漏的帳號密碼。&lt;/li&gt;
+  &lt;li&gt;Special Force (特攻)，有比較強大的攻擊能力，主要負責打破現況，例如攻下第一個據點、拿下另一個網段、或是主機的提權。&lt;/li&gt;
+  &lt;li&gt;Regular Army (常規)，負責拿下據點後掃蕩整個戰場，嘗試橫向移動，會盡量多建立幾個據點讓特攻組有更多資源朝任務目標邁進。&lt;/li&gt;
+  &lt;li&gt;Suppert (支援)，重要的後勤工作，維持據點的可用性，同時也要觀察記錄整個戰況，最清楚全局戰況。&lt;/li&gt;
+  &lt;li&gt;Research (研究)，平時研究各種在紅隊中會用到的武器，演練時期碰到具戰略價值的系統，會投入資源開採 0-day。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;devcore-紅隊的進化&quot;&gt;DEVCORE 紅隊的進化&lt;/h2&gt;
+
+&lt;p&gt;所謂的進化，就是碰到了問題，想辦法強化並且解決，那我們遇到了哪些問題呢？&lt;/p&gt;
+
+&lt;h3 id=&quot;如何找到一個突破點&quot;&gt;如何找到一個突破點？&lt;/h3&gt;
+
+&lt;p&gt;這是大家最常碰到的問題，萬事起頭難，怎麼樣找到第一個突破點？這個問題在紅隊演練當中難度會更高，因為有規模的企業早已投入資源在資安檢測和防護上，我們要怎麼樣從層層防禦當中找到弱點？要能找到別人找不到的弱點，測試思維和方法一定要跟別人不一樣。於是，我們投入資源在偵查、特攻、研究組：偵查部分研究了不同的偵查方法和來源，並且開發自己的工具讓偵查更有效率；我們的特攻組也不斷強化自己的攻擊能力；最重要的，我們讓研究人員開始針對我們常碰到的目標進行研究，開發紅隊會用到的武器或技巧。&lt;/p&gt;
+
+&lt;p&gt;這邊特別想要分享研究組的成果，因為我們會去開採一些基礎設施的 0-day，在負責任的揭露後，會將 1-day 用於演練中，這種模式對國外紅隊來說算是相當少見。為了能幫助到紅隊，研究組平時的研究方向，通常都是找企業外網可以碰到的通用服務，例如郵件伺服器、Jenkins、SSL VPN。我們找的弱點都是以不用認證、可取得伺服器控制權為優先，目前已公開的有：&lt;a href=&quot;https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789-en/&quot;&gt;Exim&lt;/a&gt;、&lt;a href=&quot;https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE/&quot;&gt;Jenkins&lt;/a&gt;、&lt;a href=&quot;https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study/&quot;&gt;Palo Alto GlobalProtect&lt;/a&gt;、&lt;a href=&quot;https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn/&quot;&gt;FortiGate&lt;/a&gt;、&lt;a href=&quot;https://devco.re/blog/2019/09/02/attacking-ssl-vpn-part-3-the-golden-Pulse-Secure-ssl-vpn-rce-chain-with-Twitter-as-case-study/&quot;&gt;Pulse Secure&lt;/a&gt;。這些成果在演練當中都有非常非常高的戰略價值，甚至可以說掌控了這些伺服器幾乎就能間接控制企業的大半。&lt;/p&gt;
+
+&lt;p&gt;而這些研究成果，也意外的被國外所注意到：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;PortSwigger 連續兩年年度十大網站攻擊技術評選冠軍 (&lt;a href=&quot;https://portswigger.net/blog/top-10-web-hacking-techniques-of-2017&quot;&gt;2017&lt;/a&gt;, &lt;a href=&quot;https://portswigger.net/blog/top-10-web-hacking-techniques-of-2018&quot;&gt;2018&lt;/a&gt;)&lt;/li&gt;
+  &lt;li&gt;連續三年 DEFCON &amp;amp; Black Hat USA 發表 (&lt;a href=&quot;https://www.blackhat.com/us-17/briefings.html#a-new-era-of-ssrf-exploiting-url-parser-in-trending-programming-languages&quot;&gt;2017&lt;/a&gt;, &lt;a href=&quot;https://www.blackhat.com/us-18/briefings/schedule/index.html#breaking-parser-logic-take-your-path-normalization-off-and-pop-days-out-10346&quot;&gt;2018&lt;/a&gt;, &lt;a href=&quot;https://www.blackhat.com/us-19/briefings/schedule/index.html#infiltrating-corporate-intranet-like-nsa---pre-auth-rce-on-leading-ssl-vpns-15545&quot;&gt;2019&lt;/a&gt;)&lt;/li&gt;
+  &lt;li&gt;台灣第一個拿到 PWNIE AWARD 獎項：Pwnie for Best Server-Side Bug (年度最佳伺服器漏洞) (&lt;a href=&quot;https://pwnies.com/archive/2018/nominations/&quot;&gt;2018 入圍&lt;/a&gt;, &lt;a href=&quot;https://pwnies.com/winners/&quot;&gt;2019 得獎&lt;/a&gt;)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;目標上萬台如何發揮紅隊效益&quot;&gt;目標上萬台，如何發揮紅「隊」效益？&lt;/h3&gt;
+
+&lt;p&gt;前面靠了偵查、特攻、研究組的成果取得了進入點。下一個問題，是在我們過去的經驗中，有過多次演練的範圍是上萬台電腦，我們要怎樣做才能發揮團隊作戰的效益呢？會有這個問題是因為&lt;strong&gt;數量級&lt;/strong&gt;，如果範圍只有十個網站很容易找目標，但是當網站變多的時候，就很難標註討論我們要攻擊的目標。或是當大家要同步進度的時候，每個人的進度都很多，很難有個地方分享伺服器資訊，讓其他人能接續任務。&lt;/p&gt;
+
+&lt;p&gt;過去我們使用類似 Trello 的系統記錄每台伺服器的狀況，在範圍較小的時候很方便好用，但是當資料量一大就會顯得很難操作。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20191024/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;因此，我們自行開發了系統去解決相關問題。分享一些我們設計系統的必要原則供大家參考：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;伺服器列表可標籤、排序、全文搜尋，火力集中的伺服器必須要自動在顯眼處，省去額外搜尋時間。&lt;/li&gt;
+  &lt;li&gt;要可自動建立主機關係圖，方便團隊討論戰況。&lt;/li&gt;
+  &lt;li&gt;儲存結構化資訊而非過去的純字串，例如這台機器開的服務資訊、拿 shell 的方式、已滲透的帳號密碼。方便快速釐清目前進度以及事後分析。&lt;/li&gt;
+  &lt;li&gt;建立 shell 主控台，方便成員一鍵取得 shell 操作。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;另外還有一個問題，紅隊成員這麼多，戰場又分散，如果想要把我們做過的測試過程記錄下來，不是會很複雜嗎？所以我們另外寫了 plugin 記錄 web 的攻擊流量、以及記錄我們在 shell 下過的指令和伺服器回傳的結果，這些記錄甚至比客戶的 access_log 和 bash_history 還詳細。此外，針對每個目標伺服器，我們也會特別記錄在上面所做過的重要行為，例如：改了什麼設定，新增或刪除了什麼檔案，方便我們還有客戶追蹤。要做這樣的客製化記錄其實是很繁瑣的，對那些習慣於自動化解決事情的駭客更是，但我們就是堅持做好這樣的紀錄，即使客戶沒有要求，我們還是會詳實記錄每個步驟，以備不時之需。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20191024/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;企業有防禦設備或機制&quot;&gt;企業有防禦設備或機制？&lt;/h3&gt;
+
+&lt;p&gt;解決了突破點和多人合作的問題，接下來我們面臨到第三個問題，企業有防護措施！在研討會中我舉了幾個較客製的真實防禦案例，說明我們除了常見的防禦設備外也擁有很多跟防禦機制交手的經驗。我們會研究每種防禦的特性加以繞過或利用，甚至會寫工具去躲避偵測，最近比較經典的是團隊做了在 Windows 伺服器上的 Web shell，它可以做到 WAF 抓不到，防毒軟體抓不到，也不會有 eventlog 記錄，利用這個工具可以無聲無息收集伺服器上我們需要的資料。當然，我們不是無敵的，一些較底層的偵測機制還是會無法繞過。這邊我直接講我們進化到目前的準則：在面對伺服器防禦機制，我們能隱匿的，一定做到絕對的隱匿，無法躲的，就把流程最佳化，縮短做事情的時間，例如控制在五分鐘內提權拿到關鍵資料，就算被別人抓到也沒關係，因為該拿的資料也拿到了。&lt;/p&gt;
+
+&lt;h2 id=&quot;紅隊成員應具備的特質&quot;&gt;紅隊成員應具備的特質&lt;/h2&gt;
+
+&lt;p&gt;要能夠在紅隊演練中有突出成果，我覺得成員特質是滿關鍵的一個點。以下整理了幾個我從我們紅隊夥伴觀察到的特質跟大家分享，如果將來有打算從事紅隊工作，或是企業已經打算開始成立內部紅隊，這些特質可能可以作為一些參考。&lt;/p&gt;
+
+&lt;h3 id=&quot;想像力&quot;&gt;想像力&lt;/h3&gt;
+
+&lt;p&gt;第一個是想像力，為什麼會提這個特質，因為現在資安意識慢慢強化，要靠一招打天下是不太有機會的，尤其是紅隊演練這麼有變化的工作。要有成果一定要巧妙的組合利用或是繞過才有機會。&lt;/p&gt;
+
+&lt;p&gt;直接舉個例子，我們在公布 Pulse Secure VPN 的&lt;a href=&quot;https://devco.re/blog/2019/09/02/attacking-ssl-vpn-part-3-the-golden-Pulse-Secure-ssl-vpn-rce-chain-with-Twitter-as-case-study/&quot;&gt;研究細節&lt;/a&gt;後，有人在 twitter 上&lt;a href=&quot;https://twitter.com/_trou_/status/1168529031177867267&quot;&gt;表示&lt;/a&gt;那個關鍵用來 RCE 的 argument injection 點之前他有找到，只是無法利用所以官方也沒有修。確實我們找到的地方相同，不過我們靠想像力找到了一個可利用參數並搭配 Perl 的特性串出了 RCE。&lt;br /&gt;
+另一個例子是 &lt;a href=&quot;https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE/&quot;&gt;Jenkins 研究&lt;/a&gt;裡面的一環，我們在繞過身分認證之後發現有一個功能是在檢查使用者輸入的程式語法正不正確。伺服器怎樣去判斷語法正不正確？最簡單的方法就是直接去編譯看看，可以編譯成功就代表語法正確。所以我們研究了可以在『編譯階段』命令執行的方法，讓伺服器在嘗試判斷語法是否正確的同時執行我們的指令。這個手法過去沒有人提過，算是運用想像力的一個經典案例。&lt;/p&gt;
+
+&lt;p&gt;關於想像力，其實還有一個隱藏的前提：基礎功要夠。我一直認為想像力是知識的排列組合，例如剛剛的兩個例子，如果不知道 Perl 語法特性和 Meta-Programming 的知識，再怎麼天馬行空都是不可能成功 RCE 的。有基礎功再加上勇於聯想和嘗試，絕對是一個紅隊大將的必備特質。至於基礎功需要到什麼程度，對我們來說，講到一個漏洞，心中就會同時跳出一個樹狀圖：出現成因是什麼？相關的案例、漏洞、繞過方式都會啵啵啵跳出來，能做到這樣我想就已經是有所小成了。&lt;/p&gt;
+
+&lt;h3 id=&quot;追新技術&quot;&gt;追新技術&lt;/h3&gt;
+
+&lt;p&gt;會追新技術這件事情，似乎是資安圈的標配，我們的世界不只有 OWASP TOP 10。更現實的說法是，如果只靠這麼一點知識，在紅隊演練能發揮的效果其實並不大。分享一下我看到成員們的樣子，對於他們來說，看新技術是每天的習慣，如果有資安研討會投影片釋出，會追。新技術裡有興趣的，會動手玩，甚至寫成工具，我們很多內部工具都是這樣默默補強的。還有一點，看新技術最終目的就是要活用，拿新技術解決舊問題，往往有機會發現一些突破方式。例如我們在今年八月 BlackHat 研討會看到了 &lt;a href=&quot;https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn&quot;&gt;HTTP Desync&lt;/a&gt; 的攻擊方式，回國之後馬上就把這個知識用在當時的專案上，讓我們多了一些攻擊面向！（這個手法挺有趣的，在我們污染伺服器後，隨機一個人瀏覽客戶網頁就會執行我們的 JavaScript，不需要什麼特殊條件，有興趣可以研究一下:p ）&lt;/p&gt;
+
+&lt;h3 id=&quot;相信以及堅持&quot;&gt;相信…以及堅持&lt;/h3&gt;
+
+&lt;p&gt;最後一點，我想分享的是：在研究或者測試的過程當中，有時候會花費很多時間卻沒有成果，但是如果你評估是有機會，那就相信自己，花時間做下去吧！&lt;br /&gt;
+我們有一個花費一個月的例子，是之前&lt;a href=&quot;https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way/&quot;&gt;破解 IDA Pro 偽隨機數&lt;/a&gt;的研究，這個事件意外在 binary 圈很有名，甚至還有人寫成&lt;a href=&quot;https://medium.com/the-singularity-is-near/recent-leak-of-ida-pro-7-2-a-brief-timeline-4c1dcbe6331e&quot;&gt;事件懶人包&lt;/a&gt;。這個研究是在探討如果我們沒有安裝密碼，有機會安裝 IDA PRO 嗎？結果最後我們想辦法逆推出了 IDA 密碼產生器的算法，知道偽隨機數使用了哪些字元，和它的正確排序。這件事情的難度已經不只在技術上，而在於要猜出偽隨機數使用的字元集順序，還要同時猜出對方使用的演算法（至少有88種）。而且我們每驗證一種排列組合，就會花半天時間和 100GB 的空間，累積成本滿高的。但我們根據經驗相信這是有機會成功的，並且投注資源堅持下去，最後有了很不錯的成果。&lt;/p&gt;
+
+&lt;p&gt;這裡不是在鼓勵一意孤行，而是一種心理素質：是在面臨卡關的時候，有足夠的判斷力，方向錯誤能果斷放棄，如果方向正確要有堅持下去的勇氣。&lt;/p&gt;
+
+&lt;h2 id=&quot;資安防護趨勢與紅隊的下一步&quot;&gt;資安防護趨勢與紅隊的下一步&lt;/h2&gt;
+
+&lt;p&gt;文章的最後一部分要談的是紅隊演練的未來，也是這篇文章的重點，未來，我們希望可以解決什麼問題？&lt;/p&gt;
+
+&lt;p&gt;做為紅隊演練的領導廠商，從 2017 年演練到現在我們進入台灣企業內網的成功率是 100%。我們在超過六成的演練案中拿到 AD 管理權限，這還不含那些不是用 AD 來管理的企業。我們發現進入內網後，通常不會有什麼阻礙，就好像變成內部員工，打了聲招呼就可以進機房。想要提醒大家的是：對頂尖攻擊團隊而言，進入企業內網的難度並不高。如果碰上頂尖的駭客，或是一個 0day，企業準備好了嗎？這就是現階段我們所發現的問題！&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20191024/4.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在說到抵禦攻擊通常會有三個面向，分別是「預防」、「偵測」和「回應」。一般而言企業在「預防」這部份做的比較完善，對於已知的弱點都有比較高的掌握度。今天普遍的問題在「&lt;strong&gt;偵測&lt;/strong&gt;」和「&lt;strong&gt;回應&lt;/strong&gt;」上，企業能不能發現有人在對你進行攻擊？或是知道被攻擊後有沒有能力即時回應並且根絕源頭？這兩件事情做得相對不好的原因並不是企業沒有投入資源在上面，而是對於企業來說太難驗證，很難有個標準去確定目前的機制有沒有效或是買了設備有沒有作用，就算有藍隊通常也沒有建立完善的應對 SOP，畢竟駭客入侵不會是天天發生的事情。&lt;/p&gt;
+
+&lt;p&gt;所以，我們希望企業能從紅隊演練中，訓練對攻擊事件的偵測和反應能力。或是說，紅隊演練的本質就是在真實的演練，透過攻防幫助企業了解自己的弱項。過去台灣的紅隊服務都會強調在找出整個企業的弱點，找出漏洞固然重要，但碰到像我們一樣很常找到 0-day 的組織，有偵測和回應能力才是最後能救你一命的硬技能。換個角度來看，目前世界上最完整的攻擊戰略和技術手法列表是 &lt;a href=&quot;https://attack.mitre.org/&quot;&gt;MITRE ATT&amp;amp;CK Framework&lt;/a&gt;，一個對企業有傷害的攻擊行動通常會是很多個攻擊手法所組成的攻擊鏈，而在這個 Framework 中，找到起始弱點這件事情僅佔了整個攻擊鏈不到一成，企業如果能夠投注在其他九成手法的偵測能力上並阻斷其中任一環節，就有機會讓整個攻擊行動失敗而保護到資產。&lt;/p&gt;
+
+&lt;p&gt;要說的是，我們紅隊演練除了找出企業漏洞能力頂尖之外，也累積了很豐富的內網滲透經驗及技巧，我們很樂意透過演練協助企業加強真實的偵測和回應能力。漸漸的，未來紅隊會慢慢著重在和藍隊的攻防演練。會強調擬定戰略，讓企業了解自己對哪些攻擊的防禦能力比較弱，進而去改善。未來的紅隊也更需要強調與防禦機制交手的經驗，了解防禦的極限，才有辦法找到設備設定不全或是涵蓋率不足的盲點。&lt;/p&gt;
+
+&lt;p&gt;最後我們也有些規劃建議給對資安防禦比較成熟的企業如下，逐步落實可以將資安體質提昇一個層次。（至少從我們的經驗來看，有這些概念的企業都是特別難攻擊達成目標的）&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;如果外網安全已投資多年，開始思考「&lt;strong&gt;如果駭客已經在內網&lt;/strong&gt;」的防禦策略&lt;/li&gt;
+  &lt;li&gt;盤點出最不可以被洩漏的重要資料，從這些地方開始奉行 &lt;strong&gt;Zero Trust&lt;/strong&gt; 概念&lt;/li&gt;
+  &lt;li&gt;企業內部需要有專職資安人員編制（藍隊）&lt;/li&gt;
+  &lt;li&gt;透過與有經驗的紅隊合作，全盤檢視防禦盲點&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;後記&quot;&gt;後記&lt;/h2&gt;
+
+&lt;p&gt;研討會內容到這邊就結束了。寫在最後的最後，是充滿著感謝。其實無論滲透測試還是紅隊演練，在一開始都不是人人可以接受的，而測試的價值也不是我們說了算。一路走來，漸漸漸漸感受到開始有人相信我們，從早期比較多測試時與工程師和網管人員的對立，到近期越來越多 open mind、就是想找出問題的客戶，是滿大的對比。非常感謝他們的信任，也因為這樣的互信，我們得以節省時間完成更棒的產出。滿樂見台灣資訊產業是這樣正向面對問題，漏洞存在就是存在，不會因為視而不見而真的不見，意識到有問題解決了就好。所以我在演講最後留下這樣一句：『&lt;strong&gt;紅隊演練的精髓不是在告訴你有多脆弱，在於真正壞人闖入時你可以獨當一面擋下&lt;/strong&gt;』，希望越來越多人能正面對待問題，同時也傳遞我們想要做到的價值。&lt;/p&gt;
+
+&lt;p&gt;2019 DEVCORE CONF，謝謝過去合作的朋友們參與讓 DEVCORE 紅隊得以進化，希望下一步也能有你，我們明年見 :)&lt;/p&gt;
+</content>
+ </entry>
  
  <entry>
    <title>以攻擊者的角度制定防禦策略</title>

@@ -1,0 +1,465 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>你用它上網，我用它進你內網! 中華電信數據機遠端代碼執行漏洞 | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <meta name="description" property="og:description" content="如何從中華電信的一個設定疏失，到串出可以掌控數十萬、甚至數百萬台的家用數據機漏洞" />
+    <meta name="keywords" content="DEVCORE CONF, CVE, RCE" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="你用它上網，我用它進你內網! 中華電信數據機遠端代碼執行漏洞 | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2019/11/11/HiNet-GPON-Modem-RCE/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20191111/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="你用它上網，我用它進你內網! 中華電信數據機遠端代碼執行漏洞 | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="如何從中華電信的一個設定疏失，到串出可以掌控數十萬、甚至數百萬台的家用數據機漏洞">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20191111/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2019/11/11/HiNet-GPON-Modem-RCE/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+  </head>
+  <body>
+    <div class="page">
+      <div class="container--wrapper">
+        <div class="topbar">
+          <div class="topbar__brand">
+            <a href="/">
+                <div class="logo">
+                  DEVCORE 戴夫寇爾
+                </div></a>
+            <p class="slogan">
+              我們提供<a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務
+            </p>
+          </div>
+          <div class="drawer" id="drawer">
+            <div class="drawer__container">
+              <nav class="main-menu">
+                <div class="hidden">
+                  主選單
+                </div>
+                <a href="/services/penetration-test" class="main-menu__link mobile-only">滲透測試</a>
+                <a href="/services/red-team" class="main-menu__link mobile-only">紅隊演練</a>
+                <a href="/services/security-consulting" class="main-menu__link mobile-only">資安顧問</a>
+                <a href="/services/security-training" class="main-menu__link mobile-only">教育訓練</a>
+                <a href="/about/" class="main-menu__link">駭客思維</a><a href="/blog/" class="main-menu__link">最新訊息</a><a href="/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">搜尋</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
+              </nav>
+              <a href="/contact/" class="drawer__contact button--dense">聯絡我們</a>
+              <nav class="lang-menu">
+                <div class="lang-menu__label">
+                  語言:
+                </div>
+                <a href="/" class="lang-menu__link">中文</a>
+                <a href="/en/" class="lang-menu__link">English</a>
+              </nav>
+            </div>
+          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
+            <div class="bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </button>
+        </div>
+      </div><main role="main">
+
+
+          <div class="container--wrapper">
+            <div class="container">
+              <section class="blog-header">
+                <small class="blog-header__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+                <img src="https://devco.re/assets/img/blog/20191111/cover.png" class="blog-header__image" alt="你用它上網，我用它進你內網! 中華電信數據機遠端代碼執行漏洞" />
+                <h1 class="blog-header__title">
+                  你用它上網，我用它進你內網! 中華電信數據機遠端代碼執行漏洞
+                </h1>
+                <div class="blog-header__tags">
+                  
+                  <a href="/blog/tag/DEVCORE CONF/" class="blog-header__tag">DEVCORE CONF</a><a href="/blog/tag/CVE/" class="blog-header__tag">CVE</a><a href="/blog/tag/RCE/" class="blog-header__tag">RCE</a>
+                </div>
+          
+          
+                <p class="blog-header__info">
+                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/blog/author/orange" class="author-name">Orange Tsai</a> <time class="date">on 2019-11-11 </time>
+                </p>
+          
+              </section>
+              <article class="article">
+          <p>大家好，我是 Orange! 這次的文章，是我在 <a href="https://devco.re/conf/2019/">DEVCORE Conference 2019</a> 上所分享的議題，講述如何從中華電信的一個設定疏失，到串出可以掌控數十萬、甚至數百萬台的家用數據機漏洞!</p>
+
+<p><br /></p>
+
+<h2 id="前言">前言</h2>
+
+<p>身為 DEVCORE 的研究團隊，我們的工作就是研究最新的攻擊趨勢、挖掘最新的弱點、找出可以影響整個世界的漏洞，回報給廠商避免這些漏洞流至地下黑市被黑帽駭客甚至國家級駭客組織利用，讓這個世界變得更加安全!</p>
+
+<p>把「漏洞研究」當成工作，一直以來是許多資訊安全技術狂熱份子的夢想，但大部分的人只看到發表漏洞、或站上研討會時的光鮮亮麗，沒注意到背後所下的苦工，事實上，「漏洞研究」往往是一個非常樸實無華，且枯燥的過程。</p>
+
+<p>漏洞挖掘並不像 <a href="https://ctf-wiki.github.io/ctf-wiki/">Capture the Flag (CTF)</a>，一定存在著漏洞以及一個正確的解法等著你去解出，在題目的限定範圍下，只要根據現有的條件、線索去推敲出題者的意圖，十之八九可以找出問題點。 雖然還是有那種清新、優質、難到靠北的比賽例如 <a href="https://ctf.hitcon.org/">HITCON CTF</a> 或是 <a href="https://plaidctf.com/">Plaid CTF</a>，不過 「找出漏洞」 與 「如何利用漏洞」在本質上已經是兩件不同的事情了!</p>
+
+<p>CTF 很適合有一定程度的人精進自己的能力，但缺點也是如果經常在限制住的小框框內，思路及眼界容易被侷限住，真實世界的攻防往往更複雜、維度也更大! 要在一個成熟、已使用多年，且全世界資安人員都在關注的產品上挖掘出新弱點，可想而知絕對不是簡單的事! 一場 CTF 競賽頂多也就 48 小時，但在無法知道目標是否有漏洞的前提下，你能堅持多久?</p>
+
+<p><a href="https://devco.re/blog/2019/09/02/attacking-ssl-vpn-part-3-the-golden-Pulse-Secure-ssl-vpn-rce-chain-with-Twitter-as-case-study/">在我們上一個研究中</a>，發現了三個知名 SSL VPN 廠商中不用認證的遠端代碼執行漏洞，雖然成果豐碩，但也是花了整個研究組半年的時間(加上後續處理甚至可到一年)，甚至在前兩個月完全是零產出、找不到漏洞下持續完成的。 所以對於一個好的漏洞研究人員，除了綜合能力、見識多寡以及能否深度挖掘外，還需要具備能夠獨立思考，以及興趣濃厚到耐得住寂寞等等特質，才有辦法在高難度的挑戰中殺出一條血路!</p>
+
+<p>漏洞研究往往不是一間公司賺錢的項目，卻又是無法不投資的部門，有多少公司能夠允許員工半年、甚至一年去做一件不一定有產出的研究? 更何況是將研究成果無條件的回報廠商只是為了讓世界更加安全? 這也就是我們 DEVCORE 不論在<a href="https://devco.re/services/penetration-test">滲透測試</a>或是<a href="https://devco.re/services/red-team">紅隊演練</a>上比別人來的優秀的緣故，除了平日軍火庫的累積外，當遇到漏洞時，也會想盡辦法將這個漏洞的危害最大化，利用駭客思維、透過各種不同組合利用，將一個低風險漏洞利用到極致，這也才符合真實世界駭客對你的攻擊方式!</p>
+
+<p><br /></p>
+
+<h2 id="影響範圍">影響範圍</h2>
+
+<p>故事回到今年初的某天，我們 DEVCORE 的情資中心監控到全台灣有大量的網路地址開著 3097 連接埠，而且有趣的是，這些地址並不是什麼伺服器的地址，而是普通的家用電腦。 一般來說，家用電腦透過數據機連接上網際網路，對外絕不會開放任何服務，就算是數據機的 SSH 及 HTTP 管理介面，也只有內部網路才能訪問到，因此我們懷疑這與 ISP 的配置失誤有關! 我們也成功的在這個連接埠上挖掘出一個不用認證的遠端代碼執行漏洞! 打個比喻，就是駭客已經睡在你家客廳沙發的感覺!</p>
+
+<p>透過這個漏洞我們可以完成:</p>
+
+<ol>
+  <li>竊聽網路流量，竊取網路身分、PTT 密碼，甚至你的信用卡資料</li>
+  <li>更新劫持、水坑式攻擊、內網中繼攻擊去控制你的電腦甚至個人手機</li>
+  <li>結合紅隊演練去繞過各種開發者的白名單政策</li>
+  <li>更多更多…</li>
+</ol>
+
+<p>而相關的 CVE 漏洞編號為:</p>
+
+<ul>
+  <li><a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-13411">CVE-2019-13411</a></li>
+  <li><a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-13412">CVE-2019-13412</a></li>
+  <li><a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-15064">CVE-2019-15064</a></li>
+  <li><a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-15065">CVE-2019-15065</a></li>
+  <li><a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-15066">CVE-2019-15066</a></li>
+</ul>
+
+<p><br /></p>
+
+<p>相較於以往對家用數據機的攻擊，這次的影響是更嚴重的! 以往就算漏洞再嚴重，只要家用數據機對外不開放任何連接埠，攻擊者也無法利用，但這次的漏洞包含中華電信的配置失誤，導致你家的數據機在網路上裸奔，攻擊者僅僅 <strong>「只要知道你的 IP 便可不需任何條件，直接進入你家內網」</strong>，而且，由於沒有數據機的控制權，所以這個攻擊一般用戶是無法防禦及修補的!</p>
+
+<p><br /></p>
+
+<p>經過全網 IPv4 的掃瞄，全台灣約有 25 萬台的數據機存在此問題，<strong>「代表至少 25 萬個家庭受影響」</strong>，不過這個結果只在 <strong>「掃描當下有連上網路的數據機才被納入統計」</strong>，所以實際受害用戶一定大於這個數字!</p>
+
+<p>而透過網路地址的反查，有高達九成的受害用戶是中華電信的動態 IP，而剩下的一成則包含固定制 IP 及其他電信公司，至於為何會有其他電信公司呢? 我們的理解是中華電信作為台灣最大電信商，所持有的資源以及硬體設施也是其他電信商遠遠不及的，因此在一些比較偏僻的地段可能其他電信商到使用者的最後一哩路也還是中華電信的設備! 由於我們不是廠商，無法得知完整受影響的數據機型號列表，但筆者也是受害者 ╮(╯_╰)╭，所以可以確定最多人使用的<a href="https://broadband.hinet.net/rate.do">中華電信光世代 GPON 數據機</a> 也在受影響範圍內!</p>
+
+<p><img src="/assets/img/blog/20191111/1.png" alt="" /><br />
+(<a href="https://www.hungry.tw/2014/12/MiWifi.html">圖片擷自網路</a>)</p>
+
+<p><br /></p>
+
+<h2 id="漏洞挖掘">漏洞挖掘</h2>
+
+<p>只是一個配置失誤並不能說是什麼大問題，所以接下來我們希望能在這個服務上挖掘出更嚴重的漏洞! 軟體漏洞的挖掘，根據原始碼、執行檔以及 API 文件的有無可依序分為:</p>
+<ul>
+  <li>黑箱測試</li>
+  <li>灰箱測試</li>
+  <li>白箱測試</li>
+</ul>
+
+<p>在什麼都沒有的的狀況下，只能依靠經驗以及對系統的了解去猜測每個指令背後的實作、並找出漏洞。</p>
+
+<h3 id="黑箱測試">黑箱測試</h3>
+
+<p>3097 連接埠提供了許多跟電信網路相關的指令，推測是中華電信給工程師遠端對數據機進行各種網路設定的除錯介面!</p>
+
+<p><img src="/assets/img/blog/20191111/2.png" alt="" /></p>
+
+<p><br /></p>
+
+<p>其中，可以透過 <code class="highlighter-rouge">HELP</code> 指令列出所有功能，其中我們發現了一個指令叫做 <code class="highlighter-rouge">MISC</code> ，看名字感覺就是把一堆不知道怎麼分類的指令歸類在這，而其中一個叫做 <code class="highlighter-rouge">SCRIPT</code> 吸引了我們! 它的參數為一個檔案名稱，執行後像是會把檔案當成 Shell Script 來執行，但在無法在遠端機器留下一個可控檔案的前提下，也無法透過這個指令取得任意代碼執行。 不過有趣的是，<code class="highlighter-rouge">MISC SCRIPT</code> 這個指令會將 <code class="highlighter-rouge">STDERR</code> 給顯示出來，因此可以透過這個特性去完成任意檔案讀取!</p>
+
+<p><br /></p>
+
+<h3 id="從黑箱進化成灰箱">從黑箱進化成灰箱</h3>
+
+<p>在漏洞的利用上，無論是記憶體的利用、或是網路的滲透，不外乎都圍繞著對目標的讀(Read)、 寫(Write) 以及代碼執行(eXecute) 三個權限的取得，現在我們取得了第一個讀的權限，接下來呢?</p>
+
+<p>除錯介面貌似跑在高權限使用者下，所以可以直接透過讀取系統密碼檔得到系統使用者管理登入的密碼雜湊!</p>
+
+<p><img src="/assets/img/blog/20191111/3.png" alt="" /></p>
+
+<p><br /></p>
+
+<p>透過對 <code class="highlighter-rouge">root</code> 使用者密碼雜湊的破解，我們成功的登入數據機 SSH 將「黑箱」轉化成「灰箱」! 雖然現在可以成功控制自己的數據機，但一般家用數據機對外是不會開放 SSH 服務的，為了達到可以「遠端」控制別人的數據機，我們還是得想辦法從 3097 這個服務拿到代碼的執行權限。</p>
+
+<p><img src="/assets/img/blog/20191111/4.png" alt="" /></p>
+
+<p><br /></p>
+
+<p>整個中華電信的數據機是一個跑在 MIPS 處理器架構上的嵌入式 Linux 系統，而 3097 服務則是由一個在 <code class="highlighter-rouge">/usr/bin/omcimain</code> 的二進位檔案來處理，整個檔案大小有將近 5MB，對逆向工程來說並不是一個小數目，但與黑箱測試相較之下，至少有了東西可以分析了真棒!</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ uname -a
+Linux I-040GW.cht.com.tw 2.6.30.9-5VT #1 PREEMPT Wed Jul 31 15:40:34 CST 2019
+[luna SDK V1.8.0] rlx GNU/Linux
+
+$ netstat -anp | grep 3097
+tcp        0      0 127.0.0.1:3097          0.0.0.0:*               LISTEN
+
+$ ls -lh /usr/bin/omcimain
+-rwxr-xr-x    1 root   root        4.6M Aug  1 13:40 /usr/bin/omcimain
+
+$ file /usr/bin/omcimain
+ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="從灰箱進化成白箱">從灰箱進化成白箱</h3>
+
+<p>現在，我們可以透過逆向工程了解每個指令背後的原理及實作了! 不過首先，逆向工程是一個痛苦且煩悶的經過，一個小小的程式可能就包含幾萬、甚至十幾萬行的組合語言代碼，因此這時挖洞的策略就變得很重要! 從功能面來看，感覺會存在命令注入相關的漏洞，因此先以功能實作為出發點開始挖掘!</p>
+
+<p>整個 3097 服務的處理核心其實就是一個多層的 IF-ELSE 選項，每一個小框框對應的一個功能的實作，例如 <code class="highlighter-rouge">cli_config_cmdline</code> 就是對應 <code class="highlighter-rouge">CONFIG</code> 這條指令，因此我們搭配著 <code class="highlighter-rouge">HELP</code> 指令的提示一一往每個功能實作挖掘!</p>
+
+<p><img src="/assets/img/blog/20191111/5.png" alt="" /></p>
+
+<p><br /></p>
+
+<p>研究了一段時間，並沒有發現到什麼嚴重漏洞 :( 不過我們注意到，當所有指命都匹配失敗時，會進入到了一個 <code class="highlighter-rouge">with_fallback</code> 的函數，這個函數的主要目的是把匹配失敗的指令接到 <code class="highlighter-rouge">/usr/bin/diag</code> 後繼續執行!</p>
+
+<p><img src="/assets/img/blog/20191111/6.png" alt="" /></p>
+
+<p><br /></p>
+
+<p><code class="highlighter-rouge">with_fallback</code> 大致邏輯如下，由於當時 Ghidra 尚未出現，所以這份原始碼是從閱讀 MIPS 組合語言慢慢還原回來的! 其中 <code class="highlighter-rouge">s1</code> 為輸入的指令，如果指令不在定義好的列表內以及指令中出現問號的話，就與 <code class="highlighter-rouge">/usr/bin/diag</code> 拼湊起來丟入 <code class="highlighter-rouge">system</code> 執行! 理所當然，為了防止命令注入等相關弱點，在丟入 <code class="highlighter-rouge">system</code> 前會先根據 <code class="highlighter-rouge">BLACKLISTS</code> 的列表檢查是否存在有害字元。</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="kt">char</span> <span class="o">*</span><span class="n">input</span> <span class="o">=</span> <span class="n">util_trim</span><span class="p">(</span><span class="n">s1</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">input</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'\0'</span> <span class="o">||</span> <span class="n">input</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="sc">'#'</span><span class="p">)</span>
+      <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+
+  <span class="k">while</span> <span class="p">(</span><span class="n">SUB_COMMAND_LIST</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">sub_cmd</span> <span class="o">=</span> <span class="n">SUB_COMMAND_LIST</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">];</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">strncmp</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="n">sub_cmd</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">sub_cmd</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+          <span class="k">break</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="k">if</span> <span class="p">(</span><span class="n">SUB_COMMAND_LIST</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">strchr</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="sc">'?'</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+      <span class="k">return</span> <span class="o">-</span><span class="mi">10</span><span class="p">;</span>
+      
+  <span class="c1">// ...</span>
+  
+  <span class="k">while</span> <span class="p">(</span><span class="n">BLACKLISTS</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">strchr</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="n">BLACKLISTS</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+          <span class="n">util_fdprintf</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="s">"invalid char '%c' in command</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">BLACKLISTS</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+          <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="n">i</span><span class="o">++</span><span class="p">;</span>
+  <span class="p">}</span>
+  
+  <span class="n">snprintf</span><span class="p">(</span><span class="n">file_buf</span><span class="p">,</span>  <span class="mi">64</span><span class="p">,</span> <span class="s">"/tmp/tmpfile.%d.%06ld"</span><span class="p">,</span> <span class="n">getpid</span><span class="p">(),</span> <span class="n">random</span><span class="p">()</span> <span class="o">%</span> <span class="mi">1000000</span><span class="p">);</span>
+  <span class="n">snprintf</span><span class="p">(</span><span class="n">cmd_buf</span><span class="p">,</span> <span class="mi">1024</span><span class="p">,</span> <span class="s">"/usr/bin/diag %s &gt; %s 2&gt;/dev/null"</span><span class="p">,</span> <span class="n">input</span><span class="p">,</span> <span class="n">file_buf</span><span class="p">);</span>
+  <span class="n">system</span><span class="p">(</span><span class="n">cmd_buf</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p>而 <code class="highlighter-rouge">BLACKLISTS</code> 定義如下:</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">char</span> <span class="o">*</span><span class="n">BLACKLISTS</span> <span class="o">=</span> <span class="s">"|&lt;&gt;(){}`;"</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>如果是你的話，能想到如何繞過嗎?</p>
+
+<p><br /><br />
+<br /><br />
+<br /><br />
+<br /><br />
+<br /></p>
+
+<p>答案很簡單，命令注入往往就是這麼的簡單且樸實無華!</p>
+
+<p><img src="/assets/img/blog/20191111/7.png" alt="" /></p>
+
+<p><br /></p>
+
+<p>這裡我們示範了如何從 PTT 知道受害者 IP 地址，到進入它數據機實現真正意義上的「指哪打哪」!</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/Pq00YUoBOsQ" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe>
+
+<p><br /><br /></p>
+
+<h2 id="後記">後記</h2>
+
+<p>故事到這邊差不多進入尾聲，整篇文章看似輕描淡寫，描述一個漏洞從發現到利用的整個經過，從結果論來說也許只是一個簡單的命令注入，但實際上中間所花的時間、走過的歪路是正在讀文章的你無法想像的，就像是在黑暗中走迷宮，在沒有走出迷宮前永遠不會知道自己正在走的這條路是不是通往目的正確道路!</p>
+
+<p>挖掘出新的漏洞，並不是一件容易的事，尤其是在各式攻擊手法又已趨於成熟的今天，要想出全新的攻擊手法更是難上加難! 在漏洞研究的領域上，台灣尚未擁有足夠的能量，如果平常的挑戰已經滿足不了你，想體驗真實世界的攻防，歡迎加入與我們一起交流蕉流 :D</p>
+
+<p><br /></p>
+
+<h2 id="通報時程">通報時程</h2>
+
+<ul>
+  <li>2019 年 07 月 28 日 - 透過 TWCERT/CC 回報中華電信</li>
+  <li>2019 年 08 月 14 日 - 廠商回覆清查並修補設備中</li>
+  <li>2019 年 08 月 27 日 - 廠商回覆九月初修補完畢</li>
+  <li>2019 年 08 月 30 日 - 廠商回覆已完成受影響設備的韌體更新</li>
+  <li>2019 年 09 月 11 日 - 廠商回覆部分用戶需派員更新, 延後公開時間</li>
+  <li>2019 年 09 月 23 日 - 與 TWCERT/CC 確認可公開</li>
+  <li>2019 年 09 月 25 日 - 發表至 DEVCORE Conference 2019</li>
+  <li>2019 年 11 月 11 日 - 部落格文章釋出</li>
+</ul>
+
+
+              </article>
+              <p class="sns-widgets">
+                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
+              </p>
+          
+              <div class="heading--side-lined">
+                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/blog/author/orange" class="blog-author-name">Orange Tsai</a> 
+              </div>
+              <p class="blog-author-info">
+                I am Orange : )
+              </p>
+          
+              <div class="heading--side-lined">
+                讀者留言
+              </div>
+              <div class="blog-comments">
+                
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+              </div>
+            </div>
+          </div>
+
+
+
+
+
+
+</main>
+      <div class="container--wrapper">
+
+        <div class="relative-posts">
+          <div class="heading--side-lined container">
+            最新消息
+          </div>
+          <div class="relative-posts__cells">
+  
+            <section class="card">
+              <a href="/blog/2019/11/11/HiNet-GPON-Modem-RCE/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20191111/cover.png)"></div>
+                <h3 class="card__title">
+                  你用它上網，我用它進你內網! 中華電信數據機遠端代碼執行漏洞
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/DEVCORE CONF/" class="card__tag">DEVCORE CONF</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2019/10/24/evolution-of-DEVCORE-red-team-and-the-next/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20191024/cover.png)"></div>
+                <h3 class="card__title">
+                  DEVCORE 紅隊的進化，與下一步
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/DEVCORE CONF/" class="card__tag">DEVCORE CONF</a><a href="/blog/tag/Strategy/" class="card__tag">Strategy</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2019/10/09/def-strategy/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20191009/cover.png)"></div>
+                <h3 class="card__title">
+                  以攻擊者的角度制定防禦策略
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/DEVCORE CONF/" class="card__tag">DEVCORE CONF</a><a href="/blog/tag/Strategy/" class="card__tag">Strategy</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
+            </section>
+  
+          </div>
+        </div>
+
+
+        <div class="contact-section container">
+          <h2 class="contact-section__title">
+            用最真實的攻擊，驗證企業的防禦
+          </h2>
+          <a href="/contact/" class="home-contact__button button--dense">聯絡我們</a>
+        </div>
+
+        <footer class="main-footer">
+          <div class="main-footer__about">
+            戴夫寇爾提供<br class="mobile-only" /><a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務<br />在<a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a>或<a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>上追蹤我們的<a href="/blog/" class="link">最新訊息</a><br />瞭解更多戴夫寇爾的<a href="/about/" class="link">駭客思維</a>
+          </div>
+          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
+                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
+                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
+          </div>
+          <address class="main-footer__address">
+            <ul class="list--unstyled">
+              <li>
+                地址 10487 台北市中山區復興北路 168 號 10 樓
+              </li>
+              <li>
+                Email contact@devco.re
+              </li>
+              <li>
+                電話 02-2718-0156
+              </li>
+              <li>
+                統編 53955237
+              </li>
+            </ul>
+          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2019 DEVCORE 戴夫寇爾</small>
+        </footer>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
+
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+
+  </body>
+</html>
+
+
+
+

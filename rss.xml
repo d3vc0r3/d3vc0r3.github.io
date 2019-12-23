@@ -4,11 +4,242 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Mon, 11 Nov 2019 18:03:54 +0800</lastBuildDate>
-        <pubDate>Mon, 11 Nov 2019 18:03:54 +0800</pubDate>
+        <lastBuildDate>Mon, 23 Dec 2019 21:33:00 +0800</lastBuildDate>
+        <pubDate>Mon, 23 Dec 2019 21:33:00 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>飛鴿傳書 - 紅隊演練中的數位擄鴿</title>
+                <description>&lt;p&gt;郵件系統作為大部分企業主要的資訊交換方式，在戰略上佔有了舉足輕重的地位。掌控了郵件伺服器不僅可以竊聽郵件的內容，甚至許多重要文件都可以在郵件系統中找到，使得駭客能夠更進一步的滲透。本篇文章將介紹研究組在 Openfind Mail2000 這套軟體上發現的記憶體漏洞，以及利用這個漏洞的攻擊手法。&lt;br /&gt;
+&lt;strong&gt;此漏洞為 2018 年時發現，當時已通報 Openfind 並且迅速被修補，同時也已協助相關用戶進行更新。&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;openfind-mail2000&quot;&gt;Openfind Mail2000&lt;/h2&gt;
+&lt;p&gt;Mail2000 是一套由台灣廠商 Openfind 所開發，簡單易用的電子郵件系統，被廣泛使用於台灣的公家機關、教育機構，如台北市教育局、中科院，以及臺灣科技大學都有使用 Mail2000 作為主要的郵件伺服器。常見的入口介面如下：&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這次的漏洞，便是從這個 Web 介面，利用 Binary 的手法，攻陷整台伺服器！&lt;/p&gt;
+
+&lt;h2 id=&quot;伺服器架構&quot;&gt;伺服器架構&lt;/h2&gt;
+&lt;p&gt;Mail2000 提供了 Web 介面供管理員以及使用者操作，也就是所謂的 Webmail，而此處 Openfind 使用了 CGI (Common Gateway Interface) 的技術來實作。大多數 Web 伺服器實現 CGI 的方式如圖：&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/2.png&quot; alt=&quot;&quot; /&gt;&lt;br /&gt;
+首先由 httpd 接受客戶端的請求後，根據對應的 CGI 路徑，執行相對應的 CGI 檔案。而大多數的開發者會根據需求，將常見的共用 function 撰寫成 library，供 CGI 呼叫。&lt;br /&gt;
+往底層來看，其實可以發現，雖然稱為 Web 伺服器，仍有許多元件是建構於 binary 之上的！例如 httpd，為了效能，多是由 C/C++ 所撰寫，而其它像是 library、擴充的 module、各頁面的 CGI 也常是如此。因此，binary 相關的漏洞，便是我們這次的攻擊目標！&lt;/p&gt;
+
+&lt;h2 id=&quot;漏洞&quot;&gt;漏洞&lt;/h2&gt;
+
+&lt;p&gt;這個漏洞位於 Openfind 實作的 library &lt;code class=&quot;highlighter-rouge&quot;&gt;libm2kc&lt;/code&gt; 中，此函式庫包含了各種 CGI 通用函式，如參數解析及檔案處理等等，而這個漏洞就發生在參數解析的部分。由於參數處理是很底層且基本的功能，因此影響的範圍非常的大，就連 Openfind 的其它產品也同樣受影響！&lt;br /&gt;
+這個漏洞的觸發條件如下：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;攻擊者使用 multipart 形式發送 HTTP POST 請求&lt;/li&gt;
+  &lt;li&gt;POST 傳送的資料內容超過 200 項&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;multipart 是 HTTP 協定中，用來處理多項檔案傳輸時的一種格式，舉例如下：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Content-Type: multipart/form-data; boundary=AaB03x   
+
+ --AaB03x 
+Content-Disposition: form-data; name=&quot;files&quot;; filename=&quot;file1.txt&quot; 
+Content-Type: text/plain 
+
+ ... contents of file1.txt ...
+ --AaB03x--
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;而在 libm2kc 中，使用了陣列來儲存參數：&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;g_stCGIEnv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;param_cnt&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;while&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next_param&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;g_stCGIEnv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;param&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;param_cnt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;g_stCGIEnv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;param_cnt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;這個陣列為全域變數 g_stCGIEnv 中的 param，在存入 param 陣列時，並沒有檢查是否已超過宣告的陣列大小，就造成了越界寫入。&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;需要注意的是，param 陣列所儲存的結構為指向字串位置的指標，而非字串本身&lt;/p&gt;
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;param&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;flag&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;因此當觸發越界寫入時，寫入記憶體的值也是一個個指向字串的指標，而被指向的字串內容則是造成溢出的參數。&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;漏洞利用&quot;&gt;漏洞利用&lt;/h2&gt;
+
+&lt;p&gt;要利用越界寫入的漏洞，就要先了解利用這個溢出可以做到什麼，發生溢出的全域變數結構如下：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;00000000 CGIEnv          struc ; (sizeof=0x6990, mappedto_95)
+00000000 buf             dd ?                    ; offset
+00000004 length          dd ?
+00000008 field_8         dd 6144 dup(?)          ; offset
+00006008 param_arr       param 200 dup(?)
+00006968 file_vec        dd ?                    ; offset
+0000696C vec_len         dd ?
+00006970 vec_cur_len     dd ?
+00006974 arg_cnt         dd ?
+00006978 field_6978      dd ?
+0000697C errcode         dd ?
+00006980 method          dd ?
+00006984 is_multipart    dd ?
+00006988 read_func       dd ?
+0000698C field_698C      dd ?
+00006990 CGIEnv          ends
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;溢出的陣列為其中的&lt;code class=&quot;highlighter-rouge&quot;&gt;param_arr&lt;/code&gt;，因此在其之後的變數皆可能被覆寫。包括&lt;code class=&quot;highlighter-rouge&quot;&gt;post_files&lt;/code&gt;、&lt;code class=&quot;highlighter-rouge&quot;&gt;vec_len&lt;/code&gt;、&lt;code class=&quot;highlighter-rouge&quot;&gt;vec_cur_len&lt;/code&gt;、&lt;code class=&quot;highlighter-rouge&quot;&gt;arg_cnt&lt;/code&gt; … 等等。其中最吸引我注意的是&lt;code class=&quot;highlighter-rouge&quot;&gt;file_vec&lt;/code&gt;這個變數，這是一個用來管理 POST 上傳檔案的 &lt;code class=&quot;highlighter-rouge&quot;&gt;vector&lt;/code&gt;，大部分的 &lt;code class=&quot;highlighter-rouge&quot;&gt;vector&lt;/code&gt; 結構像是這樣：&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/5.png&quot; alt=&quot;&quot; /&gt;&lt;br /&gt;
+使用 &lt;code class=&quot;highlighter-rouge&quot;&gt;size&lt;/code&gt; 記錄陣列的總長度，&lt;code class=&quot;highlighter-rouge&quot;&gt;end&lt;/code&gt; 記錄目前用到哪裡，這樣就可以在容量不夠的時候進行擴充。我們若利用漏洞，使溢出的指標覆蓋 &lt;code class=&quot;highlighter-rouge&quot;&gt;vector&lt;/code&gt; 的指標，就有可能有效的利用！藉由覆蓋這個 &lt;code class=&quot;highlighter-rouge&quot;&gt;vector&lt;/code&gt; 指標，我們可以達到偽造一個 &lt;code class=&quot;highlighter-rouge&quot;&gt;POST file&lt;/code&gt;，及其中所有相關變數的效果，而這個 &lt;code class=&quot;highlighter-rouge&quot;&gt;POST file&lt;/code&gt; 結構裡面就包含了各種常見的檔案相關變數，像是路徑、檔名，和 Linux 中用來管理檔案的 &lt;strong&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;FILE&lt;/code&gt; 結構&lt;/strong&gt;，而 &lt;code class=&quot;highlighter-rouge&quot;&gt;FILE&lt;/code&gt; 結構便是這次的攻擊的關鍵！&lt;/p&gt;
+
+&lt;h3 id=&quot;file-structure-exploit&quot;&gt;FILE Structure Exploit&lt;/h3&gt;
+
+&lt;p&gt;這次的攻擊使用了 FILE structure exploit 的手法，是近幾年較新發現的攻擊手法，由 angelboy 在 HITCON CMT 公開&lt;a href=&quot;https://www.slideshare.net/AngelBoy1/play-with-file-structure-yet-another-binary-exploit-technique&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;&lt;sup&gt;[1]&lt;/sup&gt;&lt;/a&gt;：&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;FILE 結構是 Linux 中用來做檔案處理的結構，像是 &lt;code class=&quot;highlighter-rouge&quot;&gt;STDIN&lt;/code&gt;、&lt;code class=&quot;highlighter-rouge&quot;&gt;STDOUT&lt;/code&gt;、&lt;code class=&quot;highlighter-rouge&quot;&gt;STDERR&lt;/code&gt;，或者是呼叫 &lt;code class=&quot;highlighter-rouge&quot;&gt;fopen&lt;/code&gt; 後回傳的結構都是 &lt;code class=&quot;highlighter-rouge&quot;&gt;FILE&lt;/code&gt;。而這個結構之所以能成為漏洞利用的突破口主要原因就是它所包含的 &lt;code class=&quot;highlighter-rouge&quot;&gt;vtable&lt;/code&gt; 指標：&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_FILE_plus&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;FILE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_jump_t&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;vtable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;vtable&lt;/code&gt; 當中記錄了各種 function pointer，對應各種檔案處理相關的功能：&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_IO_jump_t&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;JUMP_FIELD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__dummy&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;JUMP_FIELD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__dummy2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;JUMP_FIELD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_finish_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__finish&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;cm&quot;&gt;/* ... */&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;JUMP_FIELD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_read_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;JUMP_FIELD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_write_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__write&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;JUMP_FIELD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_seek_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__seek&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;JUMP_FIELD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_IO_close_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__close&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;cm&quot;&gt;/* ... */&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;因此如果我們可以篡改、偽造這個 &lt;code class=&quot;highlighter-rouge&quot;&gt;vtable&lt;/code&gt; 的話，就可以在程式做檔案處理的時候，劫持程式流程！我們可以以此訂出以下的攻擊步驟：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;建立連線，呼叫 CGI&lt;/li&gt;
+  &lt;li&gt;使用大量參數，覆寫 vector 指標&lt;/li&gt;
+  &lt;li&gt;偽造 POST file 當中的 FILE*，指向一塊偽造的 FILE 結構&lt;/li&gt;
+  &lt;li&gt;在 CGI 流程中呼叫 FILE 相關的操作
+    &lt;ul&gt;
+      &lt;li&gt;fread, fwrite, fclose, …&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;劫持程式流程&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;我們現在已經知道終點是&lt;strong&gt;呼叫一個 FILE 操作&lt;/strong&gt;，那麼就可以開始往回找&lt;strong&gt;哪個 function&lt;/strong&gt; 是 CGI 常用的 FILE 操作，又有&lt;strong&gt;哪一些 CGI&lt;/strong&gt; 可以作為入口點，才能串出我們的攻擊鏈！我們首先對使用到 POST file 的相關函式做研究，並選定了目標 &lt;code class=&quot;highlighter-rouge&quot;&gt;MCGI_VarClear()&lt;/code&gt;。&lt;br /&gt;
+&lt;code class=&quot;highlighter-rouge&quot;&gt;MCGI_VarClear()&lt;/code&gt; 在許多用到 FILE 的 CGI 中有被呼叫，它用於在程式結束前將 &lt;code class=&quot;highlighter-rouge&quot;&gt;g_stCGIEnv&lt;/code&gt; 清空，包括將動態配置的記憶體 &lt;code class=&quot;highlighter-rouge&quot;&gt;free()&lt;/code&gt; 掉，以及將所有 FILE 關閉，也就是呼叫 &lt;code class=&quot;highlighter-rouge&quot;&gt;fclose()&lt;/code&gt;，也意味著是可以通過 vtable 被劫持的！我們可以使用這個越界寫入漏洞蓋掉 &lt;code class=&quot;highlighter-rouge&quot;&gt;file_vec&lt;/code&gt;，而指向的內容就是 HTTP request 的參數，便可以偽造為 POST files！像是下面這個結構：&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們的最終目標就是將 FILE* 指向偽造的結構，藉由偽造的 vtable 劫持程式流程！這時候便出現了一個問題，我們需要將 FILE* 這個指標指向一個內容可控的位置，但是其實我們並不知道該指到哪裡去，會有這個問題是起因於 Linux 上的一個防禦機制 - ASLR。&lt;/p&gt;
+
+&lt;h3 id=&quot;address-space-layout-randomization-aslr&quot;&gt;Address Space Layout Randomization (ASLR)&lt;/h3&gt;
+
+&lt;p&gt;ASLR 使得每次程式在執行並載入記憶體時，會隨機載入至不同的記憶體位置，我們可以嘗試使用 &lt;code class=&quot;highlighter-rouge&quot;&gt;cat /proc/self/maps&lt;/code&gt; 觀察每一次執行時的記憶體位置是否相同：&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/8.png&quot; alt=&quot;&quot; /&gt;&lt;br /&gt;
+ASLR 在大部分的環境中都是預設開啟的，因此在撰寫 exploit 時，常遇到可以偽造指標，卻不知道該指到哪裡的窘境。&lt;br /&gt;
+而這個機制在 CGI 的架構下會造成更大的阻礙，一般的伺服器的攻擊流程可能是這樣：&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/9.png&quot; alt=&quot;&quot; /&gt;&lt;br /&gt;
+可以在一個連線當中 leak address 並用來做進一步的攻擊，但在 CGI 架構中卻是這樣：&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/10.png&quot; alt=&quot;&quot; /&gt;&lt;br /&gt;
+在這個情況下，leak 得到的 address 是無法在後續攻擊中使用的！因為 CGI 執行完就結束了，下一個 request 又是全新的 CGI！&lt;br /&gt;
+為了應對這個問題，我們最後寫了兩個 exploit，攻擊的手法根據 CGI binary 而有不同。&lt;/p&gt;
+
+&lt;h3 id=&quot;post-auth-rce---cgi-binmsg_read&quot;&gt;Post-Auth RCE - &lt;code class=&quot;highlighter-rouge&quot;&gt;/cgi-bin/msg_read&lt;/code&gt;&lt;/h3&gt;
+&lt;p&gt;第一個 exploit 的入口點是一個需要登入的頁面，這一隻程式較大、功能也較多。在這一個 exploit 中，我們使用了 heap spray 的手法來克服 ASLR，也就是在 heap 中填入大量重複的物件，如此一來我們就有很高的機率可以&lt;strong&gt;猜&lt;/strong&gt;到它的位置。&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/11.png&quot; alt=&quot;&quot; /&gt;&lt;br /&gt;
+而 spray 的內容就是大量偽造好的 FILE 結構，包含偽造的 vtable。從這隻 binary 中，我們找到了一個十分實用的 &lt;strong&gt;gadget&lt;/strong&gt;，也就是小程式片段：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;xchg eax, esp; ret
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;這個 gadget 的作用在於，我們可以&lt;strong&gt;改變 stack 的位置&lt;/strong&gt;，而剛好此時的 &lt;code class=&quot;highlighter-rouge&quot;&gt;eax&lt;/code&gt; 指向內容是可控的，因此整個 stack 的內容都可以偽造，也就是說我們可以使用 ROP(Return-oriented programming) 來做利用！於是我們在偽造的 vtable 中設置了 stack 搬移的 gadget 以及後續利用的 ROP 攻擊鏈，進行 ROP 攻擊！&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們可以做 ROP，也就可以拿 shell 了對吧！你以為是這樣嗎？不，其實還有一個大問題，同樣導因於前面提到的防禦機制 ASLR – 我們沒有 system 的位置！這隻 binary 本身提供的 gadget 並不足以開啟一個 shell，因此我們希望可以直接利用 libc 當中的 system 來達成目的，但正如前面所提到的，記憶體位置每次載入都是隨機化的，我們並不知道 system 的確切位置！&lt;br /&gt;
+經過我們仔細的觀察這支程式以後，我們發現了一件非常特別的事，這隻程式理論上是有打開 NX，也就是可寫段不可執行的保護機制&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/13.png&quot; alt=&quot;&quot; /&gt;&lt;br /&gt;
+但是實際執行的時候，stack 的執行權限卻會被打開！&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/14.png&quot; alt=&quot;&quot; /&gt;&lt;br /&gt;
+不論原因為何，這個設置對駭客來說是非常方便的，我們可以利用這個可執行段，將 shellcode 放上去執行，就可以成功得到 shell，達成 RCE！&lt;/p&gt;
+
+&lt;p&gt;然而，這個攻擊是需要登入的，對於追求完美的 DEVCORE 研究組來說，並不足夠！因此我們更進一步的研究了其它攻擊路徑！&lt;/p&gt;
+
+&lt;h3 id=&quot;pre-auth-rce---cgi-bincgi_api&quot;&gt;Pre-Auth RCE - &lt;code class=&quot;highlighter-rouge&quot;&gt;/cgi-bin/cgi_api&lt;/code&gt;&lt;/h3&gt;
+&lt;p&gt;在搜索了所有 CGI 入口點以後，我們找到了一個不需要登入，同時又會呼叫 &lt;code class=&quot;highlighter-rouge&quot;&gt;MCGI_VarClear()&lt;/code&gt; 的 CGI – &lt;code class=&quot;highlighter-rouge&quot;&gt;/cgi-bin/cgi_api&lt;/code&gt;。一如其名，它就是一隻呼叫 API 的接口，因此程式本身非常的小，幾乎是呼叫完 library 就結束了，也因此不再有 stack pivot 的 gadget 可以利用。&lt;br /&gt;
+這時，由於我們已經得知 stack 是可執行的，因此其實我們是可以跳過 ROP 這個步驟，直接將 shellcode 放置在 stack 上的，這裡利用到一個 CGI 的特性 – HTTP 的相關變數會放在環境變數中，像是下列這些常見變數：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;HTTP_HOST&lt;/li&gt;
+  &lt;li&gt;REQUEST_METHOD&lt;/li&gt;
+  &lt;li&gt;QUERY_STRING&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;而環境變數事實上就是被放置在 stack 的最末端，也就是可執行段的位置，因此我們只要偽造 vtable 直接呼叫 shellcode 就可以了！&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20191223/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;當然這時候同樣出現了一個問題：我們仍舊沒有 stack 的記憶體位置。這個時候有些人可能會陷入一個迷思，覺得攻擊就是要一次到位，像個狙擊手一樣一擊必殺，但實際上可能是這樣拿機關槍把敵人炸飛：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20191223/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;換個角度思考，這隻 binary 是 32 bits 的，因此這個位置有 1.5bytes 是隨機的，總共有 16&lt;sup&gt;3&lt;/sup&gt; 個可能的組合，所以其實平均只要 4096 次請求就可以撞到一次！這對於現在的電腦、網路速度來說其實也就是幾分鐘之間的事情，因此直接做暴力破解也是可行的！於是我們最終的 exploit 流程就是：&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;發送 POST 請求至 &lt;code class=&quot;highlighter-rouge&quot;&gt;cgi_api&lt;/code&gt;
+    &lt;ul&gt;
+      &lt;li&gt;QUERY_STRING 中放入 shellcode&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;觸發越界寫入，覆蓋 &lt;code class=&quot;highlighter-rouge&quot;&gt;file_vec&lt;/code&gt;
+    &lt;ul&gt;
+      &lt;li&gt;在越界的參數準備偽造的 FILE &amp;amp; vtable&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;cgi_api&lt;/code&gt; 結束前呼叫 &lt;code class=&quot;highlighter-rouge&quot;&gt;MCGI_VarClear&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;跳至 vtable 上的 shellcode 位置，建立 reverse shell&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;最後我們成功寫出了不用認證的 RCE 攻擊鏈，並且這個 exploit 是不會因為 binary 的版本不同而受影響的！而在實際遇到的案例中也證明了這個 exploit 的可行性，我們曾在一次的演練當中，藉由 Mail2000 的這個 1day 作為突破口，成功洩漏目標的 VPN 資料，進一步往內網滲透！&lt;/p&gt;
+
+&lt;h2 id=&quot;漏洞修復&quot;&gt;漏洞修復&lt;/h2&gt;
+
+&lt;p&gt;此漏洞已在 2018/05/08 發布的 Mail2000 V7 Patch 050 版本中完成修復。Patch 編號為 OF-ISAC-18-002、OF-ISAC-18-003。&lt;/p&gt;
+
+&lt;h2 id=&quot;後記&quot;&gt;後記&lt;/h2&gt;
+
+&lt;p&gt;最後想來談談對於這些漏洞，廠商該用什麼樣的心態去面對。作為一個提供產品的廠商，Openfind 在這一次的漏洞處理中有幾個關鍵值得學習：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;心態開放
+    &lt;ul&gt;
+      &lt;li&gt;主動提供測試環境&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;積極修復漏洞
+    &lt;ul&gt;
+      &lt;li&gt;面對漏洞以積極正向的態度，迅速處理&lt;/li&gt;
+      &lt;li&gt;修復完畢後，與提報者合作驗證&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;重視客戶安全
+    &lt;ul&gt;
+      &lt;li&gt;發布重大更新並主動通報客戶、協助更新&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;其實產品有漏洞是很正常也很難避免的事，而我們研究組是作為一個協助者的角色，期望能藉由回報漏洞幫助企業，提高資安意識並增進台灣的資安水平！希望廠商們也能以正向的態度來面對漏洞，而不是閃躲逃避，這樣只會令用戶們陷入更大的資安風險當中！&lt;/p&gt;
+
+&lt;p&gt;而對於使用各項設備的用戶，也應當掌握好屬於自己的資產，防火牆、伺服器等產品並不是購買來架設好以後就沒有問題了，做好資產盤點、追蹤廠商的安全性更新，才能確保產品不受到 1day 的攻擊！而定期進行滲透測試以及紅隊演練，更是可以幫助企業釐清自己是否有盲點、缺失，進而改善以降低企業資安風險。&lt;/p&gt;
+
+</description>
+                <link>https://devco.re/blog/2019/12/23/how-binary-dog-survives-in-web-world/</link>
+                <guid>https://devco.re/blog/2019/12/23/how-binary-dog-survives-in-web-world</guid>
+                <pubDate>Mon, 23 Dec 2019 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>你用它上網，我用它進你內網! 中華電信數據機遠端代碼執行漏洞</title>

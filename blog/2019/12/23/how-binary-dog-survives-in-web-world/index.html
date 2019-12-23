@@ -1,0 +1,480 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>飛鴿傳書 - 紅隊演練中的數位擄鴿 | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <meta name="description" property="og:description" content="利用 binary 的手法從 WEB 介面取得 Mail2000 RCE" />
+    <meta name="keywords" content="DEVCORE CONF, CVE, RCE, Openfind Mail2000" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="飛鴿傳書 - 紅隊演練中的數位擄鴿 | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2019/12/23/how-binary-dog-survives-in-web-world/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20191223/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="飛鴿傳書 - 紅隊演練中的數位擄鴿 | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="利用 binary 的手法從 WEB 介面取得 Mail2000 RCE">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20191223/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2019/12/23/how-binary-dog-survives-in-web-world/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+  </head>
+  <body>
+    <div class="page">
+      <div class="container--wrapper">
+        <div class="topbar">
+          <div class="topbar__brand">
+            <a href="/">
+                <div class="logo">
+                  DEVCORE 戴夫寇爾
+                </div></a>
+            <p class="slogan">
+              我們提供<a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務
+            </p>
+          </div>
+          <div class="drawer" id="drawer">
+            <div class="drawer__container">
+              <nav class="main-menu">
+                <div class="hidden">
+                  主選單
+                </div>
+                <a href="/services/penetration-test" class="main-menu__link mobile-only">滲透測試</a>
+                <a href="/services/red-team" class="main-menu__link mobile-only">紅隊演練</a>
+                <a href="/services/security-consulting" class="main-menu__link mobile-only">資安顧問</a>
+                <a href="/services/security-training" class="main-menu__link mobile-only">教育訓練</a>
+                <a href="/about/" class="main-menu__link">駭客思維</a><a href="/blog/" class="main-menu__link">最新訊息</a><a href="/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">搜尋</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
+              </nav>
+              <a href="/contact/" class="drawer__contact button--dense">聯絡我們</a>
+              <nav class="lang-menu">
+                <div class="lang-menu__label">
+                  語言:
+                </div>
+                <a href="/" class="lang-menu__link">中文</a>
+                <a href="/en/" class="lang-menu__link">English</a>
+              </nav>
+            </div>
+          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
+            <div class="bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </button>
+        </div>
+      </div><main role="main">
+
+
+          <div class="container--wrapper">
+            <div class="container">
+              <section class="blog-header">
+                <small class="blog-header__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+                <img src="https://devco.re/assets/img/blog/20191223/cover.png" class="blog-header__image" alt="飛鴿傳書 - 紅隊演練中的數位擄鴿" />
+                <h1 class="blog-header__title">
+                  飛鴿傳書 - 紅隊演練中的數位擄鴿
+                </h1>
+                <div class="blog-header__tags">
+                  
+                  <a href="/blog/tag/DEVCORE CONF/" class="blog-header__tag">DEVCORE CONF</a><a href="/blog/tag/CVE/" class="blog-header__tag">CVE</a><a href="/blog/tag/RCE/" class="blog-header__tag">RCE</a><a href="/blog/tag/Mail/" class="blog-header__tag">Mail</a>
+                </div>
+          
+          
+                <p class="blog-header__info">
+                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/meh.jpg)"></span> <a href="/blog/author/meh" class="author-name">Meh</a> <time class="date">on 2019-12-23 </time>
+                </p>
+          
+              </section>
+              <article class="article">
+          <p>郵件系統作為大部分企業主要的資訊交換方式，在戰略上佔有了舉足輕重的地位。掌控了郵件伺服器不僅可以竊聽郵件的內容，甚至許多重要文件都可以在郵件系統中找到，使得駭客能夠更進一步的滲透。本篇文章將介紹研究組在 Openfind Mail2000 這套軟體上發現的記憶體漏洞，以及利用這個漏洞的攻擊手法。<br />
+<strong>此漏洞為 2018 年時發現，當時已通報 Openfind 並且迅速被修補，同時也已協助相關用戶進行更新。</strong></p>
+
+<h2 id="openfind-mail2000">Openfind Mail2000</h2>
+<p>Mail2000 是一套由台灣廠商 Openfind 所開發，簡單易用的電子郵件系統，被廣泛使用於台灣的公家機關、教育機構，如台北市教育局、中科院，以及臺灣科技大學都有使用 Mail2000 作為主要的郵件伺服器。常見的入口介面如下：<br />
+<img src="/assets/img/blog/20191223/1.png" alt="" /></p>
+
+<p>這次的漏洞，便是從這個 Web 介面，利用 Binary 的手法，攻陷整台伺服器！</p>
+
+<h2 id="伺服器架構">伺服器架構</h2>
+<p>Mail2000 提供了 Web 介面供管理員以及使用者操作，也就是所謂的 Webmail，而此處 Openfind 使用了 CGI (Common Gateway Interface) 的技術來實作。大多數 Web 伺服器實現 CGI 的方式如圖：<br />
+<img src="/assets/img/blog/20191223/2.png" alt="" /><br />
+首先由 httpd 接受客戶端的請求後，根據對應的 CGI 路徑，執行相對應的 CGI 檔案。而大多數的開發者會根據需求，將常見的共用 function 撰寫成 library，供 CGI 呼叫。<br />
+往底層來看，其實可以發現，雖然稱為 Web 伺服器，仍有許多元件是建構於 binary 之上的！例如 httpd，為了效能，多是由 C/C++ 所撰寫，而其它像是 library、擴充的 module、各頁面的 CGI 也常是如此。因此，binary 相關的漏洞，便是我們這次的攻擊目標！</p>
+
+<h2 id="漏洞">漏洞</h2>
+
+<p>這個漏洞位於 Openfind 實作的 library <code class="highlighter-rouge">libm2kc</code> 中，此函式庫包含了各種 CGI 通用函式，如參數解析及檔案處理等等，而這個漏洞就發生在參數解析的部分。由於參數處理是很底層且基本的功能，因此影響的範圍非常的大，就連 Openfind 的其它產品也同樣受影響！<br />
+這個漏洞的觸發條件如下：</p>
+<ul>
+  <li>攻擊者使用 multipart 形式發送 HTTP POST 請求</li>
+  <li>POST 傳送的資料內容超過 200 項</li>
+</ul>
+
+<p>multipart 是 HTTP 協定中，用來處理多項檔案傳輸時的一種格式，舉例如下：</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Content-Type: multipart/form-data; boundary=AaB03x   
+
+ --AaB03x 
+Content-Disposition: form-data; name="files"; filename="file1.txt" 
+Content-Type: text/plain 
+
+ ... contents of file1.txt ...
+ --AaB03x--
+</code></pre></div></div>
+
+<p>而在 libm2kc 中，使用了陣列來儲存參數：</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">g_stCGIEnv</span><span class="p">.</span><span class="n">param_cnt</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="k">while</span><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="n">next_param</span><span class="p">())</span>
+<span class="p">{</span>
+  <span class="n">g_stCGIEnv</span><span class="p">.</span><span class="n">param</span><span class="p">[</span><span class="n">param_cnt</span><span class="p">]</span> <span class="o">=</span> <span class="n">p</span><span class="p">;</span>
+  <span class="n">g_stCGIEnv</span><span class="p">.</span><span class="n">param_cnt</span><span class="o">++</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+<p>這個陣列為全域變數 g_stCGIEnv 中的 param，在存入 param 陣列時，並沒有檢查是否已超過宣告的陣列大小，就造成了越界寫入。<br />
+<img src="/assets/img/blog/20191223/3.png" alt="" /></p>
+
+<p>需要注意的是，param 陣列所儲存的結構為指向字串位置的指標，而非字串本身</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">param</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">key</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">value</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">flag</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+<p>因此當觸發越界寫入時，寫入記憶體的值也是一個個指向字串的指標，而被指向的字串內容則是造成溢出的參數。<br />
+<img src="/assets/img/blog/20191223/4.png" alt="" /></p>
+
+<h2 id="漏洞利用">漏洞利用</h2>
+
+<p>要利用越界寫入的漏洞，就要先了解利用這個溢出可以做到什麼，發生溢出的全域變數結構如下：</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>00000000 CGIEnv          struc ; (sizeof=0x6990, mappedto_95)
+00000000 buf             dd ?                    ; offset
+00000004 length          dd ?
+00000008 field_8         dd 6144 dup(?)          ; offset
+00006008 param_arr       param 200 dup(?)
+00006968 file_vec        dd ?                    ; offset
+0000696C vec_len         dd ?
+00006970 vec_cur_len     dd ?
+00006974 arg_cnt         dd ?
+00006978 field_6978      dd ?
+0000697C errcode         dd ?
+00006980 method          dd ?
+00006984 is_multipart    dd ?
+00006988 read_func       dd ?
+0000698C field_698C      dd ?
+00006990 CGIEnv          ends
+</code></pre></div></div>
+<p>溢出的陣列為其中的<code class="highlighter-rouge">param_arr</code>，因此在其之後的變數皆可能被覆寫。包括<code class="highlighter-rouge">post_files</code>、<code class="highlighter-rouge">vec_len</code>、<code class="highlighter-rouge">vec_cur_len</code>、<code class="highlighter-rouge">arg_cnt</code> … 等等。其中最吸引我注意的是<code class="highlighter-rouge">file_vec</code>這個變數，這是一個用來管理 POST 上傳檔案的 <code class="highlighter-rouge">vector</code>，大部分的 <code class="highlighter-rouge">vector</code> 結構像是這樣：<br />
+<img src="/assets/img/blog/20191223/5.png" alt="" /><br />
+使用 <code class="highlighter-rouge">size</code> 記錄陣列的總長度，<code class="highlighter-rouge">end</code> 記錄目前用到哪裡，這樣就可以在容量不夠的時候進行擴充。我們若利用漏洞，使溢出的指標覆蓋 <code class="highlighter-rouge">vector</code> 的指標，就有可能有效的利用！藉由覆蓋這個 <code class="highlighter-rouge">vector</code> 指標，我們可以達到偽造一個 <code class="highlighter-rouge">POST file</code>，及其中所有相關變數的效果，而這個 <code class="highlighter-rouge">POST file</code> 結構裡面就包含了各種常見的檔案相關變數，像是路徑、檔名，和 Linux 中用來管理檔案的 <strong><code class="highlighter-rouge">FILE</code> 結構</strong>，而 <code class="highlighter-rouge">FILE</code> 結構便是這次的攻擊的關鍵！</p>
+
+<h3 id="file-structure-exploit">FILE Structure Exploit</h3>
+
+<p>這次的攻擊使用了 FILE structure exploit 的手法，是近幾年較新發現的攻擊手法，由 angelboy 在 HITCON CMT 公開<a href="https://www.slideshare.net/AngelBoy1/play-with-file-structure-yet-another-binary-exploit-technique" target="_blank" rel="noopener"><sup>[1]</sup></a>：<br />
+<img src="/assets/img/blog/20191223/6.png" alt="" /></p>
+
+<p>FILE 結構是 Linux 中用來做檔案處理的結構，像是 <code class="highlighter-rouge">STDIN</code>、<code class="highlighter-rouge">STDOUT</code>、<code class="highlighter-rouge">STDERR</code>，或者是呼叫 <code class="highlighter-rouge">fopen</code> 後回傳的結構都是 <code class="highlighter-rouge">FILE</code>。而這個結構之所以能成為漏洞利用的突破口主要原因就是它所包含的 <code class="highlighter-rouge">vtable</code> 指標：</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">_IO_FILE_plus</span>
+<span class="p">{</span>
+  <span class="kt">FILE</span> <span class="n">file</span><span class="p">;</span>
+  <span class="k">const</span> <span class="k">struct</span> <span class="n">_IO_jump_t</span> <span class="o">*</span><span class="n">vtable</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+<p><code class="highlighter-rouge">vtable</code> 當中記錄了各種 function pointer，對應各種檔案處理相關的功能：</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">_IO_jump_t</span>
+<span class="p">{</span>
+    <span class="n">JUMP_FIELD</span><span class="p">(</span><span class="kt">size_t</span><span class="p">,</span> <span class="n">__dummy</span><span class="p">);</span>
+    <span class="n">JUMP_FIELD</span><span class="p">(</span><span class="kt">size_t</span><span class="p">,</span> <span class="n">__dummy2</span><span class="p">);</span>
+    <span class="n">JUMP_FIELD</span><span class="p">(</span><span class="n">_IO_finish_t</span><span class="p">,</span> <span class="n">__finish</span><span class="p">);</span>
+    <span class="cm">/* ... */</span>
+    <span class="n">JUMP_FIELD</span><span class="p">(</span><span class="n">_IO_read_t</span><span class="p">,</span> <span class="n">__read</span><span class="p">);</span>
+    <span class="n">JUMP_FIELD</span><span class="p">(</span><span class="n">_IO_write_t</span><span class="p">,</span> <span class="n">__write</span><span class="p">);</span>
+    <span class="n">JUMP_FIELD</span><span class="p">(</span><span class="n">_IO_seek_t</span><span class="p">,</span> <span class="n">__seek</span><span class="p">);</span>
+    <span class="n">JUMP_FIELD</span><span class="p">(</span><span class="n">_IO_close_t</span><span class="p">,</span> <span class="n">__close</span><span class="p">);</span>
+    <span class="cm">/* ... */</span>
+<span class="p">};</span>
+</code></pre></div></div>
+<p>因此如果我們可以篡改、偽造這個 <code class="highlighter-rouge">vtable</code> 的話，就可以在程式做檔案處理的時候，劫持程式流程！我們可以以此訂出以下的攻擊步驟：</p>
+
+<ol>
+  <li>建立連線，呼叫 CGI</li>
+  <li>使用大量參數，覆寫 vector 指標</li>
+  <li>偽造 POST file 當中的 FILE*，指向一塊偽造的 FILE 結構</li>
+  <li>在 CGI 流程中呼叫 FILE 相關的操作
+    <ul>
+      <li>fread, fwrite, fclose, …</li>
+    </ul>
+  </li>
+  <li>劫持程式流程</li>
+</ol>
+
+<p>我們現在已經知道終點是<strong>呼叫一個 FILE 操作</strong>，那麼就可以開始往回找<strong>哪個 function</strong> 是 CGI 常用的 FILE 操作，又有<strong>哪一些 CGI</strong> 可以作為入口點，才能串出我們的攻擊鏈！我們首先對使用到 POST file 的相關函式做研究，並選定了目標 <code class="highlighter-rouge">MCGI_VarClear()</code>。<br />
+<code class="highlighter-rouge">MCGI_VarClear()</code> 在許多用到 FILE 的 CGI 中有被呼叫，它用於在程式結束前將 <code class="highlighter-rouge">g_stCGIEnv</code> 清空，包括將動態配置的記憶體 <code class="highlighter-rouge">free()</code> 掉，以及將所有 FILE 關閉，也就是呼叫 <code class="highlighter-rouge">fclose()</code>，也意味著是可以通過 vtable 被劫持的！我們可以使用這個越界寫入漏洞蓋掉 <code class="highlighter-rouge">file_vec</code>，而指向的內容就是 HTTP request 的參數，便可以偽造為 POST files！像是下面這個結構：<br />
+<img src="/assets/img/blog/20191223/7.png" alt="" /></p>
+
+<p>我們的最終目標就是將 FILE* 指向偽造的結構，藉由偽造的 vtable 劫持程式流程！這時候便出現了一個問題，我們需要將 FILE* 這個指標指向一個內容可控的位置，但是其實我們並不知道該指到哪裡去，會有這個問題是起因於 Linux 上的一個防禦機制 - ASLR。</p>
+
+<h3 id="address-space-layout-randomization-aslr">Address Space Layout Randomization (ASLR)</h3>
+
+<p>ASLR 使得每次程式在執行並載入記憶體時，會隨機載入至不同的記憶體位置，我們可以嘗試使用 <code class="highlighter-rouge">cat /proc/self/maps</code> 觀察每一次執行時的記憶體位置是否相同：<br />
+<img src="/assets/img/blog/20191223/8.png" alt="" /><br />
+ASLR 在大部分的環境中都是預設開啟的，因此在撰寫 exploit 時，常遇到可以偽造指標，卻不知道該指到哪裡的窘境。<br />
+而這個機制在 CGI 的架構下會造成更大的阻礙，一般的伺服器的攻擊流程可能是這樣：<br />
+<img src="/assets/img/blog/20191223/9.png" alt="" /><br />
+可以在一個連線當中 leak address 並用來做進一步的攻擊，但在 CGI 架構中卻是這樣：<br />
+<img src="/assets/img/blog/20191223/10.png" alt="" /><br />
+在這個情況下，leak 得到的 address 是無法在後續攻擊中使用的！因為 CGI 執行完就結束了，下一個 request 又是全新的 CGI！<br />
+為了應對這個問題，我們最後寫了兩個 exploit，攻擊的手法根據 CGI binary 而有不同。</p>
+
+<h3 id="post-auth-rce---cgi-binmsg_read">Post-Auth RCE - <code class="highlighter-rouge">/cgi-bin/msg_read</code></h3>
+<p>第一個 exploit 的入口點是一個需要登入的頁面，這一隻程式較大、功能也較多。在這一個 exploit 中，我們使用了 heap spray 的手法來克服 ASLR，也就是在 heap 中填入大量重複的物件，如此一來我們就有很高的機率可以<strong>猜</strong>到它的位置。<br />
+<img src="/assets/img/blog/20191223/11.png" alt="" /><br />
+而 spray 的內容就是大量偽造好的 FILE 結構，包含偽造的 vtable。從這隻 binary 中，我們找到了一個十分實用的 <strong>gadget</strong>，也就是小程式片段：</p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>xchg eax, esp; ret
+</code></pre></div></div>
+<p>這個 gadget 的作用在於，我們可以<strong>改變 stack 的位置</strong>，而剛好此時的 <code class="highlighter-rouge">eax</code> 指向內容是可控的，因此整個 stack 的內容都可以偽造，也就是說我們可以使用 ROP(Return-oriented programming) 來做利用！於是我們在偽造的 vtable 中設置了 stack 搬移的 gadget 以及後續利用的 ROP 攻擊鏈，進行 ROP 攻擊！<br />
+<img src="/assets/img/blog/20191223/12.png" alt="" /></p>
+
+<p>我們可以做 ROP，也就可以拿 shell 了對吧！你以為是這樣嗎？不，其實還有一個大問題，同樣導因於前面提到的防禦機制 ASLR – 我們沒有 system 的位置！這隻 binary 本身提供的 gadget 並不足以開啟一個 shell，因此我們希望可以直接利用 libc 當中的 system 來達成目的，但正如前面所提到的，記憶體位置每次載入都是隨機化的，我們並不知道 system 的確切位置！<br />
+經過我們仔細的觀察這支程式以後，我們發現了一件非常特別的事，這隻程式理論上是有打開 NX，也就是可寫段不可執行的保護機制<br />
+<img src="/assets/img/blog/20191223/13.png" alt="" /><br />
+但是實際執行的時候，stack 的執行權限卻會被打開！<br />
+<img src="/assets/img/blog/20191223/14.png" alt="" /><br />
+不論原因為何，這個設置對駭客來說是非常方便的，我們可以利用這個可執行段，將 shellcode 放上去執行，就可以成功得到 shell，達成 RCE！</p>
+
+<p>然而，這個攻擊是需要登入的，對於追求完美的 DEVCORE 研究組來說，並不足夠！因此我們更進一步的研究了其它攻擊路徑！</p>
+
+<h3 id="pre-auth-rce---cgi-bincgi_api">Pre-Auth RCE - <code class="highlighter-rouge">/cgi-bin/cgi_api</code></h3>
+<p>在搜索了所有 CGI 入口點以後，我們找到了一個不需要登入，同時又會呼叫 <code class="highlighter-rouge">MCGI_VarClear()</code> 的 CGI – <code class="highlighter-rouge">/cgi-bin/cgi_api</code>。一如其名，它就是一隻呼叫 API 的接口，因此程式本身非常的小，幾乎是呼叫完 library 就結束了，也因此不再有 stack pivot 的 gadget 可以利用。<br />
+這時，由於我們已經得知 stack 是可執行的，因此其實我們是可以跳過 ROP 這個步驟，直接將 shellcode 放置在 stack 上的，這裡利用到一個 CGI 的特性 – HTTP 的相關變數會放在環境變數中，像是下列這些常見變數：</p>
+<ul>
+  <li>HTTP_HOST</li>
+  <li>REQUEST_METHOD</li>
+  <li>QUERY_STRING</li>
+</ul>
+
+<p>而環境變數事實上就是被放置在 stack 的最末端，也就是可執行段的位置，因此我們只要偽造 vtable 直接呼叫 shellcode 就可以了！<br />
+<img src="/assets/img/blog/20191223/15.png" alt="" /></p>
+
+<p>當然這時候同樣出現了一個問題：我們仍舊沒有 stack 的記憶體位置。這個時候有些人可能會陷入一個迷思，覺得攻擊就是要一次到位，像個狙擊手一樣一擊必殺，但實際上可能是這樣拿機關槍把敵人炸飛：</p>
+
+<p><img src="/assets/img/blog/20191223/16.png" alt="" /></p>
+
+<p>換個角度思考，這隻 binary 是 32 bits 的，因此這個位置有 1.5bytes 是隨機的，總共有 16<sup>3</sup> 個可能的組合，所以其實平均只要 4096 次請求就可以撞到一次！這對於現在的電腦、網路速度來說其實也就是幾分鐘之間的事情，因此直接做暴力破解也是可行的！於是我們最終的 exploit 流程就是：</p>
+<ol>
+  <li>發送 POST 請求至 <code class="highlighter-rouge">cgi_api</code>
+    <ul>
+      <li>QUERY_STRING 中放入 shellcode</li>
+    </ul>
+  </li>
+  <li>觸發越界寫入，覆蓋 <code class="highlighter-rouge">file_vec</code>
+    <ul>
+      <li>在越界的參數準備偽造的 FILE &amp; vtable</li>
+    </ul>
+  </li>
+  <li><code class="highlighter-rouge">cgi_api</code> 結束前呼叫 <code class="highlighter-rouge">MCGI_VarClear</code></li>
+  <li>跳至 vtable 上的 shellcode 位置，建立 reverse shell</li>
+</ol>
+
+<p>最後我們成功寫出了不用認證的 RCE 攻擊鏈，並且這個 exploit 是不會因為 binary 的版本不同而受影響的！而在實際遇到的案例中也證明了這個 exploit 的可行性，我們曾在一次的演練當中，藉由 Mail2000 的這個 1day 作為突破口，成功洩漏目標的 VPN 資料，進一步往內網滲透！</p>
+
+<h2 id="漏洞修復">漏洞修復</h2>
+
+<p>此漏洞已在 2018/05/08 發布的 Mail2000 V7 Patch 050 版本中完成修復。Patch 編號為 OF-ISAC-18-002、OF-ISAC-18-003。</p>
+
+<h2 id="後記">後記</h2>
+
+<p>最後想來談談對於這些漏洞，廠商該用什麼樣的心態去面對。作為一個提供產品的廠商，Openfind 在這一次的漏洞處理中有幾個關鍵值得學習：</p>
+<ul>
+  <li>心態開放
+    <ul>
+      <li>主動提供測試環境</li>
+    </ul>
+  </li>
+  <li>積極修復漏洞
+    <ul>
+      <li>面對漏洞以積極正向的態度，迅速處理</li>
+      <li>修復完畢後，與提報者合作驗證</li>
+    </ul>
+  </li>
+  <li>重視客戶安全
+    <ul>
+      <li>發布重大更新並主動通報客戶、協助更新</li>
+    </ul>
+  </li>
+</ul>
+
+<p>其實產品有漏洞是很正常也很難避免的事，而我們研究組是作為一個協助者的角色，期望能藉由回報漏洞幫助企業，提高資安意識並增進台灣的資安水平！希望廠商們也能以正向的態度來面對漏洞，而不是閃躲逃避，這樣只會令用戶們陷入更大的資安風險當中！</p>
+
+<p>而對於使用各項設備的用戶，也應當掌握好屬於自己的資產，防火牆、伺服器等產品並不是購買來架設好以後就沒有問題了，做好資產盤點、追蹤廠商的安全性更新，才能確保產品不受到 1day 的攻擊！而定期進行滲透測試以及紅隊演練，更是可以幫助企業釐清自己是否有盲點、缺失，進而改善以降低企業資安風險。</p>
+
+
+              </article>
+              <p class="sns-widgets">
+                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
+              </p>
+          
+              <div class="heading--side-lined">
+                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/meh.jpg)"></span> <a href="/blog/author/meh" class="blog-author-name">Meh</a> 
+              </div>
+              <p class="blog-author-info">
+                I am a pwner.
+              </p>
+          
+              <div class="heading--side-lined">
+                讀者留言
+              </div>
+              <div class="blog-comments">
+                
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+              </div>
+            </div>
+          </div>
+
+
+
+
+
+
+</main>
+      <div class="container--wrapper">
+
+        <div class="relative-posts">
+          <div class="heading--side-lined container">
+            最新消息
+          </div>
+          <div class="relative-posts__cells">
+  
+            <section class="card">
+              <a href="/blog/2019/12/23/how-binary-dog-survives-in-web-world/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20191223/cover.png)"></div>
+                <h3 class="card__title">
+                  飛鴿傳書 - 紅隊演練中的數位擄鴿
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/DEVCORE CONF/" class="card__tag">DEVCORE CONF</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/Mail/" class="card__tag">Mail</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2019/11/11/HiNet-GPON-Modem-RCE/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20191111/cover.png)"></div>
+                <h3 class="card__title">
+                  你用它上網，我用它進你內網! 中華電信數據機遠端代碼執行漏洞
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/DEVCORE CONF/" class="card__tag">DEVCORE CONF</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2019/10/24/evolution-of-DEVCORE-red-team-and-the-next/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20191024/cover.png)"></div>
+                <h3 class="card__title">
+                  DEVCORE 紅隊的進化，與下一步
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/DEVCORE CONF/" class="card__tag">DEVCORE CONF</a><a href="/blog/tag/Strategy/" class="card__tag">Strategy</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
+            </section>
+  
+          </div>
+        </div>
+
+
+        <div class="contact-section container">
+          <h2 class="contact-section__title">
+            用最真實的攻擊，驗證企業的防禦
+          </h2>
+          <a href="/contact/" class="home-contact__button button--dense">聯絡我們</a>
+        </div>
+
+        <footer class="main-footer">
+          <div class="main-footer__about">
+            戴夫寇爾提供<br class="mobile-only" /><a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務<br />在<a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a>或<a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>上追蹤我們的<a href="/blog/" class="link">最新訊息</a><br />瞭解更多戴夫寇爾的<a href="/about/" class="link">駭客思維</a>
+          </div>
+          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
+                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
+                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
+          </div>
+          <address class="main-footer__address">
+            <ul class="list--unstyled">
+              <li>
+                地址 10487 台北市中山區復興北路 168 號 10 樓
+              </li>
+              <li>
+                Email contact@devco.re
+              </li>
+              <li>
+                電話 02-2718-0156
+              </li>
+              <li>
+                統編 53955237
+              </li>
+            </ul>
+          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2019 DEVCORE 戴夫寇爾</small>
+        </footer>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
+
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+
+  </body>
+</html>
+
+
+
+

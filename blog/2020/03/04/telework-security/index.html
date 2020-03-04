@@ -1,0 +1,393 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>遠距工作的資安注意事項 | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <meta name="description" property="og:description" content="近期因新型冠狀病毒影響，不少企業開放同仁遠距工作 (Telework)、在家上班 (Work from home, WFH)。如果沒有準備周全就貿然全面開放，恐怕會遭遇尚未考慮到的資安議題。這篇文章提供一個簡單的指引，到底遠端在家上班有哪些注意事項？" />
+    <meta name="keywords" content="Defense, VPN" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="遠距工作的資安注意事項 | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2020/03/04/telework-security/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20200304/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="遠距工作的資安注意事項 | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="近期因新型冠狀病毒影響，不少企業開放同仁遠距工作 (Telework)、在家上班 (Work from home, WFH)。如果沒有準備周全就貿然全面開放，恐怕會遭遇尚未考慮到的資安議題。這篇文章提供一個簡單的指引，到底遠端在家上班有哪些注意事項？">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20200304/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2020/03/04/telework-security/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+  </head>
+  <body>
+    <div class="page">
+      <div class="container--wrapper">
+        <div class="topbar">
+          <div class="topbar__brand">
+            <a href="/">
+                <div class="logo">
+                  DEVCORE 戴夫寇爾
+                </div></a>
+            <p class="slogan">
+              我們提供<a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務
+            </p>
+          </div>
+          <div class="drawer" id="drawer">
+            <div class="drawer__container">
+              <nav class="main-menu">
+                <div class="hidden">
+                  主選單
+                </div>
+                <a href="/services/penetration-test" class="main-menu__link mobile-only">滲透測試</a>
+                <a href="/services/red-team" class="main-menu__link mobile-only">紅隊演練</a>
+                <a href="/services/security-consulting" class="main-menu__link mobile-only">資安顧問</a>
+                <a href="/services/security-training" class="main-menu__link mobile-only">教育訓練</a>
+                <a href="/about/" class="main-menu__link">駭客思維</a><a href="/blog/" class="main-menu__link">最新訊息</a><a href="/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">搜尋</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
+              </nav>
+              <a href="/contact/" class="drawer__contact button--dense">聯絡我們</a>
+              <nav class="lang-menu">
+                <div class="lang-menu__label">
+                  語言:
+                </div>
+                <a href="/" class="lang-menu__link">中文</a>
+                <a href="/en/" class="lang-menu__link">English</a>
+              </nav>
+            </div>
+          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
+            <div class="bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </button>
+        </div>
+      </div><main role="main">
+
+
+          <div class="container--wrapper">
+            <div class="container">
+              <section class="blog-header">
+                <small class="blog-header__category"><a href="/blog/category/科普文章/">科普文章</a></small>
+                <img src="https://devco.re/assets/img/blog/20200304/cover.png" class="blog-header__image" alt="遠距工作的資安注意事項" />
+                <h1 class="blog-header__title">
+                  遠距工作的資安注意事項
+                </h1>
+                <div class="blog-header__tags">
+                  
+                  <a href="/blog/tag/Defense/" class="blog-header__tag">Defense</a><a href="/blog/tag/VPN/" class="blog-header__tag">VPN</a>
+                </div>
+          
+          
+                <p class="blog-header__info">
+                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/allenown.jpg)"></span> <a href="/blog/author/allenown" class="author-name">Allen Own</a> <time class="date">on 2020-03-04 </time>
+                </p>
+          
+              </section>
+              <article class="article">
+          
+<p>近期因新型冠狀病毒（COVID-19, 武漢肺炎）影響，不少企業開放同仁遠距工作 (Telework)、在家上班 (Work from home, WFH)。在疫情加速時，如果沒有準備周全就貿然全面開放，恐怕會遭遇尚未考慮到的資安議題。這篇文章提供一個簡單的指引，到底遠端在家上班有哪些注意事項？我們會從公司管理、使用者兩個面向來討論。</p>
+
+<p>如果你只想看重點，請跳到最後一段 TL;DR。</p>
+
+<h2 id="攻擊手段">攻擊手段</h2>
+
+<p>我們先來聊聊攻擊的手段。試想以下幾個攻擊情境，這些情境都曾被我們利用在紅隊演練的過程中，同樣也可能是企業的盲點。</p>
+
+<ol>
+  <li>情境一、<strong>VPN 撞庫攻擊</strong>：同仁 A 使用 VPN 連線企業內部網路，但 VPN 帳號使用的是自己慣用的帳號密碼，並且將這組帳號密碼重複使用在外其他非公司的服務上（如 Facebook、Adobe），而這組密碼在幾次外洩事件中早已外洩。攻擊團隊透過鎖定同仁 A，使用這組密碼登入企業內部。而很遺憾的 VPN 在企業內部網路並沒有嚴謹的隔離，因此在內部網路的直接找到內網員工 Portal，取得各種機敏資料。</li>
+  <li>情境二、<strong>VPN 漏洞</strong>：VPN 漏洞已經成為攻擊者的主要攻略目標，公司 B 使用的 VPN 伺服器含有漏洞，攻擊團隊透過漏洞取得 VPN 伺服器的控制權後，從管理後台配置客戶端 logon script，在同仁登入時執行惡意程式，獲得其電腦控制權，並取得公司機密文件。可以參考之前 Orange &amp; Meh 的研究：<a href="https://www.youtube.com/watch?v=v7JUMb70ON4"> https://www.youtube.com/watch?v=v7JUMb70ON4</a></li>
+  <li>情境三、<strong>中間人攻擊</strong>：同仁 C 在家透過 PPTP VPN 工作。不幸的是 C 小孩的電腦中安裝了含有惡意程式的盜版軟體。攻擊者透該電腦腦進行內網中間人攻擊 (MITM)，劫持 C 的流量並破解取得 VPN 帳號密碼，成功進入企業內網。</li>
+</ol>
+
+<p>以上只是幾個比較常見的情境，攻擊團隊的面向非常廣，而企業的防禦卻不容易做到滴水不漏。這也是為什麼我們要撰寫這篇文章，希望能幫助一些企業在遠距工作的時期也能達到基本的安全。</p>
+
+<h2 id="風險有什麼">風險有什麼</h2>
+
+<p>風險指的是發生某個事件對於該主體可能造成的危害。透過前面介紹的攻擊手段要達成危害，對攻擊者來說並不困難，接著我們盤點出一些在企業的資安規範下，因應遠距工作可能大幅增加攻擊者達成機率的因子：</p>
+
+<ul>
+  <li>環境複雜：公司無法管控家中、遠距的工作環境，這些環境也比較複雜危險。一些公司內部的管理監控機制都難以施展，也較難要求同仁在家中私人設備安裝監控機制。</li>
+  <li>公司資料外洩或不當使用：若公司的資料遭到外洩或不當使用，將會有嚴重的損失。</li>
+  <li>設備遺失、遭竊：不管是筆電或者是手機等裝置，遺失或者遭竊時，都會有資料外洩的風險。</li>
+  <li>授權或存取控制不易實作：在短時間內提供大量員工的外部存取，勢必會在「可用性」和「安全性」間做出取捨。</li>
+</ul>
+
+<p>若公司允許同仁使用私人的設備連上公司內部 VPN，這樣的議題就等同 BYOD (Bring Your Own Device)，這些安全性的顧慮有不少文章可以參考。例如 NIST SP800-46 Guide to Enterprise Telework, Remote Access, and Bring Your Own Device (BYOD) Security<a href="https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-46r2.pdf"> https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-46r2.pdf</a></p>
+
+<h2 id="公司面向">公司面向</h2>
+
+<p>接下來我們來看看公司方面在遠距工作上面有哪些資安上面的作為。</p>
+
+<h3 id="工作流程及原則規劃">工作流程及原則規劃</h3>
+
+<ul>
+  <li><strong>工作流程調整</strong>：遠距工作時，每個流程該如何作對應的調整，例如如何在不同地點協同作業、彙整工作資料、確認工作成果及品質等。</li>
+  <li><strong>資料盤點</strong>：哪些資料放在雲端、伺服器、個人電腦，當遠距工作時哪些資料將無法被取用，或該將資料轉移到哪邊。</li>
+  <li><strong>會議流程</strong>：會議時視訊設備、軟體選擇及測試，並注意會議軟體通訊是否有加密。狀況如會議時間延長、同時發言、遠距品質影響等。</li>
+  <li><strong>事件處理團隊及流程</strong>：因遠距工作時發生的資安事件，該由誰負責處理、如何處理、盤點損失。</li>
+  <li><strong>僅知、最小權限原則</strong>：僅知原則 (Need-to-know Basis) 以及最小權限原則 (Principle of Least Privilege, PoLP)，僅給予每個同仁最小限度需要的資料以及權限，避免額外的安全問題。</li>
+</ul>
+
+<h3 id="網路管理">網路管理</h3>
+
+<ul>
+  <li><strong>VPN 帳號申請及盤點</strong>：哪些同仁需要使用 VPN，屬於哪些群組，每個群組的權限及連線範圍皆不同。</li>
+  <li><strong>VPN 帳號權限範圍及內網分區</strong>：VPN 連線進來後，不應存取整個公司內網所有主機，因為 VPN 視同外部連線，風險等級應該更高，更應該做連線的分區管控。</li>
+  <li><strong>監控確認 VPN 流量及行為</strong>：透過內部網路的網路流量監控機制，確認 VPN 使用有無異常行為。</li>
+  <li><strong>只允許白名單設備取得 IP 位址</strong>：已申請的設備才能取得內網 IP 位址，避免可疑設備出現在內部網路。</li>
+  <li><strong>開啟帳號多因子認證</strong>：將雲端服務、VPN、內部網路服務開啟多因子認證。</li>
+  <li>
+    <p><strong>確認 VPN 伺服器是否為新版</strong>：在我們過去的研究發現 VPN 伺服器也會是攻擊的對象，因此密切注意是否有更新或者修補程式。</p>
+
+    <ul>
+      <li>Palo Alto GlobalProtect 資安通報 <a href="https://devco.re/blog/2019/07/17/Palo-Alto-GlobalProtect-advisory/">https://devco.re/blog/2019/07/17/Palo-Alto-GlobalProtect-advisory/</a></li>
+      <li>FortiGate SSL VPN 資安通報 <a href="https://devco.re/blog/2019/08/09/Fortigate-SSL-VPN-advisory/">https://devco.re/blog/2019/08/09/Fortigate-SSL-VPN-advisory/</a></li>
+      <li>Pulse Secure SSL VPN 資安通報 <a href="https://devco.re/blog/2019/08/28/Pulse-Secure-SSL-VPN-advisory/">https://devco.re/blog/2019/08/28/Pulse-Secure-SSL-VPN-advisory/</a></li>
+    </ul>
+  </li>
+</ul>
+
+<p>其中值得特別點出的是 VPN 的設定與開放。近期聽聞到不少公司的管理階層談論到，因應疫情原本不開放 VPN 權限的同仁現在全開放了。而問到 VPN 連線進公司內部網路之後的監控跟阻隔為何，卻較少有企業具備這樣的規劃。內部網路是企業的一大資安戰場，開放 VPN 的同時，必定要思考資安對應的措施。</p>
+
+<h2 id="使用者面向">使用者面向</h2>
+
+<p>公司準備好了，接下來就是使用者的安全性了。除了公司提供的 VPN 線路、架構、機制之外，使用者本身的資安意識、規範、安全性設定也一樣重要。</p>
+
+<h3 id="保密">保密</h3>
+
+<ul>
+  <li><strong>專機專用</strong>：用來存取公司網路或資料的電腦，應嚴格遵守此原則，禁止將該設備作為非公務用途。也應避免非公司人士使用或操作該裝置。</li>
+</ul>
+
+<h3 id="設備相關">設備相關</h3>
+
+<ul>
+  <li><strong>開啟裝置協尋、鎖定、清除功能</strong>：設備若可攜帶移動，設備的遺失對應方案就必須要考慮完整。例如如何尋找裝置、如何鎖定裝置、如何遠端清除已遺失的裝置避免資料外洩。現在主流作業系統多半都會提供這些機制。</li>
+  <li><strong>設備登入密碼</strong>：裝置登入時必須設定密碼，避免外人直接操作。</li>
+  <li><strong>設備全機加密</strong>：設備若遺失遭到分析，全機加密可以降低資料被破解遺失的風險。</li>
+  <li>（選擇性）<strong>MDM (Mobile Device Management)</strong>：若公司有導入 MDM，可以協助以上的管理。</li>
+</ul>
+
+<h3 id="帳號密碼安全">帳號密碼安全</h3>
+
+<ul>
+  <li><strong>使用密碼管理工具並設定「強密碼」</strong>：可以考慮使用密碼管理工具並將密碼設為全隨機產生包含英文、數字、符號的密碼串。</li>
+  <li><strong>不同系統帳號使用不同密碼</strong>：這個在很多次演講中都有提到，建議每個系統皆使用不同密碼，防止撞庫攻擊。</li>
+  <li><strong>帳號開啟 2FA / MFA</strong>：若系統具備 2FA / MFA 機制，務必開啟，為帳號多一層保護。</li>
+</ul>
+
+<h3 id="網路使用">網路使用</h3>
+
+<ul>
+  <li><strong>避免使用公用 Wi-Fi 連接公司網路</strong>：公眾公用網路是相當危險的，恐被側錄或竄改。若必要時可使用手機熱點或透過 VPN 連接網際網路。</li>
+  <li><strong>禁止使用公用電腦登入公司系統</strong>：外面的公用電腦難確保沒有後門、Keylogger 之類的惡意程式，一定要禁止使用公用電腦來登入任何系統。</li>
+  <li><strong>確認連線裝置是否可取得內網 IP 位址</strong>：確認內網 IP 位址是否無誤，是否能夠正常存取公司內部系統。</li>
+  <li><strong>確認連線的對外 IP 位址</strong>：確認連線至網際網路的 IP 位址是否為預期，尤其是資安服務公司，對客戶連線的 IP 位址若有錯誤，可能釀成非常嚴重的損害。</li>
+  <li>（選擇性）<strong>安裝個人電腦防火牆</strong>：個人防火牆可以基本監控有無可疑程式想對外連線。</li>
+  <li>（選擇性）<strong>採用 E2EE 通訊工具</strong>：目前企業都會使用雲端通訊軟體，通訊軟體建議採用有 E2EE (End-to-End Encryption)，如此可以確保公司內的機敏通訊內容只有內部人員才能解密，就連平台商也無法存取。</li>
+  <li>（選擇性）<strong>工作時關閉不必要的連線</strong>（如藍牙等）：部分資安專家表示，建議在工作時將電腦的非必要連線管道全數關閉，如藍牙等，在外部公眾環境或許有心人士可以透過藍牙 exploit 攻擊個人裝置。</li>
+</ul>
+
+<h3 id="資料管理">資料管理</h3>
+
+<ul>
+  <li><strong>只留存在公司設備</strong>：公司的機敏資料、文件等，必須只留存在公司設備中，避免資料外洩以及管理問題。</li>
+  <li><strong>稽核記錄</strong>：記錄機敏資料的存放、修改、擁有人等資訊。</li>
+  <li><strong>重要文件加密</strong>：重要的文件必須加密，且密碼不得存放在同一目錄。</li>
+  <li><strong>信件附件加密</strong>，密碼透過另一管道傳遞：郵件的附件除了要加密之外，密碼必須使用另一管道傳遞。例如當面告知、事前約定、透過 E2EE 加密通道、或者是透過非網路方式給予。</li>
+  <li><strong>備份資料</strong>：機敏資料一定要備份，可以遵循「3-2-1 Backup Strategy」：三份備份、兩種媒體、一個放置異地。</li>
+</ul>
+
+<h3 id="實體安全">實體安全</h3>
+
+<ul>
+  <li><strong>離開電腦時立刻鎖定螢幕</strong>：離開電腦的習慣是馬上進入螢幕保護程式並且鎖定，不少朋友是放著讓他等他自己進入鎖定，但這個時間差有心人士已經可以完成攻擊。</li>
+  <li><strong>禁止插入來路不明的隨身碟或裝置</strong>：社交工程的手法之一，就是讓同仁插入惡意的 USB，甚至有可能摧毀電腦（Bad USB, USB Killer）。</li>
+  <li><strong>注意外人偷窺螢幕或碰觸設備</strong>：若常在外工作處於公共空間，可以考慮採購螢幕防窺片。</li>
+  <li><strong>不放置電腦設備在車上</strong>：雖然台灣治安不錯，但也是不少筆電在車上遭竊，重要資產記得隨身攜帶，或者放置在隱密處。</li>
+  <li><strong>將工作區域關門或鎖上</strong>：若在自己的工作區域，為了爭取更多時間應變突發狀況，建議將工作區域的門關閉或者上鎖。</li>
+</ul>
+
+<h2 id="tldr-防疫同時也別忽視資訊安全">TL;DR 防疫同時也別忽視資訊安全！</h2>
+
+<p>網路的攻防就是一場戰爭，如果不從攻擊者的面向去思考防禦策略，不但無法有效的減緩攻擊，更可能在全世界疫情逐漸失控的當下，讓惡意人士透過這樣的時機攻擊遠距工作的企業。期望我們的經驗分享能夠給企業一些基本的指引，也希望天災人禍能夠儘速消彌。台灣加油！</p>
+
+<ul>
+  <li>開放 VPN 服務前，注意帳號管理以及內網切割隔離，避免透過 VPN 存取內網任意主機。</li>
+  <li>雲端、網路服務務必使用獨一無二長密碼，並開啟 MFA / 2FA 多因子認證。</li>
+  <li>使用雲端服務時務必盤點存取權限，避免文件連結可被任意人存取。</li>
+  <li>注意設備遺失、竊取、社交工程等實體安全議題。</li>
+  <li>網路是危險的，請使用可信賴的網路，並在通訊、傳輸時採用加密方式進行。</li>
+</ul>
+
+
+              </article>
+              <p class="sns-widgets">
+                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
+              </p>
+          
+              <div class="heading--side-lined">
+                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/allenown.jpg)"></span> <a href="/blog/author/allenown" class="blog-author-name">Allen Own</a> 
+              </div>
+              <p class="blog-author-info">
+                翁浩正 (Allen Own)，具備多年駭客技術研究以及網路管理經驗，擔任學術及政府單位專任講師及顧問。專長於網站應用程式安全、滲透測試、伺服器建置及開發、專業教育訓練。
+              </p>
+          
+              <div class="heading--side-lined">
+                讀者留言
+              </div>
+              <div class="blog-comments">
+                
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+              </div>
+            </div>
+          </div>
+
+
+
+
+
+
+</main>
+      <div class="container--wrapper">
+
+        <div class="relative-posts">
+          <div class="heading--side-lined container">
+            最新消息
+          </div>
+          <div class="relative-posts__cells">
+  
+            <section class="card">
+              <a href="/blog/2020/03/04/telework-security/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20200304/cover.png)"></div>
+                <h3 class="card__title">
+                  遠距工作的資安注意事項
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Defense/" class="card__tag">Defense</a><a href="/blog/tag/VPN/" class="card__tag">VPN</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2019/12/23/how-binary-dog-survives-in-web-world/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20191223/cover.png)"></div>
+                <h3 class="card__title">
+                  飛鴿傳書 - 紅隊演練中的數位擄鴿
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/DEVCORE CONF/" class="card__tag">DEVCORE CONF</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/Mail/" class="card__tag">Mail</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2019/11/11/HiNet-GPON-Modem-RCE/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20191111/cover.png)"></div>
+                <h3 class="card__title">
+                  你用它上網，我用它進你內網! 中華電信數據機遠端代碼執行漏洞
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/DEVCORE CONF/" class="card__tag">DEVCORE CONF</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+            </section>
+  
+          </div>
+        </div>
+
+
+        <div class="contact-section container">
+          <h2 class="contact-section__title">
+            用最真實的攻擊，驗證企業的防禦
+          </h2>
+          <a href="/contact/" class="home-contact__button button--dense">聯絡我們</a>
+        </div>
+
+        <footer class="main-footer">
+          <div class="main-footer__about">
+            戴夫寇爾提供<br class="mobile-only" /><a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務<br />在<a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a>或<a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>上追蹤我們的<a href="/blog/" class="link">最新訊息</a><br />瞭解更多戴夫寇爾的<a href="/about/" class="link">駭客思維</a>
+          </div>
+          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
+                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
+                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
+          </div>
+          <address class="main-footer__address">
+            <ul class="list--unstyled">
+              <li>
+                地址 10487 台北市中山區復興北路 168 號 10 樓
+              </li>
+              <li>
+                Email contact@devco.re
+              </li>
+              <li>
+                電話 02-2718-0156
+              </li>
+              <li>
+                統編 53955237
+              </li>
+            </ul>
+          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2020 DEVCORE 戴夫寇爾</small>
+        </footer>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
+
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+
+  </body>
+</html>
+
+
+
+

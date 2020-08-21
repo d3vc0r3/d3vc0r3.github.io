@@ -4,11 +4,62 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Tue, 21 Apr 2020 18:23:22 +0800</lastBuildDate>
-        <pubDate>Tue, 21 Apr 2020 18:23:22 +0800</pubDate>
+        <lastBuildDate>Fri, 21 Aug 2020 13:43:43 +0800</lastBuildDate>
+        <pubDate>Fri, 21 Aug 2020 13:43:43 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>敵人不是勒贖軟體，而是組織型駭客</title>
+                <description>&lt;h2 id=&quot;前言&quot;&gt;前言&lt;/h2&gt;
+
+&lt;p&gt;駭客攻擊事件一直存在於真實世界，只是鮮少被完整公開揭露。今年國內一些重大關鍵基礎設施 (Critical Information Infrastructure Protection，CIIP) 以及國內的跨國企業紛紛發生嚴重的資安事件，我們想簡單的跟大家談談這些事件背後企業真正需要思考及重視的核心問題。&lt;/p&gt;
+
+&lt;h2 id=&quot;企業面對的是組織型駭客而不只是勒贖軟體&quot;&gt;企業面對的是組織型駭客而不只是勒贖軟體&lt;/h2&gt;
+
+&lt;p&gt;不知道是因為勒贖軟體比較吸睛還是什麼緣故，媒體比較喜歡用勒贖軟體作為標題呈現近年企業面臨的重大威脅。實際上，勒贖軟體只是攻擊過程的工具、加密只是勒贖的手段之一，甚至包含竊取機敏資料。因為這些事件我們沒有參與調查或相關的活動，我們僅就已公開揭露的資料來一窺面對這樣的威脅，企業的具體做法有哪些？&lt;/p&gt;
+
+&lt;p&gt;根據法務部調查局在 iThome 2020 資安大會的&lt;a href=&quot;https://www.ithome.com.tw/news/139331&quot;&gt;分享&lt;/a&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;在這起攻擊事件中，駭客首先從 Web 伺服器、員工電腦等途徑，入侵公司系統長期潛伏及探測，而後竊取帳號權限，進入 AD 伺服器，利用凌晨時段竄改群組派送原則（GPO），同時預埋 lc.tmp 惡意程式到內部伺服器中，等到員工上班打開電腦後，電腦立即套用遭竄改的 GPO，依據指令就會自動將勒索軟體載到記憶體中來執行。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;企業在被勒贖軟體加密後，往往第一時間容易直覺想到防毒軟體或端點防護設備為何沒有生效？現實是，如果企業面對的是針對式的攻擊（Advanced Persistent Threat，APT），攻擊者勢必會研究可以繞過企業的防護或監控的方式。所以企業要思考的應該是一個防禦戰線或更為全面的防護策略，而非仰賴單一的資安設備或服務。&lt;/p&gt;
+
+&lt;p&gt;從上述的敘述，我們可以發現幾個問題：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;&lt;strong&gt;Web 伺服器具有可利用的漏洞&lt;/strong&gt;，而這個漏洞可能導致主機被取得權限進行後續的橫向移動。造成這個問題的原因可能包含：
+    &lt;ul&gt;
+      &lt;li&gt;系統從未進行高強度的滲透測試及定期執行弱點掃描&lt;/li&gt;
+      &lt;li&gt;屬於老舊無法修補的系統（使用老舊的框架、程式語言）或是廠商已經不再維護&lt;/li&gt;
+      &lt;li&gt;一次性的活動網站或測試網站，活動或測試結束後未依照程序下線，成為企業防禦破口&lt;/li&gt;
+      &lt;li&gt;不在企業盤點的防護範圍內（如前端未設置 WAF）&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;從員工電腦或是 Web 伺服器可以逐步跳到 AD 伺服器&lt;/strong&gt;，可能存在的問題則包含：
+    &lt;ul&gt;
+      &lt;li&gt;網路間的區隔不嚴謹，例如未依照資料或系統的重要性進行區隔&lt;/li&gt;
+      &lt;li&gt;同網段伺服器間的通訊方式管控不當，沒有開啟或管制重要伺服器的通訊埠或限制來源 IP 位址&lt;/li&gt;
+      &lt;li&gt;系統存在可利用取得權限的弱點&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;利用凌晨時段竄改群組派送原則&lt;/strong&gt;：最後是回應機制未即時（包含人員接獲告警後處理不當），企業對於具有集中管理權限的重要系統，例如 AD Server、資產管理軟體等這類型的主機，除了對特權帳號高強度的管理外（如 OTP），也應該針對「異常帳號登入」、「異常帳號新增到群組」、「正常帳號異常登入時間」、「新增排程或 GPO」等行為發出告警；而各種告警也應該依照資產的重要性訂定不同的 SLA 回應與處理。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;你需要更全面目標導向的方式思考企業資安現況&quot;&gt;你需要更全面、目標導向的方式思考企業資安現況&lt;/h2&gt;
+
+&lt;p&gt;我們在近三年的紅隊演練，以企業對其營運最關鍵的資訊資產作為演練標的，並模擬組織型駭客的攻擊模式，透過外部情搜、取得外部系統權限、橫向移動、持續取得更多內部伺服器權限及提權、破解密碼，最終達到企業指定的關鍵資產執行演練情境。而企業透過高強度且精準的演練過程，除了明確掌握可被入侵的路徑外，更得以檢視上述問題的不足並持續改善。&lt;/p&gt;
+
+&lt;p&gt;我們認為，只要你的企業夠重要（對駭客而言重要，而不是自己覺得重要），組織型的攻擊就不會停歇！企業唯有不斷的找出自己不足之處，持續提升自己的防禦強度才是能真正降低風險的正確作法。&lt;/p&gt;
+
+&lt;p&gt;至於「第三方供應鏈安全」及「如何更完整的制定資安策略」，我們將找時間另外跟大家說明。&lt;/p&gt;
+</description>
+                <link>https://devco.re/blog/2020/08/21/the-enemy-is-not-ransomware-its-nation-state-hackers/</link>
+                <guid>https://devco.re/blog/2020/08/21/the-enemy-is-not-ransomware-its-nation-state-hackers</guid>
+                <pubDate>Fri, 21 Aug 2020 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>從 SQL 到 RCE: 利用 SessionState 反序列化攻擊 ASP.NET 網站應用程式</title>

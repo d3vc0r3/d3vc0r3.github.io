@@ -4,11 +4,565 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Fri, 21 Aug 2020 13:43:43 +0800</lastBuildDate>
-        <pubDate>Fri, 21 Aug 2020 13:43:43 +0800</pubDate>
+        <lastBuildDate>Sat, 12 Sep 2020 16:19:03 +0800</lastBuildDate>
+        <pubDate>Sat, 12 Sep 2020 16:19:03 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>How I Hacked Facebook Again! Unauthenticated RCE on MobileIron MDM</title>
+                <description>&lt;style type=&quot;text/css&quot;&gt;
+    table {
+        display: block;
+        width: 100%;
+        overflow: auto;
+        word-break: normal;
+        word-break: keep-all;
+        font-size: smaller;
+    }
+
+    table th {
+        font-weight: bold
+    }
+
+    table th,
+    table td {
+        padding: 5px 11px;
+        border: 1px solid #ddd;
+    }
+
+    table tr {
+        background-color: #fff;
+        border-top: 1px solid #ccc;
+    }
+
+    table tr:nth-child(2n) {
+        background-color: #f8f8f8;
+    }
+&lt;/style&gt;
+
+&lt;p&gt;&lt;a href=&quot;/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Hi, it’s a long time since my last article. This new post is about my research this March, which talks about how I found vulnerabilities on a leading Mobile Device Management product and bypassed several limitations to achieve unauthenticated RCE. All the vulnerabilities have been reported to the vendor and got fixed in June. After that, we kept monitoring large corporations to track the overall fixing progress and then found that Facebook didn’t keep up with the patch for more than 2 weeks, so we dropped a shell on Facebook and reported to their Bug Bounty program!&lt;/p&gt;
+
+&lt;p&gt;This research is also presented at &lt;a href=&quot;http://hitcon.org/2020&quot;&gt;HITCON 2020&lt;/a&gt;. You can check the slides &lt;a href=&quot;https://hitcon.org/2020/slides/How%20I%20Hacked%20Facebook%20Again!.pdf&quot;&gt;here&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;As a Red Teamer, we are always looking for new paths to infiltrate the corporate network from outside. Just like &lt;a href=&quot;https://www.blackhat.com/us-19/briefings/schedule/#infiltrating-corporate-intranet-like-nsa---pre-auth-rce-on-leading-ssl-vpns-15545&quot;&gt;our research in Black Hat USA last year&lt;/a&gt;, we demonstrated how leading SSL VPNs could be hacked and become your Virtual “Public” Network! SSL VPN is trusted to be secure and considered the only way to your private network. But, what if your trusted appliances are insecure?&lt;/p&gt;
+
+&lt;p&gt;Based on this scenario, we would like to explore new attack surfaces on enterprise security, and we get interested in MDM, so this is the article for that!&lt;/p&gt;
+
+&lt;h2 id=&quot;what-is-mdm&quot;&gt;What is MDM?&lt;/h2&gt;
+
+&lt;p&gt;Mobile Device Management, also known as MDM, is an asset assessment system that makes the employees’ &lt;a href=&quot;https://en.wikipedia.org/wiki/Bring_your_own_device&quot;&gt;BYOD&lt;/a&gt; more manageable for enterprises. It was proposed in 2012 in response to the increasing number of tablets and mobile devices. MDM can guarantee that the devices are running under the corporate policy and in a trusted environment. Enterprise could manage assets, install certificates, deploy applications and even lock/wipe devices remotely to prevent data leakage as well.&lt;/p&gt;
+
+&lt;p&gt;UEM (Unified Endpoint Management) is a newer term relevant to MDM which has a broader definition for managed devices. Following we use MDM to represent similar products!&lt;/p&gt;
+
+&lt;h2 id=&quot;our-target&quot;&gt;Our target&lt;/h2&gt;
+
+&lt;p&gt;MDM, as a centralized system, can manage and control all employees’ devices. It is undoubtedly an ideal asset assessment system for a growing company. Besides, MDM must be reachable publicly to synchronize devices all over the world. A centralized and public-exposing appliance, what could be more appealing to hackers?&lt;/p&gt;
+
+&lt;p&gt;Therefore, we have seen hackers and APT groups abusing MDM these years! Such as phishing victims to make MDM a C&amp;amp;C server of their mobile devices, or even compromising the corporate exposed MDM server to push malicious Trojans to all devices. You can read the report &lt;a href=&quot;https://blogs.cisco.com/security/talos/malicious-mdm-lets-hide-this-app&quot;&gt;Malicious MDM: Let’s Hide This App&lt;/a&gt; by Cisco Talos team and &lt;a href=&quot;https://research.checkpoint.com/2020/mobile-as-attack-vector-using-mdm/&quot;&gt;First seen in the wild - Malware uses Corporate MDM as attack vector&lt;/a&gt; by CheckPoint CPR team for more details!&lt;/p&gt;
+
+&lt;p&gt;From previous cases, we know that MDM is a solid target for hackers, and we would like to do research on it. There are several MDM solutions, even famous companies such as Microsoft, IBM and Apple have their own MDM solution. Which one should we start with?&lt;/p&gt;
+
+&lt;p&gt;We have listed known MDM solutions and scanned corresponding patterns all over the Internet. We found that the most prevalent MDMs are VMware AirWatch and MobileIron!&lt;/p&gt;
+
+&lt;p&gt;So, why did we choose MobileIron as our target? According to their official website, more than 20,000 enterprises chose MobileIron as their MDM solution, and most of our customers are using that as well. We also know Facebook has exposed the MobileIron server &lt;a href=&quot;https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/&quot;&gt;since 2016&lt;/a&gt;. We have analyzed Fortune Global 500 as well, and found more than 15% using and exposing their MobileIron server to the public! Due to above reasons, it became our main target!&lt;/p&gt;
+
+&lt;h2 id=&quot;where-to-start&quot;&gt;Where to Start&lt;/h2&gt;
+
+&lt;p&gt;From &lt;a href=&quot;https://www.cvedetails.com/vulnerability-list/vendor_id-13968/Mobileiron.html&quot;&gt;past vulnerabilities&lt;/a&gt;, we learned there aren’t too many researchers diving into MobileIron. Perhaps the attack vector is still unknown. But we suspect the main reason is that the firmware is too hard to obtain. When researching an appliance, turning a pure BlackBox testing into GrayBox, or WhiteBox testing is vital. We spent lots of time searching for all kinds of information on the Internet, and ended up with an RPM package. This RPM file is supposed to be the developer’s testing package. The file is just sitting on a listable WebRoot and indexed by Google Search.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20200912/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Anyway, we got a file to research. The released date of the file is in early 2018. It seems a little bit old but still better than nothing!&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;P.S. We have informed MobileIron and the sensitive files has been removed now.&lt;/em&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;finding-vulnerabilities&quot;&gt;Finding Vulnerabilities&lt;/h2&gt;
+
+&lt;p&gt;After a painful time solving the dependency hell, we set the testing package up finally. The component is based on Java and exposed three ports:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;443 - the user enrollment interface&lt;/li&gt;
+  &lt;li&gt;8443 - the appliance management interface&lt;/li&gt;
+  &lt;li&gt;9997 - the MobileIron device synchronization protocol (MI Protocol)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;All opened ports are TLS-encrypted. Apache is in the front of the web part and proxies all connections to backend, a Tomcat with Spring MVC inside.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20200912/2_en.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Due to the Spring MVC, it’s hard to find traditional vulnerabilities like SQL Injection or XSS from a single view. Therefore, examining the logic and architecture is our goal this time!&lt;/p&gt;
+
+&lt;p&gt;Talking about the vulnerability, the root cause is straightforward. Tomcat exposed a Web Service that deserializes user input with Hessian format. However, this doesn’t mean we can do everything! The main effort of this article is to solve that, so please see the exploitation below.&lt;/p&gt;
+
+&lt;p&gt;Although we know the Web Service deserializes the user input, we can not trigger it. The endpoint is located on both:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;User enrollment interface - &lt;code class=&quot;highlighter-rouge&quot;&gt;https://mobileiron/mifs/services/&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;Management interface - &lt;code class=&quot;highlighter-rouge&quot;&gt;https://mobileiron:8443/mics/services/&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;We can only touch the deserialization through the management interface because the user interface blocks the Web Service access. It’s a critical hit for us because most enterprises won’t expose their management interface to the Internet, and a management-only vulnerability is not useful to us so that we have to try harder. :(&lt;/p&gt;
+
+&lt;p&gt;Scrutinizing the architecture, we found Apache blocks our access through Rewrite Rules. It looks good, right?&lt;/p&gt;
+
+&lt;div class=&quot;language-apache highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;RewriteRule&lt;/span&gt; ^/mifs/services/(.*)$ https://%{SERVER_NAME}:8443/mifs/services/$1 [R=307,L]
+&lt;span class=&quot;nc&quot;&gt;RewriteRule&lt;/span&gt; ^/mifs/services [F]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;MobileIron relied on Apache Rewrite Rules to block all the access to Web Service. It’s in the front of a reverse-proxy architecture, and the backend is a Java-based web server.&lt;/p&gt;
+
+&lt;p&gt;Have you recalled something?&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;Yes, the &lt;a href=&quot;https://blog.orange.tw/2018/08/how-i-chained-4-bugs-features-into-rce-on-amazon.html&quot;&gt;Breaking Parser Logic&lt;/a&gt;! It’s the reverse proxy attack surface I &lt;a href=&quot;https://github.com/orangetw/My-CTF-Web-Challenges#blackbox&quot;&gt;proposed in 2015&lt;/a&gt;, and presented at &lt;a href=&quot;https://www.blackhat.com/us-18/briefings.html#breaking-parser-logic-take-your-path-normalization-off-and-pop-0days-out&quot;&gt;Black Hat USA 2018&lt;/a&gt;. This technique leverage the inconsistency between the Apache and Tomcat to bypass the ACL control and reaccess the Web Service. BTW, this excellent technique is also applied to the recently &lt;a href=&quot;https://support.f5.com/csp/article/K52145254&quot;&gt;F5 BIG-IP TMUI RCE vulnerability&lt;/a&gt;!&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;https://mobileiron/mifs/.;/services/someService
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;exploiting-vulnerabilities&quot;&gt;Exploiting Vulnerabilities&lt;/h2&gt;
+
+&lt;p&gt;OK, now we have access to the deserialization wherever it’s on enrollment interface or management interface. Let’s go back to exploitations!&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/mbechler&quot;&gt;Moritz Bechler&lt;/a&gt; has an awesome research which summarized the Hessian deserialization vulnerability on his whitepaper, &lt;a href=&quot;https://www.github.com/mbechler/marshalsec/blob/master/marshalsec.pdf&quot;&gt;Java Unmarshaller Security&lt;/a&gt;. From the &lt;a href=&quot;https://github.com/mbechler/marshalsec&quot;&gt;marshalsec&lt;/a&gt; source code, we learn the Hessian deserialization triggers the &lt;code class=&quot;highlighter-rouge&quot;&gt;equals()&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;hashcode()&lt;/code&gt; while reconstructing a &lt;code class=&quot;highlighter-rouge&quot;&gt;HashMap&lt;/code&gt;. It could also trigger the &lt;code class=&quot;highlighter-rouge&quot;&gt;toString()&lt;/code&gt; through the &lt;code class=&quot;highlighter-rouge&quot;&gt;XString&lt;/code&gt;, and the known exploit gadgets so far are:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Apache XBean&lt;/li&gt;
+  &lt;li&gt;Caucho Resin&lt;/li&gt;
+  &lt;li&gt;Spring AOP&lt;/li&gt;
+  &lt;li&gt;ROME EqualsBean/ToStringBean&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;In our environment, we could only trigger the Spring AOP gadget chain and get a JNDI Injection.&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt; &lt;/th&gt;
+      &lt;th&gt;Name&lt;/th&gt;
+      &lt;th&gt;Effect&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;x&lt;/td&gt;
+      &lt;td&gt;Apache XBean&lt;/td&gt;
+      &lt;td&gt;JNDI Injection&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;x&lt;/td&gt;
+      &lt;td&gt;Caucho Resin&lt;/td&gt;
+      &lt;td&gt;JNDI Injection&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;√&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;&lt;strong&gt;Spring AOP&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;&lt;strong&gt;JNDI Injection&lt;/strong&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;x&lt;/td&gt;
+      &lt;td&gt;ROME EqualsBean&lt;/td&gt;
+      &lt;td&gt;RCE&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;Once we have a JNDI Injection, the rest parts of exploitations are easy! We can just leverage &lt;a href=&quot;https://twitter.com/pwntester&quot;&gt;Alvaro Muñoz&lt;/a&gt; and &lt;a href=&quot;https://twitter.com/olekmirosh&quot;&gt;Oleksandr Mirosh&lt;/a&gt;’s work, &lt;a href=&quot;https://www.blackhat.com/us-16/briefings.html#a-journey-from-jndi-ldap-manipulation-to-remote-code-execution-dream-land&quot;&gt;A Journey From JNDI/LDAP to Remote Code Execution Dream Land&lt;/a&gt;, from Black Hat USA 2016 to get the code execution… Is that true?&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20200912/3_en.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;Since &lt;a href=&quot;https://twitter.com/pwntester&quot;&gt;Alvaro Muñoz&lt;/a&gt; and &lt;a href=&quot;https://twitter.com/olekmirosh&quot;&gt;Oleksandr Mirosh&lt;/a&gt; introduced this on Black Hat, we could say that this technique helps countless security researchers and brings Java deserialization vulnerability into a new era. However, Java finally mitigated the last JNDI/LDAP puzzle in &lt;a href=&quot;https://www.oracle.com/java/technologies/javase/8u181-relnotes.html&quot;&gt;October 2018&lt;/a&gt;. After that, all java version higher than 8u181, 7u191, and 6u201 can no longer get code execution through JNDI remote URL-Class loading. Therefore, if we exploit the Hessian deserialization on the latest MobileIron, we must face this problem!&lt;/p&gt;
+
+&lt;p&gt;Java changed the default value of &lt;code class=&quot;highlighter-rouge&quot;&gt;com.sun.jndi.ldap.object.trustURLCodebase&lt;/code&gt; to &lt;code class=&quot;highlighter-rouge&quot;&gt;False&lt;/code&gt; to prevent attackers from downloading remote URL-Class to get code executions. But only this has been prohibited. We can still manipulate the JNDI and redirect the Naming Reference to a local Java Class!&lt;/p&gt;
+
+&lt;p&gt;The concept is a little bit similar to &lt;a href=&quot;https://en.wikipedia.org/wiki/Return-oriented_programming&quot;&gt;Return-Oriented Programming&lt;/a&gt;, utilizing a local existing Java Class to do further exploitations. You can refer to the article &lt;a href=&quot;https://www.veracode.com/blog/research/exploiting-jndi-injections-java&quot;&gt;Exploiting JNDI Injections in Java&lt;/a&gt; by &lt;a href=&quot;https://twitter.com/artsploit&quot;&gt;Michael Stepankin&lt;/a&gt; in early 2019 for details. It describes the attack on POST-JNDI exploitations and how to abuse the Tomcat’s &lt;code class=&quot;highlighter-rouge&quot;&gt;BeanFactory&lt;/code&gt; to populate the &lt;code class=&quot;highlighter-rouge&quot;&gt;ELProcessor&lt;/code&gt; gadget to get code execution. Based on this concept, researcher &lt;a href=&quot;https://github.com/welk1n&quot;&gt;Welkin&lt;/a&gt; also provides another &lt;code class=&quot;highlighter-rouge&quot;&gt;ParseClass&lt;/code&gt; gadget on Groovy. As described in &lt;a href=&quot;https://www.cnblogs.com/Welk1n/p/11066397.html&quot;&gt;his (Chinese) article&lt;/a&gt;:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;除了 javax.el.ELProcessor，当然也还有很多其他的类符合条件可以作为 beanClass 注入到 BeanFactory 中实现利用。举个例子，如果目标机器 classpath 中有 groovy 的库，则可以结合之前 Orange 师傅发过的 &lt;a href=&quot;https://blog.orange.tw/2019/02/abusing-meta-programming-for-unauthenticated-rce.html&quot;&gt;Jenkins 的漏洞实现利用&lt;/a&gt;&lt;/p&gt;
+
+&lt;/blockquote&gt;
+
+&lt;p&gt;It seems the Meta Programming exploitation in my previous Jenkins research could be used here as well. It makes the Meta Programming great again :D&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;The approach is fantastic and looks feasible for us. But both gadgets &lt;code class=&quot;highlighter-rouge&quot;&gt;ELProcessor&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;ParseClass&lt;/code&gt; are unavailable due to our outdated target libraries. Tomcat introduced the &lt;code class=&quot;highlighter-rouge&quot;&gt;ELProcessor&lt;/code&gt; since 8.5, but our target is 7. As for the Groovy gadget, the target Groovy version is too old (1.5.6 from 2008) to support the Meta Programming, so we still have to find a new gadget by ourselves. We found a new gadget on &lt;code class=&quot;highlighter-rouge&quot;&gt;GroovyShell&lt;/code&gt; in the end. If you are interested, you can check the &lt;a href=&quot;https://github.com/welk1n/JNDI-Injection-Bypass/pull/1&quot;&gt;Pull Request&lt;/a&gt; I sent to the &lt;a href=&quot;https://github.com/welk1n/JNDI-Injection-Bypass&quot;&gt;JNDI-Injection-Bypass&lt;/a&gt; project!&lt;/p&gt;
+
+&lt;h2 id=&quot;attacking-facebook&quot;&gt;Attacking Facebook&lt;/h2&gt;
+
+&lt;p&gt;Now we have a perfect RCE by chaining JNDI Injection, Tomcat &lt;code class=&quot;highlighter-rouge&quot;&gt;BeanFactory&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;GroovyShell&lt;/code&gt;. It’s time to hack Facebook!&lt;/p&gt;
+
+&lt;p&gt;Aforementioned, we knew the Facebook uses MobileIron since 2016. Although the server’s index responses 403 Forbidden now, the Web Service is still accessible!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20200912/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Everything is ready and wait for our exploit! However, several days before our scheduled attack, we realized that there is a critical problem in our exploit. From &lt;a href=&quot;https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/&quot;&gt;our last time popping shell on Facebook&lt;/a&gt;, we noticed it blocks outbound connections due to security concerns. The outbound connection is vital for JNDI Injection because the idea is to make victims connecting to a malicious server to do further exploitations. But now, we can’t even make an outbound connection, not to mention others.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20200912/5_en.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;So far, all attack surfaces on JNDI Injection have been closed, we have no choice but to return to Hessian deserialization. But due to the lack of available gadgets, we must discover a new one by ourselves!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20200912/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Before discovering a new gadget, we have to understand the existing gadgets’ root cause properly. After re-reading Moritz Bechler’s &lt;a href=&quot;https://www.github.com/mbechler/marshalsec/blob/master/marshalsec.pdf&quot;&gt;paper&lt;/a&gt;, a certain word interested me:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Cannot restore Groovy’s MethodClosure as readResolve() is called which throws an exception.&lt;/p&gt;
+
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;A question quickly came up in my mind: Why did the author leave this word here? Although it failed with exceptions, there must have been something special so that the author write this down.&lt;/p&gt;
+
+&lt;p&gt;Our target is running with a very old Groovy, so we are guessing that the &lt;code class=&quot;highlighter-rouge&quot;&gt;readResolve()&lt;/code&gt; constrain might not have been applied to the code base yet! We compared the file &lt;code class=&quot;highlighter-rouge&quot;&gt;groovy/runtime/MethodClosure.java&lt;/code&gt; between the latest and 1.5.6.&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;err&quot;&gt;$&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;diff&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1_5&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_6&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;MethodClosure&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;java&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3_0&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_4&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;MethodClosure&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;java&lt;/span&gt;
+
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;     &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Object&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;readResolve&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;         &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ALLOW_RESOLVE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;             &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;         &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;         &lt;span class=&quot;k&quot;&gt;throw&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;UnsupportedOperationException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Yes, we are right. There is no &lt;code class=&quot;highlighter-rouge&quot;&gt;ALLOW_RESOLVE&lt;/code&gt; in Groovy 1.5.6, and we later learned &lt;a href=&quot;https://groovy-lang.org/security.html&quot;&gt;CVE-2015-3253&lt;/a&gt; is just for that. It’s a mitigation for the rising Java deserialization vulnerability in 2015. Since Groovy is an internally used library, developers won’t update it if there is no emergency. The outdated Groovy could also be a good case study to demonstrated how a harmless component can leave you compromised!&lt;/p&gt;
+
+&lt;p&gt;Of course we got the shell on Facebook in the end. Here is the video:&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/hGTLIIOb14A&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;h2 id=&quot;vulnerability-report-and-patch&quot;&gt;Vulnerability Report and Patch&lt;/h2&gt;
+
+&lt;p&gt;We have done all the research on March and sent the advisory to MobileIron at 4/3. The MobileIron released the patch on 6/15 and addressed three CVEs for that. You can check the &lt;a href=&quot;https://www.mobileiron.com/en/blog/mobileiron-security-updates-available&quot;&gt;official website&lt;/a&gt; for details!&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;CVE-2020-15505 - Remote Code Execution&lt;/li&gt;
+  &lt;li&gt;CVE-2020-15506 - Authentication Bypass&lt;/li&gt;
+  &lt;li&gt;CVE-2020-15507 - Arbitrary File Reading&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;After the patch has been released, we start monitoring the Internet to track the overall fixing progress. Here we check the &lt;code class=&quot;highlighter-rouge&quot;&gt;Last-Modified&lt;/code&gt; header on static files so that the result is just for your information. (Unknown stands for the server closed both 443 and 8443 ports)&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20200912/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;At the same time, we keep our attentions on Facebook as well. With 15 days no-patch confirm, we finally popped a shell and report to their Bug Bounty program at 7/2!&lt;/p&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;So far, we have demonstrated a completely unauthenticated RCE on MobileIron. From how we get the firmware, find the vulnerability, and bypass the JNDI mitigation and network limitation. There are other stories, but due to the time, we have just listed topics here for those who are interested:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;How to take over the employees’ devices from MDM&lt;/li&gt;
+  &lt;li&gt;Disassemble the MI Protocol&lt;/li&gt;
+  &lt;li&gt;And the CVE-2020-15506, an interesting authentication bypass&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;I hope this article could draw attention to MDM and the importance of enterprise security! Thanks for reading. :D&lt;/p&gt;
+
+</description>
+                <link>https://devco.re/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM-en/</link>
+                <guid>https://devco.re/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM-en</guid>
+                <pubDate>Sat, 12 Sep 2020 00:00:00 +0800</pubDate>
+        </item>
+
+        <item>
+                <title>看我如何再一次駭進 Facebook，一個在 MobileIron MDM 上的遠端程式碼執行漏洞!</title>
+                <description>&lt;style type=&quot;text/css&quot;&gt;
+    table {
+        display: block;
+        width: 100%;
+        overflow: auto;
+        word-break: normal;
+        word-break: keep-all;
+        font-size: smaller;
+    }
+
+    table th {
+        font-weight: bold
+    }
+
+    table th,
+    table td {
+        padding: 5px 11px;
+        border: 1px solid #ddd;
+    }
+
+    table tr {
+        background-color: #fff;
+        border-top: 1px solid #ccc;
+    }
+
+    table tr:nth-child(2n) {
+        background-color: #f8f8f8;
+    }
+&lt;/style&gt;
+
+&lt;p&gt;&lt;a href=&quot;/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;嗨! 好久不見，這是我在今年年初的研究，講述如何尋找一款知名行動裝置管理產品的漏洞，並繞過層層保護取得遠端程式碼執行的故事! 其中的漏洞經回報後在六月由官方釋出修補程式並緊急通知他們的客戶，而我們也在修補程式釋出 15 天後發現 Facebook 並未及時更新，因此透過漏洞取得伺服器權限並回報給 Facebook!&lt;/p&gt;
+
+&lt;p&gt;此份研究同時發表於 &lt;a href=&quot;https://hitcon.org/2020/&quot;&gt;HITCON 2020&lt;/a&gt;，你可以從&lt;a href=&quot;https://hitcon.org/2020/slides/How%20I%20Hacked%20Facebook%20Again!.pdf&quot;&gt;這裡&lt;/a&gt;取得這次演講的投影片!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;身為一個專業的紅隊，我們一直在尋找著更快速可以從外部進入企業內網的最佳途徑! 如同我們去年在 &lt;a href=&quot;https://www.blackhat.com/us-19/briefings/schedule/#infiltrating-corporate-intranet-like-nsa---pre-auth-rce-on-leading-ssl-vpns-15545&quot;&gt;Black Hat USA&lt;/a&gt; 發表的研究，SSL VPN 理所當然會放在外部網路，成為保護著網路安全、使員工進入內部網路的基礎設施，而當你所信任、並且用來保護你安全的設備不再安全了，你該怎麼辦?&lt;/p&gt;
+
+&lt;p&gt;由此為發想，我們開始尋找著有沒有新的企業網路脆弱點可當成我們紅隊攻擊滲透企業的初始進入點，在調查的過程中我們對 MDM/UEM 開始產生了興趣，而這篇文章就是從此發展出來的研究成果!&lt;/p&gt;
+
+&lt;h2 id=&quot;什麼是-mdmuem-&quot;&gt;什麼是 MDM/UEM ?&lt;/h2&gt;
+
+&lt;p&gt;Mobile Device Management，簡稱 MDM，約是在 2012 年間，個人手機、平板裝置開始興起時，為了使企業更好的管理員工的 &lt;a href=&quot;https://en.wikipedia.org/wiki/Bring_your_own_device&quot;&gt;BYOD 裝置&lt;/a&gt;，應運而生的資產盤點系統，企業可以透過 MDM 產品，管理員工的行動裝置，確保裝置只在信任的環境、政策下運行，也可以從中心的端點伺服器，針對所控制的手機，部署應用程式、安裝憑證甚至遠端操控以管理企業資產，更可以在裝置遺失時，透過 MDM 遠端上鎖，或是抹除整台裝置資料達到企業隱私不外漏的目的!&lt;/p&gt;
+
+&lt;p&gt;UEM (Unified Endpoint Management) 則為近幾年來更新的一個術語，其核心皆為行動裝置的管理，只是 UEM 一詞包含更廣的裝置定義! 我們以下皆用 MDM 一詞來代指同類產品。&lt;/p&gt;
+
+&lt;h2 id=&quot;我們的目標&quot;&gt;我們的目標&lt;/h2&gt;
+
+&lt;p&gt;MDM 作為一個中心化的端點控制系統，可以控制、並管理旗下所有員工個人裝置! 對日益壯大的企業來說，絕對是一個最佳的資產盤點產品，相對的，對駭客來說也是! 而為了管理來自世界各地的員工裝置連線，MDM 又勢必得曝露在外網。 一個可以「管理員工裝置」又「放置在外網」的設備，這對我們的紅隊演練來說無疑是最棒的滲透管道!&lt;/p&gt;
+
+&lt;p&gt;另外，從這幾年的安全趨勢也不難發現 MDM 逐漸成為駭客、APT 組織的首選目標! 誘使受害者同意惡意的 MDM 成為你裝置的 C&amp;amp;C 伺服器，或是乾脆入侵企業放置在外網的 MDM 設備，在批次地派送行動裝置木馬感染所有企業員工手機、電腦，以達到進一步的攻擊! 這些都已成真，詳細的報告可參閱 Cisco Talos 團隊所發表的 &lt;a href=&quot;https://blogs.cisco.com/security/talos/malicious-mdm-lets-hide-this-app&quot;&gt;Malicious MDM: Let’s Hide This App&lt;/a&gt; 以及 CheckPoint CPR 團隊所發表的 &lt;a href=&quot;https://research.checkpoint.com/2020/mobile-as-attack-vector-using-mdm/&quot;&gt;First seen in the wild - Malware uses Corporate MDM as attack vector&lt;/a&gt;!&lt;/p&gt;
+
+&lt;p&gt;從前面的幾個案例我們得知 MDM 對於企業安全來說，是一個很好的切入點，因此我們開始研究相關的攻擊面! 而市面上 MDM 廠商有非常多，各個大廠如 Microsoft、IBM 甚至 Apple 都有推出自己的 MDM 產品，我們要挑選哪個開始成為我們的研究對象呢?&lt;/p&gt;
+
+&lt;p&gt;因此我們透過公開情報列舉了市面上常見的 MDM 產品，並配合各家特徵對全世界進行了一次掃描，發現最多企業使用的 MDM 為 VMware AirWatch 與 MobileIron 這兩套產品! 至於要挑哪一家研究呢? 我們選擇了後者，除了考量到大部分的客戶都是使用 MobileIron 外，另外一個吸引我的點則是 Facebook 也是他們的客戶! 從我們在 2016 年發表的 &lt;a href=&quot;https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/&quot;&gt;How I Hacked Facebook, and Found Someone’s Backdoor Script&lt;/a&gt; 研究中，就已發現 Facebook 使用 MobileIron 作為他們的 MDM 解決方案!&lt;/p&gt;
+
+&lt;p&gt;根據 MobileIron 官方網站描述，至少有 20000+ 的企業使用 MobileIron 當成他們的 MDM 解決方案，而根據我們實際對全世界的掃描，也至少有 15% 以上的財富世界 500 大企業使用 MobileIron 且&lt;strong&gt;曝露在外網&lt;/strong&gt;(實際上一定更多)，因此，尋找 MobileIron 的漏洞也就變成我們的首要目標!&lt;/p&gt;
+
+&lt;h2 id=&quot;如何開始研究&quot;&gt;如何開始研究&lt;/h2&gt;
+
+&lt;p&gt;從&lt;a href=&quot;https://www.cvedetails.com/vulnerability-list/vendor_id-13968/Mobileiron.html&quot;&gt;過往出現過的漏洞&lt;/a&gt;可以得知 MobileIron 並沒有受到太多安全人員研究，其中原因除了 MDM 這個攻擊向量尚未廣為人知外，另一個可能是因為關於 MobileIron 的相關韌體太難取得，研究一款設備最大的問題是如何從純粹的黑箱，到可以分析的灰箱、甚至白箱! 由於無法從官網下載韌體，我們花費了好幾天嘗試著各種關鍵字在網路上尋找可利用的公開資訊，最後才在 Goolge Search 索引到的其中一個公開網站根目錄上發現疑似是開發商測試用的 RPM 包。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20200912/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;下載回的韌體為 2018 年初的版本，離現在也有很長一段時間，也許核心程式碼也大改過，不過總比什麼都沒有好，因此我們就從這份檔案開始研究起。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;備註: 經通知 MobileIron 官方後，此開發商網站已關閉。&lt;/em&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;如何尋找漏洞&quot;&gt;如何尋找漏洞&lt;/h2&gt;
+
+&lt;p&gt;整個 MobileIron 使用 Java 作為主要開發語言，對外開放的連接埠為 443, 8443, 9997，各個連接埠對應功能如下:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;443 為使用者裝置註冊介面&lt;/li&gt;
+  &lt;li&gt;8443 為設備管理介面&lt;/li&gt;
+  &lt;li&gt;9997 為一個 MobileIron 私有的裝置同步協定 (MI Protocol)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;三個連接埠皆透過 TLS 保護連線的安全性及完整性，網頁部分則是透過 Apache 的 Reverse Proxy 架構將連線導至後方，由 Tomcat 部署的網頁應用處理，網頁應用則由 Spring MVC 開發。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20200912/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;由於使用的技術架構相對新，傳統類型的漏洞如 SQL Injection 也較難從單一的點來發現，因此理解程式邏輯並配合架構層面的攻擊就變成我們這次尋找漏洞的主要目標!&lt;/p&gt;
+
+&lt;p&gt;這次的漏洞也很簡單，主要是 Web Service 使用了 Hessian 格式處理資料進而產生了反序列化的弱點! 雖然漏洞一句話就可以解釋完了，但懂的人才知道反序列化並不代表你可以做任何事，接下來的利用才是精彩的地方!&lt;/p&gt;
+
+&lt;p&gt;現在已知 MobileIron 在處理 Web Service 的地方存在 Hessian 反序列化漏洞! 但漏洞存在，並不代表我們碰得到漏洞，可以觸發 Hessian 反序列化的路徑分別在:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;一般使用者介面 - &lt;code class=&quot;highlighter-rouge&quot;&gt;https://mobileiron/mifs/services/&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;管理介面 - &lt;code class=&quot;highlighter-rouge&quot;&gt;https://mobileiron:8443/mifs/services/&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;管理介面基本上沒有任何阻擋，可以輕鬆的碰到 Web Service，而一般使用者介面的 Web Service 則無法存取，這對我們來說是一個致命性的打擊，由於大部分企業的網路架構並不會將管理介面的連接埠開放在外部網路，因此只能攻擊管理介面對於的利用程度並不大，因此我們必須尋找其他的方式去觸發這個漏洞!&lt;/p&gt;
+
+&lt;p&gt;仔細觀察 MobileIron 的阻擋方式，發現它是透過在 Apache 上使用 Rewrite Rules 去阻擋對一般使用者介面 Web Service 的存取:&lt;/p&gt;
+
+&lt;div class=&quot;language-apache highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;RewriteRule&lt;/span&gt; ^/mifs/services/(.*)$ https://%{SERVER_NAME}:8443/mifs/services/$1 [R=307,L]
+&lt;span class=&quot;nc&quot;&gt;RewriteRule&lt;/span&gt; ^/mifs/services [F]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;嗯，很棒! 使用 Reverse Proxy 架構而且是在前面那層做阻擋，你是否想到什麼呢?&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;
+&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;沒錯! 就是我們在 &lt;a href=&quot;https://github.com/orangetw/My-CTF-Web-Challenges#blackbox&quot;&gt;2015 年&lt;/a&gt;發現，並且在 &lt;a href=&quot;https://www.blackhat.com/us-18/briefings.html#breaking-parser-logic-take-your-path-normalization-off-and-pop-0days-out&quot;&gt;Black Hat USA 2018&lt;/a&gt; 上所發表的針對 Reverse Proxy 架構的新攻擊面 &lt;a href=&quot;https://blog.orange.tw/2018/08/how-i-chained-4-bugs-features-into-rce-on-amazon.html&quot;&gt;Breaking Parser Logic&lt;/a&gt;! 這個優秀的技巧最近也被很好的利用在 &lt;a href=&quot;https://support.f5.com/csp/article/K52145254&quot;&gt;CVE-2020-5902&lt;/a&gt;，F5 BIG-IP TMUI 的遠端程式碼執行上!&lt;/p&gt;
+
+&lt;p&gt;透過 Apache 與 Tomcat 對路徑理解的不一致，我們可以透過以下方式繞過 Rewrite Rule 再一次攻擊 Web Service!&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;https://mobileiron/mifs/.;/services/someService
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;碰! 因此現在不管是 8443 的管理介面還是 443 的一般使用者介面，我們都可以碰到有 Hessian 反序列化存在的 Web Service 了!&lt;/p&gt;
+
+&lt;h2 id=&quot;如何利用漏洞&quot;&gt;如何利用漏洞&lt;/h2&gt;
+
+&lt;p&gt;現在讓我們回到 Hessian 反序列化的利用上! 針對 Hessian 反序列化，&lt;a href=&quot;https://github.com/mbechler&quot;&gt;Moritz Bechler&lt;/a&gt; 已經在他的 &lt;a href=&quot;https://www.github.com/mbechler/marshalsec/blob/master/marshalsec.pdf&quot;&gt;Java Unmarshaller Security&lt;/a&gt; 中做了一個很詳細的研究報告! 從他所開源的 &lt;a href=&quot;https://github.com/mbechler/marshalsec&quot;&gt;marshalsec&lt;/a&gt; 原始碼中，我們也學習到 Hessian 在反序列化過程中除了透過 HashMap 觸發 &lt;code class=&quot;highlighter-rouge&quot;&gt;equals()&lt;/code&gt; 以及 &lt;code class=&quot;highlighter-rouge&quot;&gt;hashcode()&lt;/code&gt; 等觸發點外，也可透過 &lt;code class=&quot;highlighter-rouge&quot;&gt;XString&lt;/code&gt; 串出 &lt;code class=&quot;highlighter-rouge&quot;&gt;toString()&lt;/code&gt;，而目前關於 Hessian 反序列化已存在的利用鏈有四條:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Apache XBean&lt;/li&gt;
+  &lt;li&gt;Caucho Resin&lt;/li&gt;
+  &lt;li&gt;Spring AOP&lt;/li&gt;
+  &lt;li&gt;ROME EqualsBean/ToStringBean&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;而根據我們的目標環境，可以觸發的只有 Spring AOP 這條利用鏈!&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt; &lt;/th&gt;
+      &lt;th&gt;Name&lt;/th&gt;
+      &lt;th&gt;Effect&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;x&lt;/td&gt;
+      &lt;td&gt;Apache XBean&lt;/td&gt;
+      &lt;td&gt;JNDI 注入&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;x&lt;/td&gt;
+      &lt;td&gt;Caucho Resin&lt;/td&gt;
+      &lt;td&gt;JNDI 注入&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;√&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;&lt;strong&gt;Spring AOP&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;&lt;strong&gt;JNDI 注入&lt;/strong&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;x&lt;/td&gt;
+      &lt;td&gt;ROME EqualsBean&lt;/td&gt;
+      &lt;td&gt;RCE&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;無論如何，我們現在有了 JNDI 注入後，接下來只要透過 &lt;a href=&quot;https://twitter.com/pwntester&quot;&gt;Alvaro Muñoz&lt;/a&gt; 與 &lt;a href=&quot;https://twitter.com/olekmirosh&quot;&gt;Oleksandr Mirosh&lt;/a&gt; 在 Black Hat USA 2016 上所發表的 &lt;a href=&quot;https://www.blackhat.com/us-16/briefings.html#a-journey-from-jndi-ldap-manipulation-to-remote-code-execution-dream-land&quot;&gt;A Journey From JNDI/LDAP to Remote Code Execution Dream Land&lt;/a&gt; 就可以取得遠端程式碼執行了… 甘安內?&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20200912/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;自從 &lt;a href=&quot;https://twitter.com/pwntester&quot;&gt;Alvaro Muñoz&lt;/a&gt; 與 &lt;a href=&quot;https://twitter.com/olekmirosh&quot;&gt;Oleksandr Mirosh&lt;/a&gt; 在 Black Hat 發表了這個新的攻擊向量後，不知道幫助了多少大大小小的駭客，甚至會有人認為「遇到反序列化就用 JNDI 送就對了!」，但自從 2018 年十月，Java 終於把關於 JNDI 注入的最後一塊拼圖給修復，這個修復被記載在 &lt;a href=&quot;https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-3149&quot;&gt;CVE-2018-3149&lt;/a&gt; 中，自此之後，所有 Java 高於 8u181, 7u191, 6u201 的版本皆無法透過 JNDI/LDAP 的方式執行程式碼，因此若要在最新版本的 MobileIron 上實現攻擊，我們勢必得面對這個問題!&lt;/p&gt;
+
+&lt;p&gt;關於 CVE-2018-3149，是透過將 &lt;code class=&quot;highlighter-rouge&quot;&gt;com.sun.jndi.ldap.object.trustURLCodebase&lt;/code&gt; 的預設值改為 &lt;code class=&quot;highlighter-rouge&quot;&gt;False&lt;/code&gt; 的方式以達到禁止攻擊者下載遠端 Bytecode 取得執行程式碼。&lt;/p&gt;
+
+&lt;p&gt;但幸運的是，我們依然可以透過 JNDI 的 Naming Reference 到本機既有的 Class Factory 上! 透過類似 &lt;a href=&quot;https://en.wikipedia.org/wiki/Return-oriented_programming&quot;&gt;Return-Oriented Programming&lt;/a&gt; 的概念，尋找本機 ClassPath 中可利用的類別去做更進一步的利用，詳細的手法可參考由 &lt;a href=&quot;https://twitter.com/artsploit&quot;&gt;Michael Stepankin&lt;/a&gt; 在 2019 年年初所發表的 &lt;a href=&quot;https://www.veracode.com/blog/research/exploiting-jndi-injections-java&quot;&gt;Exploiting JNDI Injections in Java&lt;/a&gt;，裡面詳細敘述了如何透過 Tomcat 的 &lt;code class=&quot;highlighter-rouge&quot;&gt;BeanFactory&lt;/code&gt; 去載入 &lt;code class=&quot;highlighter-rouge&quot;&gt;ELProcessor&lt;/code&gt; 達成任意程式碼執行!&lt;/p&gt;
+
+&lt;p&gt;這條路看似通暢，但實際上卻差那麼一點，由於 &lt;code class=&quot;highlighter-rouge&quot;&gt;ELProcessor&lt;/code&gt; 在 Tomcat 8 後才被引入，因此上面的繞過方式只能在 Tomcat 版本大於 8 後的某個版本才能成功，而我們的目標則是 Tomcat 7.x，因此得為 &lt;code class=&quot;highlighter-rouge&quot;&gt;BeanFactory&lt;/code&gt; 尋找一個新的利用鏈! 而經過搜尋，發現在 &lt;a href=&quot;https://github.com/welk1n&quot;&gt;Welkin&lt;/a&gt; 的&lt;a href=&quot;https://www.cnblogs.com/Welk1n/p/11066397.html&quot;&gt;文章&lt;/a&gt;中所提到:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;除了 javax.el.ELProcessor，当然也还有很多其他的类符合条件可以作为 beanClass 注入到 BeanFactory 中实现利用。举个例子，如果目标机器 classpath 中有 groovy 的库，则可以结合之前 Orange 师傅发过的 &lt;a href=&quot;https://blog.orange.tw/2019/02/abusing-meta-programming-for-unauthenticated-rce.html&quot;&gt;Jenkins 的漏洞实现利用&lt;/a&gt;&lt;/p&gt;
+
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;目標的 ClassPath 上剛好有 Groovy 存在! 於是我們又讓 Meta Programming 偉大了一次 :D&lt;/p&gt;
+
+&lt;p&gt;然而事實上，目標伺服器上 Groovy 版本為 1.5.6，是一個距今十年前老舊到不支援 Meta Programming 的版本，所以我們最後還是基於 Groovy 的程式碼，重新尋找了一個在 &lt;code class=&quot;highlighter-rouge&quot;&gt;GroovyShell&lt;/code&gt; 上的利用鏈! 詳細的利用鏈可參考我送給 &lt;a href=&quot;https://github.com/welk1n/JNDI-Injection-Bypass&quot;&gt;JNDI-Injection-Bypass&lt;/a&gt; 的這個 &lt;a href=&quot;https://github.com/welk1n/JNDI-Injection-Bypass/pull/1&quot;&gt;Pull Request&lt;/a&gt;!&lt;/p&gt;
+
+&lt;h2 id=&quot;攻擊-facebook&quot;&gt;攻擊 Facebook&lt;/h2&gt;
+
+&lt;p&gt;現在我們已經有了一個基於 &lt;code class=&quot;highlighter-rouge&quot;&gt;JNDI&lt;/code&gt; + &lt;code class=&quot;highlighter-rouge&quot;&gt;BeanFactory&lt;/code&gt; + &lt;code class=&quot;highlighter-rouge&quot;&gt;GroovyShell&lt;/code&gt; 的完美遠端程式碼執行漏洞，接下來就開始攻擊 Facebook 吧! 從前文提到，我們在 2016 年時就已知 Facebook 使用 MobileIron 當作他們的 MDM 解決方案，雖然現在再檢查一次發現首頁直接變成 403 Forbidden 了，不過幸運的是 Web Service 層並無阻擋!&lt;br /&gt;
+s&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20200912/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;萬事俱備，只欠東風! 正當要攻擊 Facebook 的前幾天，我們突然想到，從上次&lt;a href=&quot;https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/&quot;&gt;進入 Facebook 伺服器&lt;/a&gt;的經驗，由於安全上的考量，Facebook 似乎會禁止所有對外部非法的連線，這點對我們 JNDI 注入攻擊有著至關重要的影響! 首先，JNDI 注入的核心就是透過受害者連線至攻擊者控制的惡意伺服器，並接收回傳的惡意 Naming Reference 後所導致的一系列利用，但現在連最開始的連線到攻擊者的惡意伺服器都無法，更別談後續的利用。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20200912/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;自此，我們關於 JNDI 注入的路已全被封殺，只能回到 Hessian 反序列化重新思考! 而現有的利用鏈皆無法達到遠端程式碼執行，所以我們勢必得拋棄 JNDI 注入，尋找一個新的利用鏈!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20200912/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;為了尋找新的利用鏈，必須先深入理解已存在利用鏈的原理及成因，在重讀 &lt;a href=&quot;https://github.com/mbechler/marshalsec/blob/master/marshalsec.pdf&quot;&gt;Java Unmarshaller Security&lt;/a&gt; 的論文後，我對其中一句話感到了好奇:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Cannot restore Groovy’s MethodClosure as readResolve() is called which throws an exception.&lt;/p&gt;
+
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;哦，為什麼作者要特地補上這句話呢? 我開始有個猜想:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;作者評估過把 Groovy 當成利用鏈的可行性，雖然被限制住了，但一定覺得有機會才會寫進論文中!&lt;/p&gt;
+
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;從這個猜想出發，雖然 Groovy 的利用鏈被 &lt;code class=&quot;highlighter-rouge&quot;&gt;readResolve()&lt;/code&gt; 限制住了，但剛好我們目標版本的 Groovy 很舊，說不定尚未把這個限制加入程式庫!&lt;/p&gt;
+
+&lt;p&gt;我們比較了一下 Groovy-1.5.6 與最新版本位於 &lt;code class=&quot;highlighter-rouge&quot;&gt;groovy/runtime/MethodClosure.java&lt;/code&gt; 中的 &lt;code class=&quot;highlighter-rouge&quot;&gt;readSolve()&lt;/code&gt; 實現:&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;err&quot;&gt;$&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;diff&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1_5&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_6&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;MethodClosure&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;java&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3_0&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_4&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;MethodClosure&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;java&lt;/span&gt;
+
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;     &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Object&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;readResolve&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;         &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ALLOW_RESOLVE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;             &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;         &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;         &lt;span class=&quot;k&quot;&gt;throw&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;UnsupportedOperationException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;可以看到的確在舊版是沒有 &lt;code class=&quot;highlighter-rouge&quot;&gt;ALLOW_RESOLVE&lt;/code&gt; 限制的，而後來經過考古後也發現，這個限制其實 Groovy 自己為了因應 2015 年所出現 Java 反序列化漏洞的減緩措施，因此也被分配了 &lt;a href=&quot;https://groovy-lang.org/security.html&quot;&gt;CVE-2015-3253&lt;/a&gt; 這個漏洞編號! 由於 Groovy 只是一個只在內部使用、不會對外的小配角，因此在沒有特別需求下開發者也不會特地去更新它，因此成為了我們攻擊鏈的一環! 這也再一次驗證了「任何看似舉無輕重的小元件，都有可能成為你被攻擊的主因」!&lt;/p&gt;
+
+&lt;p&gt;最後，當然! 我們成功的取得在 Facebook 伺服器上的 Shell，以下是影片:&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/hGTLIIOb14A&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;h2 id=&quot;漏洞通報與修復&quot;&gt;漏洞通報與修復&lt;/h2&gt;
+
+&lt;p&gt;我們約在三月時完成整個漏洞研究，並在 4/3 日將研究成果寫成報告，透過 &lt;code class=&quot;highlighter-rouge&quot;&gt;security@mobileiron.com&lt;/code&gt; 回報給 MobileIron! 官方收到後著手開始修復，在 6/15 釋出修補程式並記錄了三個 CVE 編號，詳細的修復方式請參閱 &lt;a href=&quot;https://www.mobileiron.com/en/blog/mobileiron-security-updates-available&quot;&gt;MobileIron 官方網站&lt;/a&gt;!&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;CVE-2020-15505 - Remote Code Execution&lt;/li&gt;
+  &lt;li&gt;CVE-2020-15506 - Authentication Bypass&lt;/li&gt;
+  &lt;li&gt;CVE-2020-15507 - Arbitrary File Reading&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;當官方釋出修補程式後，我們也開始監控世界上所有有使用 MobileIron 企業的修復狀況，這裡只單純檢查靜態檔案的 &lt;code class=&quot;highlighter-rouge&quot;&gt;Last-Modified&lt;/code&gt; Header，結果僅供參考不完全代表實際情況(Unknown 代表未開 443/8443 無法利用):&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20200912/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;與此同時，我們也持續監控著 Facebook，並在 15 天確認都未修補後於 7/2 日成功進入 Facebook 伺服器後回報 Facebook Bug Bounty Program!&lt;/p&gt;
+
+&lt;h2 id=&quot;結語&quot;&gt;結語&lt;/h2&gt;
+
+&lt;p&gt;到此，我們已經成功示範了如何尋找一個 MDM 伺服器的漏洞! 從繞過 Java 語言層級的保護、網路限制，到寫出攻擊程式並成功的利用在 Bug Bounty Program 上! 因為文長，還有許多來不及分享的故事，這裡僅條列一下供有興趣繼續研究的人參考!&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;如何從 MDM 伺服器，控制回員工的手機裝置&lt;/li&gt;
+  &lt;li&gt;如何分析 MobileIron 的私有 MI Protocol&lt;/li&gt;
+  &lt;li&gt;CVE-2020-15506 本質上其實是一個很有趣的認證繞過漏洞&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;希望這篇文章能夠喚起大眾對於 MDM 攻擊面的注意，以及企業安全的重要性! 感謝收看 :D&lt;/p&gt;
+
+</description>
+                <link>https://devco.re/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM/</link>
+                <guid>https://devco.re/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM</guid>
+                <pubDate>Sat, 12 Sep 2020 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>敵人不是勒贖軟體，而是組織型駭客</title>

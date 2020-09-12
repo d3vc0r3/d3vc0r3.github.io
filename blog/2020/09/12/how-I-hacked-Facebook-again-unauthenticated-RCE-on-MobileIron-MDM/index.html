@@ -1,0 +1,531 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>看我如何再一次駭進 Facebook，一個在 MobileIron MDM 上的遠端程式碼執行漏洞! | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <meta name="description" property="og:description" content="嗨! 好久不見，這是我在今年年初的研究，講述如何尋找一款知名行動裝置管理產品的漏洞，並繞過層層保護取得遠端程式碼執行的故事! 其中的漏洞經回報後在六月由官方釋出修補程式並緊急通知他們的客戶，而我們也在修補程式釋出 15 天後發現 Facebook 並未及時更新，因此透過漏洞取得伺服器權限並回報給 Facebook!" />
+    <meta name="keywords" content="CVE, RCE, CVE-2020-15505, CVE-2020-15506, CVE-2020-15507, Facebook" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="看我如何再一次駭進 Facebook，一個在 MobileIron MDM 上的遠端程式碼執行漏洞! | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20200912/5.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="看我如何再一次駭進 Facebook，一個在 MobileIron MDM 上的遠端程式碼執行漏洞! | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="嗨! 好久不見，這是我在今年年初的研究，講述如何尋找一款知名行動裝置管理產品的漏洞，並繞過層層保護取得遠端程式碼執行的故事! 其中的漏洞經回報後在六月由官方釋出修補程式並緊急通知他們的客戶，而我們也在修補程式釋出 15 天後發現 Facebook 並未及時更新，因此透過漏洞取得伺服器權限並回報給 Facebook!">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20200912/5.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+  </head>
+  <body>
+    <div class="page">
+      <div class="container--wrapper">
+        <div class="topbar">
+          <div class="topbar__brand">
+            <a href="/">
+                <div class="logo">
+                  DEVCORE 戴夫寇爾
+                </div></a>
+            <p class="slogan">
+              我們提供<a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務
+            </p>
+          </div>
+          <div class="drawer" id="drawer">
+            <div class="drawer__container">
+              <nav class="main-menu">
+                <div class="hidden">
+                  主選單
+                </div>
+                <a href="/services/penetration-test" class="main-menu__link mobile-only">滲透測試</a>
+                <a href="/services/red-team" class="main-menu__link mobile-only">紅隊演練</a>
+                <a href="/services/security-consulting" class="main-menu__link mobile-only">資安顧問</a>
+                <a href="/services/security-training" class="main-menu__link mobile-only">教育訓練</a>
+                <a href="/about/" class="main-menu__link">駭客思維</a><a href="/blog/" class="main-menu__link">最新訊息</a><a href="/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">搜尋</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
+              </nav>
+              <a href="/contact/" class="drawer__contact button--dense">聯絡我們</a>
+              <nav class="lang-menu">
+                <div class="lang-menu__label">
+                  語言:
+                </div>
+                <a href="/" class="lang-menu__link">中文</a>
+                <a href="/en/" class="lang-menu__link">English</a>
+              </nav>
+            </div>
+          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
+            <div class="bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </button>
+        </div>
+      </div><main role="main">
+
+
+          <div class="container--wrapper">
+            <div class="container">
+              <section class="blog-header">
+                <small class="blog-header__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+                <img src="https://devco.re/assets/img/blog/20200912/5.png" class="blog-header__image" alt="看我如何再一次駭進 Facebook，一個在 MobileIron MDM 上的遠端程式碼執行漏洞!" />
+                <h1 class="blog-header__title">
+                  看我如何再一次駭進 Facebook，一個在 MobileIron MDM 上的遠端程式碼執行漏洞!
+                </h1>
+                <div class="blog-header__tags">
+                  
+                  <a href="/blog/tag/Advisory/" class="blog-header__tag">Advisory</a><a href="/blog/tag/CVE/" class="blog-header__tag">CVE</a><a href="/blog/tag/RCE/" class="blog-header__tag">RCE</a><a href="/blog/tag/Facebook/" class="blog-header__tag">Facebook</a><a href="/blog/tag/BugBounty/" class="blog-header__tag">BugBounty</a>
+                </div>
+          
+          
+                <p class="blog-header__info">
+                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/blog/author/orange" class="author-name">Orange Tsai</a> <time class="date">on 2020-09-12 </time>
+                </p>
+          
+              </section>
+              <article class="article">
+          <style type="text/css">
+    table {
+        display: block;
+        width: 100%;
+        overflow: auto;
+        word-break: normal;
+        word-break: keep-all;
+        font-size: smaller;
+    }
+
+    table th {
+        font-weight: bold
+    }
+
+    table th,
+    table td {
+        padding: 5px 11px;
+        border: 1px solid #ddd;
+    }
+
+    table tr {
+        background-color: #fff;
+        border-top: 1px solid #ccc;
+    }
+
+    table tr:nth-child(2n) {
+        background-color: #f8f8f8;
+    }
+</style>
+
+<p><a href="/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM-en/">English Version</a><br />
+<a href="/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM">中文版本</a></p>
+
+<p>嗨! 好久不見，這是我在今年年初的研究，講述如何尋找一款知名行動裝置管理產品的漏洞，並繞過層層保護取得遠端程式碼執行的故事! 其中的漏洞經回報後在六月由官方釋出修補程式並緊急通知他們的客戶，而我們也在修補程式釋出 15 天後發現 Facebook 並未及時更新，因此透過漏洞取得伺服器權限並回報給 Facebook!</p>
+
+<p>此份研究同時發表於 <a href="https://hitcon.org/2020/">HITCON 2020</a>，你可以從<a href="https://hitcon.org/2020/slides/How%20I%20Hacked%20Facebook%20Again!.pdf">這裡</a>取得這次演講的投影片!</p>
+
+<p><br /></p>
+
+<p>身為一個專業的紅隊，我們一直在尋找著更快速可以從外部進入企業內網的最佳途徑! 如同我們去年在 <a href="https://www.blackhat.com/us-19/briefings/schedule/#infiltrating-corporate-intranet-like-nsa---pre-auth-rce-on-leading-ssl-vpns-15545">Black Hat USA</a> 發表的研究，SSL VPN 理所當然會放在外部網路，成為保護著網路安全、使員工進入內部網路的基礎設施，而當你所信任、並且用來保護你安全的設備不再安全了，你該怎麼辦?</p>
+
+<p>由此為發想，我們開始尋找著有沒有新的企業網路脆弱點可當成我們紅隊攻擊滲透企業的初始進入點，在調查的過程中我們對 MDM/UEM 開始產生了興趣，而這篇文章就是從此發展出來的研究成果!</p>
+
+<h2 id="什麼是-mdmuem-">什麼是 MDM/UEM ?</h2>
+
+<p>Mobile Device Management，簡稱 MDM，約是在 2012 年間，個人手機、平板裝置開始興起時，為了使企業更好的管理員工的 <a href="https://en.wikipedia.org/wiki/Bring_your_own_device">BYOD 裝置</a>，應運而生的資產盤點系統，企業可以透過 MDM 產品，管理員工的行動裝置，確保裝置只在信任的環境、政策下運行，也可以從中心的端點伺服器，針對所控制的手機，部署應用程式、安裝憑證甚至遠端操控以管理企業資產，更可以在裝置遺失時，透過 MDM 遠端上鎖，或是抹除整台裝置資料達到企業隱私不外漏的目的!</p>
+
+<p>UEM (Unified Endpoint Management) 則為近幾年來更新的一個術語，其核心皆為行動裝置的管理，只是 UEM 一詞包含更廣的裝置定義! 我們以下皆用 MDM 一詞來代指同類產品。</p>
+
+<h2 id="我們的目標">我們的目標</h2>
+
+<p>MDM 作為一個中心化的端點控制系統，可以控制、並管理旗下所有員工個人裝置! 對日益壯大的企業來說，絕對是一個最佳的資產盤點產品，相對的，對駭客來說也是! 而為了管理來自世界各地的員工裝置連線，MDM 又勢必得曝露在外網。 一個可以「管理員工裝置」又「放置在外網」的設備，這對我們的紅隊演練來說無疑是最棒的滲透管道!</p>
+
+<p>另外，從這幾年的安全趨勢也不難發現 MDM 逐漸成為駭客、APT 組織的首選目標! 誘使受害者同意惡意的 MDM 成為你裝置的 C&amp;C 伺服器，或是乾脆入侵企業放置在外網的 MDM 設備，在批次地派送行動裝置木馬感染所有企業員工手機、電腦，以達到進一步的攻擊! 這些都已成真，詳細的報告可參閱 Cisco Talos 團隊所發表的 <a href="https://blogs.cisco.com/security/talos/malicious-mdm-lets-hide-this-app">Malicious MDM: Let’s Hide This App</a> 以及 CheckPoint CPR 團隊所發表的 <a href="https://research.checkpoint.com/2020/mobile-as-attack-vector-using-mdm/">First seen in the wild - Malware uses Corporate MDM as attack vector</a>!</p>
+
+<p>從前面的幾個案例我們得知 MDM 對於企業安全來說，是一個很好的切入點，因此我們開始研究相關的攻擊面! 而市面上 MDM 廠商有非常多，各個大廠如 Microsoft、IBM 甚至 Apple 都有推出自己的 MDM 產品，我們要挑選哪個開始成為我們的研究對象呢?</p>
+
+<p>因此我們透過公開情報列舉了市面上常見的 MDM 產品，並配合各家特徵對全世界進行了一次掃描，發現最多企業使用的 MDM 為 VMware AirWatch 與 MobileIron 這兩套產品! 至於要挑哪一家研究呢? 我們選擇了後者，除了考量到大部分的客戶都是使用 MobileIron 外，另外一個吸引我的點則是 Facebook 也是他們的客戶! 從我們在 2016 年發表的 <a href="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">How I Hacked Facebook, and Found Someone’s Backdoor Script</a> 研究中，就已發現 Facebook 使用 MobileIron 作為他們的 MDM 解決方案!</p>
+
+<p>根據 MobileIron 官方網站描述，至少有 20000+ 的企業使用 MobileIron 當成他們的 MDM 解決方案，而根據我們實際對全世界的掃描，也至少有 15% 以上的財富世界 500 大企業使用 MobileIron 且<strong>曝露在外網</strong>(實際上一定更多)，因此，尋找 MobileIron 的漏洞也就變成我們的首要目標!</p>
+
+<h2 id="如何開始研究">如何開始研究</h2>
+
+<p>從<a href="https://www.cvedetails.com/vulnerability-list/vendor_id-13968/Mobileiron.html">過往出現過的漏洞</a>可以得知 MobileIron 並沒有受到太多安全人員研究，其中原因除了 MDM 這個攻擊向量尚未廣為人知外，另一個可能是因為關於 MobileIron 的相關韌體太難取得，研究一款設備最大的問題是如何從純粹的黑箱，到可以分析的灰箱、甚至白箱! 由於無法從官網下載韌體，我們花費了好幾天嘗試著各種關鍵字在網路上尋找可利用的公開資訊，最後才在 Goolge Search 索引到的其中一個公開網站根目錄上發現疑似是開發商測試用的 RPM 包。</p>
+
+<p><img src="/assets/img/blog/20200912/1.png" alt="" /></p>
+
+<p>下載回的韌體為 2018 年初的版本，離現在也有很長一段時間，也許核心程式碼也大改過，不過總比什麼都沒有好，因此我們就從這份檔案開始研究起。</p>
+
+<p><em>備註: 經通知 MobileIron 官方後，此開發商網站已關閉。</em></p>
+
+<h2 id="如何尋找漏洞">如何尋找漏洞</h2>
+
+<p>整個 MobileIron 使用 Java 作為主要開發語言，對外開放的連接埠為 443, 8443, 9997，各個連接埠對應功能如下:</p>
+<ul>
+  <li>443 為使用者裝置註冊介面</li>
+  <li>8443 為設備管理介面</li>
+  <li>9997 為一個 MobileIron 私有的裝置同步協定 (MI Protocol)</li>
+</ul>
+
+<p>三個連接埠皆透過 TLS 保護連線的安全性及完整性，網頁部分則是透過 Apache 的 Reverse Proxy 架構將連線導至後方，由 Tomcat 部署的網頁應用處理，網頁應用則由 Spring MVC 開發。</p>
+
+<p><img src="/assets/img/blog/20200912/2.png" alt="" /></p>
+
+<p>由於使用的技術架構相對新，傳統類型的漏洞如 SQL Injection 也較難從單一的點來發現，因此理解程式邏輯並配合架構層面的攻擊就變成我們這次尋找漏洞的主要目標!</p>
+
+<p>這次的漏洞也很簡單，主要是 Web Service 使用了 Hessian 格式處理資料進而產生了反序列化的弱點! 雖然漏洞一句話就可以解釋完了，但懂的人才知道反序列化並不代表你可以做任何事，接下來的利用才是精彩的地方!</p>
+
+<p>現在已知 MobileIron 在處理 Web Service 的地方存在 Hessian 反序列化漏洞! 但漏洞存在，並不代表我們碰得到漏洞，可以觸發 Hessian 反序列化的路徑分別在:</p>
+<ul>
+  <li>一般使用者介面 - <code class="highlighter-rouge">https://mobileiron/mifs/services/</code></li>
+  <li>管理介面 - <code class="highlighter-rouge">https://mobileiron:8443/mifs/services/</code></li>
+</ul>
+
+<p>管理介面基本上沒有任何阻擋，可以輕鬆的碰到 Web Service，而一般使用者介面的 Web Service 則無法存取，這對我們來說是一個致命性的打擊，由於大部分企業的網路架構並不會將管理介面的連接埠開放在外部網路，因此只能攻擊管理介面對於的利用程度並不大，因此我們必須尋找其他的方式去觸發這個漏洞!</p>
+
+<p>仔細觀察 MobileIron 的阻擋方式，發現它是透過在 Apache 上使用 Rewrite Rules 去阻擋對一般使用者介面 Web Service 的存取:</p>
+
+<div class="language-apache highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">RewriteRule</span> ^/mifs/services/(.*)$ https://%{SERVER_NAME}:8443/mifs/services/$1 [R=307,L]
+<span class="nc">RewriteRule</span> ^/mifs/services [F]
+</code></pre></div></div>
+
+<p>嗯，很棒! 使用 Reverse Proxy 架構而且是在前面那層做阻擋，你是否想到什麼呢?</p>
+
+<p><br /><br />
+<br /></p>
+
+<p>沒錯! 就是我們在 <a href="https://github.com/orangetw/My-CTF-Web-Challenges#blackbox">2015 年</a>發現，並且在 <a href="https://www.blackhat.com/us-18/briefings.html#breaking-parser-logic-take-your-path-normalization-off-and-pop-0days-out">Black Hat USA 2018</a> 上所發表的針對 Reverse Proxy 架構的新攻擊面 <a href="https://blog.orange.tw/2018/08/how-i-chained-4-bugs-features-into-rce-on-amazon.html">Breaking Parser Logic</a>! 這個優秀的技巧最近也被很好的利用在 <a href="https://support.f5.com/csp/article/K52145254">CVE-2020-5902</a>，F5 BIG-IP TMUI 的遠端程式碼執行上!</p>
+
+<p>透過 Apache 與 Tomcat 對路徑理解的不一致，我們可以透過以下方式繞過 Rewrite Rule 再一次攻擊 Web Service!</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>https://mobileiron/mifs/.;/services/someService
+</code></pre></div></div>
+
+<p>碰! 因此現在不管是 8443 的管理介面還是 443 的一般使用者介面，我們都可以碰到有 Hessian 反序列化存在的 Web Service 了!</p>
+
+<h2 id="如何利用漏洞">如何利用漏洞</h2>
+
+<p>現在讓我們回到 Hessian 反序列化的利用上! 針對 Hessian 反序列化，<a href="https://github.com/mbechler">Moritz Bechler</a> 已經在他的 <a href="https://www.github.com/mbechler/marshalsec/blob/master/marshalsec.pdf">Java Unmarshaller Security</a> 中做了一個很詳細的研究報告! 從他所開源的 <a href="https://github.com/mbechler/marshalsec">marshalsec</a> 原始碼中，我們也學習到 Hessian 在反序列化過程中除了透過 HashMap 觸發 <code class="highlighter-rouge">equals()</code> 以及 <code class="highlighter-rouge">hashcode()</code> 等觸發點外，也可透過 <code class="highlighter-rouge">XString</code> 串出 <code class="highlighter-rouge">toString()</code>，而目前關於 Hessian 反序列化已存在的利用鏈有四條:</p>
+
+<ul>
+  <li>Apache XBean</li>
+  <li>Caucho Resin</li>
+  <li>Spring AOP</li>
+  <li>ROME EqualsBean/ToStringBean</li>
+</ul>
+
+<p>而根據我們的目標環境，可以觸發的只有 Spring AOP 這條利用鏈!</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Name</th>
+      <th>Effect</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>x</td>
+      <td>Apache XBean</td>
+      <td>JNDI 注入</td>
+    </tr>
+    <tr>
+      <td>x</td>
+      <td>Caucho Resin</td>
+      <td>JNDI 注入</td>
+    </tr>
+    <tr>
+      <td><strong>√</strong></td>
+      <td><strong>Spring AOP</strong></td>
+      <td><strong>JNDI 注入</strong></td>
+    </tr>
+    <tr>
+      <td>x</td>
+      <td>ROME EqualsBean</td>
+      <td>RCE</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>無論如何，我們現在有了 JNDI 注入後，接下來只要透過 <a href="https://twitter.com/pwntester">Alvaro Muñoz</a> 與 <a href="https://twitter.com/olekmirosh">Oleksandr Mirosh</a> 在 Black Hat USA 2016 上所發表的 <a href="https://www.blackhat.com/us-16/briefings.html#a-journey-from-jndi-ldap-manipulation-to-remote-code-execution-dream-land">A Journey From JNDI/LDAP to Remote Code Execution Dream Land</a> 就可以取得遠端程式碼執行了… 甘安內?</p>
+
+<p><img src="/assets/img/blog/20200912/3.png" alt="" /></p>
+
+<p><br /></p>
+
+<p>自從 <a href="https://twitter.com/pwntester">Alvaro Muñoz</a> 與 <a href="https://twitter.com/olekmirosh">Oleksandr Mirosh</a> 在 Black Hat 發表了這個新的攻擊向量後，不知道幫助了多少大大小小的駭客，甚至會有人認為「遇到反序列化就用 JNDI 送就對了!」，但自從 2018 年十月，Java 終於把關於 JNDI 注入的最後一塊拼圖給修復，這個修復被記載在 <a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-3149">CVE-2018-3149</a> 中，自此之後，所有 Java 高於 8u181, 7u191, 6u201 的版本皆無法透過 JNDI/LDAP 的方式執行程式碼，因此若要在最新版本的 MobileIron 上實現攻擊，我們勢必得面對這個問題!</p>
+
+<p>關於 CVE-2018-3149，是透過將 <code class="highlighter-rouge">com.sun.jndi.ldap.object.trustURLCodebase</code> 的預設值改為 <code class="highlighter-rouge">False</code> 的方式以達到禁止攻擊者下載遠端 Bytecode 取得執行程式碼。</p>
+
+<p>但幸運的是，我們依然可以透過 JNDI 的 Naming Reference 到本機既有的 Class Factory 上! 透過類似 <a href="https://en.wikipedia.org/wiki/Return-oriented_programming">Return-Oriented Programming</a> 的概念，尋找本機 ClassPath 中可利用的類別去做更進一步的利用，詳細的手法可參考由 <a href="https://twitter.com/artsploit">Michael Stepankin</a> 在 2019 年年初所發表的 <a href="https://www.veracode.com/blog/research/exploiting-jndi-injections-java">Exploiting JNDI Injections in Java</a>，裡面詳細敘述了如何透過 Tomcat 的 <code class="highlighter-rouge">BeanFactory</code> 去載入 <code class="highlighter-rouge">ELProcessor</code> 達成任意程式碼執行!</p>
+
+<p>這條路看似通暢，但實際上卻差那麼一點，由於 <code class="highlighter-rouge">ELProcessor</code> 在 Tomcat 8 後才被引入，因此上面的繞過方式只能在 Tomcat 版本大於 8 後的某個版本才能成功，而我們的目標則是 Tomcat 7.x，因此得為 <code class="highlighter-rouge">BeanFactory</code> 尋找一個新的利用鏈! 而經過搜尋，發現在 <a href="https://github.com/welk1n">Welkin</a> 的<a href="https://www.cnblogs.com/Welk1n/p/11066397.html">文章</a>中所提到:</p>
+
+<blockquote>
+  <p>除了 javax.el.ELProcessor，当然也还有很多其他的类符合条件可以作为 beanClass 注入到 BeanFactory 中实现利用。举个例子，如果目标机器 classpath 中有 groovy 的库，则可以结合之前 Orange 师傅发过的 <a href="https://blog.orange.tw/2019/02/abusing-meta-programming-for-unauthenticated-rce.html">Jenkins 的漏洞实现利用</a></p>
+
+</blockquote>
+
+<p><br /></p>
+
+<p>目標的 ClassPath 上剛好有 Groovy 存在! 於是我們又讓 Meta Programming 偉大了一次 :D</p>
+
+<p>然而事實上，目標伺服器上 Groovy 版本為 1.5.6，是一個距今十年前老舊到不支援 Meta Programming 的版本，所以我們最後還是基於 Groovy 的程式碼，重新尋找了一個在 <code class="highlighter-rouge">GroovyShell</code> 上的利用鏈! 詳細的利用鏈可參考我送給 <a href="https://github.com/welk1n/JNDI-Injection-Bypass">JNDI-Injection-Bypass</a> 的這個 <a href="https://github.com/welk1n/JNDI-Injection-Bypass/pull/1">Pull Request</a>!</p>
+
+<h2 id="攻擊-facebook">攻擊 Facebook</h2>
+
+<p>現在我們已經有了一個基於 <code class="highlighter-rouge">JNDI</code> + <code class="highlighter-rouge">BeanFactory</code> + <code class="highlighter-rouge">GroovyShell</code> 的完美遠端程式碼執行漏洞，接下來就開始攻擊 Facebook 吧! 從前文提到，我們在 2016 年時就已知 Facebook 使用 MobileIron 當作他們的 MDM 解決方案，雖然現在再檢查一次發現首頁直接變成 403 Forbidden 了，不過幸運的是 Web Service 層並無阻擋!<br />
+s<br />
+<img src="/assets/img/blog/20200912/4.png" alt="" /></p>
+
+<p>萬事俱備，只欠東風! 正當要攻擊 Facebook 的前幾天，我們突然想到，從上次<a href="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">進入 Facebook 伺服器</a>的經驗，由於安全上的考量，Facebook 似乎會禁止所有對外部非法的連線，這點對我們 JNDI 注入攻擊有著至關重要的影響! 首先，JNDI 注入的核心就是透過受害者連線至攻擊者控制的惡意伺服器，並接收回傳的惡意 Naming Reference 後所導致的一系列利用，但現在連最開始的連線到攻擊者的惡意伺服器都無法，更別談後續的利用。</p>
+
+<p><img src="/assets/img/blog/20200912/5.png" alt="" /></p>
+
+<p><br /></p>
+
+<p>自此，我們關於 JNDI 注入的路已全被封殺，只能回到 Hessian 反序列化重新思考! 而現有的利用鏈皆無法達到遠端程式碼執行，所以我們勢必得拋棄 JNDI 注入，尋找一個新的利用鏈!</p>
+
+<p><br /></p>
+
+<p><img src="/assets/img/blog/20200912/6.png" alt="" /></p>
+
+<p><br /></p>
+
+<p>為了尋找新的利用鏈，必須先深入理解已存在利用鏈的原理及成因，在重讀 <a href="https://github.com/mbechler/marshalsec/blob/master/marshalsec.pdf">Java Unmarshaller Security</a> 的論文後，我對其中一句話感到了好奇:</p>
+
+<blockquote>
+  <p>Cannot restore Groovy’s MethodClosure as readResolve() is called which throws an exception.</p>
+
+</blockquote>
+
+<p><br /></p>
+
+<p>哦，為什麼作者要特地補上這句話呢? 我開始有個猜想:</p>
+
+<blockquote>
+  <p>作者評估過把 Groovy 當成利用鏈的可行性，雖然被限制住了，但一定覺得有機會才會寫進論文中!</p>
+
+</blockquote>
+
+<p><br /></p>
+
+<p>從這個猜想出發，雖然 Groovy 的利用鏈被 <code class="highlighter-rouge">readResolve()</code> 限制住了，但剛好我們目標版本的 Groovy 很舊，說不定尚未把這個限制加入程式庫!</p>
+
+<p>我們比較了一下 Groovy-1.5.6 與最新版本位於 <code class="highlighter-rouge">groovy/runtime/MethodClosure.java</code> 中的 <code class="highlighter-rouge">readSolve()</code> 實現:</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">$</span> <span class="n">diff</span> <span class="mi">1_5</span><span class="n">_6</span><span class="o">/</span><span class="n">MethodClosure</span><span class="o">.</span><span class="na">java</span> <span class="mi">3_0</span><span class="n">_4</span><span class="o">/</span><span class="n">MethodClosure</span><span class="o">.</span><span class="na">java</span>
+
+<span class="o">&gt;</span>     <span class="kd">private</span> <span class="n">Object</span> <span class="nf">readResolve</span><span class="o">()</span> <span class="o">{</span>
+<span class="o">&gt;</span>         <span class="k">if</span> <span class="o">(</span><span class="n">ALLOW_RESOLVE</span><span class="o">)</span> <span class="o">{</span>
+<span class="o">&gt;</span>             <span class="k">return</span> <span class="k">this</span><span class="o">;</span>
+<span class="o">&gt;</span>         <span class="o">}</span>
+<span class="o">&gt;</span>         <span class="k">throw</span> <span class="k">new</span> <span class="n">UnsupportedOperationException</span><span class="o">();</span>
+<span class="o">&gt;</span>     <span class="o">}</span>
+</code></pre></div></div>
+
+<p>可以看到的確在舊版是沒有 <code class="highlighter-rouge">ALLOW_RESOLVE</code> 限制的，而後來經過考古後也發現，這個限制其實 Groovy 自己為了因應 2015 年所出現 Java 反序列化漏洞的減緩措施，因此也被分配了 <a href="https://groovy-lang.org/security.html">CVE-2015-3253</a> 這個漏洞編號! 由於 Groovy 只是一個只在內部使用、不會對外的小配角，因此在沒有特別需求下開發者也不會特地去更新它，因此成為了我們攻擊鏈的一環! 這也再一次驗證了「任何看似舉無輕重的小元件，都有可能成為你被攻擊的主因」!</p>
+
+<p>最後，當然! 我們成功的取得在 Facebook 伺服器上的 Shell，以下是影片:</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/hGTLIIOb14A" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe>
+
+<h2 id="漏洞通報與修復">漏洞通報與修復</h2>
+
+<p>我們約在三月時完成整個漏洞研究，並在 4/3 日將研究成果寫成報告，透過 <code class="highlighter-rouge">security@mobileiron.com</code> 回報給 MobileIron! 官方收到後著手開始修復，在 6/15 釋出修補程式並記錄了三個 CVE 編號，詳細的修復方式請參閱 <a href="https://www.mobileiron.com/en/blog/mobileiron-security-updates-available">MobileIron 官方網站</a>!</p>
+
+<ul>
+  <li>CVE-2020-15505 - Remote Code Execution</li>
+  <li>CVE-2020-15506 - Authentication Bypass</li>
+  <li>CVE-2020-15507 - Arbitrary File Reading</li>
+</ul>
+
+<p>當官方釋出修補程式後，我們也開始監控世界上所有有使用 MobileIron 企業的修復狀況，這裡只單純檢查靜態檔案的 <code class="highlighter-rouge">Last-Modified</code> Header，結果僅供參考不完全代表實際情況(Unknown 代表未開 443/8443 無法利用):</p>
+
+<p><img src="/assets/img/blog/20200912/7.png" alt="" /></p>
+
+<p><br /></p>
+
+<p>與此同時，我們也持續監控著 Facebook，並在 15 天確認都未修補後於 7/2 日成功進入 Facebook 伺服器後回報 Facebook Bug Bounty Program!</p>
+
+<h2 id="結語">結語</h2>
+
+<p>到此，我們已經成功示範了如何尋找一個 MDM 伺服器的漏洞! 從繞過 Java 語言層級的保護、網路限制，到寫出攻擊程式並成功的利用在 Bug Bounty Program 上! 因為文長，還有許多來不及分享的故事，這裡僅條列一下供有興趣繼續研究的人參考!</p>
+
+<ul>
+  <li>如何從 MDM 伺服器，控制回員工的手機裝置</li>
+  <li>如何分析 MobileIron 的私有 MI Protocol</li>
+  <li>CVE-2020-15506 本質上其實是一個很有趣的認證繞過漏洞</li>
+</ul>
+
+<p>希望這篇文章能夠喚起大眾對於 MDM 攻擊面的注意，以及企業安全的重要性! 感謝收看 :D</p>
+
+
+              </article>
+              <p class="sns-widgets">
+                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
+              </p>
+          
+              <div class="heading--side-lined">
+                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/blog/author/orange" class="blog-author-name">Orange Tsai</a> 
+              </div>
+              <p class="blog-author-info">
+                I am Orange : )
+              </p>
+          
+              <div class="heading--side-lined">
+                讀者留言
+              </div>
+              <div class="blog-comments">
+                
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+              </div>
+            </div>
+          </div>
+
+
+
+
+
+
+</main>
+      <div class="container--wrapper">
+
+        <div class="relative-posts">
+          <div class="heading--side-lined container">
+            最新消息
+          </div>
+          <div class="relative-posts__cells">
+  
+            <section class="card">
+              <a href="/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20200912/5.png)"></div>
+                <h3 class="card__title">
+                  看我如何再一次駭進 Facebook，一個在 MobileIron MDM 上的遠端程式碼執行漏洞!
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/Facebook/" class="card__tag">Facebook</a><a href="/blog/tag/BugBounty/" class="card__tag">BugBounty</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2020/08/21/the-enemy-is-not-ransomware-its-nation-state-hackers/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20200821/cover.png)"></div>
+                <h3 class="card__title">
+                  敵人不是勒贖軟體，而是組織型駭客
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Strategy/" class="card__tag">Strategy</a><a href="/blog/tag/Ransomware/" class="card__tag">Ransomware</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2020/04/21/from-sql-to-rce-exploit-aspnet-app-with-sessionstate/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20200421/cover.jpg)"></div>
+                <h3 class="card__title">
+                  從 SQL 到 RCE: 利用 SessionState 反序列化攻擊 ASP.NET 網站應用程式
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/DEVCORE CONF/" class="card__tag">DEVCORE CONF</a><a href="/blog/tag/Deserialize/" class="card__tag">Deserialize</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+            </section>
+  
+          </div>
+        </div>
+
+
+        <div class="contact-section container">
+          <h2 class="contact-section__title">
+            用最真實的攻擊，驗證企業的防禦
+          </h2>
+          <a href="/contact/" class="home-contact__button button--dense">聯絡我們</a>
+        </div>
+
+        <footer class="main-footer">
+          <div class="main-footer__about">
+            戴夫寇爾提供<br class="mobile-only" /><a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務<br />在<a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a>或<a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>上追蹤我們的<a href="/blog/" class="link">最新訊息</a><br />瞭解更多戴夫寇爾的<a href="/about/" class="link">駭客思維</a>
+          </div>
+          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
+                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
+                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
+          </div>
+          <address class="main-footer__address">
+            <ul class="list--unstyled">
+              <li>
+                地址 10487 台北市中山區復興北路 168 號 10 樓
+              </li>
+              <li>
+                Email contact@devco.re
+              </li>
+              <li>
+                電話 02-2718-0156
+              </li>
+              <li>
+                統編 53955237
+              </li>
+            </ul>
+          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2020 DEVCORE 戴夫寇爾</small>
+        </footer>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
+
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+
+  </body>
+</html>
+
+
+
+

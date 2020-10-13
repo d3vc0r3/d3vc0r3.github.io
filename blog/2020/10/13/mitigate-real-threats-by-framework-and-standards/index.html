@@ -1,0 +1,359 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>你的資安策略夠明確嗎？透過框架優先緩解真實威脅 | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <meta name="description" property="og:description" content="我們的紅隊演練是用最強的攻擊技巧找出企業各種可能的疏漏，但這些疏漏背後的複雜問題組織一定比我們更加瞭解。我們期望透過分享一個不同視角的方法論，讓企業可以參考這樣的方式建構更全面的防禦策略。" />
+    <meta name="keywords" content="Strategy" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="你的資安策略夠明確嗎？透過框架優先緩解真實威脅 | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2020/10/13/mitigate-real-threats-by-framework-and-standards/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20201013/5.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="你的資安策略夠明確嗎？透過框架優先緩解真實威脅 | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="我們的紅隊演練是用最強的攻擊技巧找出企業各種可能的疏漏，但這些疏漏背後的複雜問題組織一定比我們更加瞭解。我們期望透過分享一個不同視角的方法論，讓企業可以參考這樣的方式建構更全面的防禦策略。">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20201013/5.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2020/10/13/mitigate-real-threats-by-framework-and-standards/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+  </head>
+  <body>
+    <div class="page">
+      <div class="container--wrapper">
+        <div class="topbar">
+          <div class="topbar__brand">
+            <a href="/">
+                <div class="logo">
+                  DEVCORE 戴夫寇爾
+                </div></a>
+            <p class="slogan">
+              我們提供<a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務
+            </p>
+          </div>
+          <div class="drawer" id="drawer">
+            <div class="drawer__container">
+              <nav class="main-menu">
+                <div class="hidden">
+                  主選單
+                </div>
+                <a href="/services/penetration-test" class="main-menu__link mobile-only">滲透測試</a>
+                <a href="/services/red-team" class="main-menu__link mobile-only">紅隊演練</a>
+                <a href="/services/security-consulting" class="main-menu__link mobile-only">資安顧問</a>
+                <a href="/services/security-training" class="main-menu__link mobile-only">教育訓練</a>
+                <a href="/about/" class="main-menu__link">駭客思維</a><a href="/blog/" class="main-menu__link">最新訊息</a><a href="/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">搜尋</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
+              </nav>
+              <a href="/contact/" class="drawer__contact button--dense">聯絡我們</a>
+              <nav class="lang-menu">
+                <div class="lang-menu__label">
+                  語言:
+                </div>
+                <a href="/" class="lang-menu__link">中文</a>
+                <a href="/en/" class="lang-menu__link">English</a>
+              </nav>
+            </div>
+          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
+            <div class="bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </button>
+        </div>
+      </div><main role="main">
+
+
+          <div class="container--wrapper">
+            <div class="container">
+              <section class="blog-header">
+                <small class="blog-header__category"><a href="/blog/category/科普文章/">科普文章</a></small>
+                <img src="https://devco.re/assets/img/blog/20201013/5.png" class="blog-header__image" alt="你的資安策略夠明確嗎？透過框架優先緩解真實威脅" />
+                <h1 class="blog-header__title">
+                  你的資安策略夠明確嗎？透過框架優先緩解真實威脅
+                </h1>
+                <div class="blog-header__tags">
+                  
+                  <a href="/blog/tag/Strategy/" class="blog-header__tag">Strategy</a>
+                </div>
+          
+          
+                <p class="blog-header__info">
+                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/aaron.jpg)"></span> <a href="/blog/author/aaron" class="author-name">Aaron</a> <time class="date">on 2020-10-13 </time>
+                </p>
+          
+              </section>
+              <article class="article">
+          <h2 id="前言">前言</h2>
+
+<p>這一篇是跟 Allen 在 iThome 2020 資安大會一起分享的主題。在國內，大家比較少討論資安策略這個議題。主要原因除了這個題目太過艱澀、無聊外，從商業的角度也不容易成為獲利的服務。而我們會想分享這個主題的原因與我們主要的服務「紅隊演練」有關。</p>
+
+<p>執行紅隊演練三年多來，雖然協助企業找出威脅營運的重要入侵路徑，甚至發現防禦機制的不足之處，許多積極的客戶更想知道除了當次紅隊演練發現的問題外，是不是有更周延的方式來盤點防禦現況的不足。因此，我們開始尋找一個結構化且完整的方式來探究這個議題，開始思考國際標準、框架與紅隊演練之間的關係。希望除了從攻擊者的思維跟技巧找到企業的問題外，也能從防守方的角度思考企業長期而全面的防禦規劃。</p>
+
+<h2 id="複雜的問題更要從策略面思考">複雜的問題，更要從策略面思考</h2>
+
+<p>資安是非常複雜而且分工細膩的工作，不確定問題的核心就無法釐清權責、安排資源，遑論降低再發的機率。因此要解決這個複雜問題需要有資安策略來支撐，而不是頭痛醫頭、腳痛醫腳。首先，我們把資安的防護分為三種階段：</p>
+
+<ul>
+  <li>恢復原狀型：企業將主要的資安資源投放在日常的維運及問題查找上，包括確認當下發生的問題、進行緊急處理、災害控制、查明及分析發生原因、修復問題、研究對策避免再發生等等。</li>
+  <li>防微杜漸型：將資源投入在對企業造成重大衝擊的問題上，並持續進行預防及回應的評估與演練、嘗試提前找出原因，加以預防或思考演練發生時應該執行的對策。</li>
+  <li>追求理想/卓越型：盤點及分析問題的優、缺點，設定企業持續精進的目標，藉由行動計畫來達成目標。</li>
+</ul>
+
+<p>根據我們的觀察，幾乎多數的企業都是落在「恢復原狀型」，但企業多半認知其為「防微杜漸型」。造成這個認知上的落差，主因來自於對自身安全狀況的不了解，導致對於風險的掌握程度產生誤判。因此，透過一個宏觀的策略思考，有助於盤點各種控制措施不足之處，才有機會將防禦縱深的機制拴緊螺絲，打造期望的防禦體系。</p>
+
+<p><img src="/assets/img/blog/20201013/1.png" alt="" /></p>
+
+<h2 id="分層負責各司其職">分層負責，各司其職</h2>
+
+<p>我們建議將縱深防禦以一個更全面的方式來檢視，分為 Executive Layer、Process Layer、Procedure Layer 以及 Technology Layer 四層，一個好的防禦策略，除了要做到 R &amp; R (Role &amp; Responsibility) 外，更重要的是在上而下制定策略之後，經由下而上的方式確保策略的有效性，因此不同階層的資安從業人員都有其需要關注的重點。</p>
+
+<p><img src="/assets/img/blog/20201013/2.png" alt="" /></p>
+
+<ul>
+  <li>Executive Layer：資安長 (CISO) 的視角，關注足以影響組織營運的風險及緩解這些風險的資源是否充足。可以參考的標準包括 NIST 800-39、NIST 800-30、ISO 27005 以及 CIS RAM。</li>
+  <li>Process Layer：高階主管的視角，關注持續維持組織安全運作的管理程序是否足夠及落實、規劃未來組織資安的成熟度等。參考的標準包括 NIST Cybersecurity Framework、ISO 27001 等。</li>
+  <li>Procedure Layer：中階主管的視角，包括決定哪些安全控制措施要執行、執行的細緻程度，這些項目就是一般所謂的安全控制措施 (security control)，例如組態設定、密碼管理、日誌紀錄的類型等，可以參考 NIST 800-53 或是 CIS Critical Security Controls 等規範。</li>
+  <li>Technology Layer：初階主管與技術人員的角度，包含針對攻擊者的技巧所應對的資安設備、自動化安全控制措施的工具、監控分析工具等等。目前這部份也是組織資安防禦的重點，可以參考資安設備支援 MITRE ATT&amp;CK 的攻擊技巧來盤點現有的防禦缺口或透過 OWASP Cyber Defense Matrix (CDM) 定位產品。</li>
+</ul>
+
+<h2 id="框架與標準的定位">框架與標準的定位</h2>
+
+<p>在說明完不同階層關注的重點後，這裡特別說明幾個重要 (或使用率較高) 的標準及框架。除了要知道哪些框架跟標準與資安有關外，同時也需要了解適用的情境、目的及彼此間的差異</p>
+
+<ul>
+  <li>ISO 27001：屬於 Process Layer，其提供建立資訊安全管理系統的標準，幫助組織管理和保護資訊資產，確保達到客戶或利害關係人其安全的期待；可以取得驗證。但要提醒的是，27001 作為一個實踐資訊安全管理 (Information Security System) 的標準，雖然具有文件化 (Documented) 要求的優點，但其要求項目多數在預防 (Prevent) 及避免 (Avoid) 上，較少著重在因應網路安全的偵測 (Detect) 及回應 (React) 上。</li>
+  <li>NIST Cybersecurity Framework (CSF)：屬於 Process View，由美國主導的網路安全框架，提供關鍵基礎設施或一般企業幫助組織管理和保護資訊資產，確保其安全無慮；可以驗證並有成熟度模式，可以讓企業先描繪自己的資安狀態 (profile) 並藉由訂定目標逐年強化企業的安全。同時，明確的將安全要求結構化的分成識別 (Identify)、防禦 (Protect)、偵測 (Detect)、回應 (Respond) 及復原 (Recover)，並支援其他安全標準與框架的對應，如 CIS CSC、COBIT、27001、NIST 800-53 等。</li>
+</ul>
+
+<p><img src="/assets/img/blog/20201013/3.png" alt="" /></p>
+
+<ul>
+  <li>CIS Cybersecurity Control：資訊安全控制指引屬於 Procedure View，針對網路攻擊所應採取的控制項目提出優先執行順序，組織可依照自身的規模 (IG1-IG3) 執行對應的措施， 分為基礎型、基本型及組織型，共 20 個控制群組、178 個子控制項。</li>
+</ul>
+
+<h2 id="不良的資安防護狀態">不良的資安防護狀態</h2>
+
+<p>實務上來說，企業的防禦策略有兩種不良的狀態</p>
+
+<ol>
+  <li>縱深防護不足：防禦機制不夠全面 (紅色缺口)、設備效果不如宣稱 (藍色缺口)、設備本身的限制 (橘色缺口)；上述的問題，綜合而言，就會使得設備間的綜效無法阻斷攻擊鏈，形成技術層的破口。<br />
+<img src="/assets/img/blog/20201013/4.png" alt="" /></li>
+  <li>配套措施的不完整：也就是「程序」及「流程」上的不足，假設某資安設備可以偵測到異常行為，資安人員如何分辨這是攻擊行為還是員工內部正常行為？多久內要及時回應進行處理、多久要發動鑑識？一旦上述的「程序」及「流程」沒有定義清楚，縱使設備本身是有效的，組織仍然會因為回應時間過慢，導致攻擊者入侵成功。<br />
+<img src="/assets/img/blog/20201013/5.png" alt="" /></li>
+</ol>
+
+<h2 id="盤點各層次的守備範圍">盤點各層次的守備範圍</h2>
+
+<p>那麼要如何改善這兩種不佳的防禦狀態？我們可以單獨使用 CDM 來評估技術層的守備範圍是否足夠，也可以使用它來作為程序、流程及技術層的跨階層的盤點；</p>
+
+<p><img src="/assets/img/blog/20201013/6.png" alt="" /></p>
+
+<blockquote>
+  <p>CDM (Cyber Defense Matrix) 是 OWASP 的一個專案，由一個 5x5 的矩陣所構成。橫軸是 NIST CSF 的五大類別，而縱軸則是資產盤點常見的分類；組織可以利用這個矩陣來盤點企業 Technology View 建構的防禦設備，更精準的確認需要保護的資產是否在 NIST CSF 的每個類別都有對應的措施。</p>
+</blockquote>
+
+<p>以 ISO 27001 作為例子，將其本文的要求及附錄 A 的控制措施，對應到 CDM 上，進而盤點 ISO 27001 在組織的程序面所能涵蓋的範圍。要注意的是，不同組織在盤點時，會產生不同的對應結果，這正是透過 CDM 來檢視的意義所在；例如在盤點「A.7.2.2 資訊安全認知、教育及訓練」時，企業要思考對於人員的教育訓練是否涵蓋到 NIST CSF 的五大類別，還是只包含人員意識的訓練；另外以「A.6.2.2 遠距工作」的防護機制，除了針對網路層及應用程式保護外，管理程序是否也包含遠距工作的資料及設備要求？</p>
+
+<p><img src="/assets/img/blog/20201013/7.png" alt="" /></p>
+
+<p>接著，往下一層 (Procedure Layer)，也將企業現有的控制措施，對應到 CDM 中。這邊以 CIS CSC 為例，淺藍色的部份屬於基本型的控制群組、灰色部分為基礎型控制群組，組織型的控制群組因為比較偏向程序面，因此比較難單獨歸屬在特定的 CDM 區塊中。</p>
+
+<p><img src="/assets/img/blog/20201013/8.png" alt="" /></p>
+
+<h2 id="透過真實的威脅補足資安策略的不足">透過真實的威脅，補足資安策略的不足</h2>
+
+<p>在透過 CDM 盤點完 Procedure Layer 及 Process Layer 後，企業接著可以透過資安事故、威脅情資、紅隊演練或模擬入侵攻擊工具 (BAS) 等貼近真實威脅的服務或工具，來思考資安策略的不足之處。這邊我們以一個紅隊演練的部分成果作為案例，來貫穿本篇文章的應用。</p>
+
+<p><img src="/assets/img/blog/20201013/9.png" alt="" /></p>
+
+<p>在這個案例中，我們約略可以發現幾個問題：</p>
+
+<ol>
+  <li>程式撰寫不夠安全：以致存在任意檔案上傳的漏洞。</li>
+  <li>不同系統間使用共用帳號密碼：導致撞庫攻擊可以成功，而監控機制或組態管理顯然未發揮作用。</li>
+  <li>未依照資料機敏性進行網段區隔：對外服務網段可以透過 RDP 連線至 core zone。</li>
+  <li>特權帳號與存取控制未進行關聯分析：致可以使用 backup 帳號登入 AD 網域控制器。</li>
+</ol>
+
+<p>上述的 4 個項目，是直覺在盤點時可能想到的疏漏項目。但要怎麼確認還有其他根因 (root cause) 是企業沒思考到的呢？這時候就可以利用已知的標準及框架，搭配先前盤點好的控制項目，來更為周延的思考目前還可以強化的控制措施；如果企業的資源有限，甚至可以參考 CIS CSC 對於優先權的建議順序，先確認組織實作群組 (Implementation Group) ，再依基本型、基礎型及組織型，訂定短、中、長期計畫及投放資源，有目標的改善防禦能耐。</p>
+
+<p><img src="/assets/img/blog/20201013/10.png" alt="" /></p>
+
+<p>最後，可以將上圖找出 Procedure Layer 的控制項目，對應到 Process Layer 的盤點結果，檢視流程上對應的作法。以 「14.1、依據敏感性網路進行區隔」為例，去評估 ISO 27001 中「A.6.2.2 遠距工作」的要求上，在設備、應用程式、網路、資料及使用者，是否都有做好網路區隔；或是「6.3 開啟更詳盡的日誌」，評估在 ISO 27001 中「A.16.1.5」對於資訊安全事故的回應上，在偵測、回應跟復原上，是否都有對應的程序可以支持，監控到發出的告警。</p>
+
+<p><img src="/assets/img/blog/20201013/11.png" alt="" /></p>
+
+<p>透過本篇的方法論可以從技術、程序、流程到風險，讓不同階層的資安從業人員有一致性的溝通方式。我們希望資安策略對於企業是一個真正可被實作、建立出短、中、長期目標的務實作為，而非只是一個組織治理中的一個高深名詞。</p>
+
+
+              </article>
+              <p class="sns-widgets">
+                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
+              </p>
+          
+              <div class="heading--side-lined">
+                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/aaron.jpg)"></span> <a href="/blog/author/aaron" class="blog-author-name">Aaron</a> 
+              </div>
+              <p class="blog-author-info">
+                曾在大型組織擔任資安受駭者，因此嘗盡苦頭、受盡折磨、懷疑人生。<br />希望能透過最接近真實威脅的技術能量，協助企業找出有效的防禦策略，讓投入資安產業的人邁向健康開朗的人生。
+              </p>
+          
+              <div class="heading--side-lined">
+                讀者留言
+              </div>
+              <div class="blog-comments">
+                
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+              </div>
+            </div>
+          </div>
+
+
+
+
+
+
+</main>
+      <div class="container--wrapper">
+
+        <div class="relative-posts">
+          <div class="heading--side-lined container">
+            最新消息
+          </div>
+          <div class="relative-posts__cells">
+  
+            <section class="card">
+              <a href="/blog/2020/10/13/mitigate-real-threats-by-framework-and-standards/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20201013/5.png)"></div>
+                <h3 class="card__title">
+                  你的資安策略夠明確嗎？透過框架優先緩解真實威脅
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Strategy/" class="card__tag">Strategy</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20200912/5.png)"></div>
+                <h3 class="card__title">
+                  看我如何再一次駭進 Facebook，一個在 MobileIron MDM 上的遠端程式碼執行漏洞!
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/Facebook/" class="card__tag">Facebook</a><a href="/blog/tag/BugBounty/" class="card__tag">BugBounty</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2020/08/21/the-enemy-is-not-ransomware-its-nation-state-hackers/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20200821/cover.png)"></div>
+                <h3 class="card__title">
+                  敵人不是勒贖軟體，而是組織型駭客
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Strategy/" class="card__tag">Strategy</a><a href="/blog/tag/Ransomware/" class="card__tag">Ransomware</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
+            </section>
+  
+          </div>
+        </div>
+
+
+        <div class="contact-section container">
+          <h2 class="contact-section__title">
+            用最真實的攻擊，驗證企業的防禦
+          </h2>
+          <a href="/contact/" class="home-contact__button button--dense">聯絡我們</a>
+        </div>
+
+        <footer class="main-footer">
+          <div class="main-footer__about">
+            戴夫寇爾提供<br class="mobile-only" /><a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務<br />在<a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a>或<a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>上追蹤我們的<a href="/blog/" class="link">最新訊息</a><br />瞭解更多戴夫寇爾的<a href="/about/" class="link">駭客思維</a>
+          </div>
+          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
+                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
+                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
+          </div>
+          <address class="main-footer__address">
+            <ul class="list--unstyled">
+              <li>
+                地址 10487 台北市中山區復興北路 168 號 10 樓
+              </li>
+              <li>
+                Email contact@devco.re
+              </li>
+              <li>
+                電話 02-2718-0156
+              </li>
+              <li>
+                統編 53955237
+              </li>
+            </ul>
+          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2020 DEVCORE 戴夫寇爾</small>
+        </footer>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
+
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+
+  </body>
+</html>
+
+
+
+

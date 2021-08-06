@@ -1,0 +1,411 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>A New Attack Surface on MS Exchange Part 2 - ProxyOracle! | DEVCORE</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <meta name="description" property="og:description" content="ProxyOracle! The attack on Exchange Server to recover any user's password in plaintext format" />
+    <meta name="keywords" content="CVE-2021-31196, CVE-2021-31195" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="A New Attack Surface on MS Exchange Part 2 - ProxyOracle! | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-2-ProxyOracle/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20210806/2/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="A New Attack Surface on MS Exchange Part 2 - ProxyOracle! | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="ProxyOracle! The attack on Exchange Server to recover any user's password in plaintext format">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20210806/2/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-2-ProxyOracle/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-K5B8NW');</script>
+    <!-- End Google Tag Manager -->
+  </head>
+  <body>
+    <div class="page">
+      <div class="container--wrapper">
+        <div class="topbar">
+          <div class="topbar__brand">
+            <a href="/en/">
+                <div class="logo">
+                  DEVCORE
+                </div></a>
+            <p class="slogan">
+              We offer professional <a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services
+            </p>
+          </div>
+          <div class="drawer" id="drawer">
+            <div class="drawer__container">
+              <nav class="main-menu">
+                <div class="hidden">
+                  Menu
+                </div>
+                <a href="/en/services/penetration-test" class="main-menu__link mobile-only">Penetration Testing</a>
+                <a href="/en/services/red-team" class="main-menu__link mobile-only">Red Team Assessment</a>
+                <a href="/en/services/security-consulting" class="main-menu__link mobile-only">Consulting</a>
+                <a href="/en/services/security-training" class="main-menu__link mobile-only">Training</a>
+                <a href="/en/about/" class="main-menu__link">Hackers</a><a href="/en/blog/" class="main-menu__link">News</a><a href="/en/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">Search</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
+              </nav>
+              <a href="/en/contact/" class="drawer__contact button--dense">Contact</a>
+              <nav class="lang-menu">
+                <div class="lang-menu__label">
+                  Lang:
+                </div>
+                <a href="/" class="lang-menu__link">中文</a>
+                <a href="/en/" class="lang-menu__link">English</a>
+              </nav>
+            </div>
+          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
+            <div class="bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </button>
+        </div>
+      </div><main role="main">
+
+
+          <div class="container--wrapper">
+            <div class="container">
+              <section class="blog-header">
+                <small class="blog-header__category"><a href="/en/blog/category/Tech Editorials/" style="text-transform: uppercase;">Tech Editorials</a></small>
+                <img src="https://devco.re/assets/img/blog/20210806/2/cover.png" class="blog-header__image" alt="A New Attack Surface on MS Exchange Part 2 - ProxyOracle!" />
+                <h1 class="blog-header__title">
+                  A New Attack Surface on MS Exchange Part 2 - ProxyOracle!
+                </h1>
+                <div class="blog-header__tags">
+                  
+                  <a href="/en/blog/tag/Advisory/" class="blog-header__tag">Advisory</a><a href="/en/blog/tag/CVE/" class="blog-header__tag">CVE</a><a href="/en/blog/tag/RCE/" class="blog-header__tag">RCE</a><a href="/en/blog/tag/Exchange/" class="blog-header__tag">Exchange</a>
+                </div>
+          
+          
+                <p class="blog-header__info">
+                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/en/blog/author/orange" class="author-name">Orange Tsai</a> <time class="date">on 2021-08-06 </time>
+                </p>
+          
+              </section>
+              <article class="article">
+          <style type="text/css">
+    .center-image {
+        margin: 0 auto;
+        display: block;
+    }
+</style>
+
+<p>Hi, this is the part 2 of the New MS Exchange Attack Surface. Because this article refers to several architecture introductions and attack surface concepts in the previous article, you could find the first piece here:</p>
+<ul>
+  <li><a href="/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-1-ProxyLogon/">A New Attack Surface on MS Exchange Part 1 - ProxyLogon!</a></li>
+</ul>
+
+<p>This time, we will be introducing ProxyOracle. Compared with ProxyLogon, ProxyOracle is an interesting exploit with a different approach. By simply leading a user to visit a malicious link, ProxyOracle allows an attacker to recover the user’s password in plaintext  format completely. ProxyOracle consists of two vulnerabilities:</p>
+<ul>
+  <li><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-31195">CVE-2021-31195</a> - Reflected Cross-Site Scripting</li>
+  <li><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-31196">CVE-2021-31196</a> - Padding Oracle Attack on Exchange Cookies Parsing</li>
+</ul>
+
+<h1 id="where-is-proxyoracle">Where is ProxyOracle</h1>
+
+<p>So where is ProxyOracle? Based on the CAS architecture we introduced before, the Frontend of CAS will first serialize the User Identity to a string and put it in the header of <code class="highlighter-rouge">X-CommonAccessToken</code>. The header will be merged into the client’s HTTP request and sent to the Backend later. Once the Backend receives, it deserializes the header back to the original User Identity in Frontend.</p>
+
+<p>We now know how the Frontend and Backend synchronize the User Identity. The next is to explain how the Frontend knows who you are and processes your credentials. The Outlook Web Access (OWA) uses a fancy interface to handle the whole login mechanism, which is called Form-Based Authentication (FBA). The FBA is a special IIS module that inherits the <code class="highlighter-rouge">ProxyModule</code> and is responsible for executing the transformation between the credentials and cookies before entering the proxy logic.</p>
+
+<p><img src="/assets/img/blog/20210806/2/1.png" alt="" /></p>
+
+<h1 id="the-fba-mechanism">The FBA Mechanism</h1>
+
+<p>HTTP is a stateless protocol. To keep your login state, FBA saves the username and password in cookies. Every time you visit the OWA, Exchange will parse the cookies, retrieve the credential and try to log in with that. If the login succeed, Exchange will serialize your User Identity into a string, put it into the header of <code class="highlighter-rouge">X-CommonAccessToken</code>, and forward it to the Backend</p>
+
+<p><strong>HttpProxy\FbaModule.cs</strong></p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">protected</span> <span class="k">override</span> <span class="k">void</span> <span class="nf">OnBeginRequestInternal</span><span class="p">(</span><span class="n">HttpApplication</span> <span class="n">httpApplication</span><span class="p">)</span> <span class="p">{</span>
+
+    <span class="n">httpApplication</span><span class="p">.</span><span class="n">Context</span><span class="p">.</span><span class="n">Items</span><span class="p">[</span><span class="s">"AuthType"</span><span class="p">]</span> <span class="p">=</span> <span class="s">"FBA"</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(!</span><span class="k">this</span><span class="p">.</span><span class="nf">HandleFbaAuthFormPost</span><span class="p">(</span><span class="n">httpApplication</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">try</span> <span class="p">{</span>
+            <span class="k">this</span><span class="p">.</span><span class="nf">ParseCadataCookies</span><span class="p">(</span><span class="n">httpApplication</span><span class="p">);</span>
+        <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">MissingSslCertificateException</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">NameValueCollection</span> <span class="n">nameValueCollection</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">NameValueCollection</span><span class="p">();</span>
+            <span class="n">nameValueCollection</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="s">"CafeError"</span><span class="p">,</span> <span class="n">ErrorFE</span><span class="p">.</span><span class="n">FEErrorCodes</span><span class="p">.</span><span class="n">SSLCertificateProblem</span><span class="p">.</span><span class="nf">ToString</span><span class="p">());</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="nf">HttpException</span><span class="p">(</span><span class="m">302</span><span class="p">,</span> <span class="n">AspNetHelper</span><span class="p">.</span><span class="nf">GetCafeErrorPageRedirectUrl</span><span class="p">(</span><span class="n">httpApplication</span><span class="p">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">nameValueCollection</span><span class="p">));</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">base</span><span class="p">.</span><span class="nf">OnBeginRequestInternal</span><span class="p">(</span><span class="n">httpApplication</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>All the cookies are encrypted to ensure even if an attacker can hijack the HTTP request, he/she still couldn’t get your credential in plaintext format. FBA leverages 5 special cookies to accomplish the whole de/encryption process:</p>
+<ul>
+  <li><code class="highlighter-rouge">cadata</code> - The encrypted username and password</li>
+  <li><code class="highlighter-rouge">cadataTTL</code> - The Time-To-Live timestamp</li>
+  <li><code class="highlighter-rouge">cadataKey</code> - The KEY for encryption</li>
+  <li><code class="highlighter-rouge">cadataIV</code> - The IV for encryption</li>
+  <li><code class="highlighter-rouge">cadataSig</code> - The signature to prevent tampering</li>
+</ul>
+
+<p><img src="/assets/img/blog/20210806/2/2.png" alt="" /></p>
+
+<p>The encryption logic will first generate two 16 bytes random strings as the IV and KEY for the current session. The username and password will then be encoded with Base64, encrypted by the algorithm AES and sent back to the client within cookies. Meanwhile, the IV and KEY will be sent to the user, too. To prevent the client from decrypting the credential by the known IV and KEY directly, Exchange will once again use the algorithm RSA to encrypt the IV and KEY via its SSL certificate private key before sending out!</p>
+
+<p>Here is a Pseudo Code for the encryption logic:</p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="n">@key</span> <span class="p">=</span> <span class="nf">GetServerSSLCert</span><span class="p">().</span><span class="nf">GetPrivateKey</span><span class="p">()</span>
+ <span class="n">cadataSig</span> <span class="p">=</span> <span class="nf">RSA</span><span class="p">(</span><span class="n">@key</span><span class="p">).</span><span class="nf">Encrypt</span><span class="p">(</span><span class="s">"Fba Rocks!"</span><span class="p">)</span>
+ <span class="n">cadataIV</span>  <span class="p">=</span> <span class="nf">RSA</span><span class="p">(</span><span class="n">@key</span><span class="p">).</span><span class="nf">Encrypt</span><span class="p">(</span><span class="nf">GetRandomBytes</span><span class="p">(</span><span class="m">16</span><span class="p">))</span>
+ <span class="n">cadataKey</span> <span class="p">=</span> <span class="nf">RSA</span><span class="p">(</span><span class="n">@key</span><span class="p">).</span><span class="nf">Encrypt</span><span class="p">(</span><span class="nf">GetRandomBytes</span><span class="p">(</span><span class="m">16</span><span class="p">))</span>
+
+ <span class="n">@timestamp</span> <span class="p">=</span> <span class="nf">GetCurrentTimestamp</span><span class="p">()</span>
+ <span class="n">cadataTTL</span>  <span class="p">=</span> <span class="nf">AES_CBC</span><span class="p">(</span><span class="n">cadataKey</span><span class="p">,</span> <span class="n">cadataIV</span><span class="p">).</span><span class="nf">Encrypt</span><span class="p">(</span><span class="n">@timestamp</span><span class="p">)</span>
+
+ <span class="n">@blob</span>  <span class="p">=</span> <span class="s">"Basic "</span> <span class="p">+</span> <span class="nf">ToBase64String</span><span class="p">(</span><span class="n">UserName</span> <span class="p">+</span> <span class="s">":"</span> <span class="p">+</span> <span class="n">Password</span><span class="p">)</span>
+ <span class="n">cadata</span> <span class="p">=</span> <span class="nf">AES_CBC</span><span class="p">(</span><span class="n">cadataKey</span><span class="p">,</span> <span class="n">cadataIV</span><span class="p">).</span><span class="nf">Encrypt</span><span class="p">(</span><span class="n">@blob</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>The Exchange takes CBC as its padding mode. If you are familiar with Cryptography, you might be wondering whether the CBC mode here is vulnerable to the Padding Oracle Attack? Bingo! As a matter of fact, Padding Oracle Attack is still existing in such essential software like Exchange in 2021!</p>
+
+<p><img src="/assets/img/blog/20210806/2/3.gif" alt="" class="center-image" /></p>
+
+<h1 id="cve-2021-31196---the-padding-oracle">CVE-2021-31196 - The Padding Oracle</h1>
+
+<p>When there is something wrong with the FBA, Exchange attaches an error code and redirects the HTTP request back to the original login page. So where is the Oracle? In the cookie decryption, Exchange uses an exception to catch the Padding Error, and because of the exception, the program returned immediately so that error code number is <code class="highlighter-rouge">0</code>, which means <code class="highlighter-rouge">None</code>:</p>
+
+<blockquote>
+  <p>Location: /OWA/logon.aspx?url=…&amp;reason=0</p>
+</blockquote>
+
+<p>In contrast with the Padding Error, if the decryption is good, Exchange will continue the authentication process and try to login with the corrupted username and password. At this moment, the result must be a failure and the error code number is <code class="highlighter-rouge">2</code>, which represents <code class="highlighter-rouge">InvalidCredntials</code>:</p>
+
+<blockquote>
+  <p>Location: /OWA/logon.aspx?url=…&amp;reason=2</p>
+</blockquote>
+
+<p>The diagram looks like:</p>
+
+<p><img src="/assets/img/blog/20210806/2/4.png" alt="" /></p>
+
+<p>With the difference, we now have an Oracle to identify whether the decryption process is successful or not.</p>
+
+<p><strong>HttpProxy\FbaModule.cs</strong></p>
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">private</span> <span class="k">void</span> <span class="nf">ParseCadataCookies</span><span class="p">(</span><span class="n">HttpApplication</span> <span class="n">httpApplication</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">HttpContext</span> <span class="n">context</span> <span class="p">=</span> <span class="n">httpApplication</span><span class="p">.</span><span class="n">Context</span><span class="p">;</span>
+    <span class="n">HttpRequest</span> <span class="n">request</span> <span class="p">=</span> <span class="n">context</span><span class="p">.</span><span class="n">Request</span><span class="p">;</span>
+    <span class="n">HttpResponse</span> <span class="n">response</span> <span class="p">=</span> <span class="n">context</span><span class="p">.</span><span class="n">Response</span><span class="p">;</span>
+    
+    <span class="kt">string</span> <span class="n">text</span> <span class="p">=</span> <span class="n">request</span><span class="p">.</span><span class="n">Cookies</span><span class="p">[</span><span class="s">"cadata"</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>    
+    <span class="kt">string</span> <span class="n">text2</span> <span class="p">=</span> <span class="n">request</span><span class="p">.</span><span class="n">Cookies</span><span class="p">[</span><span class="s">"cadataKey"</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>    
+    <span class="kt">string</span> <span class="n">text3</span> <span class="p">=</span> <span class="n">request</span><span class="p">.</span><span class="n">Cookies</span><span class="p">[</span><span class="s">"cadataIV"</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>    
+    <span class="kt">string</span> <span class="n">text4</span> <span class="p">=</span> <span class="n">request</span><span class="p">.</span><span class="n">Cookies</span><span class="p">[</span><span class="s">"cadataSig"</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>    
+    <span class="kt">string</span> <span class="n">text5</span> <span class="p">=</span> <span class="n">request</span><span class="p">.</span><span class="n">Cookies</span><span class="p">[</span><span class="s">"cadataTTL"</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+    
+    <span class="c1">// ...</span>
+    <span class="n">RSACryptoServiceProvider</span> <span class="n">rsacryptoServiceProvider</span> <span class="p">=</span> <span class="p">(</span><span class="n">x509Certificate</span><span class="p">.</span><span class="n">PrivateKey</span> <span class="k">as</span> <span class="n">RSACryptoServiceProvider</span><span class="p">);</span>
+    
+    <span class="kt">byte</span><span class="p">[]</span> <span class="n">array</span> <span class="p">=</span> <span class="k">null</span><span class="p">;</span>
+    <span class="kt">byte</span><span class="p">[]</span> <span class="n">array2</span> <span class="p">=</span> <span class="k">null</span><span class="p">;</span>
+    <span class="kt">byte</span><span class="p">[]</span> <span class="n">rgb2</span> <span class="p">=</span> <span class="n">Convert</span><span class="p">.</span><span class="nf">FromBase64String</span><span class="p">(</span><span class="n">text2</span><span class="p">);</span>
+    <span class="kt">byte</span><span class="p">[]</span> <span class="n">rgb3</span> <span class="p">=</span> <span class="n">Convert</span><span class="p">.</span><span class="nf">FromBase64String</span><span class="p">(</span><span class="n">text3</span><span class="p">);</span>
+    <span class="n">array</span> <span class="p">=</span> <span class="n">rsacryptoServiceProvider</span><span class="p">.</span><span class="nf">Decrypt</span><span class="p">(</span><span class="n">rgb2</span><span class="p">,</span> <span class="k">true</span><span class="p">);</span>
+    <span class="n">array2</span> <span class="p">=</span> <span class="n">rsacryptoServiceProvider</span><span class="p">.</span><span class="nf">Decrypt</span><span class="p">(</span><span class="n">rgb3</span><span class="p">,</span> <span class="k">true</span><span class="p">);</span>
+    
+    <span class="c1">// ...</span>
+    
+    <span class="k">using</span> <span class="p">(</span><span class="n">AesCryptoServiceProvider</span> <span class="n">aesCryptoServiceProvider</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">AesCryptoServiceProvider</span><span class="p">())</span> <span class="p">{</span>
+        <span class="n">aesCryptoServiceProvider</span><span class="p">.</span><span class="n">Key</span> <span class="p">=</span> <span class="n">array</span><span class="p">;</span>
+        <span class="n">aesCryptoServiceProvider</span><span class="p">.</span><span class="n">IV</span> <span class="p">=</span> <span class="n">array2</span><span class="p">;</span>
+        
+        <span class="k">using</span> <span class="p">(</span><span class="n">ICryptoTransform</span> <span class="n">cryptoTransform2</span> <span class="p">=</span> <span class="n">aesCryptoServiceProvider</span><span class="p">.</span><span class="nf">CreateDecryptor</span><span class="p">())</span> <span class="p">{</span>
+            <span class="kt">byte</span><span class="p">[]</span> <span class="n">bytes2</span> <span class="p">=</span> <span class="k">null</span><span class="p">;</span>
+            <span class="k">try</span> <span class="p">{</span>
+                <span class="kt">byte</span><span class="p">[]</span> <span class="n">array5</span> <span class="p">=</span> <span class="n">Convert</span><span class="p">.</span><span class="nf">FromBase64String</span><span class="p">(</span><span class="n">text</span><span class="p">);</span>
+                <span class="n">bytes2</span> <span class="p">=</span> <span class="n">cryptoTransform2</span><span class="p">.</span><span class="nf">TransformFinalBlock</span><span class="p">(</span><span class="n">array5</span><span class="p">,</span> <span class="m">0</span><span class="p">,</span> <span class="n">array5</span><span class="p">.</span><span class="n">Length</span><span class="p">);</span>
+            <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">CryptographicException</span> <span class="n">ex8</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">ExTraceGlobals</span><span class="p">.</span><span class="n">VerboseTracer</span><span class="p">.</span><span class="nf">IsTraceEnabled</span><span class="p">(</span><span class="m">1</span><span class="p">))</span> <span class="p">{</span>
+                    <span class="n">ExTraceGlobals</span><span class="p">.</span><span class="n">VerboseTracer</span><span class="p">.</span><span class="n">TraceDebug</span><span class="p">&lt;</span><span class="n">CryptographicException</span><span class="p">&gt;((</span><span class="kt">long</span><span class="p">)</span><span class="k">this</span><span class="p">.</span><span class="nf">GetHashCode</span><span class="p">(),</span> <span class="s">"[FbaModule::ParseCadataCookies] Received CryptographicException {0} transforming auth"</span><span class="p">,</span> <span class="n">ex8</span><span class="p">);</span>
+                <span class="p">}</span>
+                <span class="n">httpApplication</span><span class="p">.</span><span class="n">Response</span><span class="p">.</span><span class="nf">AppendToLog</span><span class="p">(</span><span class="s">"&amp;CryptoError=PossibleSSLCertrolloverMismatch"</span><span class="p">);</span>
+                <span class="k">return</span><span class="p">;</span>
+            <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">FormatException</span> <span class="n">ex9</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">ExTraceGlobals</span><span class="p">.</span><span class="n">VerboseTracer</span><span class="p">.</span><span class="nf">IsTraceEnabled</span><span class="p">(</span><span class="m">1</span><span class="p">))</span> <span class="p">{</span>
+                    <span class="n">ExTraceGlobals</span><span class="p">.</span><span class="n">VerboseTracer</span><span class="p">.</span><span class="n">TraceDebug</span><span class="p">&lt;</span><span class="n">FormatException</span><span class="p">&gt;((</span><span class="kt">long</span><span class="p">)</span><span class="k">this</span><span class="p">.</span><span class="nf">GetHashCode</span><span class="p">(),</span> <span class="s">"[FbaModule::ParseCadataCookies] Received FormatException {0} decoding caData auth"</span><span class="p">,</span> <span class="n">ex9</span><span class="p">);</span>
+                <span class="p">}</span>
+                <span class="n">httpApplication</span><span class="p">.</span><span class="n">Response</span><span class="p">.</span><span class="nf">AppendToLog</span><span class="p">(</span><span class="s">"&amp;DecodeError=InvalidCaDataAuthCookie"</span><span class="p">);</span>
+                <span class="k">return</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="kt">string</span> <span class="n">@string</span> <span class="p">=</span> <span class="n">Encoding</span><span class="p">.</span><span class="n">Unicode</span><span class="p">.</span><span class="nf">GetString</span><span class="p">(</span><span class="n">bytes2</span><span class="p">);</span>
+            <span class="n">request</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s">"Authorization"</span><span class="p">]</span> <span class="p">=</span> <span class="n">@string</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>It should be noted that since the IV is encrypted with the SSL certificate private key, we can’t recover the first block of the ciphertext through XOR. But it wouldn’t cause any problem for us because the C# internally processes the strings as UTF-16, so the first 12 bytes of the ciphertext must be <code class="highlighter-rouge">B\x00a\x00s\x00i\x00c\x00 \x00</code>. With one more Base64 encoding applied, we will only lose the first 1.5 bytes in the username field.</p>
+
+<blockquote>
+  <p>(16−6×2) ÷ 2 × (3/4) = 1.5</p>
+</blockquote>
+
+<h1 id="the-exploit">The Exploit</h1>
+
+<p>As of now, we have a Padding Oracle that allows us to decrypt any user’s cookie. BUT, how can we get the client cookies? Here we find another vulnerability to chain them together.</p>
+
+<h2 id="xss-to-steal-client-cookies">XSS to Steal Client Cookies</h2>
+
+<p>We discover an XSS (CVE-2021-31195) in the CAS Frontend (Yeah, CAS again) to chain together, the root cause of this XSS is relatively easy: Exchange forgets to sanitize the data before printing it out so that we can use the <code class="highlighter-rouge">\</code> to escape from the JSON format and inject arbitrary JavaScript code.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>https://exchange/owa/auth/frowny.aspx
+?app=people
+&amp;et=ServerError
+&amp;esrc=MasterPage
+&amp;te=\
+&amp;refurl=}}};alert(document.domain)//
+</code></pre></div></div>
+
+<p><img src="/assets/img/blog/20210806/2/5.png" alt="" /></p>
+
+<p>But here comes another question: all the sensitive cookies are protected by the HttpOnly flag, which makes us unable to access the cookies by JavaScript. WHAT SHOULD WE DO?</p>
+
+<h2 id="bypass-the-httponly">Bypass the HttpOnly</h2>
+
+<p>As we could execute arbitrary JavaScript on browsers, why don’t we just insert the SSRF cookie we used in ProxyLogon? Once we add this cookie and assign the Backend target value as our malicious server, Exchange will become a proxy between the victims and us. We can then take over all the client’s HTTP static resources and get the protected HttpOnly cookies!</p>
+
+<p><img src="/assets/img/blog/20210806/2/6.png" alt="" /></p>
+
+<p>By chaining bugs together, we have an elegant exploit that can steal any user’s cookies by just sending him/her a malicious link. What’s noteworthy is that the XSS here is only helping us to steal the cookie, which means all the decryption processes wouldn’t require any authentication and user interaction. Even if the user closes the browser, it wouldn’t affect our Padding Oracle Attack!</p>
+
+<p>Here is the <a href="https://www.youtube.com/watch?v=VuJvmJZxogc">demonstration video</a> showing how we recover the victim’s password:</p>
+
+<div style="text-align: center;"><iframe width="560" height="315" src="https://www.youtube.com/embed/VuJvmJZxogc" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe></div>
+
+<!-- # The Timeline
+
+* -->
+
+              </article>
+              <p class="sns-widgets">
+                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
+              </p>
+          
+              <div class="heading--side-lined">
+                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/en/blog/author/orange" class="blog-author-name">Orange Tsai</a> 
+              </div>
+              <p class="blog-author-info">
+                I am Orange : )
+              </p>
+          
+              <div class="heading--side-lined">
+                Comments
+              </div>
+              <div class="blog-comments">
+                
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+              </div>
+            </div>
+          </div>
+
+
+
+
+
+
+</main>
+      <div class="container--wrapper">
+
+
+        <div class="contact-section container">
+          <h2 class="contact-section__title">
+            Put your defenses to the test with authentic attacks
+          </h2>
+          <a href="/en/contact/" class="home-contact__button button--dense">Contact us now</a>
+        </div>
+
+        <footer class="main-footer">
+          <div class="main-footer__about">
+            DEVCORE offers professional<br class="mobile-only" /><a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services.<br />For <a href="/en/blog/" class="link">latest updates</a>, follow us on <a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a> or <a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>.
+          </div>
+          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
+                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
+                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
+          </div>
+          <address class="main-footer__address">
+            <ul class="list--unstyled">
+              <li>
+                13F., No. 32, Sec. 3, Bade Rd., Songshan Dist., Taipei City 105608, Taiwan
+              </li>
+              <li>
+                contact@devco.re
+              </li>
+              <li>
+                +886-2-2577-0925
+              </li>
+            </ul>
+          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2021 DEVCORE</small>
+        </footer>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
+
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K5B8NW"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+
+  </body>
+</html>
+
+
+
+

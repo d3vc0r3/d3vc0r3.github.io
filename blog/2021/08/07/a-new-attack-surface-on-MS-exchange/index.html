@@ -5,21 +5,21 @@
     <meta charset="utf-8" />
     <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>PHP 官網原始碼讀取案例 | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <title>ProxyLogon 僅僅只是冰山一角，一個針對 Microsoft Exchange Server 的全新攻擊面！ | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
     <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
-    <meta name="description" property="og:description" content="本次的案例剖析，我們來看看 PHP 官方網站。PHP 網站這幾天被揭露嚴重安全漏洞，導致攻擊者可直接讀取網站原始碼。雖說官方表示這是 feature 不是 bug，但對我們開發者而言是個非常好的借鏡！" />
-    <meta name="keywords" content="PHP, OWASP, LFI" />
+    <meta name="description" property="og:description" content="隨著更深入的從架構層去研究 ProxyLogon，我們發現它不僅僅只是一個漏洞，而是一整個新的、沒有人提過的攻擊面可讓駭客或安全研究員去挖掘更多的漏洞。" />
+    <meta name="keywords" content="CVE-2021-26855,CVE-2021-27065,CVE-2021-31195,CVE-2021-31196,CVE-2021-31207,CVE-2021-33768,CVE-2021-34473,CVE-2021-34523" />
     <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
-    <meta property="og:title" content="PHP 官網原始碼讀取案例 | DEVCORE 戴夫寇爾" />
-    <meta property="og:url" content="https://devco.re/blog/2014/04/24/php.net-insecure-direct-object-reference/" />
+    <meta property="og:title" content="ProxyLogon 僅僅只是冰山一角，一個針對 Microsoft Exchange Server 的全新攻擊面！ | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2021/08/07/a-new-attack-surface-on-MS-exchange/" />
     <meta property="og:type" content="website" />
-    
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20210807/cover.png" />
     <meta name="twitter:card" content="summary">
     <meta name="twitter:site" content="d3vc0r3">
-    <meta name="twitter:title" content="PHP 官網原始碼讀取案例 | DEVCORE 戴夫寇爾">
-    <meta name="twitter:description" content="本次的案例剖析，我們來看看 PHP 官方網站。PHP 網站這幾天被揭露嚴重安全漏洞，導致攻擊者可直接讀取網站原始碼。雖說官方表示這是 feature 不是 bug，但對我們開發者而言是個非常好的借鏡！">
+    <meta name="twitter:title" content="ProxyLogon 僅僅只是冰山一角，一個針對 Microsoft Exchange Server 的全新攻擊面！ | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="隨著更深入的從架構層去研究 ProxyLogon，我們發現它不僅僅只是一個漏洞，而是一整個新的、沒有人提過的攻擊面可讓駭客或安全研究員去挖掘更多的漏洞。">
     <meta name="twitter:creator" content="d3vc0r3">
-    
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20210807/cover.png">
     <meta name="twitter:domain" content="devco.re">
     <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
     <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
@@ -27,7 +27,7 @@
     <meta name='yandex-verification' content='4561963cf1d18fe3' />
     <meta property="fb:admins" content="120968921404653" />
 
-    <link rel="canonical" href="https://devco.re/blog/2014/04/24/php.net-insecure-direct-object-reference/"/>
+    <link rel="canonical" href="https://devco.re/blog/2021/08/07/a-new-attack-surface-on-MS-exchange/"/>
     <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
 
     <!-- Google Tag Manager -->
@@ -86,62 +86,180 @@
           <div class="container--wrapper">
             <div class="container">
               <section class="blog-header">
-                <small class="blog-header__category"><a href="/blog/category/案例剖析/">案例剖析</a></small>
-                
+                <small class="blog-header__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
+                <img src="https://devco.re/assets/img/blog/20210807/cover.png" class="blog-header__image" alt="ProxyLogon 僅僅只是冰山一角，一個針對 Microsoft Exchange Server 的全新攻擊面！" />
                 <h1 class="blog-header__title">
-                  PHP 官網原始碼讀取案例
+                  ProxyLogon 僅僅只是冰山一角，一個針對 Microsoft Exchange Server 的全新攻擊面！
                 </h1>
                 <div class="blog-header__tags">
                   
-                  <a href="/blog/tag/PHP/" class="blog-header__tag">PHP</a><a href="/blog/tag/LFI/" class="blog-header__tag">LFI</a>
+                  <a href="/blog/tag/Advisory/" class="blog-header__tag">Advisory</a><a href="/blog/tag/CVE/" class="blog-header__tag">CVE</a><a href="/blog/tag/RCE/" class="blog-header__tag">RCE</a><a href="/blog/tag/SSRF/" class="blog-header__tag">SSRF</a>
                 </div>
           
           
                 <p class="blog-header__info">
-                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/ding.jpg)"></span> <a href="/blog/author/ding" class="author-name">Ding</a> <time class="date">on 2014-04-24 </time>
+                  Updated <time class="date">2021-08-07 </time>
                 </p>
           
               </section>
               <article class="article">
-          <p><a href="https://www.owasp.org/index.php/Top_10_2013-A4-Insecure_Direct_Object_References">不安全的引用物件 (Insecure Direct Object Reference)</a> 是個非常常見的資安漏洞，在 <a href="https://www.owasp.org/">OWASP</a> 公布的<a href="https://www.owasp.org/index.php/Top_10_2013-Top_10">十大網站應用程式安全漏洞</a> 中高居第四名。通常發生在網站應用程式上沒有針對輸入的參數做好檢查，就把參數丟入 include 或 readfile 等函數當中引用，使得攻擊者可以藉此存取任意文件的原始碼。</p>
+          <style type="text/css">
+    table {
+        width: 100%;
+        overflow: auto;
+        word-break: normal;
+        word-break: keep-all;
+        font-size: 0.6em;
+    }
 
-<p>今天這個案例就發生在 PHP 的官方網站 (<a href="http://www.php.net/">http://www.php.net/</a>)，消息來源是知名的 0-Day 黑市 1337day，發佈的日期是 2014/4/4 ，原始的內容是這樣的：</p>
+    table th {
+        font-weight: bold
+    }
 
-<!-- more -->
+    table th,
+    table td {
+        padding: 5px 11px;
+        border: 1px solid #ddd;
+    }
 
-<p><a href="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_00_1337day.png"><img src="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_00_1337day.png" alt="1337day 漏洞交易網站" title="1337day 漏洞交易網站" /><br />
-</a></p>
+    table tr {
+        background-color: #fff;
+        border-top: 1px solid #ccc;
+    }
 
-<p>可以看到這個弱點是不公開的，想要知道內容的話要支付 82 美元相當於新台幣 3500 元呢！在強烈的好奇心屈使之下，自己打開工具來找看看：</p>
+    table tr:nth-child(2n) {
+        background-color: #f8f8f8;
+    }
+    .center-image {
+        margin: 0 auto;
+        display: block;
+    }
+</style>
 
-<p><a href="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_01_source_code.png"><img src="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_01_source_code.png" alt="PHP 官方網站原始碼" title="PHP 官方網站原始碼" /></a></p>
+<p>Microsoft Exchange Server 作為當今世界上最常見的郵件解決方案，已經幾乎是企業以及政府每日工作與維繫安全不可或缺的一部分！在今年一月，我們回報了一系列的 Exchange Server 漏洞給 Microsoft，並且將這個漏洞它命名為 <a href="https://proxylogon.com/">ProxyLogon</a>，相信如果您有在關注業界新聞，一定也聽過這個名字！ProxyLogon 也許是 Exchange 歷史上最嚴重、影響力也最大的一個漏洞！</p>
 
-<p>透過簡單的分析和一點點運氣，找到了 「<a href="http://www.php.net/cached.php">http://www.php.net/cached.php</a>」 這隻程式，發現它傳入了「t」和「f」這兩個參數。「t」直覺上就是個 rand 數值，而「f」應該就是檔案位置了。這時候對 f 參數小小修改一下，神奇的事情發生了：</p>
+<p>隨著更深入的從架構層去研究 ProxyLogon，我們發現它不僅僅只是一個漏洞，而是一整個新的、沒有人提過的攻擊面可讓駭客或安全研究員去挖掘更多的漏洞。因此我們專注深入研究這個攻擊面，並從中發現了至少八個漏洞，這些漏洞涵蓋了伺服器端、客戶端，甚至密碼學漏洞，我們並將這些漏洞組合成了三個攻擊鏈：</p>
 
-<p><a href="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_02_cached.php.png"><img src="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_02_cached.php.png" alt="cached.php 讀取原始碼" title="cached.php 讀取原始碼" /></a></p>
+<ol>
+  <li>ProxyLogon: 最知名、影響力也最大的 Exchange 攻擊鏈</li>
+  <li>ProxyOracle: 一個可以還原任意 Exchange 使用者明文密碼的攻擊鏈</li>
+  <li>ProxyShell: 我們在 Pwn2Own 2021 上展示打掉 Exchange 的攻擊鏈</li>
+</ol>
 
-<p>index.php 的原始碼被完整的讀出來，當然也要來看一下 cached.php 是怎麼寫的：</p>
+<p><img src="/assets/img/blog/20210807/1.png" alt="" /></p>
 
-<p><a href="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_03_cached.php_view_source.png"><img src="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_03_cached.php_view_source.png" alt="cached.php 檢視原始碼" title="cached.php 檢視原始碼" /></a></p>
+<p>所有我們找到的漏洞都是邏輯漏洞，這代表相較於記憶體毀損類型的漏洞，這些漏洞更容易被重現以及利用，我們也將成果發表至 <a href="https://www.blackhat.com/us-21/briefings/schedule/index.html#proxylogon-is-just-the-tip-of-the-iceberg-a-new-attack-surface-on-microsoft-exchange-server-23442">Black Hat USA</a> 及 <a href="https://defcon.org/html/defcon-29/dc-29-speakers.html#tsai">DEFCON</a> 上，也同時獲得了 2021 Pwnie Awards 年度 Best Server-Side Bug 獎項，如果你有興趣的話可以從這邊下載會議的投影片!</p>
 
-<p>可以看到此處並未對 $_GET[“f”] 進行檢查，所以修改了 $_GET[“f”] 後，與 $abs 組合完，最後就直接丟入 readfile 讀取檔案。比較值得研究的是這邊使用了 realpath 與 strncmp 來比較 f 及 DOCUMENT_ROOT，確保 $abs 只能在網站目錄之下，所以無法使用 ../../ (<a href="https://www.owasp.org/index.php/Path_Traversal">Path Traversal</a>) 的方式跳脫目錄進行更進一步的滲透。</p>
+<ul>
+  <li>ProxyLogon is Just the Tip of the Iceberg: A New Attack Surface on Microsoft Exchange Server! <a href="https://i.blackhat.com/USA21/Wednesday-Handouts/us-21-ProxyLogon-Is-Just-The-Tip-Of-The-Iceberg-A-New-Attack-Surface-On-Microsoft-Exchange-Server.pdf">[投影片]</a> <a href="https://www.youtube.com/watch?v=5mqid-7zp8k">[影片]</a></li>
+</ul>
 
-<p>最後我們將此發現回報給 security@php.net ，得到的回應是他們是「故意的 (intentional)」。且後來也知道 PHP 官網是開放原始碼（Open Source）的，可以到 <a href="http://git.php.net/?p=web/php.git;a=tree">http://git.php.net/?p=web/php.git;a=tree</a> 下載整個官網的原始碼。</p>
+<p>本次提及的漏洞皆經過負責任的漏洞接露程序回報給微軟、並獲得修復，您可以從下面這張圖查看詳細的漏洞編號及回報時間表。</p>
 
-<p><a href="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_04_php_team_response.png"><img src="/assets/img/blog/20140424/php.net_insecure_direct_object_reference_04_php_team_response.png" alt="PHP.NET 官網團隊回應" title="PHP.NET 官網團隊回應" /></a></p>
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center">Report Time</th>
+      <th style="text-align: center">Name</th>
+      <th style="text-align: center">CVE</th>
+      <th style="text-align: center">Patch Time</th>
+      <th style="text-align: center">CAS<sup>[1]</sup></th>
+      <th style="text-align: center">Reported By</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center">Jan 05, 2021</td>
+      <td style="text-align: center">ProxyLogon</td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-26855">CVE-2021-26855</a></td>
+      <td style="text-align: center">Mar 02, 2021</td>
+      <td style="text-align: center">Yes</td>
+      <td style="text-align: center">Orange Tsai, Volexity and MSTIC</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Jan 05, 2021</td>
+      <td style="text-align: center">ProxyLogon</td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-27065">CVE-2021-27065</a></td>
+      <td style="text-align: center">Mar 02, 2021</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center">Orange Tsai, Volexity and MSTIC</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Jan 17, 2021</td>
+      <td style="text-align: center">ProxyOracle</td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-31196">CVE-2021-31196</a></td>
+      <td style="text-align: center">Jul 13, 2021</td>
+      <td style="text-align: center">Yes</td>
+      <td style="text-align: center">Orange Tsai</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Jan 17, 2021</td>
+      <td style="text-align: center">ProxyOracle</td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-31195">CVE-2021-31195</a></td>
+      <td style="text-align: center">May 11, 2021</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center">Orange Tsai</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Apr 02, 2021</td>
+      <td style="text-align: center">ProxyShell<sup>[2]</sup></td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34473">CVE-2021-34473</a></td>
+      <td style="text-align: center">Apr 13, 2021</td>
+      <td style="text-align: center">Yes</td>
+      <td style="text-align: center">Orange Tsai working with ZDI</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Apr 02, 2021</td>
+      <td style="text-align: center">ProxyShell<sup>[2]</sup></td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34523">CVE-2021-34523</a></td>
+      <td style="text-align: center">Apr 13, 2021</td>
+      <td style="text-align: center">Yes</td>
+      <td style="text-align: center">Orange Tsai working with ZDI</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Apr 02, 2021</td>
+      <td style="text-align: center">ProxyShell<sup>[2]</sup></td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-31207">CVE-2021-31207</a></td>
+      <td style="text-align: center">May 11, 2021</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center">Orange Tsai working with ZDI</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Jun 02, 2021</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center">Yes</td>
+      <td style="text-align: center">Orange Tsai</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">Jun 02, 2021</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center"><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-33768">CVE-2021-33768</a></td>
+      <td style="text-align: center">Jul 13, 2021</td>
+      <td style="text-align: center">-</td>
+      <td style="text-align: center">Orange Tsai and Dlive</td>
+    </tr>
+  </tbody>
+</table>
 
-<p>雖然在這個案例中並沒有造成實質上的危害，沒有帳號、密碼、系統設定等機敏資料，但若把此種寫法用在其他地方，則可能造成很大的資安風險。就連 PHP 官方網站都有這樣的失誤，身為開發人員的你們更不可不慎！</p>
+<div style="font-size:0.6em; line-height: 1.6;">
+<br /><em>[1] Bugs relate to this new attack surface direclty</em><br />
+<em>[2] Pwn2Own 2021 bugs</em>
+</div>
+
+<p>更詳盡的技術細節我們已陸續公布，後續連結會持續更新於本文，敬請期待：</p>
+<ul>
+  <li><a href="/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-1-ProxyLogon/">A New Attack Surface on MS Exchange Part 1 - ProxyLogon!</a></li>
+  <li><a href="/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-2-ProxyOracle/">A New Attack Surface on MS Exchange Part 2 - ProxyOracle!</a></li>
+  <li>A New Attack Surface on MS Exchange Part 3 (coming soon…)</li>
+  <li>A New Attack Surface on MS Exchange Part 4 (coming soon…)</li>
+</ul>
+
 
               </article>
               <p class="sns-widgets">
                 Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
-              </p>
-          
-              <div class="heading--side-lined">
-                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/ding.jpg)"></span> <a href="/blog/author/ding" class="blog-author-name">Ding</a> 
-              </div>
-              <p class="blog-author-info">
-                專長於網站應用程式安全、滲透測試，具備多年駭客技術研究經驗。曾執行政府機敏資訊系統滲透測試，發表過知名SIEM平臺弱點獲得CVE編號，是個業餘資安研究員。
               </p>
           
               <div class="heading--side-lined">

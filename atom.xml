@@ -4,13 +4,174 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2021-08-06T23:33:17+08:00</updated>
+ <updated>2021-08-07T21:47:15+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name>DEVCORE</name>
    <email>contact [at] devco.re</email>
  </author>
 
+ 
+ <entry>
+   <title>ProxyLogon 僅僅只是冰山一角，一個針對 Microsoft Exchange Server 的全新攻擊面！</title>
+   <link href="https://devco.re/blog/2021/08/07/a-new-attack-surface-on-MS-exchange/"/>
+   <updated>2021-08-07T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2021/08/07/a-new-attack-surface-on-MS-exchange</id>
+   <content type="html">&lt;style type=&quot;text/css&quot;&gt;
+    table {
+        width: 100%;
+        overflow: auto;
+        word-break: normal;
+        word-break: keep-all;
+        font-size: 0.6em;
+    }
+
+    table th {
+        font-weight: bold
+    }
+
+    table th,
+    table td {
+        padding: 5px 11px;
+        border: 1px solid #ddd;
+    }
+
+    table tr {
+        background-color: #fff;
+        border-top: 1px solid #ccc;
+    }
+
+    table tr:nth-child(2n) {
+        background-color: #f8f8f8;
+    }
+    .center-image {
+        margin: 0 auto;
+        display: block;
+    }
+&lt;/style&gt;
+
+&lt;p&gt;Microsoft Exchange Server 作為當今世界上最常見的郵件解決方案，已經幾乎是企業以及政府每日工作與維繫安全不可或缺的一部分！在今年一月，我們回報了一系列的 Exchange Server 漏洞給 Microsoft，並且將這個漏洞它命名為 &lt;a href=&quot;https://proxylogon.com/&quot;&gt;ProxyLogon&lt;/a&gt;，相信如果您有在關注業界新聞，一定也聽過這個名字！ProxyLogon 也許是 Exchange 歷史上最嚴重、影響力也最大的一個漏洞！&lt;/p&gt;
+
+&lt;p&gt;隨著更深入的從架構層去研究 ProxyLogon，我們發現它不僅僅只是一個漏洞，而是一整個新的、沒有人提過的攻擊面可讓駭客或安全研究員去挖掘更多的漏洞。因此我們專注深入研究這個攻擊面，並從中發現了至少八個漏洞，這些漏洞涵蓋了伺服器端、客戶端，甚至密碼學漏洞，我們並將這些漏洞組合成了三個攻擊鏈：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;ProxyLogon: 最知名、影響力也最大的 Exchange 攻擊鏈&lt;/li&gt;
+  &lt;li&gt;ProxyOracle: 一個可以還原任意 Exchange 使用者明文密碼的攻擊鏈&lt;/li&gt;
+  &lt;li&gt;ProxyShell: 我們在 Pwn2Own 2021 上展示打掉 Exchange 的攻擊鏈&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20210807/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;所有我們找到的漏洞都是邏輯漏洞，這代表相較於記憶體毀損類型的漏洞，這些漏洞更容易被重現以及利用，我們也將成果發表至 &lt;a href=&quot;https://www.blackhat.com/us-21/briefings/schedule/index.html#proxylogon-is-just-the-tip-of-the-iceberg-a-new-attack-surface-on-microsoft-exchange-server-23442&quot;&gt;Black Hat USA&lt;/a&gt; 及 &lt;a href=&quot;https://defcon.org/html/defcon-29/dc-29-speakers.html#tsai&quot;&gt;DEFCON&lt;/a&gt; 上，也同時獲得了 2021 Pwnie Awards 年度 Best Server-Side Bug 獎項，如果你有興趣的話可以從這邊下載會議的投影片!&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;ProxyLogon is Just the Tip of the Iceberg: A New Attack Surface on Microsoft Exchange Server! &lt;a href=&quot;https://i.blackhat.com/USA21/Wednesday-Handouts/us-21-ProxyLogon-Is-Just-The-Tip-Of-The-Iceberg-A-New-Attack-Surface-On-Microsoft-Exchange-Server.pdf&quot;&gt;[投影片]&lt;/a&gt; &lt;a href=&quot;https://www.youtube.com/watch?v=5mqid-7zp8k&quot;&gt;[影片]&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;本次提及的漏洞皆經過負責任的漏洞接露程序回報給微軟、並獲得修復，您可以從下面這張圖查看詳細的漏洞編號及回報時間表。&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;Report Time&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;Name&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;CVE&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;Patch Time&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;CAS&lt;sup&gt;[1]&lt;/sup&gt;&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;Reported By&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Jan 05, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;ProxyLogon&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-26855&quot;&gt;CVE-2021-26855&lt;/a&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Mar 02, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Yes&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Orange Tsai, Volexity and MSTIC&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Jan 05, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;ProxyLogon&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-27065&quot;&gt;CVE-2021-27065&lt;/a&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Mar 02, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;-&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Orange Tsai, Volexity and MSTIC&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Jan 17, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;ProxyOracle&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-31196&quot;&gt;CVE-2021-31196&lt;/a&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Jul 13, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Yes&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Orange Tsai&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Jan 17, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;ProxyOracle&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-31195&quot;&gt;CVE-2021-31195&lt;/a&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;May 11, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;-&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Orange Tsai&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Apr 02, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;ProxyShell&lt;sup&gt;[2]&lt;/sup&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34473&quot;&gt;CVE-2021-34473&lt;/a&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Apr 13, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Yes&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Orange Tsai working with ZDI&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Apr 02, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;ProxyShell&lt;sup&gt;[2]&lt;/sup&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34523&quot;&gt;CVE-2021-34523&lt;/a&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Apr 13, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Yes&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Orange Tsai working with ZDI&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Apr 02, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;ProxyShell&lt;sup&gt;[2]&lt;/sup&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-31207&quot;&gt;CVE-2021-31207&lt;/a&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;May 11, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;-&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Orange Tsai working with ZDI&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Jun 02, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;-&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;-&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;-&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Yes&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Orange Tsai&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Jun 02, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;-&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-33768&quot;&gt;CVE-2021-33768&lt;/a&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Jul 13, 2021&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;-&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;Orange Tsai and Dlive&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;div style=&quot;font-size:0.6em; line-height: 1.6;&quot;&gt;
+&lt;br /&gt;&lt;em&gt;[1] Bugs relate to this new attack surface direclty&lt;/em&gt;&lt;br /&gt;
+&lt;em&gt;[2] Pwn2Own 2021 bugs&lt;/em&gt;
+&lt;/div&gt;
+
+&lt;p&gt;更詳盡的技術細節我們已陸續公布，後續連結會持續更新於本文，敬請期待：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-1-ProxyLogon/&quot;&gt;A New Attack Surface on MS Exchange Part 1 - ProxyLogon!&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-2-ProxyOracle/&quot;&gt;A New Attack Surface on MS Exchange Part 2 - ProxyOracle!&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;A New Attack Surface on MS Exchange Part 3 (coming soon…)&lt;/li&gt;
+  &lt;li&gt;A New Attack Surface on MS Exchange Part 4 (coming soon…)&lt;/li&gt;
+&lt;/ul&gt;
+
+</content>
+ </entry>
  
  <entry>
    <title>A New Attack Surface on MS Exchange Part 2 - ProxyOracle!</title>
@@ -267,7 +428,7 @@
 &lt;ol&gt;
   &lt;li&gt;ProxyLogon: The most well-known and impactful Exchange exploit chain&lt;/li&gt;
   &lt;li&gt;ProxyOracle: The attack which could recover any password in plaintext format of Exchange users&lt;/li&gt;
-  &lt;li&gt;PrxoyShell: The exploit chain we demonstrated at &lt;a href=&quot;https://twitter.com/thezdi/status/1379467992862449664&quot;&gt;Pwn2Own 2021&lt;/a&gt; to take over Exchange and earn $200,000 bounty&lt;/li&gt;
+  &lt;li&gt;ProxyShell: The exploit chain we demonstrated at &lt;a href=&quot;https://twitter.com/thezdi/status/1379467992862449664&quot;&gt;Pwn2Own 2021&lt;/a&gt; to take over Exchange and earn $200,000 bounty&lt;/li&gt;
 &lt;/ol&gt;
 
 &lt;p&gt;I would like to highlight that all vulnerabilities we unveiled here are logic bugs, which means they could be reproduced and exploited more easily than any memory corruption bugs. We have presented our research at &lt;a href=&quot;https://www.blackhat.com/us-21/briefings/schedule/index.html#proxylogon-is-just-the-tip-of-the-iceberg-a-new-attack-surface-on-microsoft-exchange-server-23442&quot;&gt;Black Hat USA&lt;/a&gt; and &lt;a href=&quot;https://www.defcon.org/html/defcon-29/dc-29-speakers.html&quot;&gt;DEFCON&lt;/a&gt;, and won the Best Server-Side bug of &lt;a href=&quot;https://pwnies.com/winners/&quot;&gt;Pwnie Awards 2021&lt;/a&gt;. You can check our presentation materials here:&lt;/p&gt;

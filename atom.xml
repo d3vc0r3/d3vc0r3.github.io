@@ -4,7 +4,7 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2022-01-27T13:47:50+08:00</updated>
+ <updated>2022-03-28T22:20:52+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name>DEVCORE</name>
@@ -13,7 +13,758 @@
 
  
  <entry>
-   <title>DEVCORE 2022 實習生計畫</title>
+   <title>Your NAS is not your NAS !</title>
+   <link href="https://devco.re/blog/2022/03/28/your-NAS-is-not-your-NAS-en/"/>
+   <updated>2022-03-28T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2022/03/28/your-NAS-is-not-your-NAS-en</id>
+   <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2022/03/28/your-NAS-is-not-your-NAS-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;/blog/2022/03/28/your-NAS-is-not-your-NAS/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Two years ago, we found a critical vulnerability on Synology NAS. This vulnerability can let an unauthorized attacker gain code execution on remote Synology DiskStation NAS server. We used this vulnerability to exploit Synology DS418play NAS in Pwn2Own Tokyo 2020. After that, we found the vulnerability is not only exists on Synology but also on most NAS vendors. Following we will describe the details and how we exploit it.&lt;/p&gt;
+
+&lt;p&gt;This research is also presented at &lt;a href=&quot;https://hitcon.org/2021/en&quot;&gt;HITCON 2021&lt;/a&gt;. You can check the slides &lt;a href=&quot;https://hitcon.org/2021/agenda/03f06675-261d-4c97-b524-33ef9cc6ccb2/%E4%BD%A0%E7%9A%84%20NAS%20%E4%B8%8D%E6%98%AF%E4%BD%A0%E7%9A%84%20NAS%20!.pdf&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;network-attached-storage&quot;&gt;Network Attached Storage&lt;/h2&gt;
+
+&lt;p&gt;In the early days, NAS was generally used to separate the server and data and also used for backup. It was mainly used to allow users to directly access data and share files on the Internet. In modern times, NAS provides not only file sharing but also various services. In this era of Internet of Things, there will be more people combining NAS and home assistants to make life more convenient.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;motivation&quot;&gt;Motivation&lt;/h2&gt;
+
+&lt;h3 id=&quot;why-do-we-want-to-research-nas&quot;&gt;Why do we want to research NAS?&lt;/h3&gt;
+
+&lt;h4 id=&quot;red-team&quot;&gt;Red Team&lt;/h4&gt;
+&lt;p&gt;While we were doing red team assessment, we found that NAS generally appeared in the corporate intranet, or sometimes even exposed to the external network. They usually stored a lot of corporate confidential information on the NAS. Therefore, NAS gradually attracted our attention, and its Strategic Value has been much higher than before.&lt;/p&gt;
+
+&lt;h4 id=&quot;ransomware&quot;&gt;Ransomware&lt;/h4&gt;
+&lt;p&gt;NAS has become more and more popular in recent years. More and more people store important data on NAS. It makes NAS a target of ransomware. At the beginning of last year, NAS vulnerabilities led to outbreak of locker event. We hope to reduce the recurrence of similar things, thereby increasing the priority of NAS research to improve NAS security.&lt;/p&gt;
+
+&lt;h4 id=&quot;pwn2own-mobile-2020&quot;&gt;Pwn2Own Mobile 2020&lt;/h4&gt;
+&lt;p&gt;The last reason is that NAS has become one of the main targets of Pwn2Own Mobile since 2020. We also wanted to try to join Pwn2Pwn event, so we decided to make NAS as the primary goal of the research at that time. Because of Synology is the most popular device in Taiwan, we decided start from it.&lt;/p&gt;
+
+&lt;h2 id=&quot;recon&quot;&gt;Recon&lt;/h2&gt;
+
+&lt;h3 id=&quot;environment&quot;&gt;Environment&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;DS918+&lt;/li&gt;
+  &lt;li&gt;DSM 6.2.3-25426&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Our test environment is Synoloby DS918+. It very similar as DS418 play(target of Pwn2Own Tokyo 2020). In order to better meet the environment that we usually encounter and the requirements in Pwn2Own, it will be in the state of all default settings.&lt;/p&gt;
+
+&lt;h3 id=&quot;attack-surface&quot;&gt;Attack surface&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;First of all, we can use netstat to find which port is open. We can see that in the default environment, many services are opened, such as smb/nginx/afpd.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In UDP, it has minissdpd/findhost/snmpd, etc., most of protocols help to find devices.&lt;/p&gt;
+
+&lt;p&gt;We selected a few services for preliminary analysis.&lt;/p&gt;
+
+&lt;h4 id=&quot;dsm-web-interface&quot;&gt;DSM Web interface&lt;/h4&gt;
+&lt;p&gt;The first one is the DSM Web interface. This part is probably the one that most people analyze and it has obvious entry points. Many years ago, there were many command injection vulnerabilities, but after that Synology set strict specifications. There are almost no similar problems nowadays.&lt;/p&gt;
+
+&lt;h4 id=&quot;smb&quot;&gt;SMB&lt;/h4&gt;
+&lt;p&gt;The SMB protocol in Synology is based on &lt;a href=&quot;https://www.samba.org/&quot;&gt;Samba&lt;/a&gt;. Due to the large number of user, many researcher are doing code review on it. Therefore, there are many vulnerabilities found in Samba every year. The most famous vulnerability recently is &lt;a href=&quot;https://www.samba.org/samba/security/CVE-2017-7494.html&quot;&gt;SambaCry&lt;/a&gt;. But because more people are reviewing, it is relatively safer than other services.&lt;/p&gt;
+
+&lt;h4 id=&quot;iscsi-manager&quot;&gt;iSCSI Manager&lt;/h4&gt;
+&lt;p&gt;It mainly helps users manage and monitor iSCSI services and it is developed by Synology itself. There are a lot of vulnerabilities in iSCSI recently. Maybe it will be a good target. If there is no other attack surface, we might analyze it first.&lt;/p&gt;
+
+&lt;h4 id=&quot;netatalk&quot;&gt;Netatalk&lt;/h4&gt;
+&lt;p&gt;The last one is Netatalk, which is known as afp protocol. Netatalk in Synology is based on &lt;a href=&quot;http://netatalk.sourceforge.net/&quot;&gt;Netatak&lt;/a&gt; 3.1.8. The most critical vulnerability recently is CVE-2018-1160. For this vulnerability, please refer to &lt;a href=&quot;https://medium.com/tenable-techblog/exploiting-an-18-year-old-bug-b47afe54172&quot;&gt;Exploiting an 18 Year Old Bug&lt;/a&gt;. Compared with other services, Netatalk has very few vulnerabilities in the past. It is less noticed, and it has not been updated and maintained for a long time.&lt;/p&gt;
+
+&lt;p&gt;After overall analysis, we believe that Netatalk is the most vulnerable point in Synology. We finally decided to analyze it first. In fact, there are other services and attack surfaces, but we didn’t spend much time on other service. We will only focus on Netatalk in this article.&lt;/p&gt;
+
+&lt;h2 id=&quot;netatalk-1&quot;&gt;Netatalk&lt;/h2&gt;
+&lt;p&gt;Apple Filing Protocol (AFP) is a file transfer protocol similar to SMB. It is used to transfer and share files on MAC. Because Apple itself is not open-sourced, in order to utilize AFP on Unix-like systems, Netatalk is created. Netatalk is a freely-available Open Source AFP fileserver. Almost every NAS uses it to make file sharing on MAC more convenient.&lt;/p&gt;
+
+&lt;h3 id=&quot;netatalk-in-synology&quot;&gt;Netatalk in Synology&lt;/h3&gt;
+
+&lt;p&gt;The netatalk in Synology is enabled by default. The version is modified from netatalk 3.1.8, and it tracks security updates regularly. Once installed, you can use the AFP protocol to share files with Synology NAS. It also enables protections such as ASLR, NX and StackGuard.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;dsi&quot;&gt;DSI&lt;/h4&gt;
+&lt;p&gt;Before we look into the detail of the vulnerability we need to talk about Data Stream Interface (DSI). The DSI is a session layer format used to carry AFP traffic over TCP. While server and client communicate through the AFP, a DSI header is in front of each packet.&lt;/p&gt;
+
+&lt;p&gt;DSI Packet Header :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The content of the DSI packet is shown as the figure above. It contains metadata and payload, which generally follows the DSI header and payload format.&lt;/p&gt;
+
+&lt;p&gt;AFP over DSI :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The communication of the AFP protocol is shown above. The client first gets the server information to determine available authentication methods, the version used, and so on. Then it opens a new session and to execute AFP commands. Without authentication, we can only do related operations such as login and logout. Once the client is verified, we can do file operations like SMB.&lt;/p&gt;
+
+&lt;p&gt;In Netatalk implementation, &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_block&lt;/code&gt; will be used as the packet structure.&lt;/p&gt;
+
+&lt;p&gt;dsi_block :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;dsi_flag means that the packet is a request or reply&lt;/li&gt;
+  &lt;li&gt;dsi_command indicates what our request does
+    &lt;ul&gt;
+      &lt;li&gt;DSICloseSession&lt;/li&gt;
+      &lt;li&gt;DSICommand&lt;/li&gt;
+      &lt;li&gt;DSIGetStatus&lt;/li&gt;
+      &lt;li&gt;DSIOpenSession&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;dsi_code
+    &lt;ul&gt;
+      &lt;li&gt;Error code&lt;/li&gt;
+      &lt;li&gt;For reply&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;dsi_doff
+    &lt;ul&gt;
+      &lt;li&gt;DSI data offset&lt;/li&gt;
+      &lt;li&gt;Using in DSIWrite&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;dsi_len
+    &lt;ul&gt;
+      &lt;li&gt;The Length of Payload&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;DSI : A descriptor of dsi stream&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/8.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In Netatalk, most of the information are stored in a structure called DSI for subsequent operations after parsing the packet and configuration files, such as &lt;code class=&quot;highlighter-rouge&quot;&gt;server_quantum&lt;/code&gt; and payload content.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The payload of the packet is stored in the &lt;code class=&quot;highlighter-rouge&quot;&gt;command&lt;/code&gt; buffer in the DSI structure. The buffer size is &lt;code class=&quot;highlighter-rouge&quot;&gt;server_quantum&lt;/code&gt;, and the value is specified in the afp configuration file &lt;code class=&quot;highlighter-rouge&quot;&gt;afp.conf&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;If not specified, it uses the default size(0x100000).&lt;/p&gt;
+
+&lt;p&gt;With a preliminary understanding, let’s talk about this vulnerability.&lt;/p&gt;
+
+&lt;h3 id=&quot;vulnerability&quot;&gt;Vulnerability&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The vulnerability we found occurs while receiving the payload. It can be triggered without authentication. The vulnerable function is &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_stream_receive&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It’s the function that parses the information from received packet and puts it into the DSI structure. When it receives the packet data, it first determine how much data to read into the command buffer according to the &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_len&lt;/code&gt; in the dsi header. At the beginning, the size of &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_cmdlen&lt;/code&gt; is verified.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, as shown in the picture above, if &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_doff&lt;/code&gt; is provided by user, &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_doff&lt;/code&gt; is used as the length. There is no verification here.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The default length of &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi-&amp;gt;commands&lt;/code&gt; is 0x100000(&lt;code class=&quot;highlighter-rouge&quot;&gt;dsi-&amp;gt;server_quantum&lt;/code&gt;), which is a fixed length allocated in &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_init&lt;/code&gt;, so as long as &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi-&amp;gt;header.dsi_doff&lt;/code&gt; is larger than &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi-&amp;gt;server_quantum&lt;/code&gt;, heap overflow occurs.&lt;/p&gt;
+
+&lt;h3 id=&quot;exploitation&quot;&gt;Exploitation&lt;/h3&gt;
+
+&lt;p&gt;In DSM 6.2.3, &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi-&amp;gt;commands&lt;/code&gt; buffer is allocated by malloc at libc 2.20. When it allocates more than 0x20000, malloc calls mmap to allocate memory. The memory layout of afpd after &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_init&lt;/code&gt; is as below.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;At the below of &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi-&amp;gt;commands&lt;/code&gt; is Thread Local Storage, which is used to store thread local variables of the main thread.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Because of this memory layout, we can use the vulnerability to overwrite the data on Thread Local Storage. What variables to be overwritten in the Thread Local Storage?&lt;/p&gt;
+
+&lt;h4 id=&quot;thread-local-storage&quot;&gt;Thread-local Storage&lt;/h4&gt;
+&lt;p&gt;Thread-local Storage (TLS) is used to store the local variables of the thread. Each thread have its own TLS, which allocated when the Thread is created. It will be released when thread is destroyed. We can use heap overflow vulnerabilities to overwrite most of the variables stored in TLS.&lt;/p&gt;
+
+&lt;h4 id=&quot;target-in-tls&quot;&gt;Target in TLS&lt;/h4&gt;
+&lt;p&gt;In fact, there are many variables that can control RIP on TLS. Here are a few more common ones.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;main_arena&lt;/code&gt;
+    &lt;ul&gt;
+      &lt;li&gt;We can forge main_arena to achieve arbitrary writing, but it’s more complicated&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;pointer_guard&lt;/code&gt;
+    &lt;ul&gt;
+      &lt;li&gt;We can modify the pointer guard to change the function pointer, but it requires a leak.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt;
+    &lt;ul&gt;
+      &lt;li&gt;It’s more suitable for our current situation&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&quot;overwrite-tls_dtor_list&quot;&gt;Overwrite &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt;&lt;/h4&gt;
+
+&lt;p&gt;We can use the &lt;a href=&quot;https://googleprojectzero.blogspot.com/2014/08/the-poisoned-nul-byte-2014-edition.html&quot;&gt;technique&lt;/a&gt; used by project zero in 2014 to overwrite the &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; in the &lt;code class=&quot;highlighter-rouge&quot;&gt;Thread Local Storage&lt;/code&gt;, and then control the RIP in exit().&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dtor_list&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;dtor_func&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;func&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;obj&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;link_map&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dtor_list&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; is a singly linked list of &lt;code class=&quot;highlighter-rouge&quot;&gt;dtor_list&lt;/code&gt; objects. It is mainly a destructor for thread local storage. In the end of the thread execution, it calls destructor function pointer in the linked list. We can overwrite &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; with &lt;code class=&quot;highlighter-rouge&quot;&gt;dtor_list&lt;/code&gt; we forged.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When the process exits, it calls &lt;code class=&quot;highlighter-rouge&quot;&gt;call_tls_dtors()&lt;/code&gt;. This function takes the object in &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; and calls each destructor. At this time, if we can control &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt;, it calls the function we specified.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/18.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, in the new version of glibc, the function of &lt;code class=&quot;highlighter-rouge&quot;&gt;dtor_list&lt;/code&gt; is protected by pointer guard. So we need to know the value of pointer guard before we overwrite it. The pointer guard is initialized at the beginning of the program and is an unpredictable random number. If we don’t have information leakage, it’s hard to know the value.&lt;/p&gt;
+
+&lt;p&gt;But in fact pointer guard would also be placed in &lt;code class=&quot;highlighter-rouge&quot;&gt;Thread Local Storage&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/19.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In the &lt;code class=&quot;highlighter-rouge&quot;&gt;Thread Local Storage&lt;/code&gt;, there is a &lt;code class=&quot;highlighter-rouge&quot;&gt;tcbhead_t&lt;/code&gt; structure below the &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt;, which is the thread descriptor of main thread.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;tcbhead_t&lt;/code&gt; structure is used to store various information about the thread such as the &lt;code class=&quot;highlighter-rouge&quot;&gt;stack_guard&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;pointer_guard&lt;/code&gt; used by the thread. In x86-64 Linux system, the fs register always points to the &lt;code class=&quot;highlighter-rouge&quot;&gt;tcbhead_t&lt;/code&gt; of the current thread, so the program access thread local storage by using fs register. The memory layout of &lt;code class=&quot;highlighter-rouge&quot;&gt;Thread local storage&lt;/code&gt; is shown as below.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/20.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We can use the vulnerability to overwrite not only &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; but also pointer guard in the &lt;code class=&quot;highlighter-rouge&quot;&gt;tcbhead_t&lt;/code&gt;. In this way, we can overwrite it with &lt;code class=&quot;highlighter-rouge&quot;&gt;NULL&lt;/code&gt; to solve the pointer guard problem mentioned earlier.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/21.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;But another problem appears, after we overwrite pointer guard, stack guard will also be overwritten.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/22.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Before netatalk receives data, it first puts the original stack guard on the stack, and then invoke recv() to receive data to &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi-&amp;gt;command&lt;/code&gt;. At this time, the buffer overflow occurs and cause stack guard and pointer guard to be overwritten. After this, netatalk returns to normal execution flow. It takes the stack guard from the stack and compare it with the stack guard in &lt;code class=&quot;highlighter-rouge&quot;&gt;Thread Local Storage&lt;/code&gt;. However, it has been overwritten by us, the comparison here fails, causing abort to terminate the program.&lt;/p&gt;
+
+&lt;h4 id=&quot;bypass-stack-guard&quot;&gt;Bypass stack guard&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/23.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In the netatalk(afpd) architecture, each connection forks a new process to handle the user’s request, so the memory address and stack guard of each connection are the same as the parent process. Because of this behavior, we can use brute-force bytes one by one to leak stack guard.&lt;/p&gt;
+
+&lt;h4 id=&quot;brute-force-stack-guard&quot;&gt;Brute-force stack guard&lt;/h4&gt;
+
+&lt;p&gt;We can use the overflow vulnerability to overwrite only the last byte of stack guard on &lt;code class=&quot;highlighter-rouge&quot;&gt;Thread Local Storage&lt;/code&gt; with different value in each different connection. Once the value is different from the original value, the service disconnects. Therefore, we can use the behavior to validate whether the value we overwritten is the same as stack guard. After the lowest byte is determined, we can continue to add another byte, and so on.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/24.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In the above figure, we assume that the stack guard is &lt;code class=&quot;highlighter-rouge&quot;&gt;0xdeadbeeffacebc00&lt;/code&gt;. Due to the stack guard feature in Linux, the lowest byte must be 0. Let’s start with the second byte. We can overwrite with 0x00 to see if the connection is disconnected first. If it is disconnected, it means the value we overwrote is wrong. Next, we will test other values to see if the connection is disconnected. And so on, until there is no disconnection, we can find the correct value of section bytes. Then we can try to overwrite third byte, fourth byte and so on. After the stack guard is overwritten with 8 bytes and the connection is not disconnected, we can successfully bypass the stack guard.&lt;/p&gt;
+
+&lt;p&gt;After we leak the stack guard, we can actually control RIP successfully. &lt;br /&gt;
+Next, we need to forge the structure &lt;code class=&quot;highlighter-rouge&quot;&gt;_dtor_list&lt;/code&gt; to control RIP.&lt;/p&gt;
+
+&lt;h4 id=&quot;construct-the-_dtor_list-to-control-rip&quot;&gt;Construct the &lt;code class=&quot;highlighter-rouge&quot;&gt;_dtor_list&lt;/code&gt; to control RIP&lt;/h4&gt;
+
+&lt;p&gt;In DSM 6.2.3-25426, Because it does not enable PIE, we can forge &lt;code class=&quot;highlighter-rouge&quot;&gt;_dtor_list&lt;/code&gt; on the data section of afpd.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/25.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Luckily, when netatalk use &lt;code class=&quot;highlighter-rouge&quot;&gt;dhx2 login&lt;/code&gt; authentication, it will copy the username we provided to the data section of afpd. We can use the feature to construct &lt;code class=&quot;highlighter-rouge&quot;&gt;_dtor_list&lt;/code&gt; on the known address.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/26.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After everything is constructed, we can trigger the normal function &lt;code class=&quot;highlighter-rouge&quot;&gt;DSICloseSession&lt;/code&gt; to control the RIP.&lt;/p&gt;
+
+&lt;h4 id=&quot;tls_dtor_list-in-synology&quot;&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; in Synology&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/27.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;But in the glibc-2.20 in DSM 6.2.3-25426, it will invoke  &lt;code class=&quot;highlighter-rouge&quot;&gt;__tls_get_addr&lt;/code&gt; to get the variable &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt;. The function will take the variable from &lt;code class=&quot;highlighter-rouge&quot;&gt;tcb-&amp;gt;div&lt;/code&gt;. We also need to construct it on a known address.&lt;/p&gt;
+
+&lt;p&gt;The final structure we forged is as follows&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/28.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Finally, we control RIP to invoke execl() in afpd to get the reverse shell.&lt;/p&gt;
+
+&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;https://www.youtube.com/embed/ocZkWuSCr4Y&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
+
+&lt;h3 id=&quot;remark&quot;&gt;Remark&lt;/h3&gt;
+&lt;p&gt;In general Netatalk, PIE protection is enabled by default. It is difficult to construct &lt;code class=&quot;highlighter-rouge&quot;&gt;_dtor_list&lt;/code&gt; in a known address. In fact, you can also leak libc address using a similar method. It is still exploitable.&lt;/p&gt;
+
+&lt;p&gt;This vulnerability not only affects Synology, but also affects some devices use Netatalk.&lt;/p&gt;
+
+&lt;h3 id=&quot;other-vendor&quot;&gt;Other vendor&lt;/h3&gt;
+
+&lt;p&gt;We tested several vendors using Netatalk and found that most device have similar problems, some are unexploitable but some are exploitable. We have tested QNAP and Asustor here, and both have successfully obtained the shell.&lt;/p&gt;
+
+&lt;h4 id=&quot;qnap&quot;&gt;QNAP&lt;/h4&gt;
+&lt;ul&gt;
+  &lt;li&gt;We tested on TS451
+    &lt;ul&gt;
+      &lt;li&gt;QTS 4.5.4.1741&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Not enable by default&lt;/li&gt;
+  &lt;li&gt;Protection
+    &lt;ul&gt;
+      &lt;li&gt;&lt;strong&gt;No Stack Guard&lt;/strong&gt;&lt;/li&gt;
+      &lt;li&gt;No PIE&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Built-in system function&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/29.png&quot; alt=&quot;&quot; /&gt;&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20220328/30.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;asustor&quot;&gt;Asustor&lt;/h4&gt;
+&lt;ul&gt;
+  &lt;li&gt;We tested on AS5202T
+    &lt;ul&gt;
+      &lt;li&gt;ADM 3.5.7.RJR1&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Not enable by default&lt;/li&gt;
+  &lt;li&gt;Protection
+    &lt;ul&gt;
+      &lt;li&gt;&lt;strong&gt;No Stack Guard&lt;/strong&gt;&lt;/li&gt;
+      &lt;li&gt;No PIE&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Built-in system function&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/31.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It is worth mentioning that both QNAP and Asustor NAS does not enabled stack guard, and you can get the reverse shell without brute-force.&lt;/p&gt;
+
+&lt;p&gt;When Synology has not yet patched this vulnerability, it can be exploited as long as the default is installed. &lt;strong&gt;No authentication is required&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;Although QNAP and Asustor are not enabled by default, many users who use Macs still turn it on for convenience. Actually, Netatalk will be used almost in NAS. Most NAS will have an impact, as long as they enable Netatalk, an attacker can use this vulnerability to take over most of the NAS.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Your NAS is not your NAS !&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/32.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In fact, many people open Netatalk on the external network. There are 130,000 machines on shodan alone, most of which are Synology.&lt;/p&gt;
+
+&lt;h2 id=&quot;mitigation&quot;&gt;Mitigation&lt;/h2&gt;
+&lt;h3 id=&quot;update&quot;&gt;Update&lt;/h3&gt;
+&lt;p&gt;At present, the above three have been patched, please update to the latest version.&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Synology
+    &lt;ul&gt;
+      &lt;li&gt;https://www.synology.com/zh-hk/security/advisory/Synology_SA_20_26&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;QNAP
+    &lt;ul&gt;
+      &lt;li&gt;https://www.qnap.com/en/security-advisory/qsa-21-50&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Asustor
+    &lt;ul&gt;
+      &lt;li&gt;https://www.asustor.com/service/release_notes#ADM%203.5.7.RKU2&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;disable-afp&quot;&gt;Disable AFP&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;It’s best to disable it directly. The project is rarely maintained, and the risk of continuing to use it is extremely high.&lt;/li&gt;
+  &lt;li&gt;SMB is &lt;strong&gt;relatively safe&lt;/strong&gt;
+    &lt;ul&gt;
+      &lt;li&gt;If you want to use similar feature, it is recommended to use SMB. It is relatively safe, but it can only be said to be relatively safe.&lt;/li&gt;
+      &lt;li&gt;It is recommended that all related services should be opened in the intranet.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;summary&quot;&gt;Summary&lt;/h2&gt;
+&lt;p&gt;We have successfully found a serious vulnerability in the NAS, and successfully wrote a proof-of-concept, which proved that it can be exploited on many NAS such as Synology, QNAP and Asustor.&lt;/p&gt;
+
+&lt;p&gt;We also think that Netatalk is a new generation of backdoor in NAS!&lt;/p&gt;
+
+&lt;p&gt;In the future, We hope that NAS vendor who use third-party can re-examine the security issues caused by them. It is strongly recommended that NAS vendor can review it by themselves and pay attention to whether other vendor have also fixed the vulnerabilities in the same third-party. It is possible that it will also be affected.&lt;/p&gt;
+
+&lt;p&gt;The users who want to use NAS can also pay more attention to not opening the NAS on the external network and unused services should be disabled as much as possible to reduce the attack surface.&lt;/p&gt;
+
+&lt;h2 id=&quot;to-be-continue&quot;&gt;To be continue&lt;/h2&gt;
+&lt;p&gt;In fact, we have not only found one vulnerability, we have also found that there are still many problems. In next part, we will publish more research after most vendor fix it.&lt;/p&gt;
+
+&lt;p&gt;Please look forward to Part II.&lt;/p&gt;
+
+</content>
+ </entry>
+ 
+ <entry>
+   <title>Your NAS is not your NAS !</title>
+   <link href="https://devco.re/blog/2022/03/28/your-NAS-is-not-your-NAS/"/>
+   <updated>2022-03-28T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2022/03/28/your-NAS-is-not-your-NAS</id>
+   <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2022/03/28/your-NAS-is-not-your-NAS-en/&quot;&gt;English Version&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;/blog/2022/03/28/your-NAS-is-not-your-NAS/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;前年我們在 Synology 的 NAS 中，發現了，Pre-auth RCE 的漏洞，並在 Pwn2Own Tokyo 中，取得了 Synology DS418 play 的控制權，而成功獲得 Pwn2Own 的點數，後續也發現這個漏洞不只存在 Synology 的 NAS，也同時存在多數廠牌的 NAS 中，這篇研究將講述這漏洞的細節及我們的利用方式。&lt;/p&gt;
+
+&lt;p&gt;此份研究亦發表於 &lt;a href=&quot;https://hitcon.org/2021/&quot;&gt;HITCON 2021&lt;/a&gt;，你可以從&lt;a href=&quot;https://hitcon.org/2021/agenda/03f06675-261d-4c97-b524-33ef9cc6ccb2/%E4%BD%A0%E7%9A%84%20NAS%20%E4%B8%8D%E6%98%AF%E4%BD%A0%E7%9A%84%20NAS%20!.pdf&quot;&gt;這裡&lt;/a&gt;取得投影片！&lt;/p&gt;
+
+&lt;h2 id=&quot;network-attached-storage&quot;&gt;Network Attached Storage&lt;/h2&gt;
+
+&lt;p&gt;早期 NAS 一般用途為讓伺服器本身與資料分開也為了做異地備援而使用的設備，功能上主要單純讓使用者可以直接在網路上存取資料及分享檔案，現今的 NAS 更是提供多種服務，不止檔案分享更加方便，也與 IoT 的環境更加密切，例如 SMB/AFP 等服務，可輕易的讓不同系統的電腦分享檔案，普及率也遠比以前高很多。&lt;/p&gt;
+
+&lt;p&gt;現今的 NAS，也可裝上許多套件，更是有不少人拿來架設 Server，在這智慧家庭的年代中，更是會有不少人與 home assistant 結合，使得生活更加便利。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;motivation&quot;&gt;Motivation&lt;/h2&gt;
+
+&lt;h3 id=&quot;為何我們要去研究-nas-呢-&quot;&gt;為何我們要去研究 NAS 呢 ?&lt;/h3&gt;
+
+&lt;h4 id=&quot;紅隊需求&quot;&gt;紅隊需求&lt;/h4&gt;
+&lt;p&gt;過去在我們團隊在執行紅隊過程中，NAS 普遍會出現在企業的內網中，有時更會暴露在外網，有時更會存放不少企業的機密資料在 NAS 上，因此 NAS 漸漸被我們關注，戰略價值也比以往高很多。&lt;/p&gt;
+
+&lt;h4 id=&quot;勒索病毒&quot;&gt;勒索病毒&lt;/h4&gt;
+&lt;p&gt;近年來因為 NAS 日益普及，常被拿來放個人的重要資料，使 NAS 成為了勒索病毒的目標，通常駭客組織都會利用漏洞入侵 NAS 後，將存放在 NAS 中的檔案都加密後勒索，而今年年初才又爆發一波 locker 系列的事件，我們希望可以減少類似的事情再次發生，因而提高 NAS 研究的優先程度，來增加 NAS 安全性。也為了我們實現讓世界更安全的理想。&lt;/p&gt;
+
+&lt;h4 id=&quot;pwn2own-mobile-2020&quot;&gt;Pwn2Own Mobile 2020&lt;/h4&gt;
+&lt;p&gt;最後一點是 NAS 從 2020 開始，成為了 Pwn2Own Mobile 的主要目標之一，又剛好前年我們也想嘗試挑戰看看 Pwn2Own 的舞台，所以決定以 NAS 作為當時研究的首要目標，前年 Pwn2Own 的目標為 Synology 及 WD ，由於 Synology 為台灣企業常見設備，所以我們最後選擇了 Synology 開始研究。&lt;/p&gt;
+
+&lt;h2 id=&quot;recon&quot;&gt;Recon&lt;/h2&gt;
+
+&lt;h3 id=&quot;environment&quot;&gt;Environment&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;DS918+&lt;/li&gt;
+  &lt;li&gt;DSM 6.2.3-25426&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;我們的測試環境是 DS918+ 與 Pwn2own 目標極為類似的型號，我們為了更佳符合平常會遇到的環境以及 Pwn2Own 中要求，會是全部 default setting 的狀態。&lt;/p&gt;
+
+&lt;h3 id=&quot;attack-surface&quot;&gt;Attack surface&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;首先可先用 netstat 看 tcp 和 udp 中有哪些 port 是對外開放，可以看到 tcp 及 udp 中 在 default 環境下，就開了不少服務，像是 tcp 的 smb/nginx/afpd 等&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而 udp 中則有 minissdpd/findhost/snmpd 等，多數都是一些用來幫助尋找設備的協定。&lt;/p&gt;
+
+&lt;p&gt;我們這邊挑了幾個 Service 做初步的分析&lt;/p&gt;
+
+&lt;h4 id=&quot;dsm-web-interface&quot;&gt;DSM Web interface&lt;/h4&gt;
+&lt;p&gt;首先是 DSM Web 介面，最直覺也最直接的一部分，這部分大概也會是最多人去分析的一塊，有明顯的入口點，在古老時期常有 command injection 漏洞，但後來有 Synology 有嚴格規範，後徹底改善這問題，程式也採用相對保守的方式開發，相對安全不少。&lt;/p&gt;
+
+&lt;h4 id=&quot;smb&quot;&gt;SMB&lt;/h4&gt;
+&lt;p&gt;Synology 中的 SMB 協定，使用的是 Open Source 的 &lt;a href=&quot;https://www.samba.org/&quot;&gt;Samba&lt;/a&gt; ，因使用的人眾多，進行 code review 及漏洞挖掘的人也不少，使得每年會有不少小洞，近期最嚴重的就是 &lt;a href=&quot;https://www.samba.org/samba/security/CVE-2017-7494.html&quot;&gt;SambaCry&lt;/a&gt;，但由於較多人在 review 安全性相對也比其他服務安全。&lt;/p&gt;
+
+&lt;h4 id=&quot;iscsi-manager&quot;&gt;iSCSI Manager&lt;/h4&gt;
+&lt;p&gt;主要協助使用者管理與監控 iSCSI 服務，由 Synology 自行開發，近期算比較常出現漏洞的地方，但需要花不少時間 Reverse ，不過是個不錯的目標，如果沒有其他攻擊面，可能會優先分析。&lt;/p&gt;
+
+&lt;h4 id=&quot;netatalk&quot;&gt;Netatalk&lt;/h4&gt;
+&lt;p&gt;最後一個要提的是 Netatalk 也就是 afp 協定，基本上沒什麼改，大部分沿用 open source 的 Netatalk，近期最嚴重的漏洞為 2018 的 Pre-auth RCE (CVE-2018-1160)，關於這漏洞可參考 &lt;a href=&quot;https://medium.com/tenable-techblog/exploiting-an-18-year-old-bug-b47afe54172&quot;&gt;Exploiting an 18 Year Old Bug&lt;/a&gt; ，Netatalk 相對其他 Service 過去的漏洞少非常多，是比較少被注意到的一塊，並且已經長時間沒在更新維護。&lt;/p&gt;
+
+&lt;p&gt;我們經過整體分析後， 認為 Netatalk 也會是 Synology 中最軟的一塊，且有 &lt;a href=&quot;http://netatalk.sourceforge.net/&quot;&gt;Source code&lt;/a&gt; 可以看，所以我們最後決定先分析他。當然也還有其他 service 跟攻擊面，不過這邊由於篇幅因素及並沒有花太多時間去研究就不一一分析介紹了。我們這次的重點就在於 Netatalk。&lt;/p&gt;
+
+&lt;h2 id=&quot;netatalk-1&quot;&gt;Netatalk&lt;/h2&gt;
+&lt;p&gt;Apple Filing Protocol (AFP) 是個類似 SMB 的檔案傳輸協定，提供 Mac 來傳輸及分享檔案，因 Apple 本身並沒有開源，為了讓 Unlx like 的系統也可以使用，於是誕生了 Netatalk，Netatalk 是個實作 Mac 的 AFP 協定的 OpenSource 專案，為了讓 Mac 可以更方便的用 NAS 來分享檔案，幾乎每一廠牌的 NAS 都會使用。&lt;/p&gt;
+
+&lt;h3 id=&quot;netatalk-in-synology&quot;&gt;Netatalk in Synology&lt;/h3&gt;
+&lt;p&gt;Synology 中的 netatalk 是預設開啟，版本是改自 3.1.8 的 netatalk，並且有在定期追蹤安全性更新，只要剛裝好就可以用 afp 協定來與 Synology NAS 分享檔案，而 binary 本身保護有 ASLR/NX/StackGuard。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;dsi&quot;&gt;DSI&lt;/h4&gt;
+
+&lt;p&gt;講漏洞之前，先帶大家來看一下 netatalk 中，部分重要結構，首先是 DSI，Netatalk 在連線時是使用的 DSI (Data Stream interface) 來傳遞資訊，Server 跟 Client 都是通過 DSI 這個協定來溝通，每個 connectation 的 packet 都會有 DSI 的 header 在 packet 前面&lt;/p&gt;
+
+&lt;p&gt;DSI Packet Header :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;DSI 封包中內容大致上會如上圖所示，會有 Flag/Command 等等 metadata 以及 payload 通常就會是一個 DSI Header + payload 的結構&lt;/p&gt;
+
+&lt;p&gt;AFP over DSI :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;afp 協定的通訊過程大概如上圖所示，使用 AFP 時，client 會先去拿 server 資訊，來確定有哪些認證的方式還有使用的版本等等資訊，這個部分可以不做，然後會去 Open Session 來，開啟新的 Session，接著就可以執行 AFP 的 command ，但在未認證之前，只可以做登入跟登出等相關操作，我們必須用 login 去驗證使用者身份，只要權限沒問題接下來就可像 SMB 一樣做檔案操作&lt;/p&gt;
+
+&lt;p&gt;在 Netatalk 實作中，會用 dsi_block 作為封包的結構&lt;/p&gt;
+
+&lt;p&gt;dsi_block :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;dsi_flag 就是指該 packet 是 request or reply&lt;/li&gt;
+  &lt;li&gt;dsi_command 表示我們的 request 要做的事情
+    &lt;ul&gt;
+      &lt;li&gt;DSICloseSession&lt;/li&gt;
+      &lt;li&gt;DSICommand&lt;/li&gt;
+      &lt;li&gt;DSIGetStatus&lt;/li&gt;
+      &lt;li&gt;DSIOpenSession&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;dsi_code
+    &lt;ul&gt;
+      &lt;li&gt;Error code&lt;/li&gt;
+      &lt;li&gt;For reply&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;dsi_doff
+    &lt;ul&gt;
+      &lt;li&gt;DSI data offset&lt;/li&gt;
+      &lt;li&gt;Using in DSIWrite&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;dsi_len
+    &lt;ul&gt;
+      &lt;li&gt;The Length of Payload&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;DSI : A descriptor of dsi stream&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/8.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 netatalk 中，除了原始封包結構外，也會將封包及設定檔 parse 完後，將大部分的資訊，存放到另外一個名為 DSI 結構中，例如 server_quantum 及 payload 內容等，以便後續的操作。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而封包中的 Payload 會存放在 DSI 中 command 的 buffer 中，該 buffer 大小，取自於 server_quantum，該數值則是取自於 afp 的設定檔 afp.conf 中。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;如果沒特別設定，則會取用 default 大小 0x100000。&lt;/p&gt;
+
+&lt;p&gt;有了初步了解後，我們可以講講漏洞。&lt;/p&gt;
+
+&lt;h3 id=&quot;vulnerability&quot;&gt;Vulnerability&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們發現的漏洞就發生在，執行 dsi command 時，讀取 payload 內容發生了 overflow，此時並不需登入就可以觸發。問題函式是在 dsi_stream_receive&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這是一個將接收到封包的資訊 parse 後放到 DSI 結構的 function，這個 function 接收封包資料時，會先根據 header 中的 &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_len&lt;/code&gt; 來決定要讀多少資料到 command buffer 中，而一開始有驗證&lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_cmdlen&lt;/code&gt; 不可超過 server quantum 也就是 command buffer 大小。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;然而如上圖黃匡處，如果有給 &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_doff&lt;/code&gt; ，則會將 &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_doff&lt;/code&gt; 作為 cmdlen 大小，但這邊卻沒去檢查是否有超過 command buffer。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;使得 &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_strem_read&lt;/code&gt; 以這個大小來讀取 paylaod 到 command buffer 中，此時 command buffer 大小為 0x100000，如果 &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_doff&lt;/code&gt; 大小超過 0x100000 就會發生 heap overflow。&lt;/p&gt;
+
+&lt;h3 id=&quot;exploitation&quot;&gt;Exploitation&lt;/h3&gt;
+&lt;p&gt;由於是 heap overflow，所以我們這邊必須先理解 heap 上有什麼東西可以利用，在 DSM 中的 Netatalk 所使用的 Memory Allocator 是 glibc 2.20，而在 glibc 中，當 malloc 大小超過 0x20000 時，就會使用 mmap 來分配記憶體空間，而我們在 netatalk 所使用的大小則是 0x100000 超過 0x20000 因此會用 mmap 來分配我們的 command buffer。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;因為是以 mmap 分配的關係，最後分配出來的空間則會在 Thread Local Storage 區段上面，而不是在正常的 heap segment 上，如上圖的紅框處。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;afpd 的 memory layout 如上圖所示，上述紅框那塊就是，紅色+橘色這區段，在 command buffer 下方的是 Thread-local Storage。&lt;/p&gt;
+
+&lt;h4 id=&quot;thread-local-storage&quot;&gt;Thread-local Storage&lt;/h4&gt;
+&lt;p&gt;Thread-local Storage(TLS) 是用來存放 thread 的區域變數，每個 thread 都會有自己的 TLS，在 Thread 建立時就會分配，當 Thread 結束的時候就會釋放，而 main thread 的 TLS 則會在 Process 建立時就會分配，如前面圖片中的橘色區段，因此我們可利用 heap overflow 的漏洞來覆蓋掉大部分存放在 TLS 上的變數。&lt;/p&gt;
+
+&lt;h4 id=&quot;target-in-tls&quot;&gt;Target in TLS&lt;/h4&gt;
+&lt;p&gt;事實上來說 TLS 可控制 RIP 的變數有不少，這邊提出幾個比較常見的&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;第一個是 main arena，主要是 glibc 記憶體管理個結構，改 main arena 可以讓記憶體分配到任意記憶體位置，做任意寫入，但構造上比較麻煩。&lt;/li&gt;
+  &lt;li&gt;第二個是 pointer guard 可藉由修改 pointer guard 來改變原本呼叫的 function pointer ，但這邊需要先有 leak 跟知道原本 pointer guard 的值才能達成&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;第三個則是改 &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; ，不須 leak 比較符合我們現在的狀況&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&quot;overwrite-tls_dtor_list&quot;&gt;Overwrite &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt;&lt;/h4&gt;
+&lt;p&gt;這技巧是由 project zero 在 2014 所提出的&lt;a href=&quot;https://googleprojectzero.blogspot.com/2014/08/the-poisoned-nul-byte-2014-edition.html&quot;&gt;方法&lt;/a&gt;，覆蓋 TLS 上的 tls_dtor_list 來做利用，藉由覆蓋該變數可在程式結束時控制程式流程。&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dtor_list&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;dtor_func&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;func&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;obj&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;link_map&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;map&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dtor_list&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;這邊就稍微提一下這個方法，&lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; 是個 &lt;code class=&quot;highlighter-rouge&quot;&gt;dtor_list&lt;/code&gt; object 的 singly linked list 主要是存放 thread local storage 的 destructor，在 thread 結束時會去看這個 linked list 並去呼叫 destructor function，我們可藉由覆蓋 &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; 指向我們所構造的 dtor_list。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而當程式結束呼叫 exit() 時，會去呼叫 &lt;code class=&quot;highlighter-rouge&quot;&gt;call_tls_dtors()&lt;/code&gt; ，該 function 會去取 &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; 中的 object 並去呼叫每個 destructor，此時如果我們可以控制 &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; 就會去使用我們所構造的 &lt;code class=&quot;highlighter-rouge&quot;&gt;dtor_list&lt;/code&gt; 來呼叫我們指定的函式。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/18.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但在新版本和 synology 的 libc 中，dtor_list 的 function pointer 有被 pointer guard 保護，導致正常情況下，我們並不好利用，一樣需要先 leak 出 pointer guard 才能好好控制 rip 到我們想要的位置上。&lt;/p&gt;
+
+&lt;p&gt;但有趣的是 pointer guard 也會在 TLS 上，他會存在  TLS 中的 tcbhead_t 結構中，如果我們 overflow 夠多，也可以在 overflow &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; 的同時，也將 pointer guard 也一併清掉，這樣就可以讓我們不用處理 pointer guard 問題。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/19.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;先來講講 tcbhead_t 這結構，這個結構主要是 Thread Control Block (TCB)，有點類似 Windows 中的 TEB 結構 是 thread 的 descriptor，主要會用來存放 thread 的各種資訊，而在 x86_64 的 Linux 架構的 usermode 下，fs 暫存器會指向這位置，每當我們要存取 thread local variable 時，都會透過 fs 暫存器去 存取，我們可以看到 TCB 結構會有 stack guard 及 pointer guard 等資訊，也就是說當我們再拿 pointer guard 時，也適用 fs 暫存器從這個結構取出的。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/20.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們回頭看一下 TLS 上的結構分佈，可以看到 &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; 後方就是這個，&lt;code class=&quot;highlighter-rouge&quot;&gt;tcbhead_t&lt;/code&gt; 結構。只要我們 overflow 夠多就可以蓋掉 pointer guard，然而此時會出現另外一個問題。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/21.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;因為 stack guard 在 pointer guard 前，當我們蓋掉 pointer guard 的同時，也會蓋掉 stack guard。那麼蓋掉 stack guard 會有什麼影響呢？&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/22.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在我們呼叫 &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_stream_receive()&lt;/code&gt; 時，因為有開啟 stack guard 保護的關係，會先從 TLS 上，取得 stack guard 放在 stack 上，等到我們呼叫 dsi_stream_read 去 trigger overflow 且蓋掉 pointer guard 及 stack guard 後，在 &lt;code class=&quot;highlighter-rouge&quot;&gt;dsi_stream_receive()&lt;/code&gt; 返回時，會去檢查 stack guard 是否與 TLS 中的相同，但因為這時候的 TLS 的 stack guard 已經被我們蓋掉了，導致檢查不通過而中止程式，就會造成我們無法利用這個技巧來達成 RCE。&lt;/p&gt;
+
+&lt;h4 id=&quot;bypass-stack-guard&quot;&gt;Bypass stack guard&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/23.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 netatalk(afpd) 的架構中，事實上每次連線都會 fork 一個新的 process 來 handle 使用者的 request，而 Linux 中的 process 有個特性是 fork 出來的 process，memory address 及 stack gurad 等都會與原先的 parent process 相同，因此我們可以利用 CTF 常見的招式，一個 byte 一個 bytes  brute-force 的方式來獲得 stack guard 。&lt;/p&gt;
+
+&lt;h4 id=&quot;brute-force-stack-guard&quot;&gt;Brute-force stack guard&lt;/h4&gt;
+
+&lt;p&gt;基本概念是 在 overflow 之後，我們可以只蓋 TLS 中的 stack guard 最尾端一個 byte ，每次連線都蓋不同的 byte，一旦與 stack guard 不同，就會因為 abort 而中斷連線，我們可依據連線的中斷與否，判斷我們所覆蓋的數值是否與 stack guard 相同。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/24.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;以上圖來說，我們假設 stack guard 是 &lt;code class=&quot;highlighter-rouge&quot;&gt;0xdeadbeeffacebc00&lt;/code&gt;，由於 stack guard 特性，最低一個 byte 一定會是 0 ，這邊從第二個 byte 蓋起，這邊可以先蓋 00 試看看連線是否被中斷，如果被中斷代表蓋的數值是錯的，接下來我們就測其他數值看看有沒有中斷，依此類推，測到 0xbc 發現沒有中斷，代表第二個 byte 是 0xbc，接下來就繼續蓋第三 byte ，一樣從 0x00 蓋到沒中斷，直到蓋滿 8 bytes 的 stack guard 都沒中斷連線後，我們就可以知道 stack guard 的值是什麼，接下來我們就可以解決 stack guard 問題。&lt;/p&gt;
+
+&lt;h4 id=&quot;construct-the-_dtor_list-to-control-rip&quot;&gt;Construct the &lt;code class=&quot;highlighter-rouge&quot;&gt;_dtor_list&lt;/code&gt; to control RIP&lt;/h4&gt;
+
+&lt;p&gt;在解決 stack guard 問題後，netatalk 已可正常運作，接下來我們需要構造 &lt;code class=&quot;highlighter-rouge&quot;&gt;_dtor_list&lt;/code&gt; 結構並結束程式來控制 RIP，在當時的 synology 的 afpd 中並沒有開啟 PIE，我們可以在 afpd 的 data 段中，構造 &lt;code class=&quot;highlighter-rouge&quot;&gt;_dtor_list&lt;/code&gt;。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/25.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;剛好在使用 dhx2 method 的 login 功能中，會將我們要登入的 username 複製到 global 的 buffer 中，所以我們可以將這結構跟著 username 一起寫入固定的已知位置。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/26.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在一切都構造完成後，我們這邊可以觸發正常功能的 &lt;code class=&quot;highlighter-rouge&quot;&gt;DSICloseSession&lt;/code&gt; 即可觸發 &lt;code class=&quot;highlighter-rouge&quot;&gt;exit()&lt;/code&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;tls_dtor_list-in-synology&quot;&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; in Synology&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/27.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 reverse 後，發現 synology 的 glibc 中，會使用 &lt;code class=&quot;highlighter-rouge&quot;&gt;__tls_get_addr()&lt;/code&gt; 來取得 &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt;，並非直接存取 &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; 這個全域變數，而這函式的取得方式則會從前述 &lt;code class=&quot;highlighter-rouge&quot;&gt;tcbhead_t&lt;/code&gt; 中先取 div 欄位後，再取得其中的 &lt;code class=&quot;highlighter-rouge&quot;&gt;tls_dtor_list&lt;/code&gt; ，因此我們需要連同 &lt;code class=&quot;highlighter-rouge&quot;&gt;tcb-&amp;gt;div&lt;/code&gt; 一起構造在固定位置，另外一點是 Synology 的 afpd 中並沒有 system 可用，但事實上有 execl 可以使用，只是參數稍微複雜一點而已。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/28.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;最後我們構造的結構如上圖所示，我們將 tcb 及 dtor_list 結構都構造在 username buffer 中，觸發 exit() 後，就會去執行 execl 並取得反連 shell。&lt;/p&gt;
+
+&lt;center&gt;&lt;div class=&quot;videowrapper&quot;&gt;&lt;iframe width=&quot;560&quot; height=&quot;420&quot; src=&quot;https://www.youtube.com/embed/ocZkWuSCr4Y&quot; frameborder=&quot;0&quot;&gt; &lt;/iframe&gt;&lt;/div&gt;&lt;/center&gt;
+
+&lt;h3 id=&quot;remark&quot;&gt;Remark&lt;/h3&gt;
+
+&lt;p&gt;在一般的 Netatalk 中，是會啟用 PIE ，不太容易在已知位置構造 &lt;code class=&quot;highlighter-rouge&quot;&gt;_dtor_list&lt;/code&gt;，實際上也可以用類似方法 leak 出 libc 位置，依舊是 exploitable，該漏洞不只影響 Synology 也會影響到大部分有使用 Netatalk 的設備。&lt;/p&gt;
+
+&lt;h3 id=&quot;other-vendor&quot;&gt;Other vendor&lt;/h3&gt;
+
+&lt;p&gt;我們測試了許多家有使用到 Netatalk 的廠商，發現不少家有存在類似的問題，部分是 unexploitable 但也有部分是 exploitable。我們這邊實測了 QNAP 及 Asustor，皆有成功獲得 shell。&lt;/p&gt;
+
+&lt;h4 id=&quot;qnap&quot;&gt;QNAP&lt;/h4&gt;
+&lt;ul&gt;
+  &lt;li&gt;We tested on TS451
+    &lt;ul&gt;
+      &lt;li&gt;QTS 4.5.4.1741&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Not enable by default&lt;/li&gt;
+  &lt;li&gt;Protection
+    &lt;ul&gt;
+      &lt;li&gt;&lt;strong&gt;No Stack Guard&lt;/strong&gt;&lt;/li&gt;
+      &lt;li&gt;No PIE&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;內建 system&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/29.png&quot; alt=&quot;&quot; /&gt;&lt;br /&gt;
+&lt;img src=&quot;/assets/img/blog/20220328/30.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;asustor&quot;&gt;Asustor&lt;/h4&gt;
+&lt;ul&gt;
+  &lt;li&gt;We tested on AS5202T
+    &lt;ul&gt;
+      &lt;li&gt;ADM 3.5.7.RJR1&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Not enable by default&lt;/li&gt;
+  &lt;li&gt;Protection
+    &lt;ul&gt;
+      &lt;li&gt;&lt;strong&gt;No Stack Guard&lt;/strong&gt;&lt;/li&gt;
+      &lt;li&gt;No PIE&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;內建 system&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/31.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;QNAP 及 Asustor 兩家 NAS 都沒有開啟 Stack guard，不需 brute-force 即可獲得反連 shell。&lt;/p&gt;
+
+&lt;p&gt;這個漏洞在 Synology 尚未修補時，只要 default 裝好就可以利用，&lt;strong&gt;不需任何認證&lt;/strong&gt;，而 QNAP 及 Asustor 雖然不是預設開啟，但不少有使用 Mac 的用戶，還是會為了方便把它打開，基本上只要是 NAS 幾乎都會用到 Netatalk，絕大多數的 NAS 都有影響，只要有開啟 Netatalk，攻擊者可以利用這個漏洞打下大部分的 NAS。&lt;strong&gt;你的 NAS 就再也不會是你的 NAS。&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220328/32.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們後來也從 shodan 上發現，其實也有非常多人將 netatalk 開在外網，光在 shodan 上就有 13 萬台機器，其中大部分是 Synology。&lt;/p&gt;
+
+&lt;h2 id=&quot;mitigation&quot;&gt;Mitigation&lt;/h2&gt;
+&lt;h3 id=&quot;update&quot;&gt;Update&lt;/h3&gt;
+&lt;p&gt;目前上述三台皆已修補，請尚未更新的用戶更新到最新&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Synology
+    &lt;ul&gt;
+      &lt;li&gt;https://www.synology.com/zh-hk/security/advisory/Synology_SA_20_26&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;QNAP
+    &lt;ul&gt;
+      &lt;li&gt;https://www.qnap.com/en/security-advisory/qsa-21-50&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Asustor
+    &lt;ul&gt;
+      &lt;li&gt;https://www.asustor.com/service/release_notes#ADM%203.5.7.RKU2&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;disable-afp&quot;&gt;Disable AFP&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;沒使用時，最好直接關掉或是關在內網，該 project 幾乎已經很少維護，繼續使用風險極高。&lt;/li&gt;
+  &lt;li&gt;改用 SMB &lt;strong&gt;相對安全&lt;/strong&gt;
+    &lt;ul&gt;
+      &lt;li&gt;如果想要用類似功能，建議可使用 SMB 相對安全不少，但只能說相對安全，不能說絕對沒問題，建議還是將相關服務都開在內網就好，沒用到的能關就關&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;summary&quot;&gt;Summary&lt;/h2&gt;
+&lt;p&gt;我們已成功在 NAS 中找到一個嚴重漏洞，並且成功寫出概念證明程式，證實可以利用在 Synology、QNAP 及 Asustor 等主流 NAS 上利用。我們也認為 Netatalk 是在 NAS 中新一代的後門!&lt;/p&gt;
+
+&lt;p&gt;未來希望有使用到第三方套件的 NAS 廠商，可以多重新審視一下第三方套件所帶來的安全性問題，強烈建議可以自行 Review 一次，並且注意其他廠商是否也有修復同樣套件上的漏洞，很有可能自己也會受到影響，也希望使用 NAS 的用戶，也能多多重視不要把 NAS 開在外網，能關的服務就盡可能關閉，以減少攻擊面，讓攻擊者有機可趁。&lt;/p&gt;
+
+&lt;h2 id=&quot;to-be-continue&quot;&gt;To be continue&lt;/h2&gt;
+&lt;p&gt;事實上，我們並不只有找到一個漏洞，我們也發現還有不少問題，也運用在去年的 Pwn2Own Austin 上，這部分我們在大部分廠商修復後會在公開其他的研究，就盡請期待 Part II。&lt;/p&gt;
+
+</content>
+ </entry>
+ 
+ <entry>
+   <title>[已結束] DEVCORE 2022 實習生計畫</title>
    <link href="https://devco.re/blog/2022/01/27/intern-recruit/"/>
    <updated>2022-01-27T00:00:00+08:00</updated>
    <id>https://devco.re/blog/2022/01/27/intern-recruit</id>
@@ -214,7 +965,7 @@
       &lt;li&gt;特殊事蹟&lt;/li&gt;
       &lt;li&gt;過去對於資安的相關研究&lt;/li&gt;
       &lt;li&gt;對於這份實習的期望&lt;/li&gt;
-      &lt;li&gt;MBTI 職業性格測試結果（測試網頁）&lt;/li&gt;
+      &lt;li&gt;MBTI 職業性格測試結果（&lt;a href=&quot;https://www.apesk.com/mbti/dati_tw.asp&quot;&gt;測試網頁&lt;/a&gt;）&lt;/li&gt;
     &lt;/ul&gt;
   &lt;/li&gt;
   &lt;li&gt;簡答題題目如下，請依照欲申請之組別回答，答案頁數不限，可自由發揮
@@ -1116,7 +1867,7 @@
  </entry>
  
  <entry>
-   <title>DEVCORE 徵求紅隊演練工程師</title>
+   <title>[已結束] DEVCORE 徵求紅隊演練工程師</title>
    <link href="https://devco.re/blog/2021/06/22/devcore-202106-recruit/"/>
    <updated>2021-06-22T00:00:00+08:00</updated>
    <id>https://devco.re/blog/2021/06/22/devcore-202106-recruit</id>
@@ -1240,7 +1991,6 @@
     &lt;ul&gt;
       &lt;li&gt;員工健康檢查&lt;/li&gt;
       &lt;li&gt;運動中心健身券&lt;/li&gt;
-      &lt;li&gt;團體保險&lt;/li&gt;
     &lt;/ul&gt;
   &lt;/li&gt;
   &lt;li&gt;進修福利
@@ -4685,7 +5435,6 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
     &lt;ul&gt;
       &lt;li&gt;員工健康檢查&lt;/li&gt;
       &lt;li&gt;運動中心健身券&lt;/li&gt;
-      &lt;li&gt;團體保險&lt;/li&gt;
     &lt;/ul&gt;
   &lt;/li&gt;
   &lt;li&gt;進修福利
@@ -9023,7 +9772,7 @@ base64: invalid input&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
   &lt;li&gt;每季員工聚餐&lt;/li&gt;
   &lt;li&gt;每年員工旅遊&lt;/li&gt;
   &lt;li&gt;每年員工健檢&lt;/li&gt;
-  &lt;li&gt;勞保、健保、勞退、團保&lt;/li&gt;
+  &lt;li&gt;勞保、健保、勞退&lt;/li&gt;
   &lt;li&gt;定期專人按摩服務&lt;/li&gt;
 &lt;/ul&gt;
 

@@ -106,7 +106,7 @@
           <p><a href="/blog/2022/03/28/your-NAS-is-not-your-NAS-en/">English Version</a><br />
 <a href="/blog/2022/03/28/your-NAS-is-not-your-NAS/">中文版本</a></p>
 
-<p>前年我們在 Synology 的 NAS 中，發現了，Pre-auth RCE 的漏洞，並在 Pwn2Own Tokyo 中，取得了 Synology DS418 play 的控制權，而成功獲得 Pwn2Own 的點數，後續也發現這個漏洞不只存在 Synology 的 NAS，也同時存在多數廠牌的 NAS 中，這篇研究將講述這漏洞的細節及我們的利用方式。</p>
+<p>前年我們在 Synology 的 NAS 中發現了 <a href="https://www.zerodayinitiative.com/advisories/ZDI-21-492/">Pre-auth RCE 的漏洞(CVE-2021-31439)</a>，並在 Pwn2Own Tokyo 中取得了 Synology DS418 play 的控制權，而成功獲得 Pwn2Own 的點數，後續也發現這個漏洞不只存在 Synology 的 NAS，也同時存在多數廠牌的 NAS 中，這篇研究將講述這漏洞的細節及我們的利用方式。</p>
 
 <p>此份研究亦發表於 <a href="https://hitcon.org/2021/">HITCON 2021</a>，你可以從<a href="https://hitcon.org/2021/agenda/03f06675-261d-4c97-b524-33ef9cc6ccb2/%E4%BD%A0%E7%9A%84%20NAS%20%E4%B8%8D%E6%98%AF%E4%BD%A0%E7%9A%84%20NAS%20!.pdf">這裡</a>取得投影片！</p>
 
@@ -154,7 +154,7 @@
 <p>我們這邊挑了幾個 Service 做初步的分析</p>
 
 <h4 id="dsm-web-interface">DSM Web interface</h4>
-<p>首先是 DSM Web 介面，最直覺也最直接的一部分，這部分大概也會是最多人去分析的一塊，有明顯的入口點，在古老時期常有 command injection 漏洞，但後來有 Synology 有嚴格規範，後徹底改善這問題，程式也採用相對保守的方式開發，相對安全不少。</p>
+<p>首先是 DSM Web 介面，最直覺也最直接的一部分，這部分大概也會是最多人去分析的一塊，有明顯的入口點，在古老時期常有 command injection 漏洞，但後來 Synology 有嚴格規範後徹底改善這問題，程式也採用相對保守的方式開發，相對安全不少。</p>
 
 <h4 id="smb">SMB</h4>
 <p>Synology 中的 SMB 協定，使用的是 Open Source 的 <a href="https://www.samba.org/">Samba</a> ，因使用的人眾多，進行 code review 及漏洞挖掘的人也不少，使得每年會有不少小洞，近期最嚴重的就是 <a href="https://www.samba.org/samba/security/CVE-2017-7494.html">SambaCry</a>，但由於較多人在 review 安全性相對也比其他服務安全。</p>
@@ -177,7 +177,7 @@
 
 <h4 id="dsi">DSI</h4>
 
-<p>講漏洞之前，先帶大家來看一下 netatalk 中，部分重要結構，首先是 DSI，Netatalk 在連線時是使用的 DSI (Data Stream interface) 來傳遞資訊，Server 跟 Client 都是通過 DSI 這個協定來溝通，每個 connectation 的 packet 都會有 DSI 的 header 在 packet 前面</p>
+<p>講漏洞之前，先帶大家來看一下 netatalk 中，部分重要結構，首先是 DSI，Netatalk 在連線時是使用的 DSI (Data Stream interface) 來傳遞資訊，Server 跟 Client 都是通過 DSI 這個協定來溝通，每個 connection 的 packet 都會有 DSI 的 header 在 packet 前面</p>
 
 <p>DSI Packet Header :</p>
 
@@ -309,7 +309,7 @@
 
 <p><img src="/assets/img/blog/20220328/19.png" alt="" /></p>
 
-<p>先來講講 tcbhead_t 這結構，這個結構主要是 Thread Control Block (TCB)，有點類似 Windows 中的 TEB 結構 是 thread 的 descriptor，主要會用來存放 thread 的各種資訊，而在 x86_64 的 Linux 架構的 usermode 下，fs 暫存器會指向這位置，每當我們要存取 thread local variable 時，都會透過 fs 暫存器去 存取，我們可以看到 TCB 結構會有 stack guard 及 pointer guard 等資訊，也就是說當我們再拿 pointer guard 時，也適用 fs 暫存器從這個結構取出的。</p>
+<p>先來講講 tcbhead_t 這結構，這個結構主要是 Thread Control Block (TCB)，有點類似 Windows 中的 TEB 結構 是 thread 的 descriptor，主要會用來存放 thread 的各種資訊，而在 x86_64 的 Linux 架構的 usermode 下，fs 暫存器會指向這位置，每當我們要存取 thread local variable 時，都會透過 fs 暫存器去 存取，我們可以看到 TCB 結構會有 stack guard 及 pointer guard 等資訊，也就是說當我們在拿 pointer guard 時，也是用 fs 暫存器從這個結構取出的。</p>
 
 <p><img src="/assets/img/blog/20220328/20.png" alt="" /></p>
 
@@ -437,6 +437,8 @@
   </li>
 </ul>
 
+<p>該漏洞也在近期釋出的 <a href="https://netatalk.sourceforge.io/3.1/ReleaseNotes3.1.13.html">Netatalk 3.1.13</a> 版本中修復，如有使用到 Netatalk 3.1.13 以前版本，也請務必更新。</p>
+
 <h3 id="disable-afp">Disable AFP</h3>
 <ul>
   <li>沒使用時，最好直接關掉或是關在內網，該 project 幾乎已經很少維護，繼續使用風險極高。</li>
@@ -453,7 +455,7 @@
 <p>未來希望有使用到第三方套件的 NAS 廠商，可以多重新審視一下第三方套件所帶來的安全性問題，強烈建議可以自行 Review 一次，並且注意其他廠商是否也有修復同樣套件上的漏洞，很有可能自己也會受到影響，也希望使用 NAS 的用戶，也能多多重視不要把 NAS 開在外網，能關的服務就盡可能關閉，以減少攻擊面，讓攻擊者有機可趁。</p>
 
 <h2 id="to-be-continue">To be continue</h2>
-<p>事實上，我們並不只有找到一個漏洞，我們也發現還有不少問題，也運用在去年的 Pwn2Own Austin 上，這部分我們在大部分廠商修復後會在公開其他的研究，就盡請期待 Part II。</p>
+<p>事實上，我們並不只有找到一個漏洞，我們也發現還有不少問題，也運用在去年的 Pwn2Own Austin 上，這部分我們在大部分廠商修復後會在公開其他的研究，就敬請期待 Part II。</p>
 
 
               </article>

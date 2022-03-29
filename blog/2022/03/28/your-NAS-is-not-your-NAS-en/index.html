@@ -106,7 +106,7 @@
           <p><a href="/blog/2022/03/28/your-NAS-is-not-your-NAS-en/">English Version</a><br />
 <a href="/blog/2022/03/28/your-NAS-is-not-your-NAS/">中文版本</a></p>
 
-<p>Two years ago, we found a critical vulnerability on Synology NAS. This vulnerability can let an unauthorized attacker gain code execution on remote Synology DiskStation NAS server. We used this vulnerability to exploit Synology DS418play NAS in Pwn2Own Tokyo 2020. After that, we found the vulnerability is not only exists on Synology but also on most NAS vendors. Following we will describe the details and how we exploit it.</p>
+<p>Two years ago, we found a <a href="https://www.zerodayinitiative.com/advisories/ZDI-21-492/">critical vulnerability</a>, CVE-2021-31439, on Synology NAS. This vulnerability can let an unauthorized attacker gain code execution on remote Synology DiskStation NAS server. We used this vulnerability to exploit Synology DS418play NAS in Pwn2Own Tokyo 2020. After that, we found the vulnerability is not only exists on Synology but also on most NAS vendors. Following we will describe the details and how we exploit it.</p>
 
 <p>This research is also presented at <a href="https://hitcon.org/2021/en">HITCON 2021</a>. You can check the slides <a href="https://hitcon.org/2021/agenda/03f06675-261d-4c97-b524-33ef9cc6ccb2/%E4%BD%A0%E7%9A%84%20NAS%20%E4%B8%8D%E6%98%AF%E4%BD%A0%E7%9A%84%20NAS%20!.pdf">here</a>.</p>
 
@@ -137,7 +137,7 @@
   <li>DSM 6.2.3-25426</li>
 </ul>
 
-<p>Our test environment is Synoloby DS918+. It very similar as DS418 play(target of Pwn2Own Tokyo 2020). In order to better meet the environment that we usually encounter and the requirements in Pwn2Own, it will be in the state of all default settings.</p>
+<p>Our test environment is Synology DS918+. It very similar as DS418 play(target of Pwn2Own Tokyo 2020). In order to better meet the environment that we usually encounter and the requirements in Pwn2Own, it will be in the state of all default settings.</p>
 
 <h3 id="attack-surface">Attack surface</h3>
 
@@ -460,6 +460,8 @@ Next, we need to forge the structure <code class="highlighter-rouge">_dtor_list<
     </ul>
   </li>
 </ul>
+
+<p>This vulnerability is also fixed in the recently released <a href="https://netatalk.sourceforge.io/3.1/ReleaseNotes3.1.13.html">Netatalk 3.1.13</a>. If you use a version before Netatalk 3.1.13, you also need to update to the latest version.</p>
 
 <h3 id="disable-afp">Disable AFP</h3>
 <ul>

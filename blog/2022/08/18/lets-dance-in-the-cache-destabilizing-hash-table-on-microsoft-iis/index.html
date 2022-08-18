@@ -1,0 +1,340 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>Let's Dance in the Cache - Destabilizing Hash Table on Microsoft IIS | DEVCORE</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
+    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <meta name="description" property="og:description" content="We have also proved this attack works naturally on Microsoft Exchange Server. By leveraging the default activated Exchange Active Monitoring service, we can enter HealthMailbox's mailbox without passwords!" />
+    <meta name="keywords" content="CVE-2022-22025, CVE-2022-22040, CVE-2022-30209" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="Let's Dance in the Cache - Destabilizing Hash Table on Microsoft IIS | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2022/08/18/lets-dance-in-the-cache-destabilizing-hash-table-on-microsoft-iis/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20220818/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="Let's Dance in the Cache - Destabilizing Hash Table on Microsoft IIS | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="We have also proved this attack works naturally on Microsoft Exchange Server. By leveraging the default activated Exchange Active Monitoring service, we can enter HealthMailbox's mailbox without passwords!">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20220818/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2022/08/18/lets-dance-in-the-cache-destabilizing-hash-table-on-microsoft-iis/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-K5B8NW');</script>
+    <!-- End Google Tag Manager -->
+  </head>
+  <body>
+    <div class="page">
+      <div class="container--wrapper">
+        <div class="topbar">
+          <div class="topbar__brand">
+            <a href="/en/">
+                <div class="logo">
+                  DEVCORE
+                </div></a>
+            <p class="slogan">
+              We offer professional <a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services
+            </p>
+          </div>
+          <div class="drawer" id="drawer">
+            <div class="drawer__container">
+              <nav class="main-menu">
+                <div class="hidden">
+                  Menu
+                </div>
+                <a href="/en/services/penetration-test" class="main-menu__link mobile-only">Penetration Testing</a>
+                <a href="/en/services/red-team" class="main-menu__link mobile-only">Red Team Assessment</a>
+                <a href="/en/services/security-consulting" class="main-menu__link mobile-only">Consulting</a>
+                <a href="/en/services/security-training" class="main-menu__link mobile-only">Training</a>
+                <a href="/en/about/" class="main-menu__link">Hackers</a><a href="/en/blog/" class="main-menu__link">News</a><a href="/en/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">Search</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
+              </nav>
+              <a href="/en/contact/" class="drawer__contact button--dense">Contact</a>
+              <nav class="lang-menu">
+                <div class="lang-menu__label">
+                  Lang:
+                </div>
+                <a href="/" class="lang-menu__link">中文</a>
+                <a href="/en/" class="lang-menu__link">English</a>
+              </nav>
+            </div>
+          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
+            <div class="bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </button>
+        </div>
+      </div><main role="main">
+
+
+          <div class="container--wrapper">
+            <div class="container">
+              <section class="blog-header">
+                <small class="blog-header__category"><a href="/en/blog/category/Tech Editorials/" style="text-transform: uppercase;">Tech Editorials</a></small>
+                <img src="https://devco.re/assets/img/blog/20220818/cover.png" class="blog-header__image" alt="Let's Dance in the Cache - Destabilizing Hash Table on Microsoft IIS" />
+                <h1 class="blog-header__title">
+                  Let's Dance in the Cache - Destabilizing Hash Table on Microsoft IIS
+                </h1>
+                <div class="blog-header__tags">
+                  
+                  <a href="/en/blog/tag/CVE/" class="blog-header__tag">CVE</a><a href="/en/blog/tag/BugBounty/" class="blog-header__tag">BugBounty</a><a href="/en/blog/tag/Vulnerability/" class="blog-header__tag">Vulnerability</a>
+                </div>
+          
+          
+                <p class="blog-header__info">
+                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/en/blog/author/orange" class="author-name">Orange Tsai</a> <time class="date">on 2022-08-18 </time>
+                </p>
+          
+              </section>
+              <article class="article">
+          <p>Hi, this is my fifth time speaking at <a href="https://www.blackhat.com/us-22/briefings/schedule/index.html#lets-dance-in-the-cache---destabilizing-hash-table-on-microsoft-iis-27199">Black Hat USA</a> and <a href="https://forum.defcon.org/node/241837">DEFCON</a>. You can get the slide copy and video there:</p>
+<ul>
+  <li><a href="https://i.blackhat.com/USA-22/Wednesday/US-22-Tsai-Lets-Dance-in-the-Cache-Destabilizing-Hash-Table-on-Microsoft-IIS.pdf">Let’s Dance in the Cache - Destabilizing Hash Table on Microsoft IIS (slides)</a></li>
+  <li><a href="#TBD">Let’s Dance in the Cache - Destabilizing Hash Table on Microsoft IIS (video - TBD)</a></li>
+</ul>
+
+<p>As the most fundamental Data Structure in Computer Science, Hash Table is extensively used in Computer Infrastructures, such as Operating Systems, Programming Languages, Databases, and Web Servers. Also, because of its importance, Microsoft has designed its own Hash Table algorithm from a very early stage, and applied it heavily to its web server, IIS.</p>
+
+<p>Since IIS does not release its source code, I guess the algorithm implementation details should be an unexplored area to discover bugs. Therefore, <strong>this research mainly focuses on the Hash Table implementation and its usage</strong>. We also look into the Cache mechanism because most of the Hash Table usages in IIS are Cache-Related!</p>
+
+<p>Because most of the details are in the slides, please forgive me this time for this brief write-ups instead of a full blog.</p>
+
+<ul>
+  <li><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2022-22025">CVE-2022-22025</a> - Microsoft IIS Hash-Flooding DoS</li>
+  <li><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2022-22040">CVE-2022-22040</a> - Microsoft IIS Cache Poisoning Attack</li>
+  <li><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2022-30209">CVE-2022-30209</a> - Microsoft IIS Authentication Bypass</li>
+</ul>
+
+<p><br /></p>
+
+<p><em>P.S. All vulnerabilities addressed in this blog have been reported responsibly to Microsoft and patched in July 2022.</em></p>
+
+<h2 id="1-iis-hash-flooding-dos">1. IIS Hash-Flooding DoS</h2>
+
+<p>It’s hard to imagine that we can still see such a classic Algorithmic Complexity Attack as Hash-Flooding Attack in IIS in 2022. Although Microsoft has configured a thread deleting outdated records every 30 seconds to mitigate the attack, we still found a key-splitting bug in the implementation to <strong>amplify our power by over 10 times to defeat the guardian by zero hashes</strong>. Through this bug we can <strong>make a default installed IIS Server unresponsive</strong> with about 30 connections per second!</p>
+
+<p>Because this bug also qualifies for the <a href="https://www.microsoft.com/en-us/msrc/bounty-windows-insider-preview">Windows Insider Preview Bounty Program</a>, we also rewarded $30,000 for this DoS. This is the maximum bounty for the category of Denial-of-Service!</p>
+
+<p>You can check the full demo video here:</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/VtnDkzYPNCk" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe>
+
+<h2 id="2-iis-cache-poisoning-attack">2. IIS Cache Poisoning Attack</h2>
+
+<p>Compared with other <a href="https://portswigger.net/research/practical-web-cache-poisoning">marvelous Cache Poisoning research</a>, this one is relatively plain. The bug is found in the component of Output Caching, the module responsible for caching dynamic responses to reduce expensive database or filesystem access on web stacks.</p>
+
+<p>Output Caching uses a bad Query String parser that only takes the first occurrence as the Cache-Key when Query String keys are duplicated. This behavior is actually not a problem independently. However, it’s a trouble in the view of the whole architecture with the backend, ASP.NET. The backend concatenates the value of all repeated keys together, which leads to an inconsistency between parser behaviors. Therefore, <strong>a classic HTTP Parameter Pollution can make IIS cache the wrong result</strong>!</p>
+
+<h2 id="3-iis-authentication-bypass">3. IIS Authentication Bypass</h2>
+
+<p>This may be the most interesting bug of this talk. LKRHash is a Hash Table algorithm designed and <a href="https://patents.google.com/patent/US6578131">patented</a> by Microsoft in 1997. It’s based on <a href="https://en.wikipedia.org/wiki/Linear_hashing">Linear Hashing</a> and created by <a href="https://en.wikipedia.org/wiki/Paul_Larson">Paul Larson</a> of Microsoft Research, Murali Krishnan and George Reilly of the IIS team.</p>
+
+<p>LKRHash aims to build a scalable and high-concurrent Hash Table under the multithreading and multi-core environment. The creators put a lot of effort into making this implementation portable, flexible and customizable to adapt to multiple products across Microsoft. An application can define its own Table-Related functions, such as the Hash Function, the Key Extracting Function, or the Key Comparing Function. This kind of extensibility creates a bunch of opportunities for vulnerability mining. So, under this context, we cares more about the relationship between the records, the keys, and the functions.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">CLKRHashTable</span><span class="o">::</span><span class="n">CLKRHashTable</span><span class="p">(</span>
+    <span class="n">this</span><span class="p">,</span>
+    <span class="s">"TOKEN_CACHE"</span><span class="p">,</span>   <span class="c1">// An identifier for debugging</span>
+    <span class="n">pfnExtractKey</span><span class="p">,</span>   <span class="c1">// Extract key from record</span>
+    <span class="n">pfnCalcKeyHash</span><span class="p">,</span>  <span class="c1">// Calculate hash signature of key</span>
+    <span class="n">pfnEqualKeys</span><span class="p">,</span>    <span class="c1">// Compare two keys</span>
+    <span class="n">pfnAddRefRecord</span><span class="p">,</span> <span class="c1">// AddRef in FindKey, etc</span>
+    <span class="mi">4</span><span class="p">.</span><span class="mi">0</span><span class="p">,</span>             <span class="c1">// Bound on the average chain length.</span>
+    <span class="mi">1</span><span class="p">,</span>               <span class="c1">// Initial size of hash table.</span>
+    <span class="mi">0</span><span class="p">,</span>               <span class="c1">// Number of subordinate hash tables.</span>
+    <span class="mi">0</span>                <span class="c1">// Allow multiple identical keys?</span>
+<span class="p">);</span>
+</code></pre></div></div>
+
+<p>Because “Logon” is an expensive operation, to improve the performance, IIS cached all tokens for password-based authentications, such as Basic Authentication by default, and the bug we found this time is located in the logic of the key-comparing function when a collision occurs.</p>
+
+<p>If a login attempt whose hash hits a key that is already in the cache, LKRHash enters the application-specific <code class="highlighter-rouge">pfnEqualKeys</code> function to determine whether the key is correct or not. The application-specific logic of <code class="highlighter-rouge">TokenCacheModule</code> is as follows:</p>
+
+<p><img src="/assets/img/blog/20220818/1.png" alt="" /></p>
+
+<p>As the logic compares several parts to make the decision, it’s weird why IIS compares the username twice.</p>
+
+<p>I guess the original intent was to compare the password. However, the developer copy-and-pasted the code but forgot to replace the variable name. That leads to that <strong>an attacker can reuse another user’s logged-in token with random passwords</strong>.</p>
+
+<p>To build the smallest PoC to test your own, you can create a testing account and configure the Basic Authentication on your IIS.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># add a test account, please ensure to remove that after testing</span>
+<span class="o">&gt;</span> net user orange test-for-CVE-2022-30209-auth-bypass /add
+
+<span class="c"># the source of login is not important, this can be done outside IIS.</span>
+<span class="o">&gt;</span> curl <span class="nt">-I</span> <span class="nt">-su</span> <span class="s1">'orange:test-for-CVE-2022-30209-auth-bypass'</span> <span class="s1">'http://&lt;iis&gt;/protected/'</span> | findstr HTTP
+HTTP/1.1 200 OK
+</code></pre></div></div>
+
+<p>Under the attacker’s terminal:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># script for sanity check</span>
+<span class="o">&gt;</span> <span class="nb">type </span>test.py
+def HashString<span class="o">(</span>password<span class="o">)</span>:
+    j <span class="o">=</span> 0
+    <span class="k">for </span>c <span class="k">in </span>map<span class="o">(</span>ord, password<span class="o">)</span>:
+        j <span class="o">=</span> c + <span class="o">(</span>101<span class="k">*</span>j<span class="o">)</span>&amp;0xffffffff
+    <span class="k">return </span>j
+
+assert HashString<span class="o">(</span><span class="s1">'test-for-CVE-2022-30209-auth-bypass'</span><span class="o">)</span> <span class="o">==</span> HashString<span class="o">(</span><span class="s1">'ZeeiJT'</span><span class="o">)</span>
+
+<span class="c"># before the successful login</span>
+<span class="o">&gt;</span> curl <span class="nt">-I</span> <span class="nt">-su</span> <span class="s1">'orange:ZeeiJT'</span> <span class="s1">'http://&lt;iis&gt;/protected/'</span> | findstr HTTP
+HTTP/1.1 401 Unauthorized
+
+<span class="c"># after the successful login</span>
+<span class="o">&gt;</span> curl <span class="nt">-I</span> <span class="nt">-su</span> <span class="s1">'orange:ZeeiJT'</span> <span class="s1">'http://&lt;iis&gt;/protected/'</span> | findstr HTTP
+HTTP/1.1 200 OK
+</code></pre></div></div>
+
+<p>As you can see, the attacker can log into the user <code class="highlighter-rouge">orange</code> with another password whose hash is the same as the original one.</p>
+
+<p>However, it’s not easy to collide the hash. The probability of each attempt is only worth 1/2^32 because the hash is a 32-Bit Integer, and the attacker has no way to know the hash of existing cache keys. It’s a ridiculous number to make exploiting this bug like playing a lottery. The only pro is that the attempt costs nothing, and you have unlimited tries!</p>
+
+<p>To make this bug more practical, we proposed several ways to win the lottery, such as:</p>
+
+<ol>
+  <li>Increase the odds of the collision - LKRHash combined LCGs to scramble the result to make the hash more random. However, we can lower the key space because the LCG is not one-to-one mapping under the 32-Bit Integer. There must be results that will never appear so that we can pre-compute a dictionary that excludes the password whose hash is not in the results and <strong>increase the success rate by 13% at least</strong>!</li>
+  <li>Regain the initiative - By understanding the root cause, we brainstorm several use cases that <strong>can cache the token in memory forever and no longer wait for user interaction</strong>, such as the IIS feature <a href="https://docs.microsoft.com/en-us/troubleshoot/developer/webapps/iis/www-authentication-authorization/understanding-identities">Connect As</a> or leveraging software design patterns.</li>
+</ol>
+
+<p>We have also proved this attack works naturally on Microsoft Exchange Server. By leveraging the default activated <code class="highlighter-rouge">Exchange Active Monitoring</code> service, we can enter <code class="highlighter-rouge">HealthMailbox</code>’s mailbox without passwords! This authentication-less account hijacking is useful for further exploitations such as phishing or chaining another post-auth RCE together!</p>
+
+<p><img src="/assets/img/blog/20220818/2.png" alt="" /></p>
+
+<h1 id="timeline">Timeline</h1>
+
+<ul>
+  <li>Mar 16, 2022 - We reported the IIS Cache Poisoning to Microsoft through the MSRC portal.</li>
+  <li>Apr 09, 2022 - We reported the IIS Hash-Flooding DoS to Microsoft through the MSRC portal.</li>
+  <li>Apr 10, 2022 - We reported the IIS Authentication Bypass to Microsoft through the MSRC portal.</li>
+  <li>Jul 12, 2022 - Microsoft fixed everything at July’s Patch Tuesday.</li>
+</ul>
+
+
+              </article>
+              <p class="sns-widgets">
+                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
+              </p>
+          
+              <div class="heading--side-lined">
+                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/en/blog/author/orange" class="blog-author-name">Orange Tsai</a> 
+              </div>
+              <p class="blog-author-info">
+                I am Orange : )
+              </p>
+          
+              <div class="heading--side-lined">
+                Comments
+              </div>
+              <div class="blog-comments">
+                
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+
+
+
+              </div>
+            </div>
+          </div>
+
+
+
+
+
+
+</main>
+      <div class="container--wrapper">
+
+
+        <div class="contact-section container">
+          <h2 class="contact-section__title">
+            Put your defenses to the test with authentic attacks
+          </h2>
+          <a href="/en/contact/" class="home-contact__button button--dense">Contact us now</a>
+        </div>
+
+        <footer class="main-footer">
+          <div class="main-footer__about">
+            DEVCORE offers professional<br class="mobile-only" /><a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services.<br />For <a href="/en/blog/" class="link">latest updates</a>, follow us on <a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a> or <a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>.
+          </div>
+          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
+                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
+                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
+          </div>
+          <address class="main-footer__address">
+            <ul class="list--unstyled">
+              <li>
+                13F., No. 32, Sec. 3, Bade Rd., Songshan Dist., Taipei City 105608, Taiwan
+              </li>
+              <li>
+                contact@devco.re
+              </li>
+              <li>
+                +886-2-2577-0925
+              </li>
+            </ul>
+          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2022 DEVCORE</small>
+        </footer>
+      </div>
+    </div>
+    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
+
+
+
+  <script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30830800-1']);
+  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+
+
+
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K5B8NW"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+
+  </body>
+</html>
+
+
+
+

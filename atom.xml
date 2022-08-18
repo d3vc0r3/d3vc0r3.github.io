@@ -4,13 +4,144 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2022-07-25T21:55:44+08:00</updated>
+ <updated>2022-08-18T22:49:52+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name>DEVCORE</name>
    <email>contact [at] devco.re</email>
  </author>
 
+ 
+ <entry>
+   <title>Let's Dance in the Cache - Destabilizing Hash Table on Microsoft IIS</title>
+   <link href="https://devco.re/blog/2022/08/18/lets-dance-in-the-cache-destabilizing-hash-table-on-microsoft-iis/"/>
+   <updated>2022-08-18T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2022/08/18/lets-dance-in-the-cache-destabilizing-hash-table-on-microsoft-iis</id>
+   <content type="html">&lt;p&gt;Hi, this is my fifth time speaking at &lt;a href=&quot;https://www.blackhat.com/us-22/briefings/schedule/index.html#lets-dance-in-the-cache---destabilizing-hash-table-on-microsoft-iis-27199&quot;&gt;Black Hat USA&lt;/a&gt; and &lt;a href=&quot;https://forum.defcon.org/node/241837&quot;&gt;DEFCON&lt;/a&gt;. You can get the slide copy and video there:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://i.blackhat.com/USA-22/Wednesday/US-22-Tsai-Lets-Dance-in-the-Cache-Destabilizing-Hash-Table-on-Microsoft-IIS.pdf&quot;&gt;Let’s Dance in the Cache - Destabilizing Hash Table on Microsoft IIS (slides)&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#TBD&quot;&gt;Let’s Dance in the Cache - Destabilizing Hash Table on Microsoft IIS (video - TBD)&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;As the most fundamental Data Structure in Computer Science, Hash Table is extensively used in Computer Infrastructures, such as Operating Systems, Programming Languages, Databases, and Web Servers. Also, because of its importance, Microsoft has designed its own Hash Table algorithm from a very early stage, and applied it heavily to its web server, IIS.&lt;/p&gt;
+
+&lt;p&gt;Since IIS does not release its source code, I guess the algorithm implementation details should be an unexplored area to discover bugs. Therefore, &lt;strong&gt;this research mainly focuses on the Hash Table implementation and its usage&lt;/strong&gt;. We also look into the Cache mechanism because most of the Hash Table usages in IIS are Cache-Related!&lt;/p&gt;
+
+&lt;p&gt;Because most of the details are in the slides, please forgive me this time for this brief write-ups instead of a full blog.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2022-22025&quot;&gt;CVE-2022-22025&lt;/a&gt; - Microsoft IIS Hash-Flooding DoS&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2022-22040&quot;&gt;CVE-2022-22040&lt;/a&gt; - Microsoft IIS Cache Poisoning Attack&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2022-30209&quot;&gt;CVE-2022-30209&lt;/a&gt; - Microsoft IIS Authentication Bypass&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;P.S. All vulnerabilities addressed in this blog have been reported responsibly to Microsoft and patched in July 2022.&lt;/em&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;1-iis-hash-flooding-dos&quot;&gt;1. IIS Hash-Flooding DoS&lt;/h2&gt;
+
+&lt;p&gt;It’s hard to imagine that we can still see such a classic Algorithmic Complexity Attack as Hash-Flooding Attack in IIS in 2022. Although Microsoft has configured a thread deleting outdated records every 30 seconds to mitigate the attack, we still found a key-splitting bug in the implementation to &lt;strong&gt;amplify our power by over 10 times to defeat the guardian by zero hashes&lt;/strong&gt;. Through this bug we can &lt;strong&gt;make a default installed IIS Server unresponsive&lt;/strong&gt; with about 30 connections per second!&lt;/p&gt;
+
+&lt;p&gt;Because this bug also qualifies for the &lt;a href=&quot;https://www.microsoft.com/en-us/msrc/bounty-windows-insider-preview&quot;&gt;Windows Insider Preview Bounty Program&lt;/a&gt;, we also rewarded $30,000 for this DoS. This is the maximum bounty for the category of Denial-of-Service!&lt;/p&gt;
+
+&lt;p&gt;You can check the full demo video here:&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/VtnDkzYPNCk&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;h2 id=&quot;2-iis-cache-poisoning-attack&quot;&gt;2. IIS Cache Poisoning Attack&lt;/h2&gt;
+
+&lt;p&gt;Compared with other &lt;a href=&quot;https://portswigger.net/research/practical-web-cache-poisoning&quot;&gt;marvelous Cache Poisoning research&lt;/a&gt;, this one is relatively plain. The bug is found in the component of Output Caching, the module responsible for caching dynamic responses to reduce expensive database or filesystem access on web stacks.&lt;/p&gt;
+
+&lt;p&gt;Output Caching uses a bad Query String parser that only takes the first occurrence as the Cache-Key when Query String keys are duplicated. This behavior is actually not a problem independently. However, it’s a trouble in the view of the whole architecture with the backend, ASP.NET. The backend concatenates the value of all repeated keys together, which leads to an inconsistency between parser behaviors. Therefore, &lt;strong&gt;a classic HTTP Parameter Pollution can make IIS cache the wrong result&lt;/strong&gt;!&lt;/p&gt;
+
+&lt;h2 id=&quot;3-iis-authentication-bypass&quot;&gt;3. IIS Authentication Bypass&lt;/h2&gt;
+
+&lt;p&gt;This may be the most interesting bug of this talk. LKRHash is a Hash Table algorithm designed and &lt;a href=&quot;https://patents.google.com/patent/US6578131&quot;&gt;patented&lt;/a&gt; by Microsoft in 1997. It’s based on &lt;a href=&quot;https://en.wikipedia.org/wiki/Linear_hashing&quot;&gt;Linear Hashing&lt;/a&gt; and created by &lt;a href=&quot;https://en.wikipedia.org/wiki/Paul_Larson&quot;&gt;Paul Larson&lt;/a&gt; of Microsoft Research, Murali Krishnan and George Reilly of the IIS team.&lt;/p&gt;
+
+&lt;p&gt;LKRHash aims to build a scalable and high-concurrent Hash Table under the multithreading and multi-core environment. The creators put a lot of effort into making this implementation portable, flexible and customizable to adapt to multiple products across Microsoft. An application can define its own Table-Related functions, such as the Hash Function, the Key Extracting Function, or the Key Comparing Function. This kind of extensibility creates a bunch of opportunities for vulnerability mining. So, under this context, we cares more about the relationship between the records, the keys, and the functions.&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;CLKRHashTable&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;CLKRHashTable&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;TOKEN_CACHE&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;   &lt;span class=&quot;c1&quot;&gt;// An identifier for debugging&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;pfnExtractKey&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;   &lt;span class=&quot;c1&quot;&gt;// Extract key from record&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;pfnCalcKeyHash&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;// Calculate hash signature of key&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;pfnEqualKeys&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;    &lt;span class=&quot;c1&quot;&gt;// Compare two keys&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;pfnAddRefRecord&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// AddRef in FindKey, etc&lt;/span&gt;
+    &lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;             &lt;span class=&quot;c1&quot;&gt;// Bound on the average chain length.&lt;/span&gt;
+    &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;               &lt;span class=&quot;c1&quot;&gt;// Initial size of hash table.&lt;/span&gt;
+    &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;               &lt;span class=&quot;c1&quot;&gt;// Number of subordinate hash tables.&lt;/span&gt;
+    &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;                &lt;span class=&quot;c1&quot;&gt;// Allow multiple identical keys?&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Because “Logon” is an expensive operation, to improve the performance, IIS cached all tokens for password-based authentications, such as Basic Authentication by default, and the bug we found this time is located in the logic of the key-comparing function when a collision occurs.&lt;/p&gt;
+
+&lt;p&gt;If a login attempt whose hash hits a key that is already in the cache, LKRHash enters the application-specific &lt;code class=&quot;highlighter-rouge&quot;&gt;pfnEqualKeys&lt;/code&gt; function to determine whether the key is correct or not. The application-specific logic of &lt;code class=&quot;highlighter-rouge&quot;&gt;TokenCacheModule&lt;/code&gt; is as follows:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220818/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As the logic compares several parts to make the decision, it’s weird why IIS compares the username twice.&lt;/p&gt;
+
+&lt;p&gt;I guess the original intent was to compare the password. However, the developer copy-and-pasted the code but forgot to replace the variable name. That leads to that &lt;strong&gt;an attacker can reuse another user’s logged-in token with random passwords&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;To build the smallest PoC to test your own, you can create a testing account and configure the Basic Authentication on your IIS.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# add a test account, please ensure to remove that after testing&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; net user orange test-for-CVE-2022-30209-auth-bypass /add
+
+&lt;span class=&quot;c&quot;&gt;# the source of login is not important, this can be done outside IIS.&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; curl &lt;span class=&quot;nt&quot;&gt;-I&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-su&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;orange:test-for-CVE-2022-30209-auth-bypass&#39;&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;http://&amp;lt;iis&amp;gt;/protected/&#39;&lt;/span&gt; | findstr HTTP
+HTTP/1.1 200 OK
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Under the attacker’s terminal:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# script for sanity check&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;type &lt;/span&gt;test.py
+def HashString&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;password&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;:
+    j &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; 0
+    &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;c &lt;span class=&quot;k&quot;&gt;in &lt;/span&gt;map&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;ord, password&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;:
+        j &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; c + &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;101&lt;span class=&quot;k&quot;&gt;*&lt;/span&gt;j&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&amp;amp;0xffffffff
+    &lt;span class=&quot;k&quot;&gt;return &lt;/span&gt;j
+
+assert HashString&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;test-for-CVE-2022-30209-auth-bypass&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; HashString&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;ZeeiJT&#39;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;c&quot;&gt;# before the successful login&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; curl &lt;span class=&quot;nt&quot;&gt;-I&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-su&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;orange:ZeeiJT&#39;&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;http://&amp;lt;iis&amp;gt;/protected/&#39;&lt;/span&gt; | findstr HTTP
+HTTP/1.1 401 Unauthorized
+
+&lt;span class=&quot;c&quot;&gt;# after the successful login&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; curl &lt;span class=&quot;nt&quot;&gt;-I&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-su&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;orange:ZeeiJT&#39;&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&#39;http://&amp;lt;iis&amp;gt;/protected/&#39;&lt;/span&gt; | findstr HTTP
+HTTP/1.1 200 OK
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;As you can see, the attacker can log into the user &lt;code class=&quot;highlighter-rouge&quot;&gt;orange&lt;/code&gt; with another password whose hash is the same as the original one.&lt;/p&gt;
+
+&lt;p&gt;However, it’s not easy to collide the hash. The probability of each attempt is only worth 1/2^32 because the hash is a 32-Bit Integer, and the attacker has no way to know the hash of existing cache keys. It’s a ridiculous number to make exploiting this bug like playing a lottery. The only pro is that the attempt costs nothing, and you have unlimited tries!&lt;/p&gt;
+
+&lt;p&gt;To make this bug more practical, we proposed several ways to win the lottery, such as:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Increase the odds of the collision - LKRHash combined LCGs to scramble the result to make the hash more random. However, we can lower the key space because the LCG is not one-to-one mapping under the 32-Bit Integer. There must be results that will never appear so that we can pre-compute a dictionary that excludes the password whose hash is not in the results and &lt;strong&gt;increase the success rate by 13% at least&lt;/strong&gt;!&lt;/li&gt;
+  &lt;li&gt;Regain the initiative - By understanding the root cause, we brainstorm several use cases that &lt;strong&gt;can cache the token in memory forever and no longer wait for user interaction&lt;/strong&gt;, such as the IIS feature &lt;a href=&quot;https://docs.microsoft.com/en-us/troubleshoot/developer/webapps/iis/www-authentication-authorization/understanding-identities&quot;&gt;Connect As&lt;/a&gt; or leveraging software design patterns.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;We have also proved this attack works naturally on Microsoft Exchange Server. By leveraging the default activated &lt;code class=&quot;highlighter-rouge&quot;&gt;Exchange Active Monitoring&lt;/code&gt; service, we can enter &lt;code class=&quot;highlighter-rouge&quot;&gt;HealthMailbox&lt;/code&gt;’s mailbox without passwords! This authentication-less account hijacking is useful for further exploitations such as phishing or chaining another post-auth RCE together!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20220818/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;timeline&quot;&gt;Timeline&lt;/h1&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Mar 16, 2022 - We reported the IIS Cache Poisoning to Microsoft through the MSRC portal.&lt;/li&gt;
+  &lt;li&gt;Apr 09, 2022 - We reported the IIS Hash-Flooding DoS to Microsoft through the MSRC portal.&lt;/li&gt;
+  &lt;li&gt;Apr 10, 2022 - We reported the IIS Authentication Bypass to Microsoft through the MSRC portal.&lt;/li&gt;
+  &lt;li&gt;Jul 12, 2022 - Microsoft fixed everything at July’s Patch Tuesday.&lt;/li&gt;
+&lt;/ul&gt;
+
+</content>
+ </entry>
  
  <entry>
    <title>DEVCORE 2022 第二屆實習生計畫</title>
@@ -27,10 +158,10 @@
 
 &lt;ul&gt;
   &lt;li&gt;Binary&lt;br /&gt;
-以研究為主，在與導師確定研究標的後，分析目標架構、進行逆向工程或程式碼審查。藉由這個過程訓練自己的思路，找出可能的攻擊面與潛在的弱點。另外也會讓大家嘗試寫過往漏洞的 Exploit 理解過去漏洞都出現在哪，並將之武器化，體驗真實世界的漏洞都是如何利用。
+以研究為主，在與導師確定研究標的後，分析目標架構、進行逆向工程或程式碼審查。藉由這個過程訓練自己的思路，找出可能的攻擊面與潛在的弱點。另外也會讓大家嘗試寫過往漏洞的 Exploit 理解過去漏洞都出現在哪，體驗真實世界的漏洞都是如何利用。
     &lt;ul&gt;
       &lt;li&gt;漏洞挖掘及研究 70 %&lt;/li&gt;
-      &lt;li&gt;1-day 開發 (Exploitation) 及武器化 (Weaponization) 30 %&lt;/li&gt;
+      &lt;li&gt;1-day 開發 (Exploitation) 30 %&lt;/li&gt;
     &lt;/ul&gt;
   &lt;/li&gt;
   &lt;li&gt;Web&lt;br /&gt;
@@ -49,7 +180,11 @@
 &lt;h3 id=&quot;實習時間&quot;&gt;實習時間&lt;/h3&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;2022 年 9 月開始到 2023 年 2 月底，共 6 個月。&lt;/li&gt;
+  &lt;li&gt;2022 年 9 月開始到 2023 年 2 月底，共 6 個月。
+    &lt;ul&gt;
+      &lt;li&gt;備註：若應徵人數過多，我們評估無法在 08/26 前決定人選。整體實習時間將會順延一至兩週，屆時會提早發信通知所有應徵者。&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
   &lt;li&gt;每週工作兩天，工作時間為 10:00 – 18:00
     &lt;ul&gt;
       &lt;li&gt;每週固定一天下午 14:00 - 18:00 必須到公司討論進度&lt;/li&gt;
@@ -191,7 +326,7 @@
   &lt;li&gt;請將您的&lt;strong&gt;履歷&lt;/strong&gt;及&lt;strong&gt;題目答案&lt;/strong&gt;以 PDF 格式寄到 recruiting_intern@devco.re
     &lt;ul&gt;
       &lt;li&gt;履歷格式請參考範例示意（&lt;a href=&quot;/assets/files/recruit2022_intern/Resume_Example.docx&quot;&gt;DOCX&lt;/a&gt;、&lt;a href=&quot;/assets/files/recruit2022_intern/Resume_Example.pages&quot;&gt;PAGES&lt;/a&gt;、&lt;a href=&quot;/assets/files/recruit2022_intern/Resume_Example.pdf&quot;&gt;PDF&lt;/a&gt;）並轉成 PDF。若您有自信，也可以自由發揮最能呈現您能力的履歷。&lt;/li&gt;
-      &lt;li&gt;請於 2022/08/05 前寄出（如果名額已滿則視情況提早結束）&lt;/li&gt;
+      &lt;li&gt;請於 2022/08/12（五）23:59 前寄出（如果名額已滿則視情況提早結束）&lt;/li&gt;
     &lt;/ul&gt;
   &lt;/li&gt;
   &lt;li&gt;信件標題格式：[應徵] 職位 您的姓名（範例：[應徵] Web 組實習生 王小美）&lt;/li&gt;
@@ -242,6 +377,7 @@
         &lt;ul&gt;
           &lt;li&gt;當你在網頁瀏覽器的網址列上輸入一串網址（例如：&lt;code class=&quot;highlighter-rouge&quot;&gt;http://site.fake.devco.re/index.php?foo=bar&lt;/code&gt;），隨後按下 Enter 鍵到出現網頁畫面為止，請問中間發生了什麼事情？請根據你所知的知識背景，以文字盡可能說明。&lt;/li&gt;
           &lt;li&gt;請提出三個，你印象最深刻或感到有趣、於西元 2020 ~ 2022 年間公開的真實漏洞或攻擊鏈案例，並依自己的理解簡述說明各個漏洞的成因、利用條件和可以造成的影響，以及所對應到的 OWASP Top 10 / CWE 類別。&lt;/li&gt;
+          &lt;li&gt;（上述題目建議撰寫 1~2 頁即可）&lt;/li&gt;
         &lt;/ul&gt;
       &lt;/li&gt;
     &lt;/ul&gt;
@@ -1022,10 +1158,10 @@ Next, we need to forge the structure &lt;code class=&quot;highlighter-rouge&quot
 
 &lt;ul&gt;
   &lt;li&gt;Binary&lt;br /&gt;
-以研究為主，在與導師確定研究標的後，分析目標架構、進行逆向工程或程式碼審查。藉由這個過程訓練自己的思路，找出可能的攻擊面與潛在的弱點。另外也會讓大家嘗試寫過往漏洞的 Exploit 並將之武器化，體驗真實世界的漏洞都是如何利用。
+以研究為主，在與導師確定研究標的後，分析目標架構、進行逆向工程或程式碼審查。藉由這個過程訓練自己的思路，找出可能的攻擊面與潛在的弱點。另外也會讓大家嘗試寫過往漏洞的 Exploit，體驗真實世界的漏洞都是如何利用。
     &lt;ul&gt;
       &lt;li&gt;漏洞挖掘及研究 70 %&lt;/li&gt;
-      &lt;li&gt;1-day 開發 (Exploitation) 及武器化 (Weaponization) 30 %&lt;/li&gt;
+      &lt;li&gt;1-day 開發 (Exploitation) 30 %&lt;/li&gt;
     &lt;/ul&gt;
   &lt;/li&gt;
   &lt;li&gt;Web&lt;br /&gt;
@@ -4430,7 +4566,7 @@ ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
   &lt;li&gt;Special Force (特攻)，有比較強大的攻擊能力，主要負責打破現況，例如攻下第一個據點、拿下另一個網段、或是主機的提權。&lt;/li&gt;
   &lt;li&gt;Regular Army (常規)，負責拿下據點後掃蕩整個戰場，嘗試橫向移動，會盡量多建立幾個據點讓特攻組有更多資源朝任務目標邁進。&lt;/li&gt;
   &lt;li&gt;Support (支援)，重要的後勤工作，維持據點的可用性，同時也要觀察記錄整個戰況，最清楚全局戰況。&lt;/li&gt;
-  &lt;li&gt;Research (研究)，平時研究各種在紅隊中會用到的武器，演練時期碰到具戰略價值的系統，會投入資源開採 0-day。&lt;/li&gt;
+  &lt;li&gt;Research (研究)，平時研究各種在紅隊中會用到的技術，演練時期碰到具戰略價值的系統，會投入資源開採 0-day。&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h2 id=&quot;devcore-紅隊的進化&quot;&gt;DEVCORE 紅隊的進化&lt;/h2&gt;
@@ -4439,7 +4575,7 @@ ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
 
 &lt;h3 id=&quot;如何找到一個突破點&quot;&gt;如何找到一個突破點？&lt;/h3&gt;
 
-&lt;p&gt;這是大家最常碰到的問題，萬事起頭難，怎麼樣找到第一個突破點？這個問題在紅隊演練當中難度會更高，因為有規模的企業早已投入資源在資安檢測和防護上，我們要怎麼樣從層層防禦當中找到弱點？要能找到別人找不到的弱點，測試思維和方法一定要跟別人不一樣。於是，我們投入資源在偵查、特攻、研究組：偵查部分研究了不同的偵查方法和來源，並且開發自己的工具讓偵查更有效率；我們的特攻組也不斷強化自己的攻擊能力；最重要的，我們讓研究人員開始針對我們常碰到的目標進行研究，開發紅隊會用到的武器或技巧。&lt;/p&gt;
+&lt;p&gt;這是大家最常碰到的問題，萬事起頭難，怎麼樣找到第一個突破點？這個問題在紅隊演練當中難度會更高，因為有規模的企業早已投入資源在資安檢測和防護上，我們要怎麼樣從層層防禦當中找到弱點？要能找到別人找不到的弱點，測試思維和方法一定要跟別人不一樣。於是，我們投入資源在偵查、特攻、研究組：偵查部分研究了不同的偵查方法和來源，並且開發自己的工具讓偵查更有效率；我們的特攻組也不斷強化自己的攻擊能力；最重要的，我們讓研究人員開始針對我們常碰到的目標進行研究，開發紅隊會用到的工具或技巧。&lt;/p&gt;
 
 &lt;p&gt;這邊特別想要分享研究組的成果，因為我們會去開採一些基礎設施的 0-day，在負責任的揭露後，會將 1-day 用於演練中，這種模式對國外紅隊來說算是相當少見。為了能幫助到紅隊，研究組平時的研究方向，通常都是找企業外網可以碰到的通用服務，例如郵件伺服器、Jenkins、SSL VPN。我們找的弱點都是以不用認證、可取得伺服器控制權為優先，目前已公開的有：&lt;a href=&quot;https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789-en/&quot;&gt;Exim&lt;/a&gt;、&lt;a href=&quot;https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE/&quot;&gt;Jenkins&lt;/a&gt;、&lt;a href=&quot;https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study/&quot;&gt;Palo Alto GlobalProtect&lt;/a&gt;、&lt;a href=&quot;https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn/&quot;&gt;FortiGate&lt;/a&gt;、&lt;a href=&quot;https://devco.re/blog/2019/09/02/attacking-ssl-vpn-part-3-the-golden-Pulse-Secure-ssl-vpn-rce-chain-with-Twitter-as-case-study/&quot;&gt;Pulse Secure&lt;/a&gt;。這些成果在演練當中都有非常非常高的戰略價值，甚至可以說掌控了這些伺服器幾乎就能間接控制企業的大半。&lt;/p&gt;
 

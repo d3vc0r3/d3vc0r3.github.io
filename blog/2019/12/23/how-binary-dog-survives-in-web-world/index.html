@@ -1,12 +1,21 @@
 
+
 <!DOCTYPE html>
-<html lang="zh-TW">
-  <head>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta charset="utf-8" />
-    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
-    <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>飛鴿傳書 - 紅隊演練中的數位擄鴿 | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
-    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>飛鴿傳書 - 紅隊演練中的數位擄鴿 | DEVCORE 戴夫寇爾</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
     <meta name="description" property="og:description" content="利用 binary 的手法從 WEB 介面取得 Mail2000 RCE" />
     <meta name="keywords" content="DEVCORE CONF, CVE, RCE, Openfind Mail2000" />
     <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
@@ -30,97 +39,536 @@
     <link rel="canonical" href="https://devco.re/blog/2019/12/23/how-binary-dog-survives-in-web-world/"/>
     <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
 
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-K5B8NW');</script>
-    <!-- End Google Tag Manager -->
-  </head>
-  <body>
-    <div class="page">
-      <div class="container--wrapper">
-        <div class="topbar">
-          <div class="topbar__brand">
-            <a href="/">
-                <div class="logo">
-                  DEVCORE 戴夫寇爾
-                </div></a>
-            <p class="slogan">
-              我們提供<a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務
-            </p>
-          </div>
-          <div class="drawer" id="drawer">
-            <div class="drawer__container">
-              <nav class="main-menu">
-                <div class="hidden">
-                  主選單
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body>
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>服務<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    紅隊演練
+                                </h2>
+                                <p class="two-line">
+                                    在不影響企業營運前提下，無所不用其極，從各種進入點執行模擬入侵攻擊，達成企業指定的演練情境。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    滲透測試
+                                </h2>
+                                <p class="two-line">
+                                    以駭客思維及手法嘗試入侵企業指定系統，找出潛在漏洞，驗證企業資料與設備是否可被竊取或破壞。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    資安顧問服務
+                                </h2>
+                                <p class="two-line">
+                                    以紅隊演練為基礎，提供攻擊者視角與可能入侵路徑，協助企業評估資安資源優先順序，並擬定長期防禦策略。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    資安教育訓練
+                                </h2>
+                                <p class="two-line">
+                                    從攻擊思維出發，協助企業有效預防資安事故並防禦；以及事件發生時，如何快速判定攻擊目的、手法、漏洞與及應變方式。
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
                 </div>
-                <a href="/services/penetration-test" class="main-menu__link mobile-only">滲透測試</a>
-                <a href="/services/red-team" class="main-menu__link mobile-only">紅隊演練</a>
-                <a href="/services/security-consulting" class="main-menu__link mobile-only">資安顧問</a>
-                <a href="/services/security-training" class="main-menu__link mobile-only">教育訓練</a>
-                <a href="/about/" class="main-menu__link">駭客思維</a><a href="/blog/" class="main-menu__link">最新訊息</a><a href="/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">搜尋</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
-              </nav>
-              <a href="/contact/" class="drawer__contact button--dense">聯絡我們</a>
-              <nav class="lang-menu">
-                <div class="lang-menu__label">
-                  語言:
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>研究<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    總覽概要
+                                </h2>
+                                <p class="two-line">
+                                    持續精研資安最新技術及漏洞研究趨勢，全方位檢測企業產品安全性、吸取經驗並轉化為紅隊演練工具與手法。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    競賽與獎項
+                                </h2>
+                                <p class="two-line">
+                                    國際級資訊安全競賽獎項肯定。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    企業漏洞回報
+                                </h2>
+                                <p class="two-line">
+                                    研究企業系統中的資安風險及各種可能的突破口，並通報企業修補。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    國際研討會
+                                </h2>
+                                <p class="two-line">
+                                    參與全球資安盛會，發表、交流漏洞的知識與資訊。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE 漏洞列表
+                                </h2>
+                                <p class="two-line">
+                                    挖掘並回報國際知名產品與服務的重大漏洞。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
-                <a href="/" class="lang-menu__link">中文</a>
-                <a href="/en/" class="lang-menu__link">English</a>
-              </nav>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>公司<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                公司簡介
+                            </h2>
+                            <p>
+                                DEVCORE 戴夫寇爾由世界級白帽駭客團隊創立，提供紅隊演練、滲透測試、資安顧問服務、資安教育訓練等服務。
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    團隊成員
+                                </h2>
+                                <p class="two-line">
+                                    由熱衷挑戰、具備駭客思維的資安專家組成，專注於創新攻擊手法研究，並以「高道德、高自律、高嚴謹」為最高指導原則。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    成就與沿革
+                                </h2>
+                                <p class="two-line">
+                                    長期聚焦於攻擊研究，屢屢獲邀參與全球知名資安研討會，已揭露數百個重要產品漏洞、協助企業提升防禦能量。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    企業社會責任
+                                </h2>
+                                <p class="two-line">
+                                    提供多元實習管道和研習計畫，提升新世代人才資安能量，推廣資訊安全意識。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    工作機會
+                                </h2>
+                                <p class="two-line">
+                                    加入 DEVCORE，共同改善資安產業結構，與我們一起打造更安全的世界。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>新聞<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    DEVCORE 最新消息。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    媒體素材下載
+                                </h2>
+                                <p>
+                                    使用 DEVCORE 商標須遵循的使用規範。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/search/">搜尋</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/contact/">聯絡我們</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>服務</span>
+                <div class="menuItem">
+                    <a href="/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                紅隊演練
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                滲透測試
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                顧問服務
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                教育訓練
+                            </h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
-            <div class="bars">
-              <div class="bar"></div>
-              <div class="bar"></div>
-              <div class="bar"></div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>資安研究</span>
+                <div class="menuItem">
+                    <a href="/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>總覽概要</h2>
+                        </div>
+                    </a>
+                    <a href="/research/awards/">
+                        <div class="item">
+                            <h2>競賽與獎項</h2>
+                        </div>
+                    </a>
+                    <a href="/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Bug Bounty</h2>
+                        </div>
+                    </a>
+                    <a href="/research/talks/">
+                        <div class="item">
+                            <h2>國際研討會</h2>
+                        </div>
+                    </a>
+                    <a href="/research/cve/">
+                        <div class="item">
+                            <h2>CVE 漏洞列表</h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </button>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>公司</span>
+                <div class="menuItem">
+                    <a href="/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>公司簡介</h2>
+                        </div>
+                    </a>
+                    <a href="/company/our-team/">
+                        <div class="item">
+                            <h2>團隊成員</h2>
+                        </div>
+                    </a>
+                    <a href="/company/history/">
+                        <div class="item">
+                            <h2>成就與沿革</h2>
+                        </div>
+                    </a>
+                    <a href="/company/csr/">
+                        <div class="item">
+                            <h2>企業社會責任</h2>
+                        </div>
+                    </a>
+                    <a href="/company/jobs/">
+                        <div class="item">
+                            <h2>工作機會</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>新聞</span>
+                <div class="menuItem">
+                    <!-- <a href="/blog/">
+                    <div class="item">
+                        <h2>所有文章</h2>
+                    </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>案例剖析</h2>
+                        </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>科普文章</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>技術專欄</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>資安新聞</h2>
+                        </div>
+                    </a> -->
+                    <a href="/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/media-kit/">
+                        <div class="item">
+                            <h2>媒體素材下載</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                搜尋
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                聯絡我們
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/blog/">所有文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/最新消息/">最新消息</a>
+                </li>
+                <li>
+                    <a href="/blog/category/技術專欄/">技術專欄</a>
+                </li>
+                <li>
+                    <a href="/blog/category/科普文章/">科普文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/資安新聞/">資安新聞</a>
+                </li>
+                <li>
+                    <a href="/media-kit/">媒體素材下載</a>
+                </li>
+            </ul>
         </div>
-      </div><main role="main">
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                    <span class="tag">
 
+                      <a href="/blog/tag/DEVCORE CONF/">#DEVCORE CONF</a> <a href="/blog/tag/CVE/">#CVE</a> <a href="/blog/tag/RCE/">#RCE</a> <a href="/blog/tag/Mail/">#Mail</a> 
+                    </span>
+                    <h1>
+                        飛鴿傳書 - 紅隊演練中的數位擄鴿
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/blog/author/meh">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/meh.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/blog/author/meh">Meh</a></span>
+                        <span class="date">2019-12-23</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20191223/cover.png"/>
+                    </div>
+                    
 
-          <div class="container--wrapper">
-            <div class="container">
-              <section class="blog-header">
-                <small class="blog-header__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
-                <img src="https://devco.re/assets/img/blog/20191223/cover.png" class="blog-header__image" alt="飛鴿傳書 - 紅隊演練中的數位擄鴿" />
-                <h1 class="blog-header__title">
-                  飛鴿傳書 - 紅隊演練中的數位擄鴿
-                </h1>
-                <div class="blog-header__tags">
-                  
-                  <a href="/blog/tag/DEVCORE CONF/" class="blog-header__tag">DEVCORE CONF</a><a href="/blog/tag/CVE/" class="blog-header__tag">CVE</a><a href="/blog/tag/RCE/" class="blog-header__tag">RCE</a><a href="/blog/tag/Mail/" class="blog-header__tag">Mail</a>
-                </div>
-          
-          
-                <p class="blog-header__info">
-                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/meh.jpg)"></span> <a href="/blog/author/meh" class="author-name">Meh</a> <time class="date">on 2019-12-23 </time>
-                </p>
-          
-              </section>
-              <article class="article">
-          <p>郵件系統作為大部分企業主要的資訊交換方式，在戰略上佔有了舉足輕重的地位。掌控了郵件伺服器不僅可以竊聽郵件的內容，甚至許多重要文件都可以在郵件系統中找到，使得駭客能夠更進一步的滲透。本篇文章將介紹研究組在 Openfind Mail2000 這套軟體上發現的記憶體漏洞，以及利用這個漏洞的攻擊手法。<br />
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p>郵件系統作為大部分企業主要的資訊交換方式，在戰略上佔有了舉足輕重的地位。掌控了郵件伺服器不僅可以竊聽郵件的內容，甚至許多重要文件都可以在郵件系統中找到，使得駭客能夠更進一步的滲透。本篇文章將介紹研究組在 Openfind Mail2000 這套軟體上發現的記憶體漏洞，以及利用這個漏洞的攻擊手法。
 <strong>此漏洞為 2018 年時發現，當時已通報 Openfind 並且迅速被修補，同時也已協助相關用戶進行更新。</strong></p>
 
 <h2 id="openfind-mail2000">Openfind Mail2000</h2>
-<p>Mail2000 是一套由台灣廠商 Openfind 所開發，簡單易用的電子郵件系統，被廣泛使用於台灣的公家機關、教育機構，如台北市教育局、中科院，以及臺灣科技大學都有使用 Mail2000 作為主要的郵件伺服器。常見的入口介面如下：<br />
+<p>Mail2000 是一套由台灣廠商 Openfind 所開發，簡單易用的電子郵件系統，被廣泛使用於台灣的公家機關、教育機構，如台北市教育局、中科院，以及臺灣科技大學都有使用 Mail2000 作為主要的郵件伺服器。常見的入口介面如下：
 <img src="/assets/img/blog/20191223/1.png" alt="" /></p>
 
 <p>這次的漏洞，便是從這個 Web 介面，利用 Binary 的手法，攻陷整台伺服器！</p>
 
 <h2 id="伺服器架構">伺服器架構</h2>
-<p>Mail2000 提供了 Web 介面供管理員以及使用者操作，也就是所謂的 Webmail，而此處 Openfind 使用了 CGI (Common Gateway Interface) 的技術來實作。大多數 Web 伺服器實現 CGI 的方式如圖：<br />
-<img src="/assets/img/blog/20191223/2.png" alt="" /><br />
-首先由 httpd 接受客戶端的請求後，根據對應的 CGI 路徑，執行相對應的 CGI 檔案。而大多數的開發者會根據需求，將常見的共用 function 撰寫成 library，供 CGI 呼叫。<br />
+<p>Mail2000 提供了 Web 介面供管理員以及使用者操作，也就是所謂的 Webmail，而此處 Openfind 使用了 CGI (Common Gateway Interface) 的技術來實作。大多數 Web 伺服器實現 CGI 的方式如圖：
+<img src="/assets/img/blog/20191223/2.png" alt="" />
+首先由 httpd 接受客戶端的請求後，根據對應的 CGI 路徑，執行相對應的 CGI 檔案。而大多數的開發者會根據需求，將常見的共用 function 撰寫成 library，供 CGI 呼叫。
 往底層來看，其實可以發現，雖然稱為 Web 伺服器，仍有許多元件是建構於 binary 之上的！例如 httpd，為了效能，多是由 C/C++ 所撰寫，而其它像是 library、擴充的 module、各頁面的 CGI 也常是如此。因此，binary 相關的漏洞，便是我們這次的攻擊目標！</p>
 
 <h2 id="漏洞">漏洞</h2>
 
-<p>這個漏洞位於 Openfind 實作的 library <code class="highlighter-rouge">libm2kc</code> 中，此函式庫包含了各種 CGI 通用函式，如參數解析及檔案處理等等，而這個漏洞就發生在參數解析的部分。由於參數處理是很底層且基本的功能，因此影響的範圍非常的大，就連 Openfind 的其它產品也同樣受影響！<br />
+<p>這個漏洞位於 Openfind 實作的 library <code class="language-plaintext highlighter-rouge">libm2kc</code> 中，此函式庫包含了各種 CGI 通用函式，如參數解析及檔案處理等等，而這個漏洞就發生在參數解析的部分。由於參數處理是很底層且基本的功能，因此影響的範圍非常的大，就連 Openfind 的其它產品也同樣受影響！
 這個漏洞的觸發條件如下：</p>
 <ul>
   <li>攻擊者使用 multipart 形式發送 HTTP POST 請求</li>
@@ -128,7 +576,7 @@
 </ul>
 
 <p>multipart 是 HTTP 協定中，用來處理多項檔案傳輸時的一種格式，舉例如下：</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Content-Type: multipart/form-data; boundary=AaB03x   
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Content-Type: multipart/form-data; boundary=AaB03x   
 
  --AaB03x 
 Content-Disposition: form-data; name="files"; filename="file1.txt" 
@@ -146,7 +594,7 @@ Content-Type: text/plain 
   <span class="n">g_stCGIEnv</span><span class="p">.</span><span class="n">param_cnt</span><span class="o">++</span><span class="p">;</span>
 <span class="p">}</span>
 </code></pre></div></div>
-<p>這個陣列為全域變數 g_stCGIEnv 中的 param，在存入 param 陣列時，並沒有檢查是否已超過宣告的陣列大小，就造成了越界寫入。<br />
+<p>這個陣列為全域變數 g_stCGIEnv 中的 param，在存入 param 陣列時，並沒有檢查是否已超過宣告的陣列大小，就造成了越界寫入。
 <img src="/assets/img/blog/20191223/3.png" alt="" /></p>
 
 <p>需要注意的是，param 陣列所儲存的結構為指向字串位置的指標，而非字串本身</p>
@@ -157,13 +605,13 @@ Content-Type: text/plain 
     <span class="kt">int</span> <span class="n">flag</span><span class="p">;</span>
 <span class="p">};</span>
 </code></pre></div></div>
-<p>因此當觸發越界寫入時，寫入記憶體的值也是一個個指向字串的指標，而被指向的字串內容則是造成溢出的參數。<br />
+<p>因此當觸發越界寫入時，寫入記憶體的值也是一個個指向字串的指標，而被指向的字串內容則是造成溢出的參數。
 <img src="/assets/img/blog/20191223/4.png" alt="" /></p>
 
 <h2 id="漏洞利用">漏洞利用</h2>
 
 <p>要利用越界寫入的漏洞，就要先了解利用這個溢出可以做到什麼，發生溢出的全域變數結構如下：</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>00000000 CGIEnv          struc ; (sizeof=0x6990, mappedto_95)
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>00000000 CGIEnv          struc ; (sizeof=0x6990, mappedto_95)
 00000000 buf             dd ?                    ; offset
 00000004 length          dd ?
 00000008 field_8         dd 6144 dup(?)          ; offset
@@ -180,16 +628,16 @@ Content-Type: text/plain 
 0000698C field_698C      dd ?
 00006990 CGIEnv          ends
 </code></pre></div></div>
-<p>溢出的陣列為其中的<code class="highlighter-rouge">param_arr</code>，因此在其之後的變數皆可能被覆寫。包括<code class="highlighter-rouge">post_files</code>、<code class="highlighter-rouge">vec_len</code>、<code class="highlighter-rouge">vec_cur_len</code>、<code class="highlighter-rouge">arg_cnt</code> … 等等。其中最吸引我注意的是<code class="highlighter-rouge">file_vec</code>這個變數，這是一個用來管理 POST 上傳檔案的 <code class="highlighter-rouge">vector</code>，大部分的 <code class="highlighter-rouge">vector</code> 結構像是這樣：<br />
-<img src="/assets/img/blog/20191223/5.png" alt="" /><br />
-使用 <code class="highlighter-rouge">size</code> 記錄陣列的總長度，<code class="highlighter-rouge">end</code> 記錄目前用到哪裡，這樣就可以在容量不夠的時候進行擴充。我們若利用漏洞，使溢出的指標覆蓋 <code class="highlighter-rouge">vector</code> 的指標，就有可能有效的利用！藉由覆蓋這個 <code class="highlighter-rouge">vector</code> 指標，我們可以達到偽造一個 <code class="highlighter-rouge">POST file</code>，及其中所有相關變數的效果，而這個 <code class="highlighter-rouge">POST file</code> 結構裡面就包含了各種常見的檔案相關變數，像是路徑、檔名，和 Linux 中用來管理檔案的 <strong><code class="highlighter-rouge">FILE</code> 結構</strong>，而 <code class="highlighter-rouge">FILE</code> 結構便是這次的攻擊的關鍵！</p>
+<p>溢出的陣列為其中的<code class="language-plaintext highlighter-rouge">param_arr</code>，因此在其之後的變數皆可能被覆寫。包括<code class="language-plaintext highlighter-rouge">post_files</code>、<code class="language-plaintext highlighter-rouge">vec_len</code>、<code class="language-plaintext highlighter-rouge">vec_cur_len</code>、<code class="language-plaintext highlighter-rouge">arg_cnt</code> … 等等。其中最吸引我注意的是<code class="language-plaintext highlighter-rouge">file_vec</code>這個變數，這是一個用來管理 POST 上傳檔案的 <code class="language-plaintext highlighter-rouge">vector</code>，大部分的 <code class="language-plaintext highlighter-rouge">vector</code> 結構像是這樣：
+<img src="/assets/img/blog/20191223/5.png" alt="" />
+使用 <code class="language-plaintext highlighter-rouge">size</code> 記錄陣列的總長度，<code class="language-plaintext highlighter-rouge">end</code> 記錄目前用到哪裡，這樣就可以在容量不夠的時候進行擴充。我們若利用漏洞，使溢出的指標覆蓋 <code class="language-plaintext highlighter-rouge">vector</code> 的指標，就有可能有效的利用！藉由覆蓋這個 <code class="language-plaintext highlighter-rouge">vector</code> 指標，我們可以達到偽造一個 <code class="language-plaintext highlighter-rouge">POST file</code>，及其中所有相關變數的效果，而這個 <code class="language-plaintext highlighter-rouge">POST file</code> 結構裡面就包含了各種常見的檔案相關變數，像是路徑、檔名，和 Linux 中用來管理檔案的 <strong><code class="language-plaintext highlighter-rouge">FILE</code> 結構</strong>，而 <code class="language-plaintext highlighter-rouge">FILE</code> 結構便是這次的攻擊的關鍵！</p>
 
 <h3 id="file-structure-exploit">FILE Structure Exploit</h3>
 
-<p>這次的攻擊使用了 FILE structure exploit 的手法，是近幾年較新發現的攻擊手法，由 angelboy 在 HITCON CMT 公開<a href="https://www.slideshare.net/AngelBoy1/play-with-file-structure-yet-another-binary-exploit-technique" target="_blank" rel="noopener"><sup>[1]</sup></a>：<br />
+<p>這次的攻擊使用了 FILE structure exploit 的手法，是近幾年較新發現的攻擊手法，由 angelboy 在 HITCON CMT 公開<a href="https://www.slideshare.net/AngelBoy1/play-with-file-structure-yet-another-binary-exploit-technique" target="_blank" rel="noopener"><sup>[1]</sup></a>：
 <img src="/assets/img/blog/20191223/6.png" alt="" /></p>
 
-<p>FILE 結構是 Linux 中用來做檔案處理的結構，像是 <code class="highlighter-rouge">STDIN</code>、<code class="highlighter-rouge">STDOUT</code>、<code class="highlighter-rouge">STDERR</code>，或者是呼叫 <code class="highlighter-rouge">fopen</code> 後回傳的結構都是 <code class="highlighter-rouge">FILE</code>。而這個結構之所以能成為漏洞利用的突破口主要原因就是它所包含的 <code class="highlighter-rouge">vtable</code> 指標：</p>
+<p>FILE 結構是 Linux 中用來做檔案處理的結構，像是 <code class="language-plaintext highlighter-rouge">STDIN</code>、<code class="language-plaintext highlighter-rouge">STDOUT</code>、<code class="language-plaintext highlighter-rouge">STDERR</code>，或者是呼叫 <code class="language-plaintext highlighter-rouge">fopen</code> 後回傳的結構都是 <code class="language-plaintext highlighter-rouge">FILE</code>。而這個結構之所以能成為漏洞利用的突破口主要原因就是它所包含的 <code class="language-plaintext highlighter-rouge">vtable</code> 指標：</p>
 
 <div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">_IO_FILE_plus</span>
 <span class="p">{</span>
@@ -197,7 +645,7 @@ Content-Type: text/plain 
   <span class="k">const</span> <span class="k">struct</span> <span class="n">_IO_jump_t</span> <span class="o">*</span><span class="n">vtable</span><span class="p">;</span>
 <span class="p">};</span>
 </code></pre></div></div>
-<p><code class="highlighter-rouge">vtable</code> 當中記錄了各種 function pointer，對應各種檔案處理相關的功能：</p>
+<p><code class="language-plaintext highlighter-rouge">vtable</code> 當中記錄了各種 function pointer，對應各種檔案處理相關的功能：</p>
 
 <div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">_IO_jump_t</span>
 <span class="p">{</span>
@@ -212,7 +660,7 @@ Content-Type: text/plain 
     <span class="cm">/* ... */</span>
 <span class="p">};</span>
 </code></pre></div></div>
-<p>因此如果我們可以篡改、偽造這個 <code class="highlighter-rouge">vtable</code> 的話，就可以在程式做檔案處理的時候，劫持程式流程！我們可以以此訂出以下的攻擊步驟：</p>
+<p>因此如果我們可以篡改、偽造這個 <code class="language-plaintext highlighter-rouge">vtable</code> 的話，就可以在程式做檔案處理的時候，劫持程式流程！我們可以以此訂出以下的攻擊步驟：</p>
 
 <ol>
   <li>建立連線，呼叫 CGI</li>
@@ -226,44 +674,44 @@ Content-Type: text/plain 
   <li>劫持程式流程</li>
 </ol>
 
-<p>我們現在已經知道終點是<strong>呼叫一個 FILE 操作</strong>，那麼就可以開始往回找<strong>哪個 function</strong> 是 CGI 常用的 FILE 操作，又有<strong>哪一些 CGI</strong> 可以作為入口點，才能串出我們的攻擊鏈！我們首先對使用到 POST file 的相關函式做研究，並選定了目標 <code class="highlighter-rouge">MCGI_VarClear()</code>。<br />
-<code class="highlighter-rouge">MCGI_VarClear()</code> 在許多用到 FILE 的 CGI 中有被呼叫，它用於在程式結束前將 <code class="highlighter-rouge">g_stCGIEnv</code> 清空，包括將動態配置的記憶體 <code class="highlighter-rouge">free()</code> 掉，以及將所有 FILE 關閉，也就是呼叫 <code class="highlighter-rouge">fclose()</code>，也意味著是可以通過 vtable 被劫持的！我們可以使用這個越界寫入漏洞蓋掉 <code class="highlighter-rouge">file_vec</code>，而指向的內容就是 HTTP request 的參數，便可以偽造為 POST files！像是下面這個結構：<br />
+<p>我們現在已經知道終點是<strong>呼叫一個 FILE 操作</strong>，那麼就可以開始往回找<strong>哪個 function</strong> 是 CGI 常用的 FILE 操作，又有<strong>哪一些 CGI</strong> 可以作為入口點，才能串出我們的攻擊鏈！我們首先對使用到 POST file 的相關函式做研究，並選定了目標 <code class="language-plaintext highlighter-rouge">MCGI_VarClear()</code>。
+<code class="language-plaintext highlighter-rouge">MCGI_VarClear()</code> 在許多用到 FILE 的 CGI 中有被呼叫，它用於在程式結束前將 <code class="language-plaintext highlighter-rouge">g_stCGIEnv</code> 清空，包括將動態配置的記憶體 <code class="language-plaintext highlighter-rouge">free()</code> 掉，以及將所有 FILE 關閉，也就是呼叫 <code class="language-plaintext highlighter-rouge">fclose()</code>，也意味著是可以通過 vtable 被劫持的！我們可以使用這個越界寫入漏洞蓋掉 <code class="language-plaintext highlighter-rouge">file_vec</code>，而指向的內容就是 HTTP request 的參數，便可以偽造為 POST files！像是下面這個結構：
 <img src="/assets/img/blog/20191223/7.png" alt="" /></p>
 
 <p>我們的最終目標就是將 FILE* 指向偽造的結構，藉由偽造的 vtable 劫持程式流程！這時候便出現了一個問題，我們需要將 FILE* 這個指標指向一個內容可控的位置，但是其實我們並不知道該指到哪裡去，會有這個問題是起因於 Linux 上的一個防禦機制 - ASLR。</p>
 
 <h3 id="address-space-layout-randomization-aslr">Address Space Layout Randomization (ASLR)</h3>
 
-<p>ASLR 使得每次程式在執行並載入記憶體時，會隨機載入至不同的記憶體位置，我們可以嘗試使用 <code class="highlighter-rouge">cat /proc/self/maps</code> 觀察每一次執行時的記憶體位置是否相同：<br />
-<img src="/assets/img/blog/20191223/8.png" alt="" /><br />
-ASLR 在大部分的環境中都是預設開啟的，因此在撰寫 exploit 時，常遇到可以偽造指標，卻不知道該指到哪裡的窘境。<br />
-而這個機制在 CGI 的架構下會造成更大的阻礙，一般的伺服器的攻擊流程可能是這樣：<br />
-<img src="/assets/img/blog/20191223/9.png" alt="" /><br />
-可以在一個連線當中 leak address 並用來做進一步的攻擊，但在 CGI 架構中卻是這樣：<br />
-<img src="/assets/img/blog/20191223/10.png" alt="" /><br />
-在這個情況下，leak 得到的 address 是無法在後續攻擊中使用的！因為 CGI 執行完就結束了，下一個 request 又是全新的 CGI！<br />
+<p>ASLR 使得每次程式在執行並載入記憶體時，會隨機載入至不同的記憶體位置，我們可以嘗試使用 <code class="language-plaintext highlighter-rouge">cat /proc/self/maps</code> 觀察每一次執行時的記憶體位置是否相同：
+<img src="/assets/img/blog/20191223/8.png" alt="" />
+ASLR 在大部分的環境中都是預設開啟的，因此在撰寫 exploit 時，常遇到可以偽造指標，卻不知道該指到哪裡的窘境。
+而這個機制在 CGI 的架構下會造成更大的阻礙，一般的伺服器的攻擊流程可能是這樣：
+<img src="/assets/img/blog/20191223/9.png" alt="" />
+可以在一個連線當中 leak address 並用來做進一步的攻擊，但在 CGI 架構中卻是這樣：
+<img src="/assets/img/blog/20191223/10.png" alt="" />
+在這個情況下，leak 得到的 address 是無法在後續攻擊中使用的！因為 CGI 執行完就結束了，下一個 request 又是全新的 CGI！
 為了應對這個問題，我們最後寫了兩個 exploit，攻擊的手法根據 CGI binary 而有不同。</p>
 
-<h3 id="post-auth-rce---cgi-binmsg_read">Post-Auth RCE - <code class="highlighter-rouge">/cgi-bin/msg_read</code></h3>
-<p>第一個 exploit 的入口點是一個需要登入的頁面，這一隻程式較大、功能也較多。在這一個 exploit 中，我們使用了 heap spray 的手法來克服 ASLR，也就是在 heap 中填入大量重複的物件，如此一來我們就有很高的機率可以<strong>猜</strong>到它的位置。<br />
-<img src="/assets/img/blog/20191223/11.png" alt="" /><br />
+<h3 id="post-auth-rce---cgi-binmsg_read">Post-Auth RCE - <code class="language-plaintext highlighter-rouge">/cgi-bin/msg_read</code></h3>
+<p>第一個 exploit 的入口點是一個需要登入的頁面，這一隻程式較大、功能也較多。在這一個 exploit 中，我們使用了 heap spray 的手法來克服 ASLR，也就是在 heap 中填入大量重複的物件，如此一來我們就有很高的機率可以<strong>猜</strong>到它的位置。
+<img src="/assets/img/blog/20191223/11.png" alt="" />
 而 spray 的內容就是大量偽造好的 FILE 結構，包含偽造的 vtable。從這隻 binary 中，我們找到了一個十分實用的 <strong>gadget</strong>，也就是小程式片段：</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>xchg eax, esp; ret
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>xchg eax, esp; ret
 </code></pre></div></div>
-<p>這個 gadget 的作用在於，我們可以<strong>改變 stack 的位置</strong>，而剛好此時的 <code class="highlighter-rouge">eax</code> 指向內容是可控的，因此整個 stack 的內容都可以偽造，也就是說我們可以使用 ROP(Return-oriented programming) 來做利用！於是我們在偽造的 vtable 中設置了 stack 搬移的 gadget 以及後續利用的 ROP 攻擊鏈，進行 ROP 攻擊！<br />
+<p>這個 gadget 的作用在於，我們可以<strong>改變 stack 的位置</strong>，而剛好此時的 <code class="language-plaintext highlighter-rouge">eax</code> 指向內容是可控的，因此整個 stack 的內容都可以偽造，也就是說我們可以使用 ROP(Return-oriented programming) 來做利用！於是我們在偽造的 vtable 中設置了 stack 搬移的 gadget 以及後續利用的 ROP 攻擊鏈，進行 ROP 攻擊！
 <img src="/assets/img/blog/20191223/12.png" alt="" /></p>
 
-<p>我們可以做 ROP，也就可以拿 shell 了對吧！你以為是這樣嗎？不，其實還有一個大問題，同樣導因於前面提到的防禦機制 ASLR – 我們沒有 system 的位置！這隻 binary 本身提供的 gadget 並不足以開啟一個 shell，因此我們希望可以直接利用 libc 當中的 system 來達成目的，但正如前面所提到的，記憶體位置每次載入都是隨機化的，我們並不知道 system 的確切位置！<br />
-經過我們仔細的觀察這支程式以後，我們發現了一件非常特別的事，這隻程式理論上是有打開 NX，也就是可寫段不可執行的保護機制<br />
-<img src="/assets/img/blog/20191223/13.png" alt="" /><br />
-但是實際執行的時候，stack 的執行權限卻會被打開！<br />
-<img src="/assets/img/blog/20191223/14.png" alt="" /><br />
+<p>我們可以做 ROP，也就可以拿 shell 了對吧！你以為是這樣嗎？不，其實還有一個大問題，同樣導因於前面提到的防禦機制 ASLR – 我們沒有 system 的位置！這隻 binary 本身提供的 gadget 並不足以開啟一個 shell，因此我們希望可以直接利用 libc 當中的 system 來達成目的，但正如前面所提到的，記憶體位置每次載入都是隨機化的，我們並不知道 system 的確切位置！
+經過我們仔細的觀察這支程式以後，我們發現了一件非常特別的事，這隻程式理論上是有打開 NX，也就是可寫段不可執行的保護機制
+<img src="/assets/img/blog/20191223/13.png" alt="" />
+但是實際執行的時候，stack 的執行權限卻會被打開！
+<img src="/assets/img/blog/20191223/14.png" alt="" />
 不論原因為何，這個設置對駭客來說是非常方便的，我們可以利用這個可執行段，將 shellcode 放上去執行，就可以成功得到 shell，達成 RCE！</p>
 
 <p>然而，這個攻擊是需要登入的，對於追求完美的 DEVCORE 研究組來說，並不足夠！因此我們更進一步的研究了其它攻擊路徑！</p>
 
-<h3 id="pre-auth-rce---cgi-bincgi_api">Pre-Auth RCE - <code class="highlighter-rouge">/cgi-bin/cgi_api</code></h3>
-<p>在搜索了所有 CGI 入口點以後，我們找到了一個不需要登入，同時又會呼叫 <code class="highlighter-rouge">MCGI_VarClear()</code> 的 CGI – <code class="highlighter-rouge">/cgi-bin/cgi_api</code>。一如其名，它就是一隻呼叫 API 的接口，因此程式本身非常的小，幾乎是呼叫完 library 就結束了，也因此不再有 stack pivot 的 gadget 可以利用。<br />
+<h3 id="pre-auth-rce---cgi-bincgi_api">Pre-Auth RCE - <code class="language-plaintext highlighter-rouge">/cgi-bin/cgi_api</code></h3>
+<p>在搜索了所有 CGI 入口點以後，我們找到了一個不需要登入，同時又會呼叫 <code class="language-plaintext highlighter-rouge">MCGI_VarClear()</code> 的 CGI – <code class="language-plaintext highlighter-rouge">/cgi-bin/cgi_api</code>。一如其名，它就是一隻呼叫 API 的接口，因此程式本身非常的小，幾乎是呼叫完 library 就結束了，也因此不再有 stack pivot 的 gadget 可以利用。
 這時，由於我們已經得知 stack 是可執行的，因此其實我們是可以跳過 ROP 這個步驟，直接將 shellcode 放置在 stack 上的，這裡利用到一個 CGI 的特性 – HTTP 的相關變數會放在環境變數中，像是下列這些常見變數：</p>
 <ul>
   <li>HTTP_HOST</li>
@@ -271,7 +719,7 @@ ASLR 在大部分的環境中都是預設開啟的，因此在撰寫 exploit 時
   <li>QUERY_STRING</li>
 </ul>
 
-<p>而環境變數事實上就是被放置在 stack 的最末端，也就是可執行段的位置，因此我們只要偽造 vtable 直接呼叫 shellcode 就可以了！<br />
+<p>而環境變數事實上就是被放置在 stack 的最末端，也就是可執行段的位置，因此我們只要偽造 vtable 直接呼叫 shellcode 就可以了！
 <img src="/assets/img/blog/20191223/15.png" alt="" /></p>
 
 <p>當然這時候同樣出現了一個問題：我們仍舊沒有 stack 的記憶體位置。這個時候有些人可能會陷入一個迷思，覺得攻擊就是要一次到位，像個狙擊手一樣一擊必殺，但實際上可能是這樣拿機關槍把敵人炸飛：</p>
@@ -280,17 +728,17 @@ ASLR 在大部分的環境中都是預設開啟的，因此在撰寫 exploit 時
 
 <p>換個角度思考，這隻 binary 是 32 bits 的，因此這個位置有 1.5bytes 是隨機的，總共有 16<sup>3</sup> 個可能的組合，所以其實平均只要 4096 次請求就可以撞到一次！這對於現在的電腦、網路速度來說其實也就是幾分鐘之間的事情，因此直接做暴力破解也是可行的！於是我們最終的 exploit 流程就是：</p>
 <ol>
-  <li>發送 POST 請求至 <code class="highlighter-rouge">cgi_api</code>
+  <li>發送 POST 請求至 <code class="language-plaintext highlighter-rouge">cgi_api</code>
     <ul>
       <li>QUERY_STRING 中放入 shellcode</li>
     </ul>
   </li>
-  <li>觸發越界寫入，覆蓋 <code class="highlighter-rouge">file_vec</code>
+  <li>觸發越界寫入，覆蓋 <code class="language-plaintext highlighter-rouge">file_vec</code>
     <ul>
       <li>在越界的參數準備偽造的 FILE &amp; vtable</li>
     </ul>
   </li>
-  <li><code class="highlighter-rouge">cgi_api</code> 結束前呼叫 <code class="highlighter-rouge">MCGI_VarClear</code></li>
+  <li><code class="language-plaintext highlighter-rouge">cgi_api</code> 結束前呼叫 <code class="language-plaintext highlighter-rouge">MCGI_VarClear</code></li>
   <li>跳至 vtable 上的 shellcode 位置，建立 reverse shell</li>
 </ol>
 
@@ -327,168 +775,179 @@ ASLR 在大部分的環境中都是預設開啟的，因此在撰寫 exploit 時
 <p>而對於使用各項設備的用戶，也應當掌握好屬於自己的資產，防火牆、伺服器等產品並不是購買來架設好以後就沒有問題了，做好資產盤點、追蹤廠商的安全性更新，才能確保產品不受到 1day 的攻擊！而定期進行滲透測試以及紅隊演練，更是可以幫助企業釐清自己是否有盲點、缺失，進而改善以降低企業資安風險。</p>
 
 
-              </article>
-              <p class="sns-widgets">
-                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
-              </p>
-          
-              <div class="heading--side-lined">
-                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/meh.jpg)"></span> <a href="/blog/author/meh" class="blog-author-name">Meh</a> 
-              </div>
-              <p class="blog-author-info">
-                I am a pwner.
-              </p>
-          
-              <div class="heading--side-lined">
-                讀者留言
-              </div>
-              <div class="blog-comments">
-                
-
-
-  <div id="disqus_thread"></div>
-<script type="text/javascript">
-    var disqus_developer = 1;
-    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
-    
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-
-
-
-
-              </div>
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/blog/author/meh">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/meh.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/blog/author/meh">
+                            <h3>Meh</h3>
+                        </a>
+                        <span>Business Development Manager</span>
+                        <p>
+                            I am a pwner.
+                        </p>
+                    </div>
+                </div>
             </div>
-          </div>
+        </section>
+        
 
+        <!-- 相關文章 -->
+        <section class="recommand articles-list">
+            <div class="container">
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> <a href="/blog/tag/徵才/">#徵才</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/01/14/3rd-internship-program-recruit/">DEVCORE 2023 第三屆實習生計畫</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2023-01-14</span>
+                        <p class="line-litmit-3">DEVCORE 第三屆實習生計畫開始，計畫目的希望能培育人才、增強新世代的資安技能，如果您對這個計畫有興趣，歡迎來信報名！
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/01/12/DEVCORE-conference-registration-open-now/">DEVCORE Conference 2023 即日起開放報名</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2023-01-12</span>
+                        <p class="line-litmit-3">純攻擊導向的專業技術研討會 DEVCORE Conference 將於 3 月 10 日至 11 日再次盛大舉行
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2022/12/23/2022-devcore-national-cyber-security-scholarship-results-announcement/">DEVCORE 2022 年度全國資訊安全獎學金頒獎餐敘順利落幕</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2022-12-23</span>
+                        <p class="line-litmit-3">全國資訊安全獎學金頒獎餐敘順利落幕，期待獲獎同學們未來持續深耕資安知識與技術，在資安舞台上發光發熱！
+                        </p>
+                    </div>
+                </article>
+              
 
-
-
-
-
-</main>
-      <div class="container--wrapper">
-
-        <div class="relative-posts">
-          <div class="heading--side-lined container">
-            最新消息
-          </div>
-          <div class="relative-posts__cells">
-  
-            <section class="card">
-              <a href="/blog/2023/01/14/3rd-internship-program-recruit/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20230114/cover.jpg)"></div>
-                <h3 class="card__title">
-                  DEVCORE 2023 第三屆實習生計畫
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/公告/" class="card__tag">公告</a><a href="/blog/tag/徵才/" class="card__tag">徵才</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/最新消息/">最新消息</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2023/01/12/DEVCORE-conference-registration-open-now/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20230112/cover.jpg)"></div>
-                <h3 class="card__title">
-                  DEVCORE Conference 2023 即日起開放報名
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/公告/" class="card__tag">公告</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/最新消息/">最新消息</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2022/12/23/2022-devcore-national-cyber-security-scholarship-results-announcement/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20221223/cover.jpg)"></div>
-                <h3 class="card__title">
-                  DEVCORE 2022 年度全國資訊安全獎學金頒獎餐敘順利落幕
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/公告/" class="card__tag">公告</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/最新消息/">最新消息</a></small>
-            </section>
-  
-          </div>
-        </div>
-
-
-        <div class="contact-section container">
-          <h2 class="contact-section__title">
-            用最真實的攻擊，驗證企業的防禦
-          </h2>
-          <a href="/contact/" class="home-contact__button button--dense">聯絡我們</a>
-        </div>
-
-        <footer class="main-footer">
-          <div class="main-footer__about">
-            戴夫寇爾提供<br class="mobile-only" /><a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務<br />在<a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a>或<a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>上追蹤我們的<a href="/blog/" class="link">最新訊息</a><br />瞭解更多戴夫寇爾的<a href="/about/" class="link">駭客思維</a>
-          </div>
-          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
-                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
-                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
-          </div>
-          <address class="main-footer__address">
-            <ul class="list--unstyled">
-              <li>
-                地址 105608 台北市松山區八德路三段 32 號 13 樓
-              </li>
-              <li>
-                Email contact@devco.re
-              </li>
-              <li>
-                電話 02-2577-0925
-              </li>
-              <li>
-                傳真 02-2577-0928
-              </li>
-              <li>
-                統編 53955237
-              </li>
-            </ul>
-          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2023 DEVCORE 戴夫寇爾</small>
-        </footer>
-      </div>
+            </div>
+        </section>
     </div>
-    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
 
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">服務</h6>
+        <ul>
+            <li><a href="/services/red-team/">紅隊演練</a></li>
+            <li><a href="/services/penetration-test/">滲透測試</a></li>
+            <li><a href="/services/security-consulting/">資安顧問服務</a></li>
+            <li><a href="/services/security-training/">資安教育訓練</a></li>
+        </ul>
+    </div>
 
-  <script type="text/javascript">
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-30830800-1']);
-  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+    <div class="column">
+        <h6 class="mobile_toggle">研究</h6>
+        <ul>
+            <li><a href="/research/overview/">總覽概要</a></li>
+            <li><a href="/research/awards/">競賽與獎項</a></li>
+            <li><a href="/research/bug-bounty/">企業漏洞回報</a></li>
+            <li><a href="/research/talks/">國際研討會</a></li>
+            <li><a href="/research/cve/">CVE 漏洞列表</a></li>
+        </ul>
+    </div>
 
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
-</script>
+    <div class="column">
+        <h6 class="mobile_toggle">公司</h6>
+        <ul>
+            <li><a href="/company/about/">公司簡介</a></li>
+            <li><a href="/company/our-team/">團隊成員</a></li>
+            <li><a href="/company/history/">成就與沿革</a></li>
+            <li><a href="/company/csr/">企業社會責任</a></li>
+            <li><a href="/company/jobs/">工作機會</a></li>
+            <li><a href="/contact/">聯絡我們</a></li>
+        </ul>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">新聞</h6>
+        <ul>
+            <li><a href="/blog/">所有文章</a></li>
+            <li><a href="/blog/category/最新消息/">最新消息</a></li>
+            <li><a href="/blog/category/技術專欄/">技術專欄</a></li>
+            <li><a href="/blog/category/科普文章/">科普文章</a></li>
+            <li><a href="/blog/category/資安新聞/">資安新聞</a></li>
+            <li><a href="/media-kit/">媒體素材下載</a></li>
+        </ul>
+    </div>
 
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
 
+    <div class="copyright">
+        <div class="info">
+            <span>© 2023 DEVCORE 戴夫寇爾股份有限公司. <b class="line-block">All right reserved.</b></span>
+            <span><a href="/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
 
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K5B8NW"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
-
-  </body>
+</div>
+    </footer>
+</body>
 </html>
-
-
-
 

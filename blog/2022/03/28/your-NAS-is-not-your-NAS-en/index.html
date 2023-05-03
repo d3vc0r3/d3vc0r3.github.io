@@ -1,109 +1,491 @@
 
+
 <!DOCTYPE html>
-<html lang="zh-TW">
-  <head>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta charset="utf-8" />
-    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
-    <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>Your NAS is not your NAS ! | DEVCORE</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
-    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
-    <meta name="description" property="og:description" content="We have successfully found a serious vulnerability in the NAS, and successfully wrote a proof-of-concept, which proved that it can be exploited on many NAS such as Synology, QNAP and Asustor." />
-    <meta name="keywords" content="RCE, Netatalk, Synology, QNAP, Asustor" />
-    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
-    <meta property="og:title" content="Your NAS is not your NAS ! | DEVCORE 戴夫寇爾" />
-    <meta property="og:url" content="https://devco.re/blog/2022/03/28/your-NAS-is-not-your-NAS-en/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://devco.re/assets/img/blog/20220328/cover.png" />
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:site" content="d3vc0r3">
-    <meta name="twitter:title" content="Your NAS is not your NAS ! | DEVCORE 戴夫寇爾">
-    <meta name="twitter:description" content="We have successfully found a serious vulnerability in the NAS, and successfully wrote a proof-of-concept, which proved that it can be exploited on many NAS such as Synology, QNAP and Asustor.">
-    <meta name="twitter:creator" content="d3vc0r3">
-    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20220328/cover.png">
-    <meta name="twitter:domain" content="devco.re">
-    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
-    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
-    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
-    <meta name='yandex-verification' content='4561963cf1d18fe3' />
-    <meta property="fb:admins" content="120968921404653" />
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>Your NAS is not your NAS ! | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
 
-    <link rel="canonical" href="https://devco.re/blog/2022/03/28/your-NAS-is-not-your-NAS-en/"/>
-    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
 
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-K5B8NW');</script>
-    <!-- End Google Tag Manager -->
-  </head>
-  <body>
-    <div class="page">
-      <div class="container--wrapper">
-        <div class="topbar">
-          <div class="topbar__brand">
-            <a href="/en/">
-                <div class="logo">
-                  DEVCORE
-                </div></a>
-            <p class="slogan">
-              We offer professional <a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services
-            </p>
-          </div>
-          <div class="drawer" id="drawer">
-            <div class="drawer__container">
-              <nav class="main-menu">
-                <div class="hidden">
-                  Menu
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Perform comprehensive attack simulation from unlimited aspects to achieve the designated drill scenario without impacting enterprise operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltrate designated enterprise systems with hacker mindset and techniques to uncover potential vulnerabilities, assessing the risk of breach or damage to enterprise assets.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Assist enterprises in resource distribution and long-term defensive strategy development from the attacker's perspective based on red team assessment.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Assist enterprises in defending and preventing incidents efficiently from the attacker's perspective, including response procedures and analysis of attack targets, techniques, and vulnerabilities.
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
                 </div>
-                <a href="/en/services/penetration-test" class="main-menu__link mobile-only">Penetration Testing</a>
-                <a href="/en/services/red-team" class="main-menu__link mobile-only">Red Team Assessment</a>
-                <a href="/en/services/security-consulting" class="main-menu__link mobile-only">Consulting</a>
-                <a href="/en/services/security-training" class="main-menu__link mobile-only">Training</a>
-                <a href="/en/about/" class="main-menu__link">Hackers</a><a href="/en/blog/" class="main-menu__link">News</a><a href="/en/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">Search</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
-              </nav>
-              <a href="/en/contact/" class="drawer__contact button--dense">Contact</a>
-              <nav class="lang-menu">
-                <div class="lang-menu__label">
-                  Lang:
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research leading cybersecurity techniques and trends, perform comprehensive security assessments of enterprise products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research into the risk of enterprise systems, identify potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Publish vulnerability research and share security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Uncover and report critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
-                <a href="/" class="lang-menu__link">中文</a>
-                <a href="/en/" class="lang-menu__link">English</a>
-              </nav>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                DEVCORE was founded by a world-class white hat hacker team, providing cybersecurity services and focusing on Red Team Assessment and Penetration Testing services.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    A team of experts with a hacker mindset, exploring new exploitation techniques, and upholding strict morality, self-discipline, and caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    The history, research achievements, and award information of DEVCORE.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    Provide diverse internship channels and scholarship programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Guidelines for the use of the DEVCORE trademark.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
-            <div class="bars">
-              <div class="bar"></div>
-              <div class="bar"></div>
-              <div class="bar"></div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </button>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
         </div>
-      </div><main role="main">
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Tech Editorials">Tech Editorials</a>
+                    <span class="tag">
 
+                      <a href="/en/blog/tag/RCE/">#RCE</a> <a href="/en/blog/tag/NAS/">#NAS</a> <a href="/en/blog/tag/IoT/">#IoT</a> 
+                    </span>
+                    <h1>
+                        Your NAS is not your NAS !
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/en/blog/author/angelboy">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/angelboy.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/en/blog/author/angelboy">Angelboy</a></span>
+                        <span class="date">2022-03-28</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20220328/cover.png"/>
+                    </div>
+                    
 
-          <div class="container--wrapper">
-            <div class="container">
-              <section class="blog-header">
-                <small class="blog-header__category"><a href="/en/blog/category/Tech Editorials/" style="text-transform: uppercase;">Tech Editorials</a></small>
-                <img src="https://devco.re/assets/img/blog/20220328/cover.png" class="blog-header__image" alt="Your NAS is not your NAS !" />
-                <h1 class="blog-header__title">
-                  Your NAS is not your NAS !
-                </h1>
-                <div class="blog-header__tags">
-                  
-                  <a href="/en/blog/tag/RCE/" class="blog-header__tag">RCE</a><a href="/en/blog/tag/NAS/" class="blog-header__tag">NAS</a><a href="/en/blog/tag/IoT/" class="blog-header__tag">IoT</a>
-                </div>
-          
-          
-                <p class="blog-header__info">
-                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/angelboy.jpg)"></span> <a href="/en/blog/author/angelboy" class="author-name">Angelboy</a> <time class="date">on 2022-03-28 </time>
-                </p>
-          
-              </section>
-              <article class="article">
-          <p><a href="/blog/2022/03/28/your-NAS-is-not-your-NAS-en/">English Version</a><br />
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p><a href="/blog/2022/03/28/your-NAS-is-not-your-NAS-en/">English Version</a>
 <a href="/blog/2022/03/28/your-NAS-is-not-your-NAS/">中文版本</a></p>
 
 <p>Two years ago, we found a <a href="https://www.zerodayinitiative.com/advisories/ZDI-21-492/">critical vulnerability</a>, CVE-2021-31439, on Synology NAS. This vulnerability can let an unauthorized attacker gain code execution on remote Synology DiskStation NAS server. We used this vulnerability to exploit Synology DS418play NAS in Pwn2Own Tokyo 2020. After that, we found the vulnerability is not only exists on Synology but also on most NAS vendors. Following we will describe the details and how we exploit it.</p>
@@ -189,7 +571,7 @@
 
 <p>The communication of the AFP protocol is shown above. The client first gets the server information to determine available authentication methods, the version used, and so on. Then it opens a new session and to execute AFP commands. Without authentication, we can only do related operations such as login and logout. Once the client is verified, we can do file operations like SMB.</p>
 
-<p>In Netatalk implementation, <code class="highlighter-rouge">dsi_block</code> will be used as the packet structure.</p>
+<p>In Netatalk implementation, <code class="language-plaintext highlighter-rouge">dsi_block</code> will be used as the packet structure.</p>
 
 <p>dsi_block :</p>
 
@@ -228,11 +610,11 @@
 
 <p><img src="/assets/img/blog/20220328/8.png" alt="" /></p>
 
-<p>In Netatalk, most of the information are stored in a structure called DSI for subsequent operations after parsing the packet and configuration files, such as <code class="highlighter-rouge">server_quantum</code> and payload content.</p>
+<p>In Netatalk, most of the information are stored in a structure called DSI for subsequent operations after parsing the packet and configuration files, such as <code class="language-plaintext highlighter-rouge">server_quantum</code> and payload content.</p>
 
 <p><img src="/assets/img/blog/20220328/9.png" alt="" /></p>
 
-<p>The payload of the packet is stored in the <code class="highlighter-rouge">command</code> buffer in the DSI structure. The buffer size is <code class="highlighter-rouge">server_quantum</code>, and the value is specified in the afp configuration file <code class="highlighter-rouge">afp.conf</code>.</p>
+<p>The payload of the packet is stored in the <code class="language-plaintext highlighter-rouge">command</code> buffer in the DSI structure. The buffer size is <code class="language-plaintext highlighter-rouge">server_quantum</code>, and the value is specified in the afp configuration file <code class="language-plaintext highlighter-rouge">afp.conf</code>.</p>
 
 <p><img src="/assets/img/blog/20220328/10.png" alt="" /></p>
 
@@ -244,27 +626,27 @@
 
 <p><img src="/assets/img/blog/20220328/11.png" alt="" /></p>
 
-<p>The vulnerability we found occurs while receiving the payload. It can be triggered without authentication. The vulnerable function is <code class="highlighter-rouge">dsi_stream_receive</code>.</p>
+<p>The vulnerability we found occurs while receiving the payload. It can be triggered without authentication. The vulnerable function is <code class="language-plaintext highlighter-rouge">dsi_stream_receive</code>.</p>
 
 <p><img src="/assets/img/blog/20220328/12.png" alt="" /></p>
 
-<p>It’s the function that parses the information from received packet and puts it into the DSI structure. When it receives the packet data, it first determine how much data to read into the command buffer according to the <code class="highlighter-rouge">dsi_len</code> in the dsi header. At the beginning, the size of <code class="highlighter-rouge">dsi_cmdlen</code> is verified.</p>
+<p>It’s the function that parses the information from received packet and puts it into the DSI structure. When it receives the packet data, it first determine how much data to read into the command buffer according to the <code class="language-plaintext highlighter-rouge">dsi_len</code> in the dsi header. At the beginning, the size of <code class="language-plaintext highlighter-rouge">dsi_cmdlen</code> is verified.</p>
 
 <p><img src="/assets/img/blog/20220328/13.png" alt="" /></p>
 
-<p>However, as shown in the picture above, if <code class="highlighter-rouge">dsi_doff</code> is provided by user, <code class="highlighter-rouge">dsi_doff</code> is used as the length. There is no verification here.</p>
+<p>However, as shown in the picture above, if <code class="language-plaintext highlighter-rouge">dsi_doff</code> is provided by user, <code class="language-plaintext highlighter-rouge">dsi_doff</code> is used as the length. There is no verification here.</p>
 
 <p><img src="/assets/img/blog/20220328/14.png" alt="" /></p>
 
-<p>The default length of <code class="highlighter-rouge">dsi-&gt;commands</code> is 0x100000(<code class="highlighter-rouge">dsi-&gt;server_quantum</code>), which is a fixed length allocated in <code class="highlighter-rouge">dsi_init</code>, so as long as <code class="highlighter-rouge">dsi-&gt;header.dsi_doff</code> is larger than <code class="highlighter-rouge">dsi-&gt;server_quantum</code>, heap overflow occurs.</p>
+<p>The default length of <code class="language-plaintext highlighter-rouge">dsi-&gt;commands</code> is 0x100000(<code class="language-plaintext highlighter-rouge">dsi-&gt;server_quantum</code>), which is a fixed length allocated in <code class="language-plaintext highlighter-rouge">dsi_init</code>, so as long as <code class="language-plaintext highlighter-rouge">dsi-&gt;header.dsi_doff</code> is larger than <code class="language-plaintext highlighter-rouge">dsi-&gt;server_quantum</code>, heap overflow occurs.</p>
 
 <h3 id="exploitation">Exploitation</h3>
 
-<p>In DSM 6.2.3, <code class="highlighter-rouge">dsi-&gt;commands</code> buffer is allocated by malloc at libc 2.20. When it allocates more than 0x20000, malloc calls mmap to allocate memory. The memory layout of afpd after <code class="highlighter-rouge">dsi_init</code> is as below.</p>
+<p>In DSM 6.2.3, <code class="language-plaintext highlighter-rouge">dsi-&gt;commands</code> buffer is allocated by malloc at libc 2.20. When it allocates more than 0x20000, malloc calls mmap to allocate memory. The memory layout of afpd after <code class="language-plaintext highlighter-rouge">dsi_init</code> is as below.</p>
 
 <p><img src="/assets/img/blog/20220328/15.png" alt="" /></p>
 
-<p>At the below of <code class="highlighter-rouge">dsi-&gt;commands</code> is Thread Local Storage, which is used to store thread local variables of the main thread.</p>
+<p>At the below of <code class="language-plaintext highlighter-rouge">dsi-&gt;commands</code> is Thread Local Storage, which is used to store thread local variables of the main thread.</p>
 
 <p><img src="/assets/img/blog/20220328/16.png" alt="" /></p>
 
@@ -277,26 +659,26 @@
 <p>In fact, there are many variables that can control RIP on TLS. Here are a few more common ones.</p>
 
 <ul>
-  <li><code class="highlighter-rouge">main_arena</code>
+  <li><code class="language-plaintext highlighter-rouge">main_arena</code>
     <ul>
       <li>We can forge main_arena to achieve arbitrary writing, but it’s more complicated</li>
     </ul>
   </li>
-  <li><code class="highlighter-rouge">pointer_guard</code>
+  <li><code class="language-plaintext highlighter-rouge">pointer_guard</code>
     <ul>
       <li>We can modify the pointer guard to change the function pointer, but it requires a leak.</li>
     </ul>
   </li>
-  <li><code class="highlighter-rouge">tls_dtor_list</code>
+  <li><code class="language-plaintext highlighter-rouge">tls_dtor_list</code>
     <ul>
       <li>It’s more suitable for our current situation</li>
     </ul>
   </li>
 </ul>
 
-<h4 id="overwrite-tls_dtor_list">Overwrite <code class="highlighter-rouge">tls_dtor_list</code></h4>
+<h4 id="overwrite-tls_dtor_list">Overwrite <code class="language-plaintext highlighter-rouge">tls_dtor_list</code></h4>
 
-<p>We can use the <a href="https://googleprojectzero.blogspot.com/2014/08/the-poisoned-nul-byte-2014-edition.html">technique</a> used by project zero in 2014 to overwrite the <code class="highlighter-rouge">tls_dtor_list</code> in the <code class="highlighter-rouge">Thread Local Storage</code>, and then control the RIP in exit().</p>
+<p>We can use the <a href="https://googleprojectzero.blogspot.com/2014/08/the-poisoned-nul-byte-2014-edition.html">technique</a> used by project zero in 2014 to overwrite the <code class="language-plaintext highlighter-rouge">tls_dtor_list</code> in the <code class="language-plaintext highlighter-rouge">Thread Local Storage</code>, and then control the RIP in exit().</p>
 
 <div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">dtor_list</span>
 <span class="p">{</span>
@@ -307,27 +689,27 @@
 <span class="p">}</span>
 </code></pre></div></div>
 
-<p><code class="highlighter-rouge">tls_dtor_list</code> is a singly linked list of <code class="highlighter-rouge">dtor_list</code> objects. It is mainly a destructor for thread local storage. In the end of the thread execution, it calls destructor function pointer in the linked list. We can overwrite <code class="highlighter-rouge">tls_dtor_list</code> with <code class="highlighter-rouge">dtor_list</code> we forged.</p>
+<p><code class="language-plaintext highlighter-rouge">tls_dtor_list</code> is a singly linked list of <code class="language-plaintext highlighter-rouge">dtor_list</code> objects. It is mainly a destructor for thread local storage. In the end of the thread execution, it calls destructor function pointer in the linked list. We can overwrite <code class="language-plaintext highlighter-rouge">tls_dtor_list</code> with <code class="language-plaintext highlighter-rouge">dtor_list</code> we forged.</p>
 
 <p><img src="/assets/img/blog/20220328/17.png" alt="" /></p>
 
-<p>When the process exits, it calls <code class="highlighter-rouge">call_tls_dtors()</code>. This function takes the object in <code class="highlighter-rouge">tls_dtor_list</code> and calls each destructor. At this time, if we can control <code class="highlighter-rouge">tls_dtor_list</code>, it calls the function we specified.</p>
+<p>When the process exits, it calls <code class="language-plaintext highlighter-rouge">call_tls_dtors()</code>. This function takes the object in <code class="language-plaintext highlighter-rouge">tls_dtor_list</code> and calls each destructor. At this time, if we can control <code class="language-plaintext highlighter-rouge">tls_dtor_list</code>, it calls the function we specified.</p>
 
 <p><img src="/assets/img/blog/20220328/18.png" alt="" /></p>
 
-<p>However, in the new version of glibc, the function of <code class="highlighter-rouge">dtor_list</code> is protected by pointer guard. So we need to know the value of pointer guard before we overwrite it. The pointer guard is initialized at the beginning of the program and is an unpredictable random number. If we don’t have information leakage, it’s hard to know the value.</p>
+<p>However, in the new version of glibc, the function of <code class="language-plaintext highlighter-rouge">dtor_list</code> is protected by pointer guard. So we need to know the value of pointer guard before we overwrite it. The pointer guard is initialized at the beginning of the program and is an unpredictable random number. If we don’t have information leakage, it’s hard to know the value.</p>
 
-<p>But in fact pointer guard would also be placed in <code class="highlighter-rouge">Thread Local Storage</code>.</p>
+<p>But in fact pointer guard would also be placed in <code class="language-plaintext highlighter-rouge">Thread Local Storage</code>.</p>
 
 <p><img src="/assets/img/blog/20220328/19.png" alt="" /></p>
 
-<p>In the <code class="highlighter-rouge">Thread Local Storage</code>, there is a <code class="highlighter-rouge">tcbhead_t</code> structure below the <code class="highlighter-rouge">tls_dtor_list</code>, which is the thread descriptor of main thread.</p>
+<p>In the <code class="language-plaintext highlighter-rouge">Thread Local Storage</code>, there is a <code class="language-plaintext highlighter-rouge">tcbhead_t</code> structure below the <code class="language-plaintext highlighter-rouge">tls_dtor_list</code>, which is the thread descriptor of main thread.</p>
 
-<p><code class="highlighter-rouge">tcbhead_t</code> structure is used to store various information about the thread such as the <code class="highlighter-rouge">stack_guard</code> and <code class="highlighter-rouge">pointer_guard</code> used by the thread. In x86-64 Linux system, the fs register always points to the <code class="highlighter-rouge">tcbhead_t</code> of the current thread, so the program access thread local storage by using fs register. The memory layout of <code class="highlighter-rouge">Thread local storage</code> is shown as below.</p>
+<p><code class="language-plaintext highlighter-rouge">tcbhead_t</code> structure is used to store various information about the thread such as the <code class="language-plaintext highlighter-rouge">stack_guard</code> and <code class="language-plaintext highlighter-rouge">pointer_guard</code> used by the thread. In x86-64 Linux system, the fs register always points to the <code class="language-plaintext highlighter-rouge">tcbhead_t</code> of the current thread, so the program access thread local storage by using fs register. The memory layout of <code class="language-plaintext highlighter-rouge">Thread local storage</code> is shown as below.</p>
 
 <p><img src="/assets/img/blog/20220328/20.png" alt="" /></p>
 
-<p>We can use the vulnerability to overwrite not only <code class="highlighter-rouge">tls_dtor_list</code> but also pointer guard in the <code class="highlighter-rouge">tcbhead_t</code>. In this way, we can overwrite it with <code class="highlighter-rouge">NULL</code> to solve the pointer guard problem mentioned earlier.</p>
+<p>We can use the vulnerability to overwrite not only <code class="language-plaintext highlighter-rouge">tls_dtor_list</code> but also pointer guard in the <code class="language-plaintext highlighter-rouge">tcbhead_t</code>. In this way, we can overwrite it with <code class="language-plaintext highlighter-rouge">NULL</code> to solve the pointer guard problem mentioned earlier.</p>
 
 <p><img src="/assets/img/blog/20220328/21.png" alt="" /></p>
 
@@ -335,7 +717,7 @@
 
 <p><img src="/assets/img/blog/20220328/22.png" alt="" /></p>
 
-<p>Before netatalk receives data, it first puts the original stack guard on the stack, and then invoke recv() to receive data to <code class="highlighter-rouge">dsi-&gt;command</code>. At this time, the buffer overflow occurs and cause stack guard and pointer guard to be overwritten. After this, netatalk returns to normal execution flow. It takes the stack guard from the stack and compare it with the stack guard in <code class="highlighter-rouge">Thread Local Storage</code>. However, it has been overwritten by us, the comparison here fails, causing abort to terminate the program.</p>
+<p>Before netatalk receives data, it first puts the original stack guard on the stack, and then invoke recv() to receive data to <code class="language-plaintext highlighter-rouge">dsi-&gt;command</code>. At this time, the buffer overflow occurs and cause stack guard and pointer guard to be overwritten. After this, netatalk returns to normal execution flow. It takes the stack guard from the stack and compare it with the stack guard in <code class="language-plaintext highlighter-rouge">Thread Local Storage</code>. However, it has been overwritten by us, the comparison here fails, causing abort to terminate the program.</p>
 
 <h4 id="bypass-stack-guard">Bypass stack guard</h4>
 
@@ -345,32 +727,32 @@
 
 <h4 id="brute-force-stack-guard">Brute-force stack guard</h4>
 
-<p>We can use the overflow vulnerability to overwrite only the last byte of stack guard on <code class="highlighter-rouge">Thread Local Storage</code> with different value in each different connection. Once the value is different from the original value, the service disconnects. Therefore, we can use the behavior to validate whether the value we overwritten is the same as stack guard. After the lowest byte is determined, we can continue to add another byte, and so on.</p>
+<p>We can use the overflow vulnerability to overwrite only the last byte of stack guard on <code class="language-plaintext highlighter-rouge">Thread Local Storage</code> with different value in each different connection. Once the value is different from the original value, the service disconnects. Therefore, we can use the behavior to validate whether the value we overwritten is the same as stack guard. After the lowest byte is determined, we can continue to add another byte, and so on.</p>
 
 <p><img src="/assets/img/blog/20220328/24.png" alt="" /></p>
 
-<p>In the above figure, we assume that the stack guard is <code class="highlighter-rouge">0xdeadbeeffacebc00</code>. Due to the stack guard feature in Linux, the lowest byte must be 0. Let’s start with the second byte. We can overwrite with 0x00 to see if the connection is disconnected first. If it is disconnected, it means the value we overwrote is wrong. Next, we will test other values to see if the connection is disconnected. And so on, until there is no disconnection, we can find the correct value of section bytes. Then we can try to overwrite third byte, fourth byte and so on. After the stack guard is overwritten with 8 bytes and the connection is not disconnected, we can successfully bypass the stack guard.</p>
+<p>In the above figure, we assume that the stack guard is <code class="language-plaintext highlighter-rouge">0xdeadbeeffacebc00</code>. Due to the stack guard feature in Linux, the lowest byte must be 0. Let’s start with the second byte. We can overwrite with 0x00 to see if the connection is disconnected first. If it is disconnected, it means the value we overwrote is wrong. Next, we will test other values to see if the connection is disconnected. And so on, until there is no disconnection, we can find the correct value of section bytes. Then we can try to overwrite third byte, fourth byte and so on. After the stack guard is overwritten with 8 bytes and the connection is not disconnected, we can successfully bypass the stack guard.</p>
 
-<p>After we leak the stack guard, we can actually control RIP successfully. <br />
-Next, we need to forge the structure <code class="highlighter-rouge">_dtor_list</code> to control RIP.</p>
+<p>After we leak the stack guard, we can actually control RIP successfully. 
+Next, we need to forge the structure <code class="language-plaintext highlighter-rouge">_dtor_list</code> to control RIP.</p>
 
-<h4 id="construct-the-_dtor_list-to-control-rip">Construct the <code class="highlighter-rouge">_dtor_list</code> to control RIP</h4>
+<h4 id="construct-the-_dtor_list-to-control-rip">Construct the <code class="language-plaintext highlighter-rouge">_dtor_list</code> to control RIP</h4>
 
-<p>In DSM 6.2.3-25426, Because it does not enable PIE, we can forge <code class="highlighter-rouge">_dtor_list</code> on the data section of afpd.</p>
+<p>In DSM 6.2.3-25426, Because it does not enable PIE, we can forge <code class="language-plaintext highlighter-rouge">_dtor_list</code> on the data section of afpd.</p>
 
 <p><img src="/assets/img/blog/20220328/25.png" alt="" /></p>
 
-<p>Luckily, when netatalk use <code class="highlighter-rouge">dhx2 login</code> authentication, it will copy the username we provided to the data section of afpd. We can use the feature to construct <code class="highlighter-rouge">_dtor_list</code> on the known address.</p>
+<p>Luckily, when netatalk use <code class="language-plaintext highlighter-rouge">dhx2 login</code> authentication, it will copy the username we provided to the data section of afpd. We can use the feature to construct <code class="language-plaintext highlighter-rouge">_dtor_list</code> on the known address.</p>
 
 <p><img src="/assets/img/blog/20220328/26.png" alt="" /></p>
 
-<p>After everything is constructed, we can trigger the normal function <code class="highlighter-rouge">DSICloseSession</code> to control the RIP.</p>
+<p>After everything is constructed, we can trigger the normal function <code class="language-plaintext highlighter-rouge">DSICloseSession</code> to control the RIP.</p>
 
-<h4 id="tls_dtor_list-in-synology"><code class="highlighter-rouge">tls_dtor_list</code> in Synology</h4>
+<h4 id="tls_dtor_list-in-synology"><code class="language-plaintext highlighter-rouge">tls_dtor_list</code> in Synology</h4>
 
 <p><img src="/assets/img/blog/20220328/27.png" alt="" /></p>
 
-<p>But in the glibc-2.20 in DSM 6.2.3-25426, it will invoke  <code class="highlighter-rouge">__tls_get_addr</code> to get the variable <code class="highlighter-rouge">tls_dtor_list</code>. The function will take the variable from <code class="highlighter-rouge">tcb-&gt;div</code>. We also need to construct it on a known address.</p>
+<p>But in the glibc-2.20 in DSM 6.2.3-25426, it will invoke  <code class="language-plaintext highlighter-rouge">__tls_get_addr</code> to get the variable <code class="language-plaintext highlighter-rouge">tls_dtor_list</code>. The function will take the variable from <code class="language-plaintext highlighter-rouge">tcb-&gt;div</code>. We also need to construct it on a known address.</p>
 
 <p>The final structure we forged is as follows</p>
 
@@ -381,7 +763,7 @@ Next, we need to forge the structure <code class="highlighter-rouge">_dtor_list<
 <center><div class="videowrapper"><iframe width="560" height="420" src="https://www.youtube.com/embed/ocZkWuSCr4Y" frameborder="0"> </iframe></div></center>
 
 <h3 id="remark">Remark</h3>
-<p>In general Netatalk, PIE protection is enabled by default. It is difficult to construct <code class="highlighter-rouge">_dtor_list</code> in a known address. In fact, you can also leak libc address using a similar method. It is still exploitable.</p>
+<p>In general Netatalk, PIE protection is enabled by default. It is difficult to construct <code class="language-plaintext highlighter-rouge">_dtor_list</code> in a known address. In fact, you can also leak libc address using a similar method. It is still exploitable.</p>
 
 <p>This vulnerability not only affects Synology, but also affects some devices use Netatalk.</p>
 
@@ -406,7 +788,7 @@ Next, we need to forge the structure <code class="highlighter-rouge">_dtor_list<
   <li>Built-in system function</li>
 </ul>
 
-<p><img src="/assets/img/blog/20220328/29.png" alt="" /><br />
+<p><img src="/assets/img/blog/20220328/29.png" alt="" />
 <img src="/assets/img/blog/20220328/30.png" alt="" /></p>
 
 <h4 id="asustor">Asustor</h4>
@@ -489,113 +871,119 @@ Next, we need to forge the structure <code class="highlighter-rouge">_dtor_list<
 <p>Please look forward to Part II.</p>
 
 
-              </article>
-              <p class="sns-widgets">
-                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
-              </p>
-          
-              <div class="heading--side-lined">
-                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/angelboy.jpg)"></span> <a href="/en/blog/author/angelboy" class="blog-author-name">Angelboy</a> 
-              </div>
-              <p class="blog-author-info">
-                I am 👼 :)
-              </p>
-          
-              <div class="heading--side-lined">
-                Comments
-              </div>
-              <div class="blog-comments">
-                
-
-
-  <div id="disqus_thread"></div>
-<script type="text/javascript">
-    var disqus_developer = 1;
-    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
-    
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-
-
-
-
-              </div>
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/en/blog/author/angelboy">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/angelboy.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/en/blog/author/angelboy">
+                            <h3>Angelboy</h3>
+                        </a>
+                        <span>Senior Security Researcher</span>
+                        <p>
+                            I am 👼 :)
+                        </p>
+                    </div>
+                </div>
             </div>
-          </div>
+        </section>
+        
 
-
-
-
-
-
-</main>
-      <div class="container--wrapper">
-
-
-        <div class="contact-section container">
-          <h2 class="contact-section__title">
-            Put your defenses to the test with authentic attacks
-          </h2>
-          <a href="/en/contact/" class="home-contact__button button--dense">Contact us now</a>
-        </div>
-
-        <footer class="main-footer">
-          <div class="main-footer__about">
-            DEVCORE offers professional<br class="mobile-only" /><a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services.<br />For <a href="/en/blog/" class="link">latest updates</a>, follow us on <a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a> or <a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>.
-          </div>
-          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
-                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
-                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
-          </div>
-          <address class="main-footer__address">
-            <ul class="list--unstyled">
-              <li>
-                13F., No. 32, Sec. 3, Bade Rd., Songshan Dist., Taipei City 105608, Taiwan
-              </li>
-              <li>
-                contact@devco.re
-              </li>
-              <li>
-                +886-2-2577-0925
-              </li>
-            </ul>
-          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2023 DEVCORE</small>
-        </footer>
-      </div>
     </div>
-    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
 
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
 
-  <script type="text/javascript">
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-30830800-1']);
-  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
 
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
-</script>
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
 
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
 
+    <div class="copyright">
+        <div class="info">
+            <span>© 2023 DEVCORE <b class="line-block">All right reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
 
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K5B8NW"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
-
-  </body>
+</div>
+    </footer>
+</body>
 </html>
+
+
+
+
+
+
 
 
 

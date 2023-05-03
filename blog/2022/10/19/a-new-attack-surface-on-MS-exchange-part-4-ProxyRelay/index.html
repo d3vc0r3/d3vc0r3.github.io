@@ -1,109 +1,491 @@
 
+
 <!DOCTYPE html>
-<html lang="zh-TW">
-  <head>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta charset="utf-8" />
-    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
-    <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>A New Attack Surface on MS Exchange Part 4 - ProxyRelay! | DEVCORE</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
-    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
-    <meta name="description" property="og:description" content="With the prior knowledge in mind, I come up with a simple idea. It’s common to see multiple Exchange Servers in corporate networks for high availability and site resilience. Can we relay the NTLM authentication among Exchange Servers?" />
-    <meta name="keywords" content="CVE-2021-33768, CVE-2022-21979, CVE-2021-26414" />
-    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
-    <meta property="og:title" content="A New Attack Surface on MS Exchange Part 4 - ProxyRelay! | DEVCORE 戴夫寇爾" />
-    <meta property="og:url" content="https://devco.re/blog/2022/10/19/a-new-attack-surface-on-MS-exchange-part-4-ProxyRelay/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://devco.re/assets/img/blog/20221019/cover.jpeg" />
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:site" content="d3vc0r3">
-    <meta name="twitter:title" content="A New Attack Surface on MS Exchange Part 4 - ProxyRelay! | DEVCORE 戴夫寇爾">
-    <meta name="twitter:description" content="With the prior knowledge in mind, I come up with a simple idea. It’s common to see multiple Exchange Servers in corporate networks for high availability and site resilience. Can we relay the NTLM authentication among Exchange Servers?">
-    <meta name="twitter:creator" content="d3vc0r3">
-    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20221019/cover.jpeg">
-    <meta name="twitter:domain" content="devco.re">
-    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
-    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
-    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
-    <meta name='yandex-verification' content='4561963cf1d18fe3' />
-    <meta property="fb:admins" content="120968921404653" />
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>A New Attack Surface on MS Exchange Part 4 - ProxyRelay! | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
 
-    <link rel="canonical" href="https://devco.re/blog/2022/10/19/a-new-attack-surface-on-MS-exchange-part-4-ProxyRelay/"/>
-    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
 
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-K5B8NW');</script>
-    <!-- End Google Tag Manager -->
-  </head>
-  <body>
-    <div class="page">
-      <div class="container--wrapper">
-        <div class="topbar">
-          <div class="topbar__brand">
-            <a href="/en/">
-                <div class="logo">
-                  DEVCORE
-                </div></a>
-            <p class="slogan">
-              We offer professional <a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services
-            </p>
-          </div>
-          <div class="drawer" id="drawer">
-            <div class="drawer__container">
-              <nav class="main-menu">
-                <div class="hidden">
-                  Menu
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Perform comprehensive attack simulation from unlimited aspects to achieve the designated drill scenario without impacting enterprise operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltrate designated enterprise systems with hacker mindset and techniques to uncover potential vulnerabilities, assessing the risk of breach or damage to enterprise assets.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Assist enterprises in resource distribution and long-term defensive strategy development from the attacker's perspective based on red team assessment.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Assist enterprises in defending and preventing incidents efficiently from the attacker's perspective, including response procedures and analysis of attack targets, techniques, and vulnerabilities.
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
                 </div>
-                <a href="/en/services/penetration-test" class="main-menu__link mobile-only">Penetration Testing</a>
-                <a href="/en/services/red-team" class="main-menu__link mobile-only">Red Team Assessment</a>
-                <a href="/en/services/security-consulting" class="main-menu__link mobile-only">Consulting</a>
-                <a href="/en/services/security-training" class="main-menu__link mobile-only">Training</a>
-                <a href="/en/about/" class="main-menu__link">Hackers</a><a href="/en/blog/" class="main-menu__link">News</a><a href="/en/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">Search</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
-              </nav>
-              <a href="/en/contact/" class="drawer__contact button--dense">Contact</a>
-              <nav class="lang-menu">
-                <div class="lang-menu__label">
-                  Lang:
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research leading cybersecurity techniques and trends, perform comprehensive security assessments of enterprise products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research into the risk of enterprise systems, identify potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Publish vulnerability research and share security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Uncover and report critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
-                <a href="/" class="lang-menu__link">中文</a>
-                <a href="/en/" class="lang-menu__link">English</a>
-              </nav>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                DEVCORE was founded by a world-class white hat hacker team, providing cybersecurity services and focusing on Red Team Assessment and Penetration Testing services.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    A team of experts with a hacker mindset, exploring new exploitation techniques, and upholding strict morality, self-discipline, and caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    The history, research achievements, and award information of DEVCORE.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    Provide diverse internship channels and scholarship programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Guidelines for the use of the DEVCORE trademark.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
-            <div class="bars">
-              <div class="bar"></div>
-              <div class="bar"></div>
-              <div class="bar"></div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </button>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
         </div>
-      </div><main role="main">
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Tech Editorials">Tech Editorials</a>
+                    <span class="tag">
 
+                      <a href="/en/blog/tag/Advisory/">#Advisory</a> <a href="/en/blog/tag/CVE/">#CVE</a> <a href="/en/blog/tag/RCE/">#RCE</a> <a href="/en/blog/tag/Exchange/">#Exchange</a> 
+                    </span>
+                    <h1>
+                        A New Attack Surface on MS Exchange Part 4 - ProxyRelay!
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/en/blog/author/orange">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/orange.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/en/blog/author/orange">Orange Tsai</a></span>
+                        <span class="date">2022-10-19</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20221019/cover.jpeg"/>
+                    </div>
+                    
 
-          <div class="container--wrapper">
-            <div class="container">
-              <section class="blog-header">
-                <small class="blog-header__category"><a href="/en/blog/category/Tech Editorials/" style="text-transform: uppercase;">Tech Editorials</a></small>
-                <img src="https://devco.re/assets/img/blog/20221019/cover.jpeg" class="blog-header__image" alt="A New Attack Surface on MS Exchange Part 4 - ProxyRelay!" />
-                <h1 class="blog-header__title">
-                  A New Attack Surface on MS Exchange Part 4 - ProxyRelay!
-                </h1>
-                <div class="blog-header__tags">
-                  
-                  <a href="/en/blog/tag/Advisory/" class="blog-header__tag">Advisory</a><a href="/en/blog/tag/CVE/" class="blog-header__tag">CVE</a><a href="/en/blog/tag/RCE/" class="blog-header__tag">RCE</a><a href="/en/blog/tag/Exchange/" class="blog-header__tag">Exchange</a>
-                </div>
-          
-          
-                <p class="blog-header__info">
-                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/en/blog/author/orange" class="author-name">Orange Tsai</a> <time class="date">on 2022-10-19 </time>
-                </p>
-          
-              </section>
-              <article class="article">
-          <p>Hi, this is a long-time-pending article. We could have published this article earlier (the original bug was reported to MSRC in June 2021 with a 90-days Public Disclosure Policy). However, during communications with MSRC, they explained that since this is an architectural design issue, lots of code changes and testings are expected and required, so they hope to resolve this problem with a one-time CU (Cumulative Update) instead of the regular Patch Tuesday. We understand their situation and agree to extend the deadline.</p>
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p>Hi, this is a long-time-pending article. We could have published this article earlier (the original bug was reported to MSRC in June 2021 with a 90-days Public Disclosure Policy). However, during communications with MSRC, they explained that since this is an architectural design issue, lots of code changes and testings are expected and required, so they hope to resolve this problem with a one-time CU (Cumulative Update) instead of the regular Patch Tuesday. We understand their situation and agree to extend the deadline.</p>
 
 <p>Microsoft eventually released <a href="https://support.microsoft.com/en-au/topic/cumulative-update-12-for-exchange-server-2019-kb5011156-6a4e598a-876c-4ff1-9cfa-f7b87246f1d8">Exchange Server 2019 CU 12</a> and <a href="https://support.microsoft.com/en-us/topic/cumulative-update-23-for-exchange-server-2016-kb5011155-98183ada-e4cd-465f-b201-69d40fb74678">Exchange Server 2016 CU 23</a> on April 20, 2022. However, <strong>this patch did not enable by default</strong>. Microsoft didn’t release the patch-activating methods until August 09, 2022. So, we originally had the opportunity to demonstrate our attack at <a href="https://www.zerodayinitiative.com/blog/2022/1/12/pwn2own-vancouver-2022-luanch">Pwn2Own Vancouver 2021</a>. However, we dropped the idea quickly because our intention is not to earn bounties. We are here to <a href="https://devco.re/en/about/">secure the world</a>! You can check the <a href="#Timeline">Timeline</a> to know the detailed disclosure process.</p>
 
@@ -125,7 +507,7 @@
 
 <p>Just in case you don’t know, I am a big fan of <a href="https://www.thehacker.recipes/ad/movement/mitm-and-coerced-authentications/ms-rprn">Printer Bug</a> (kudos to <a href="https://twitter.com/tifkin_">Lee Christensen</a>, <a href="https://twitter.com/harmj0y">Will Schroeder</a>, and <a href="https://twitter.com/enigma0x3">Matt Nelson</a> for their amazing talk at <a href="https://www.slideshare.net/harmj0y/derbycon-the-unintended-risks-of-trusting-active-directory">DerbyCon 2018</a>). PrinterBug allows an attacker to coerce any domain-joined machine to initiate an SMB connection with its own Machine Account to the attacker via <a href="https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-rprn/d42db7d5-f141-4466-8f47-0a4be14e2fc1">MS-RPRN</a> protocol. Because this behavior works as designed, this hacker-friendly feature has been extensively used for NTLM relaying for years.</p>
 
-<p>In the architecture of Exchange CAS, Backend authorizes an HTTP request to have the ability to impersonate any user by checking whether the login identity has the Extended Right of <code class="highlighter-rouge">ms-Exch-EPI-Token-Serialization</code> or not. Also, during the Exchange Server installation, the mailbox server will be added to the <code class="highlighter-rouge">Exchange Servers group</code> automatically, and all objects in this Active Directory group have that Token-Serialization right by default.</p>
+<p>In the architecture of Exchange CAS, Backend authorizes an HTTP request to have the ability to impersonate any user by checking whether the login identity has the Extended Right of <code class="language-plaintext highlighter-rouge">ms-Exch-EPI-Token-Serialization</code> or not. Also, during the Exchange Server installation, the mailbox server will be added to the <code class="language-plaintext highlighter-rouge">Exchange Servers group</code> automatically, and all objects in this Active Directory group have that Token-Serialization right by default.</p>
 
 <p>With the prior knowledge in mind, I come up with a simple idea. It’s common to see multiple Exchange Servers in corporate networks for high availability and site resilience. <strong>Can we relay the NTLM authentication among Exchange Servers?</strong></p>
 
@@ -148,7 +530,7 @@
   <li><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2022-RESERVED">CVE-2022-RESERVED</a> - Relay to other services of Exchange</li>
 </ul>
 
-<p>The following attacks have the similar template, the host <code class="highlighter-rouge">EX01</code> stands for the first Exchange Server, <code class="highlighter-rouge">EX02</code> for the second Exchange Server, and <code class="highlighter-rouge">ATTACKER</code> for the attacker-controlled server.</p>
+<p>The following attacks have the similar template, the host <code class="language-plaintext highlighter-rouge">EX01</code> stands for the first Exchange Server, <code class="language-plaintext highlighter-rouge">EX02</code> for the second Exchange Server, and <code class="language-plaintext highlighter-rouge">ATTACKER</code> for the attacker-controlled server.</p>
 
 <p>In all attacks, the attacker coerces the first Exchange Server to initiate an NTLM authentication to him, and relay it to the second Exchange Server. We use <a href="https://github.com/dirkjanm/krbrelayx/blob/master/printerbug.py">printerbug.py</a> to coerce a server to initiate an SMB connection and use <a href="https://github.com/SecureAuthCorp/impacket/blob/master/examples/ntlmrelayx.py">ntlmrelayx.py</a> to catch the NTLM and relay the authentication to another Exchange Server.</p>
 
@@ -156,12 +538,12 @@
 
 <h2 id="round-1---relay-to-exchange-frontend">Round 1 - Relay to Exchange FrontEnd</h2>
 
-<p>For the first context, we try to relay the authentication to another Frontend of Exchange Server. Since the identity of the relayed authentication is Exchange’s Machine Account which owns the Token-Serialization right, we can impersonate any user! Here we relay the NTLM authentication from <code class="highlighter-rouge">EX01</code> to <code class="highlighter-rouge">EX02</code>’s Frontend EWS service as the showcase. We implement the relay-to-frontend-EWS attack by customizing the <a href="https://github.com/SecureAuthCorp/impacket/blob/master/impacket/examples/ntlmrelayx/attacks/httpattack.py">httpattack.py</a>! Here is a simple overview:</p>
+<p>For the first context, we try to relay the authentication to another Frontend of Exchange Server. Since the identity of the relayed authentication is Exchange’s Machine Account which owns the Token-Serialization right, we can impersonate any user! Here we relay the NTLM authentication from <code class="language-plaintext highlighter-rouge">EX01</code> to <code class="language-plaintext highlighter-rouge">EX02</code>’s Frontend EWS service as the showcase. We implement the relay-to-frontend-EWS attack by customizing the <a href="https://github.com/SecureAuthCorp/impacket/blob/master/impacket/examples/ntlmrelayx/attacks/httpattack.py">httpattack.py</a>! Here is a simple overview:</p>
 
 <ol>
-  <li>Run the <code class="highlighter-rouge">ntlmrelayx.py</code> on the <code class="highlighter-rouge">ATTACKER</code> server to wait for NTLM authentications.</li>
-  <li>Use the <code class="highlighter-rouge">printerbug.py</code> to coerce <code class="highlighter-rouge">EX01</code> to initiate an SMB connection to <code class="highlighter-rouge">ATTACKER</code>.</li>
-  <li>Receive the SMB connection on the <code class="highlighter-rouge">ATTACKER</code> and relay the NTLM blobs to <code class="highlighter-rouge">EX02</code>.</li>
+  <li>Run the <code class="language-plaintext highlighter-rouge">ntlmrelayx.py</code> on the <code class="language-plaintext highlighter-rouge">ATTACKER</code> server to wait for NTLM authentications.</li>
+  <li>Use the <code class="language-plaintext highlighter-rouge">printerbug.py</code> to coerce <code class="language-plaintext highlighter-rouge">EX01</code> to initiate an SMB connection to <code class="language-plaintext highlighter-rouge">ATTACKER</code>.</li>
+  <li>Receive the SMB connection on the <code class="language-plaintext highlighter-rouge">ATTACKER</code> and relay the NTLM blobs to <code class="language-plaintext highlighter-rouge">EX02</code>.</li>
   <li>Complete the NTLM handshakes to get full access to the EWS endpoint.</li>
 </ol>
 
@@ -178,7 +560,7 @@
 
 <h3 id="patching-frontend">Patching FrontEnd</h3>
 
-<p>Microsoft assigned <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-33768">CVE-2021-33768</a> and released a patch to fix that Frontend is relay-able in July 2021. Since logging in as Machine Account in Frontend isn’t a regular operation, it’s easy to mitigate the attack by adding a check <code class="highlighter-rouge">IsSystemOrMachineAccount()</code> on the Frontend Proxy-Handler to ensure all Frontend logons are not Machine Account.</p>
+<p>Microsoft assigned <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-33768">CVE-2021-33768</a> and released a patch to fix that Frontend is relay-able in July 2021. Since logging in as Machine Account in Frontend isn’t a regular operation, it’s easy to mitigate the attack by adding a check <code class="language-plaintext highlighter-rouge">IsSystemOrMachineAccount()</code> on the Frontend Proxy-Handler to ensure all Frontend logons are not Machine Account.</p>
 
 <p><br /></p>
 
@@ -186,24 +568,24 @@
 
 <p>Relaying to Frontend can be easily mitigated by a simple check. How about relaying to Backend? Since Backend verifies the Frontend requests by checking whether it’s a Machine Account or not, mitigating Backend would be more challenging because it’s a regular operation and Backend needs the Machine Account that hash the extended right of ms-Exch-EPI-Token-Serialization to impersonate to the desired user. Here we provide 3 showcases against attacking Backend.</p>
 
-<h3 id="2-1-attacking-backend-ews">2-1 Attacking BackEnd <code class="highlighter-rouge">/EWS</code></h3>
+<h3 id="2-1-attacking-backend-ews">2-1 Attacking BackEnd <code class="language-plaintext highlighter-rouge">/EWS</code></h3>
 
 <p>Based on the relay-to-frontend EWS attack we introduced, the earlier attack can be re-applied to Backend seamlessly. The only change is to modify the target port from 443 to 444.</p>
 
-<h3 id="2-2-attacking-backend-rpc">2-2 Attacking BackEnd <code class="highlighter-rouge">/RPC</code></h3>
+<h3 id="2-2-attacking-backend-rpc">2-2 Attacking BackEnd <code class="language-plaintext highlighter-rouge">/RPC</code></h3>
 
-<p>The other showcase is attacking <a href="https://learn.microsoft.com/en-us/exchange/outlook-anywhere-exchange-2013-help">Outlook Anywhere</a>. Exchange defines several internal RPC services that can directly operate the mailbox. Those RPC services have a public interface and can be access through <code class="highlighter-rouge">/Rpc/*</code>, and users can access their own mailbox via RPC-over-HTTP protocol, which is described in Microsoft’s <a href="https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-rpch/c0f4c9c5-1a61-4d10-b8e2-005378d1d212">MS-RPCH</a> specification. For those who want to understand the underlying mechanism, it’s recommended to read the awesome research <a href="https://swarm.ptsecurity.com/attacking-ms-exchange-web-interfaces/">Attacking MS Exchange Web Interfaces</a> by <a href="https://twitter.com/_mohemiv">Arseniy Sharoglazov</a> for details.</p>
+<p>The other showcase is attacking <a href="https://learn.microsoft.com/en-us/exchange/outlook-anywhere-exchange-2013-help">Outlook Anywhere</a>. Exchange defines several internal RPC services that can directly operate the mailbox. Those RPC services have a public interface and can be access through <code class="language-plaintext highlighter-rouge">/Rpc/*</code>, and users can access their own mailbox via RPC-over-HTTP protocol, which is described in Microsoft’s <a href="https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-rpch/c0f4c9c5-1a61-4d10-b8e2-005378d1d212">MS-RPCH</a> specification. For those who want to understand the underlying mechanism, it’s recommended to read the awesome research <a href="https://swarm.ptsecurity.com/attacking-ms-exchange-web-interfaces/">Attacking MS Exchange Web Interfaces</a> by <a href="https://twitter.com/_mohemiv">Arseniy Sharoglazov</a> for details.</p>
 
-<p>Back to our attack, the core logic is as same as attacking EWS. Because the <code class="highlighter-rouge">/Rpc/*</code> is also located at HTTP/HTTPS, it’s also relay-able. Once we bypass the authentication and access the route <code class="highlighter-rouge">/Rpc/RpcProxy.dll</code>, we can impersonate as any user and operate his mailbox through the RPC-over-HTTP protocol. To implement the attack, we have ported lots of the <a href="https://github.com/sensepost/ruler">Ruler Project</a> to <a href="https://github.com/SecureAuthCorp/impacket">Impacket</a>. As the result of this showcase, we can bypass the authentication by PrinterBug and operates any user’s mailbox through Outlook Anywhere. The entire attack can be illustrated as the following steps:</p>
+<p>Back to our attack, the core logic is as same as attacking EWS. Because the <code class="language-plaintext highlighter-rouge">/Rpc/*</code> is also located at HTTP/HTTPS, it’s also relay-able. Once we bypass the authentication and access the route <code class="language-plaintext highlighter-rouge">/Rpc/RpcProxy.dll</code>, we can impersonate as any user and operate his mailbox through the RPC-over-HTTP protocol. To implement the attack, we have ported lots of the <a href="https://github.com/sensepost/ruler">Ruler Project</a> to <a href="https://github.com/SecureAuthCorp/impacket">Impacket</a>. As the result of this showcase, we can bypass the authentication by PrinterBug and operates any user’s mailbox through Outlook Anywhere. The entire attack can be illustrated as the following steps:</p>
 
 <ol>
-  <li>Establish <code class="highlighter-rouge">RCP_IN_DATA</code> and <code class="highlighter-rouge">RCP_OUT_DATA</code>  channels to <code class="highlighter-rouge">EX02</code> for RPC I/O.</li>
-  <li>Trigger PrinterBug on <code class="highlighter-rouge">EX01</code> and relay to <code class="highlighter-rouge">EX02</code> to complete NTLM handshakes.</li>
-  <li>Attach <code class="highlighter-rouge">X-CommonAccessToken</code> headers to indicate we are Exchange Admin on both HTTP headers.</li>
+  <li>Establish <code class="language-plaintext highlighter-rouge">RCP_IN_DATA</code> and <code class="language-plaintext highlighter-rouge">RCP_OUT_DATA</code>  channels to <code class="language-plaintext highlighter-rouge">EX02</code> for RPC I/O.</li>
+  <li>Trigger PrinterBug on <code class="language-plaintext highlighter-rouge">EX01</code> and relay to <code class="language-plaintext highlighter-rouge">EX02</code> to complete NTLM handshakes.</li>
+  <li>Attach <code class="language-plaintext highlighter-rouge">X-CommonAccessToken</code> headers to indicate we are Exchange Admin on both HTTP headers.</li>
   <li>Interact with the Outlook Anywhere by lots of the coding works upon <a href="https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcrpc/137f0ce2-31fd-4952-8a7d-6c0b242e4b6a">MS-OXCRPC</a> and <a href="https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcrops/13af6911-27e5-4aa0-bb75-637b02d4f2ef">MS-OXCROPS</a> over MS-RPCH…</li>
 </ol>
 
-<h3 id="2-3-attacking-backend-powershell">2-3 Attacking BackEnd <code class="highlighter-rouge">/PowerShell</code></h3>
+<h3 id="2-3-attacking-backend-powershell">2-3 Attacking BackEnd <code class="language-plaintext highlighter-rouge">/PowerShell</code></h3>
 
 <p>The last showcase we would like to highlight is relaying to Exchange PowerShell. Since we have bypassed the authentication on Backend IIS, it’s possible to perform a <a href="https://blog.orange.tw/2021/08/proxyshell-a-new-attack-surface-on-ms-exchange-part-3.html">ProxyShell-Like</a> exploit again! Once we can execute arbitrary Exchange Cmdlets, it shouldn’t be hard to find a Post-Auth RCE to chain together because we are Exchange Admin. There are hundreds of Cmdlets for the purpose of Exchange Management, and many past cases (<a href="https://srcincite.io/advisories/src-2020-0019/">CVE-2020-16875</a>, <a href="https://srcincite.io/advisories/src-2020-0025/">CVE-2020-17083</a>, <a href="https://x41-dsec.de/security/advisory/exploit/research/2020/12/21/x41-microsoft-exchange-rce-dlp-bypass/">CVE-2020-17132</a>, <a href="https://www.zerodayinitiative.com/blog/2021/8/17/from-pwn2own-2021-a-new-attack-surface-on-microsoft-exchange-proxyshell">CVE-2021-31207</a> and more) have proven that this is not a difficult task, too.</p>
 
@@ -219,17 +601,17 @@
 
 <p>This part should be all credited to <a href="https://twitter.com/D1iv3">Dlive</a>. The industry knows MS-DCOM is relay-able since <a href="https://twitter.com/sploutchy">Sylvain Heiniger</a>’s awesome <a href="https://blog.compass-security.com/2020/05/relaying-ntlm-authentication-over-rpc/">Relaying NTLM authentication over RPC</a> research for long. However, Dlive creates an RCE-chain based on the group inheritance of Exchange Servers in Active Directory environments. Please shout out to him!</p>
 
-<p>The idea of this attack is that the <code class="highlighter-rouge">Local Administrators</code> group of Exchange Server includes the group member <code class="highlighter-rouge">Exchange Trusted Subsystem</code>, and all Exchange Server are in this group by default. That means the Machine Account <code class="highlighter-rouge">EX01$</code> is also the local administrator of <code class="highlighter-rouge">EX02</code>. With this concept in mind, the impact of relay-to-MS-DCOM can be maximized and perfectly applied to Exchange Server now!</p>
+<p>The idea of this attack is that the <code class="language-plaintext highlighter-rouge">Local Administrators</code> group of Exchange Server includes the group member <code class="language-plaintext highlighter-rouge">Exchange Trusted Subsystem</code>, and all Exchange Server are in this group by default. That means the Machine Account <code class="language-plaintext highlighter-rouge">EX01$</code> is also the local administrator of <code class="language-plaintext highlighter-rouge">EX02</code>. With this concept in mind, the impact of relay-to-MS-DCOM can be maximized and perfectly applied to Exchange Server now!</p>
 
 <p>Dlive has demonstrated this attack in his <a href="https://www.youtube.com/watch?v=7h38rI8KT30">DEFCON 29 talk</a>. Although he didn’t publish the exploit code, the Wireshark screenshot in his <a href="https://media.defcon.org/DEF%20CON%2029/DEF%20CON%2029%20presentations/Tianze%20Ding%20-%20Vulnerability%20Exchange%20-%20One%20Domain%20Account%20For%20More%20Than%20Exchange%20Server%20RCE.pdf?page=45">slides</a><sup>p45</sup> has already hinted everything and is enough to reproduce. The process could be illustrated as the following:</p>
 
 <ol>
-  <li>Coerce <code class="highlighter-rouge">EX01</code> to initiate a connection, and relay the NTLM to the Endpoint Mapper (port 135) of <code class="highlighter-rouge">EX02</code> to get the Interface of <code class="highlighter-rouge">MMC20.Application</code>.</li>
-  <li>Coerce <code class="highlighter-rouge">EX01</code> again, and relay the NTLM to the dynamic port allocated by the EPMapper, and call <code class="highlighter-rouge">ExecuteShellCommand(...)</code> under <code class="highlighter-rouge">iMMC-&gt;Document-&gt;ActiveView</code>.</li>
+  <li>Coerce <code class="language-plaintext highlighter-rouge">EX01</code> to initiate a connection, and relay the NTLM to the Endpoint Mapper (port 135) of <code class="language-plaintext highlighter-rouge">EX02</code> to get the Interface of <code class="language-plaintext highlighter-rouge">MMC20.Application</code>.</li>
+  <li>Coerce <code class="language-plaintext highlighter-rouge">EX01</code> again, and relay the NTLM to the dynamic port allocated by the EPMapper, and call <code class="language-plaintext highlighter-rouge">ExecuteShellCommand(...)</code> under <code class="language-plaintext highlighter-rouge">iMMC-&gt;Document-&gt;ActiveView</code>.</li>
   <li>Run arbitrary commands for fun and profit!</li>
 </ol>
 
-<p>Writing the whole exploit is fun, just like mixing the <code class="highlighter-rouge">dcomexec.py</code> and <code class="highlighter-rouge">ntlmrelayx.py</code> together. It’s recommended to write your own exploit code by hand for those who want to understand the DCOM mechanism more!</p>
+<p>Writing the whole exploit is fun, just like mixing the <code class="language-plaintext highlighter-rouge">dcomexec.py</code> and <code class="language-plaintext highlighter-rouge">ntlmrelayx.py</code> together. It’s recommended to write your own exploit code by hand for those who want to understand the DCOM mechanism more!</p>
 
 <h3 id="patching-dcom">Patching DCOM</h3>
 
@@ -245,7 +627,7 @@
 
 <p><br /></p>
 
-<p><em>P.S. Microsoft hash announce the second phase and enabled the hardening on the server-side by default on June 14, 2022. Exchange Server that installed the latest Windows patch should be safe now</em><br />
+<p><em>P.S. Microsoft hash announce the second phase and enabled the hardening on the server-side by default on June 14, 2022. Exchange Server that installed the latest Windows patch should be safe now</em>
 <br /><br /></p>
 
 <h2 id="round-4---relay-to-other-exchange-services">Round 4 - Relay to Other Exchange Services…</h2>
@@ -294,113 +676,119 @@
   <li><strong>Aug 18, 2022</strong> - Microsoft released the CVE and <a href="https://techcommunity.microsoft.com/t5/exchange-team-blog/released-august-2022-exchange-server-security-updates/ba-p/3593862">the patch activation documentation</a>!</li>
 </ul>
 
-              </article>
-              <p class="sns-widgets">
-                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
-              </p>
-          
-              <div class="heading--side-lined">
-                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/en/blog/author/orange" class="blog-author-name">Orange Tsai</a> 
-              </div>
-              <p class="blog-author-info">
-                I am Orange : )
-              </p>
-          
-              <div class="heading--side-lined">
-                Comments
-              </div>
-              <div class="blog-comments">
-                
-
-
-  <div id="disqus_thread"></div>
-<script type="text/javascript">
-    var disqus_developer = 1;
-    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
-    
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-
-
-
-
-              </div>
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/en/blog/author/orange">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/orange.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/en/blog/author/orange">
+                            <h3>Orange Tsai</h3>
+                        </a>
+                        <span>Principal Security Researcher</span>
+                        <p>
+                            I am Orange : )
+                        </p>
+                    </div>
+                </div>
             </div>
-          </div>
+        </section>
+        
 
-
-
-
-
-
-</main>
-      <div class="container--wrapper">
-
-
-        <div class="contact-section container">
-          <h2 class="contact-section__title">
-            Put your defenses to the test with authentic attacks
-          </h2>
-          <a href="/en/contact/" class="home-contact__button button--dense">Contact us now</a>
-        </div>
-
-        <footer class="main-footer">
-          <div class="main-footer__about">
-            DEVCORE offers professional<br class="mobile-only" /><a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services.<br />For <a href="/en/blog/" class="link">latest updates</a>, follow us on <a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a> or <a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>.
-          </div>
-          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
-                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
-                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
-          </div>
-          <address class="main-footer__address">
-            <ul class="list--unstyled">
-              <li>
-                13F., No. 32, Sec. 3, Bade Rd., Songshan Dist., Taipei City 105608, Taiwan
-              </li>
-              <li>
-                contact@devco.re
-              </li>
-              <li>
-                +886-2-2577-0925
-              </li>
-            </ul>
-          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2023 DEVCORE</small>
-        </footer>
-      </div>
     </div>
-    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
 
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
 
-  <script type="text/javascript">
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-30830800-1']);
-  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
 
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
-</script>
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
 
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
 
+    <div class="copyright">
+        <div class="info">
+            <span>© 2023 DEVCORE <b class="line-block">All right reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
 
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K5B8NW"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
-
-  </body>
+</div>
+    </footer>
+</body>
 </html>
+
+
+
+
+
+
 
 
 

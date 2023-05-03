@@ -1,12 +1,21 @@
 
+
 <!DOCTYPE html>
-<html lang="zh-TW">
-  <head>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta charset="utf-8" />
-    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
-    <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>手機應用程式開發上被忽略的 SSL 處理 | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
-    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>手機應用程式開發上被忽略的 SSL 處理 | DEVCORE 戴夫寇爾</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
     <meta name="description" property="og:description" content="在手機應用程式上，使用 HTTPS 連線來保護敏感訊息的傳遞是甚為重要的一環。但許多手機應用程式開發商在這個部分並沒有妥善處理好，以下我們就幾個常見的成因做基本的探討。" />
     <meta name="keywords" content="SSL, MITM, 中間人攻擊, 手機開發" />
     <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
@@ -30,95 +39,534 @@
     <link rel="canonical" href="https://devco.re/blog/2014/08/15/ssl-mishandling-on-mobile-app-development/"/>
     <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
 
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-K5B8NW');</script>
-    <!-- End Google Tag Manager -->
-  </head>
-  <body>
-    <div class="page">
-      <div class="container--wrapper">
-        <div class="topbar">
-          <div class="topbar__brand">
-            <a href="/">
-                <div class="logo">
-                  DEVCORE 戴夫寇爾
-                </div></a>
-            <p class="slogan">
-              我們提供<a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務
-            </p>
-          </div>
-          <div class="drawer" id="drawer">
-            <div class="drawer__container">
-              <nav class="main-menu">
-                <div class="hidden">
-                  主選單
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body>
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>服務<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    紅隊演練
+                                </h2>
+                                <p class="two-line">
+                                    在不影響企業營運前提下，無所不用其極，從各種進入點執行模擬入侵攻擊，達成企業指定的演練情境。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    滲透測試
+                                </h2>
+                                <p class="two-line">
+                                    以駭客思維及手法嘗試入侵企業指定系統，找出潛在漏洞，驗證企業資料與設備是否可被竊取或破壞。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    資安顧問服務
+                                </h2>
+                                <p class="two-line">
+                                    以紅隊演練為基礎，提供攻擊者視角與可能入侵路徑，協助企業評估資安資源優先順序，並擬定長期防禦策略。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    資安教育訓練
+                                </h2>
+                                <p class="two-line">
+                                    從攻擊思維出發，協助企業有效預防資安事故並防禦；以及事件發生時，如何快速判定攻擊目的、手法、漏洞與及應變方式。
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
                 </div>
-                <a href="/services/penetration-test" class="main-menu__link mobile-only">滲透測試</a>
-                <a href="/services/red-team" class="main-menu__link mobile-only">紅隊演練</a>
-                <a href="/services/security-consulting" class="main-menu__link mobile-only">資安顧問</a>
-                <a href="/services/security-training" class="main-menu__link mobile-only">教育訓練</a>
-                <a href="/about/" class="main-menu__link">駭客思維</a><a href="/blog/" class="main-menu__link">最新訊息</a><a href="/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">搜尋</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
-              </nav>
-              <a href="/contact/" class="drawer__contact button--dense">聯絡我們</a>
-              <nav class="lang-menu">
-                <div class="lang-menu__label">
-                  語言:
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>研究<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    總覽概要
+                                </h2>
+                                <p class="two-line">
+                                    持續精研資安最新技術及漏洞研究趨勢，全方位檢測企業產品安全性、吸取經驗並轉化為紅隊演練工具與手法。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    競賽與獎項
+                                </h2>
+                                <p class="two-line">
+                                    國際級資訊安全競賽獎項肯定。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    企業漏洞回報
+                                </h2>
+                                <p class="two-line">
+                                    研究企業系統中的資安風險及各種可能的突破口，並通報企業修補。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    國際研討會
+                                </h2>
+                                <p class="two-line">
+                                    參與全球資安盛會，發表、交流漏洞的知識與資訊。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE 漏洞列表
+                                </h2>
+                                <p class="two-line">
+                                    挖掘並回報國際知名產品與服務的重大漏洞。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
-                <a href="/" class="lang-menu__link">中文</a>
-                <a href="/en/" class="lang-menu__link">English</a>
-              </nav>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>公司<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                公司簡介
+                            </h2>
+                            <p>
+                                DEVCORE 戴夫寇爾由世界級白帽駭客團隊創立，提供紅隊演練、滲透測試、資安顧問服務、資安教育訓練等服務。
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    團隊成員
+                                </h2>
+                                <p class="two-line">
+                                    由熱衷挑戰、具備駭客思維的資安專家組成，專注於創新攻擊手法研究，並以「高道德、高自律、高嚴謹」為最高指導原則。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    成就與沿革
+                                </h2>
+                                <p class="two-line">
+                                    長期聚焦於攻擊研究，屢屢獲邀參與全球知名資安研討會，已揭露數百個重要產品漏洞、協助企業提升防禦能量。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    企業社會責任
+                                </h2>
+                                <p class="two-line">
+                                    提供多元實習管道和研習計畫，提升新世代人才資安能量，推廣資訊安全意識。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    工作機會
+                                </h2>
+                                <p class="two-line">
+                                    加入 DEVCORE，共同改善資安產業結構，與我們一起打造更安全的世界。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>新聞<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    DEVCORE 最新消息。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    媒體素材下載
+                                </h2>
+                                <p>
+                                    使用 DEVCORE 商標須遵循的使用規範。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/search/">搜尋</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/contact/">聯絡我們</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>服務</span>
+                <div class="menuItem">
+                    <a href="/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                紅隊演練
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                滲透測試
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                顧問服務
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                教育訓練
+                            </h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
-            <div class="bars">
-              <div class="bar"></div>
-              <div class="bar"></div>
-              <div class="bar"></div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>資安研究</span>
+                <div class="menuItem">
+                    <a href="/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>總覽概要</h2>
+                        </div>
+                    </a>
+                    <a href="/research/awards/">
+                        <div class="item">
+                            <h2>競賽與獎項</h2>
+                        </div>
+                    </a>
+                    <a href="/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Bug Bounty</h2>
+                        </div>
+                    </a>
+                    <a href="/research/talks/">
+                        <div class="item">
+                            <h2>國際研討會</h2>
+                        </div>
+                    </a>
+                    <a href="/research/cve/">
+                        <div class="item">
+                            <h2>CVE 漏洞列表</h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </button>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>公司</span>
+                <div class="menuItem">
+                    <a href="/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>公司簡介</h2>
+                        </div>
+                    </a>
+                    <a href="/company/our-team/">
+                        <div class="item">
+                            <h2>團隊成員</h2>
+                        </div>
+                    </a>
+                    <a href="/company/history/">
+                        <div class="item">
+                            <h2>成就與沿革</h2>
+                        </div>
+                    </a>
+                    <a href="/company/csr/">
+                        <div class="item">
+                            <h2>企業社會責任</h2>
+                        </div>
+                    </a>
+                    <a href="/company/jobs/">
+                        <div class="item">
+                            <h2>工作機會</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>新聞</span>
+                <div class="menuItem">
+                    <!-- <a href="/blog/">
+                    <div class="item">
+                        <h2>所有文章</h2>
+                    </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>案例剖析</h2>
+                        </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>科普文章</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>技術專欄</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>資安新聞</h2>
+                        </div>
+                    </a> -->
+                    <a href="/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/media-kit/">
+                        <div class="item">
+                            <h2>媒體素材下載</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                搜尋
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                聯絡我們
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/blog/">所有文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/最新消息/">最新消息</a>
+                </li>
+                <li>
+                    <a href="/blog/category/技術專欄/">技術專欄</a>
+                </li>
+                <li>
+                    <a href="/blog/category/科普文章/">科普文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/資安新聞/">資安新聞</a>
+                </li>
+                <li>
+                    <a href="/media-kit/">媒體素材下載</a>
+                </li>
+            </ul>
         </div>
-      </div><main role="main">
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                    <span class="tag">
 
+                      <a href="/blog/tag/Mobile/">#Mobile</a> <a href="/blog/tag/Android/">#Android</a> <a href="/blog/tag/iOS/">#iOS</a> <a href="/blog/tag/SSL/">#SSL</a> <a href="/blog/tag/MITM/">#MITM</a> 
+                    </span>
+                    <h1>
+                        手機應用程式開發上被忽略的 SSL 處理
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/blog/author/anfa">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/anfa.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/blog/author/anfa">Anfa Sam</a></span>
+                        <span class="date">2014-08-15</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20140815/no_ssl_is_never_safe.png"/>
+                    </div>
+                    
 
-          <div class="container--wrapper">
-            <div class="container">
-              <section class="blog-header">
-                <small class="blog-header__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
-                <img src="https://devco.re/assets/img/blog/20140815/no_ssl_is_never_safe.png" class="blog-header__image" alt="Credit: http://natashenka.ca/printable-ssl-posters/" />
-                <h1 class="blog-header__title">
-                  手機應用程式開發上被忽略的 SSL 處理
-                </h1>
-                <div class="blog-header__tags">
-                  
-                  <a href="/blog/tag/Mobile/" class="blog-header__tag">Mobile</a><a href="/blog/tag/Android/" class="blog-header__tag">Android</a><a href="/blog/tag/iOS/" class="blog-header__tag">iOS</a><a href="/blog/tag/SSL/" class="blog-header__tag">SSL</a><a href="/blog/tag/MITM/" class="blog-header__tag">MITM</a>
-                </div>
-          
-          
-                <p class="blog-header__info">
-                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/anfasam.jpg)"></span> <a href="/blog/author/anfa" class="author-name">Anfa Sam</a> <time class="date">on 2014-08-15 </time>
-                </p>
-          
-              </section>
-              <article class="article">
-          <p>在網路上傳輸敏感資訊時，通常會使用 HTTPS 協定，讓客戶端與伺服器端對資料進行 SSL 加密處理，以降低資料在傳輸過程中被監聽或中間人攻擊的風險。HTTPS 的重要性逐漸被重視，Google 除了預設開啟 HTTPS 之外，未來更會將 <a href="http://googlewebmastercentral.blogspot.tw/2014/08/https-as-ranking-signal.html">HTTPS 的網站搜尋排名加分</a>。但為了確保傳輸的安全，過程中客戶端會核對伺服器的憑證鏈 (certificate chain) 是否有效，若判定為無效時會作出警告。(詳見<a href="http://en.wikipedia.org/wiki/Secure_Sockets_Layer">Wikipedia</a>)</p>
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p>在網路上傳輸敏感資訊時，通常會使用 HTTPS 協定，讓客戶端與伺服器端對資料進行 SSL 加密處理，以降低資料在傳輸過程中被監聽或中間人攻擊的風險。HTTPS 的重要性逐漸被重視，Google 除了預設開啟 HTTPS 之外，未來更會將 <a href="http://googlewebmastercentral.blogspot.tw/2014/08/https-as-ranking-signal.html">HTTPS 的網站搜尋排名加分</a>。但為了確保傳輸的安全，過程中客戶端會核對伺服器的憑證鏈 (certificate chain) 是否有效，若判定為無效時會作出警告。(詳見<a href="http://en.wikipedia.org/wiki/Secure_Sockets_Layer">Wikipedia</a>)</p>
 
 <!-- more -->
-<p><img src="/assets/img/blog/20140815/desktop_browser_insecure_warning.png" alt="Desktop 警告圖" /><br />
+<p><img src="/assets/img/blog/20140815/desktop_browser_insecure_warning.png" alt="Desktop 警告圖" />
 而在手機應用程式上 HTTPS 同樣重要，例如網路銀行、線上購物等。系統同樣會做憑證核對，但對被判定為無效的憑證就需要開發者作出額外的處理了。許多手機應用程式開發商在這個部分並沒有妥善處理好，以下我們就幾個常見的成因做基本的探討。</p>
 
 <h3 id="會被系統判定為無效的常見成因">會被系統判定為無效的常見成因？</h3>
 <p>在探討該如何處理這個問題之前，這裡先列出一些有可能被系統判定成無效憑證的成因。</p>
 
-<h4 id="1-系統支援問題-">1. 系統支援問題 <sup id="fnref:note1"><a href="#fn:note1" class="footnote">1</a></sup></h4>
+<h4 id="1-系統支援問題-">1. 系統支援問題 <sup id="fnref:note1" role="doc-noteref"><a href="#fn:note1" class="footnote" rel="footnote">1</a></sup></h4>
 <p>在 Android 2.2 及之前的版本，對 SSL 的支援上存在著一些問題，像是 <a href="https://code.google.com/p/android/issues/detail?id=12908">SNI</a> 和 <a href="https://code.google.com/p/android/issues/detail?id=26542">Multiple Chain</a>。而 Android 上不接受缺少中繼 CA 憑證的憑證鏈，例如：<a href="https://egov.uscis.gov/">https://egov.uscis.gov/</a></p>
 
 <h4 id="2-相關憑證未被預載到系統中">2. 相關憑證未被預載到系統中</h4>
 <p>以 GCA 簽發的 SSL 憑證為例，在 Windows 上被判定為有效，但在 iOS 系統上卻因為 CA 不在系統的預載清單中而被判定為無效。</p>
 
-<p><img src="/assets/img/blog/20140815/windows_recognize_gca.png" alt="Windows" /><br />
+<p><img src="/assets/img/blog/20140815/windows_recognize_gca.png" alt="Windows" />
 <img src="/assets/img/blog/20140815/iphone_unknown_ca.png" alt="iPhone" /></p>
 
 <h4 id="3-使用自行簽發的憑證">3. 使用自行簽發的憑證</h4>
@@ -139,10 +587,15 @@
 
 <h4 id="android-錯誤處理情況1">Android 錯誤處理情況1</h4>
 
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="lineno">1</span> <span class="nd">@Override</span>
-<span class="lineno">2</span> <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onReceivedSslError</span><span class="o">(</span><span class="n">WebView</span> <span class="n">view</span><span class="o">,</span> <span class="n">SslErrorHandler</span> <span class="n">handler</span><span class="o">,</span> <span class="n">SslError</span> <span class="n">error</span><span class="o">)</span> <span class="o">{</span>
-<span class="lineno">3</span>     <span class="n">handler</span><span class="o">.</span><span class="na">proceed</span><span class="o">();</span>
-<span class="lineno">4</span> <span class="o">}</span></code></pre></div>
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="code"><pre><span class="nd">@Override</span>
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">onReceivedSslError</span><span class="o">(</span><span class="nc">WebView</span> <span class="n">view</span><span class="o">,</span> <span class="nc">SslErrorHandler</span> <span class="n">handler</span><span class="o">,</span> <span class="nc">SslError</span> <span class="n">error</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">handler</span><span class="o">.</span><span class="na">proceed</span><span class="o">();</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></figure>
 
 <p>當透過 WebView 元件訪問 HTTPS 網站發生 SSL 錯誤時，會觸發 onReceivedSslError 這個函數。根據官方文件指出，可藉由執行 handler.proceed() 或是 handler.cancel() 來決定是否讓連線繼續進行。在不覆寫這函數的情況下預設會執行 handler.cancel()。而上面的做法卻讓異常的連線繼續進行了。</p>
 
@@ -150,185 +603,341 @@
 
 <h4 id="android-錯誤處理情況2">Android 錯誤處理情況2</h4>
 
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="lineno"> 1</span> <span class="n">TrustManager</span><span class="o">[]</span> <span class="n">trustAllManager</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TrustManager</span><span class="o">[]</span> <span class="o">{</span> <span class="k">new</span> <span class="nf">X509TrustManager</span><span class="o">()</span> <span class="o">{</span>
-<span class="lineno"> 2</span>     <span class="nd">@Override</span>
-<span class="lineno"> 3</span>     <span class="kd">public</span> <span class="kt">void</span> <span class="nf">checkClientTrusted</span><span class="o">(</span><span class="n">X509Certificate</span><span class="o">[]</span> <span class="n">chain</span><span class="o">,</span> <span class="n">String</span> <span class="n">authType</span><span class="o">)</span> <span class="o">{</span>
-<span class="lineno"> 4</span>     <span class="o">}</span>
-<span class="lineno"> 5</span> 
-<span class="lineno"> 6</span>     <span class="nd">@Override</span>
-<span class="lineno"> 7</span>     <span class="kd">public</span> <span class="kt">void</span> <span class="nf">checkServerTrusted</span><span class="o">(</span><span class="n">X509Certificate</span><span class="o">[]</span> <span class="n">chain</span><span class="o">,</span> <span class="n">String</span> <span class="n">authType</span><span class="o">)</span> <span class="o">{</span>
-<span class="lineno"> 8</span>     <span class="o">}</span>
-<span class="lineno"> 9</span> 
-<span class="lineno">10</span>     <span class="nd">@Override</span>
-<span class="lineno">11</span>     <span class="kd">public</span> <span class="n">X509Certificate</span><span class="o">[]</span> <span class="nf">getAcceptedIssuers</span><span class="o">()</span> <span class="o">{</span>
-<span class="lineno">12</span>         <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
-<span class="lineno">13</span>     <span class="o">}</span>
-<span class="lineno">14</span> <span class="o">}</span> <span class="o">};</span>
-<span class="lineno">15</span> 
-<span class="lineno">16</span> <span class="n">SSLContext</span> <span class="n">sslContext</span> <span class="o">=</span> <span class="n">SSLContext</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="s">&quot;TLS&quot;</span><span class="o">);</span>
-<span class="lineno">17</span> <span class="n">sslContext</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="kc">null</span><span class="o">,</span> <span class="n">trustAllManager</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span></code></pre></div>
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+</pre></td><td class="code"><pre><span class="nc">TrustManager</span><span class="o">[]</span> <span class="n">trustAllManager</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">TrustManager</span><span class="o">[]</span> <span class="o">{</span> <span class="k">new</span> <span class="nc">X509TrustManager</span><span class="o">()</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">checkClientTrusted</span><span class="o">(</span><span class="nc">X509Certificate</span><span class="o">[]</span> <span class="n">chain</span><span class="o">,</span> <span class="nc">String</span> <span class="n">authType</span><span class="o">)</span> <span class="o">{</span>
+    <span class="o">}</span>
 
-<p>本用來檢查伺服器憑證的 checkServerTrusted 被留空，導致警告被略過。Google 建議不要自行實作 TrustManager，而是把憑證放到 KeyStore，再把 KeyStore 放到 TrustManagerFactory，最後從 TrustManagerFactory 產出相關的 TrustManager，開發文件中有提供處理的<a href="https://developer.android.com/training/articles/security-ssl.html#UnknownCa">範例</a>。OWASP 的 WIKI 上也有提供自行實作 TrustManager 做 certificate pinning 的<a href="https://www.owasp.org/index.php/Certificate_and_Public_Key_Pinning#Android">範例</a>。<sup id="fnref:note2"><a href="#fn:note2" class="footnote">2</a></sup></p>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">checkServerTrusted</span><span class="o">(</span><span class="nc">X509Certificate</span><span class="o">[]</span> <span class="n">chain</span><span class="o">,</span> <span class="nc">String</span> <span class="n">authType</span><span class="o">)</span> <span class="o">{</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="nc">X509Certificate</span><span class="o">[]</span> <span class="nf">getAcceptedIssuers</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span> <span class="o">};</span>
+
+<span class="nc">SSLContext</span> <span class="n">sslContext</span> <span class="o">=</span> <span class="nc">SSLContext</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="s">"TLS"</span><span class="o">);</span>
+<span class="n">sslContext</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="kc">null</span><span class="o">,</span> <span class="n">trustAllManager</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+</pre></td></tr></tbody></table></code></pre></figure>
+
+<p>本用來檢查伺服器憑證的 checkServerTrusted 被留空，導致警告被略過。Google 建議不要自行實作 TrustManager，而是把憑證放到 KeyStore，再把 KeyStore 放到 TrustManagerFactory，最後從 TrustManagerFactory 產出相關的 TrustManager，開發文件中有提供處理的<a href="https://developer.android.com/training/articles/security-ssl.html#UnknownCa">範例</a>。OWASP 的 WIKI 上也有提供自行實作 TrustManager 做 certificate pinning 的<a href="https://www.owasp.org/index.php/Certificate_and_Public_Key_Pinning#Android">範例</a>。<sup id="fnref:note2" role="doc-noteref"><a href="#fn:note2" class="footnote" rel="footnote">2</a></sup></p>
 
 <p>下面節錄 Android 官方文件上的範例：</p>
 
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="lineno"> 1</span> <span class="n">KeyStore</span> <span class="n">keyStore</span> <span class="o">=</span> <span class="o">...;</span>
-<span class="lineno"> 2</span> <span class="n">String</span> <span class="n">algorithm</span> <span class="o">=</span> <span class="n">TrustManagerFactory</span><span class="o">.</span><span class="na">getDefaultAlgorithm</span><span class="o">();</span>
-<span class="lineno"> 3</span> <span class="n">TrustManagerFactory</span> <span class="n">tmf</span> <span class="o">=</span> <span class="n">TrustManagerFactory</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="n">algorithm</span><span class="o">);</span>
-<span class="lineno"> 4</span> <span class="n">tmf</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="n">keyStore</span><span class="o">);</span>
-<span class="lineno"> 5</span> 
-<span class="lineno"> 6</span> <span class="n">SSLContext</span> <span class="n">context</span> <span class="o">=</span> <span class="n">SSLContext</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="s">&quot;TLS&quot;</span><span class="o">);</span>
-<span class="lineno"> 7</span> <span class="n">context</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="kc">null</span><span class="o">,</span> <span class="n">tmf</span><span class="o">.</span><span class="na">getTrustManagers</span><span class="o">(),</span> <span class="kc">null</span><span class="o">);</span>
-<span class="lineno"> 8</span> 
-<span class="lineno"> 9</span> <span class="n">URL</span> <span class="n">url</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">URL</span><span class="o">(</span><span class="s">&quot;https://www.example.com/&quot;</span><span class="o">);</span>
-<span class="lineno">10</span> <span class="n">HttpsURLConnection</span> <span class="n">urlConnection</span> <span class="o">=</span> <span class="o">(</span><span class="n">HttpsURLConnection</span><span class="o">)</span> <span class="n">url</span><span class="o">.</span><span class="na">openConnection</span><span class="o">();</span>
-<span class="lineno">11</span> <span class="n">urlConnection</span><span class="o">.</span><span class="na">setSSLSocketFactory</span><span class="o">(</span><span class="n">context</span><span class="o">.</span><span class="na">getSocketFactory</span><span class="o">());</span>
-<span class="lineno">12</span> <span class="n">InputStream</span> <span class="n">in</span> <span class="o">=</span> <span class="n">urlConnection</span><span class="o">.</span><span class="na">getInputStream</span><span class="o">();</span></code></pre></div>
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+</pre></td><td class="code"><pre><span class="nc">KeyStore</span> <span class="n">keyStore</span> <span class="o">=</span> <span class="o">...;</span>
+<span class="nc">String</span> <span class="n">algorithm</span> <span class="o">=</span> <span class="nc">TrustManagerFactory</span><span class="o">.</span><span class="na">getDefaultAlgorithm</span><span class="o">();</span>
+<span class="nc">TrustManagerFactory</span> <span class="n">tmf</span> <span class="o">=</span> <span class="nc">TrustManagerFactory</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="n">algorithm</span><span class="o">);</span>
+<span class="n">tmf</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="n">keyStore</span><span class="o">);</span>
+
+<span class="nc">SSLContext</span> <span class="n">context</span> <span class="o">=</span> <span class="nc">SSLContext</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="s">"TLS"</span><span class="o">);</span>
+<span class="n">context</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="kc">null</span><span class="o">,</span> <span class="n">tmf</span><span class="o">.</span><span class="na">getTrustManagers</span><span class="o">(),</span> <span class="kc">null</span><span class="o">);</span>
+
+<span class="no">URL</span> <span class="n">url</span> <span class="o">=</span> <span class="k">new</span> <span class="no">URL</span><span class="o">(</span><span class="s">"https://www.example.com/"</span><span class="o">);</span>
+<span class="nc">HttpsURLConnection</span> <span class="n">urlConnection</span> <span class="o">=</span> <span class="o">(</span><span class="nc">HttpsURLConnection</span><span class="o">)</span> <span class="n">url</span><span class="o">.</span><span class="na">openConnection</span><span class="o">();</span>
+<span class="n">urlConnection</span><span class="o">.</span><span class="na">setSSLSocketFactory</span><span class="o">(</span><span class="n">context</span><span class="o">.</span><span class="na">getSocketFactory</span><span class="o">());</span>
+<span class="nc">InputStream</span> <span class="n">in</span> <span class="o">=</span> <span class="n">urlConnection</span><span class="o">.</span><span class="na">getInputStream</span><span class="o">();</span>
+</pre></td></tr></tbody></table></code></pre></figure>
 
 <h4 id="android-錯誤處理情況3">Android 錯誤處理情況3</h4>
 
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="lineno">1</span> <span class="n">URL</span> <span class="n">url</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">URL</span><span class="o">(</span><span class="s">&quot;https://www.example.com/&quot;</span><span class="o">);</span>
-<span class="lineno">2</span> <span class="n">HttpsURLConnection</span> <span class="n">conn</span> <span class="o">=</span> <span class="o">(</span><span class="n">HttpsURLConnection</span><span class="o">)</span> <span class="n">url</span><span class="o">.</span><span class="na">openConnection</span><span class="o">();</span>
-<span class="lineno">3</span> <span class="n">conn</span><span class="o">.</span><span class="na">setHostnameVerifier</span><span class="o">(</span><span class="n">SSLSocketFactory</span><span class="o">.</span><span class="na">ALLOW_ALL_HOSTNAME_VERIFIER</span><span class="o">);</span></code></pre></div>
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="code"><pre><span class="no">URL</span> <span class="n">url</span> <span class="o">=</span> <span class="k">new</span> <span class="no">URL</span><span class="o">(</span><span class="s">"https://www.example.com/"</span><span class="o">);</span>
+<span class="nc">HttpsURLConnection</span> <span class="n">conn</span> <span class="o">=</span> <span class="o">(</span><span class="nc">HttpsURLConnection</span><span class="o">)</span> <span class="n">url</span><span class="o">.</span><span class="na">openConnection</span><span class="o">();</span>
+<span class="n">conn</span><span class="o">.</span><span class="na">setHostnameVerifier</span><span class="o">(</span><span class="nc">SSLSocketFactory</span><span class="o">.</span><span class="na">ALLOW_ALL_HOSTNAME_VERIFIER</span><span class="o">);</span>
+</pre></td></tr></tbody></table></code></pre></figure>
 
 <p>或是</p>
 
-<div class="highlight"><pre><code class="language-java" data-lang="java"><span class="lineno">1</span> <span class="n">HostnameVerifier</span> <span class="n">allHostVerifier</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">HostnameVerifier</span><span class="o">()</span> <span class="o">{</span>
-<span class="lineno">2</span>     <span class="nd">@Override</span>
-<span class="lineno">3</span>     <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">verify</span><span class="o">(</span><span class="n">String</span> <span class="n">hostname</span><span class="o">,</span> <span class="n">SSLSession</span> <span class="n">session</span><span class="o">)</span> <span class="o">{</span>
-<span class="lineno">4</span>         <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
-<span class="lineno">5</span>     <span class="o">}</span>
-<span class="lineno">6</span> <span class="o">};</span></code></pre></div>
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="code"><pre><span class="nc">HostnameVerifier</span> <span class="n">allHostVerifier</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HostnameVerifier</span><span class="o">()</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">verify</span><span class="o">(</span><span class="nc">String</span> <span class="n">hostname</span><span class="o">,</span> <span class="nc">SSLSession</span> <span class="n">session</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">};</span>
+</pre></td></tr></tbody></table></code></pre></figure>
 
 <p>上述寫法略過了憑證中的 hostname 檢查，導致即使連線端與憑證中指定的 hostname 不一致也能通過。較為恰當的做法是不特別設定，讓他使用預設的 DefaultHostnameVerifier，或是採用更為嚴謹的 StrictHostnameVerifier。</p>
 
 <h4 id="ios-錯誤處理情況1">iOS 錯誤處理情況1</h4>
 
-<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="lineno">1</span> <span class="k">@implementation</span> <span class="bp">NSURLRequest</span> <span class="nl">(IgnoreSSL)</span>
-<span class="lineno">2</span> <span class="p">+</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">allowsAnyHTTPSCertificateForHost:</span><span class="p">(</span><span class="bp">NSString</span><span class="o">*</span><span class="p">)</span><span class="nv">host</span>
-<span class="lineno">3</span> <span class="p">{</span>
-<span class="lineno">4</span>     <span class="k">return</span> <span class="nb">YES</span><span class="p">;</span>
-<span class="lineno">5</span> <span class="p">}</span>
-<span class="lineno">6</span> <span class="k">@end</span></code></pre></div>
+<figure class="highlight"><pre><code class="language-objc" data-lang="objc"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="code"><pre><span class="k">@implementation</span> <span class="nc">NSURLRequest</span> <span class="p">(</span><span class="nl">IgnoreSSL</span><span class="p">)</span>
+<span class="k">+</span> <span class="p">(</span><span class="n">BOOL</span><span class="p">)</span><span class="nf">allowsAnyHTTPSCertificateForHost</span><span class="p">:(</span><span class="n">NSString</span><span class="o">*</span><span class="p">)</span><span class="nv">host</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="nb">YES</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="k">@end</span>
+</pre></td></tr></tbody></table></code></pre></figure>
 
 <p>此情況使用到 Framework 中的 Private API，雖然這種寫法會因為不能通過 Apple 的審查而不會出現在 AppStore 上(使用回避技巧不在這討論範圍內)，但仍有機會在無需經過 Apple 審查的 Enterprise App 中使用。較為適當的做法是用 “#if DEBUG”，”#endif” 包起來以確保該段程式在編譯時只能對開發中的 debug 版上有作用。</p>
 
 <h4 id="ios-錯誤處理情況2">iOS 錯誤處理情況2</h4>
 
-<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="lineno"> 1</span> <span class="p">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">connection:</span><span class="p">(</span><span class="bp">NSURLConnection</span> <span class="o">*</span><span class="p">)</span><span class="nv">connection</span> <span class="nf">canAuthenticateAgainstProtectionSpace:</span><span class="p">(</span><span class="bp">NSURLProtectionSpace</span> <span class="o">*</span><span class="p">)</span><span class="nv">protectionSpace</span> <span class="p">{</span>
-<span class="lineno"> 2</span>     <span class="k">return</span> <span class="p">[</span><span class="n">protectionSpace</span><span class="p">.</span><span class="n">authenticationMethod</span> <span class="nl">isEqualToString</span><span class="p">:</span><span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">];</span>
-<span class="lineno"> 3</span> <span class="p">}</span>
-<span class="lineno"> 4</span> 
-<span class="lineno"> 5</span> <span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">connection:</span><span class="p">(</span><span class="bp">NSURLConnection</span> <span class="o">*</span><span class="p">)</span><span class="nv">connection</span> <span class="nf">didReceiveAuthenticationChallenge:</span><span class="p">(</span><span class="bp">NSURLAuthenticationChallenge</span> <span class="o">*</span><span class="p">)</span><span class="nv">challenge</span> <span class="p">{</span>
-<span class="lineno"> 6</span>     <span class="k">if</span> <span class="p">([</span><span class="n">challenge</span><span class="p">.</span><span class="n">protectionSpace</span><span class="p">.</span><span class="n">authenticationMethod</span> <span class="nl">isEqualToString</span><span class="p">:</span><span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">])</span>
-<span class="lineno"> 7</span>         <span class="p">[</span><span class="n">challenge</span><span class="p">.</span><span class="n">sender</span> <span class="nl">useCredential</span><span class="p">:[</span><span class="bp">NSURLCredential</span> <span class="nl">credentialForTrust</span><span class="p">:</span><span class="n">challenge</span><span class="p">.</span><span class="n">protectionSpace</span><span class="p">.</span><span class="n">serverTrust</span><span class="p">]</span> <span class="nl">forAuthenticationChallenge</span><span class="p">:</span><span class="n">challenge</span><span class="p">];</span>
-<span class="lineno"> 8</span> 
-<span class="lineno"> 9</span>     <span class="p">[</span><span class="n">challenge</span><span class="p">.</span><span class="n">sender</span> <span class="nl">continueWithoutCredentialForAuthenticationChallenge</span><span class="p">:</span><span class="n">challenge</span><span class="p">];</span>
-<span class="lineno">10</span> <span class="p">}</span></code></pre></div>
+<figure class="highlight"><pre><code class="language-objc" data-lang="objc"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="code"><pre><span class="k">-</span> <span class="p">(</span><span class="n">BOOL</span><span class="p">)</span><span class="nf">connection</span><span class="p">:(</span><span class="n">NSURLConnection</span> <span class="o">*</span><span class="p">)</span><span class="nv">connection</span> <span class="nf">canAuthenticateAgainstProtectionSpace</span><span class="p">:(</span><span class="n">NSURLProtectionSpace</span> <span class="o">*</span><span class="p">)</span><span class="nv">protectionSpace</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">protectionSpace</span><span class="p">.</span><span class="n">authenticationMethod</span> <span class="nf">isEqualToString</span><span class="p">:</span><span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">connection</span><span class="p">:(</span><span class="n">NSURLConnection</span> <span class="o">*</span><span class="p">)</span><span class="nv">connection</span> <span class="nf">didReceiveAuthenticationChallenge</span><span class="p">:(</span><span class="n">NSURLAuthenticationChallenge</span> <span class="o">*</span><span class="p">)</span><span class="nv">challenge</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">([</span><span class="n">challenge</span><span class="p">.</span><span class="n">protectionSpace</span><span class="p">.</span><span class="n">authenticationMethod</span> <span class="nf">isEqualToString</span><span class="p">:</span><span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">])</span>
+        <span class="p">[</span><span class="n">challenge</span><span class="p">.</span><span class="n">sender</span> <span class="nf">useCredential</span><span class="p">:[</span><span class="n">NSURLCredential</span> <span class="nf">credentialForTrust</span><span class="p">:</span><span class="n">challenge</span><span class="p">.</span><span class="n">protectionSpace</span><span class="p">.</span><span class="n">serverTrust</span><span class="p">]</span> <span class="nf">forAuthenticationChallenge</span><span class="p">:</span><span class="n">challenge</span><span class="p">];</span>
+
+    <span class="p">[</span><span class="n">challenge</span><span class="p">.</span><span class="n">sender</span> <span class="nf">continueWithoutCredentialForAuthenticationChallenge</span><span class="p">:</span><span class="n">challenge</span><span class="p">];</span>
+<span class="p">}</span>
+</pre></td></tr></tbody></table></code></pre></figure>
 
 <p>上面的做法會讓使用 NSURLConnection 的連線略過憑證檢查，容許任意憑證通過。下面節錄 OWASP WIKI 上的範例：</p>
 
-<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="lineno"> 1</span> <span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">connection:</span><span class="p">(</span><span class="bp">NSURLConnection</span> <span class="o">*</span><span class="p">)</span><span class="nv">connection</span> <span class="nf">didReceiveAuthenticationChallenge:</span>
-<span class="lineno"> 2</span>                    <span class="p">(</span><span class="bp">NSURLAuthenticationChallenge</span> <span class="o">*</span><span class="p">)</span><span class="nv">challenge</span>
-<span class="lineno"> 3</span> <span class="p">{</span>
-<span class="lineno"> 4</span>     <span class="k">if</span> <span class="p">([[[</span><span class="n">challenge</span> <span class="n">protectionSpace</span><span class="p">]</span> <span class="n">authenticationMethod</span><span class="p">]</span> <span class="nl">isEqualToString</span><span class="p">:</span> <span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">])</span>
-<span class="lineno"> 5</span>     <span class="p">{</span>
-<span class="lineno"> 6</span>         <span class="k">do</span>
-<span class="lineno"> 7</span>         <span class="p">{</span>
-<span class="lineno"> 8</span>             <span class="n">SecTrustRef</span> <span class="n">serverTrust</span> <span class="o">=</span> <span class="p">[[</span><span class="n">challenge</span> <span class="n">protectionSpace</span><span class="p">]</span> <span class="n">serverTrust</span><span class="p">];</span>
-<span class="lineno"> 9</span>             <span class="k">if</span><span class="p">(</span><span class="nb">nil</span> <span class="o">==</span> <span class="n">serverTrust</span><span class="p">)</span>
-<span class="lineno">10</span>                 <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
-<span class="lineno">11</span> 
-<span class="lineno">12</span>             <span class="n">OSStatus</span> <span class="n">status</span> <span class="o">=</span> <span class="n">SecTrustEvaluate</span><span class="p">(</span><span class="n">serverTrust</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
-<span class="lineno">13</span>             <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">errSecSuccess</span> <span class="o">==</span> <span class="n">status</span><span class="p">))</span>
-<span class="lineno">14</span>                 <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
-<span class="lineno">15</span> 
-<span class="lineno">16</span>             <span class="n">SecCertificateRef</span> <span class="n">serverCertificate</span> <span class="o">=</span> <span class="n">SecTrustGetCertificateAtIndex</span><span class="p">(</span><span class="n">serverTrust</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
-<span class="lineno">17</span>             <span class="k">if</span><span class="p">(</span><span class="nb">nil</span> <span class="o">==</span> <span class="n">serverCertificate</span><span class="p">)</span>
-<span class="lineno">18</span>             <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
-<span class="lineno">19</span> 
-<span class="lineno">20</span>             <span class="n">CFDataRef</span> <span class="n">serverCertificateData</span> <span class="o">=</span> <span class="n">SecCertificateCopyData</span><span class="p">(</span><span class="n">serverCertificate</span><span class="p">);</span>
-<span class="lineno">21</span>             <span class="p">[(</span><span class="kt">id</span><span class="p">)</span><span class="n">serverCertificateData</span> <span class="n">autorelease</span><span class="p">];</span>
-<span class="lineno">22</span>             <span class="k">if</span><span class="p">(</span><span class="nb">nil</span> <span class="o">==</span> <span class="n">serverCertificateData</span><span class="p">)</span>
-<span class="lineno">23</span>                 <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
-<span class="lineno">24</span> 
-<span class="lineno">25</span>             <span class="k">const</span> <span class="kt">UInt8</span><span class="o">*</span> <span class="k">const</span> <span class="n">data</span> <span class="o">=</span> <span class="n">CFDataGetBytePtr</span><span class="p">(</span><span class="n">serverCertificateData</span><span class="p">);</span>
-<span class="lineno">26</span>             <span class="k">const</span> <span class="n">CFIndex</span> <span class="n">size</span> <span class="o">=</span> <span class="n">CFDataGetLength</span><span class="p">(</span><span class="n">serverCertificateData</span><span class="p">);</span>
-<span class="lineno">27</span>             <span class="bp">NSData</span><span class="o">*</span> <span class="n">cert1</span> <span class="o">=</span> <span class="p">[</span><span class="bp">NSData</span> <span class="nl">dataWithBytes</span><span class="p">:</span><span class="n">data</span> <span class="nl">length</span><span class="p">:(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="n">size</span><span class="p">];</span>
-<span class="lineno">28</span> 
-<span class="lineno">29</span>             <span class="bp">NSString</span> <span class="o">*</span><span class="n">file</span> <span class="o">=</span> <span class="p">[[</span><span class="bp">NSBundle</span> <span class="n">mainBundle</span><span class="p">]</span> <span class="nl">pathForResource</span><span class="p">:</span><span class="s">@&quot;random-org&quot;</span> <span class="nl">ofType</span><span class="p">:</span><span class="s">@&quot;der&quot;</span><span class="p">];</span>
-<span class="lineno">30</span>             <span class="bp">NSData</span><span class="o">*</span> <span class="n">cert2</span> <span class="o">=</span> <span class="p">[</span><span class="bp">NSData</span> <span class="nl">dataWithContentsOfFile</span><span class="p">:</span><span class="n">file</span><span class="p">];</span>
-<span class="lineno">31</span> 
-<span class="lineno">32</span>             <span class="k">if</span><span class="p">(</span><span class="nb">nil</span> <span class="o">==</span> <span class="n">cert1</span> <span class="o">||</span> <span class="nb">nil</span> <span class="o">==</span> <span class="n">cert2</span><span class="p">)</span>
-<span class="lineno">33</span>                 <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
-<span class="lineno">34</span> 
-<span class="lineno">35</span>             <span class="k">const</span> <span class="kt">BOOL</span> <span class="n">equal</span> <span class="o">=</span> <span class="p">[</span><span class="n">cert1</span> <span class="nl">isEqualToData</span><span class="p">:</span><span class="n">cert2</span><span class="p">];</span>
-<span class="lineno">36</span>             <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">equal</span><span class="p">)</span>
-<span class="lineno">37</span>                 <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
-<span class="lineno">38</span> 
-<span class="lineno">39</span>             <span class="c1">// The only good exit point</span>
-<span class="lineno">40</span>             <span class="k">return</span> <span class="p">[[</span><span class="n">challenge</span> <span class="n">sender</span><span class="p">]</span> <span class="nl">useCredential</span><span class="p">:</span> <span class="p">[</span><span class="bp">NSURLCredential</span> <span class="nl">credentialForTrust</span><span class="p">:</span> <span class="n">serverTrust</span><span class="p">]</span>
-<span class="lineno">41</span>                         <span class="nl">forAuthenticationChallenge</span><span class="p">:</span> <span class="n">challenge</span><span class="p">];</span>
-<span class="lineno">42</span>         <span class="p">}</span> <span class="k">while</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
-<span class="lineno">43</span>     <span class="p">}</span>
-<span class="lineno">44</span> 
-<span class="lineno">45</span>     <span class="c1">// Bad dog</span>
-<span class="lineno">46</span>     <span class="k">return</span> <span class="p">[[</span><span class="n">challenge</span> <span class="n">sender</span><span class="p">]</span> <span class="nl">cancelAuthenticationChallenge</span><span class="p">:</span> <span class="n">challenge</span><span class="p">];</span>
-<span class="lineno">47</span> <span class="p">}</span></code></pre></div>
+<figure class="highlight"><pre><code class="language-objc" data-lang="objc"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+</pre></td><td class="code"><pre><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">connection</span><span class="p">:(</span><span class="n">NSURLConnection</span> <span class="o">*</span><span class="p">)</span><span class="nv">connection</span> <span class="nf">didReceiveAuthenticationChallenge</span><span class="p">:</span>
+                   <span class="p">(</span><span class="n">NSURLAuthenticationChallenge</span> <span class="o">*</span><span class="p">)</span><span class="nv">challenge</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">([[[</span><span class="n">challenge</span> <span class="nf">protectionSpace</span><span class="p">]</span> <span class="nf">authenticationMethod</span><span class="p">]</span> <span class="nf">isEqualToString</span><span class="p">:</span> <span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">])</span>
+    <span class="p">{</span>
+        <span class="k">do</span>
+        <span class="p">{</span>
+            <span class="n">SecTrustRef</span> <span class="n">serverTrust</span> <span class="o">=</span> <span class="p">[[</span><span class="n">challenge</span> <span class="nf">protectionSpace</span><span class="p">]</span> <span class="nf">serverTrust</span><span class="p">];</span>
+            <span class="k">if</span><span class="p">(</span><span class="nb">nil</span> <span class="o">==</span> <span class="n">serverTrust</span><span class="p">)</span>
+                <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
+
+            <span class="n">OSStatus</span> <span class="n">status</span> <span class="o">=</span> <span class="n">SecTrustEvaluate</span><span class="p">(</span><span class="n">serverTrust</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+            <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">errSecSuccess</span> <span class="o">==</span> <span class="n">status</span><span class="p">))</span>
+                <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
+
+            <span class="n">SecCertificateRef</span> <span class="n">serverCertificate</span> <span class="o">=</span> <span class="n">SecTrustGetCertificateAtIndex</span><span class="p">(</span><span class="n">serverTrust</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+            <span class="k">if</span><span class="p">(</span><span class="nb">nil</span> <span class="o">==</span> <span class="n">serverCertificate</span><span class="p">)</span>
+            <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
+
+            <span class="n">CFDataRef</span> <span class="n">serverCertificateData</span> <span class="o">=</span> <span class="n">SecCertificateCopyData</span><span class="p">(</span><span class="n">serverCertificate</span><span class="p">);</span>
+            <span class="p">[(</span><span class="n">id</span><span class="p">)</span><span class="n">serverCertificateData</span> <span class="nf">autorelease</span><span class="p">];</span>
+            <span class="k">if</span><span class="p">(</span><span class="nb">nil</span> <span class="o">==</span> <span class="n">serverCertificateData</span><span class="p">)</span>
+                <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
+
+            <span class="k">const</span> <span class="n">UInt8</span><span class="o">*</span> <span class="k">const</span> <span class="n">data</span> <span class="o">=</span> <span class="n">CFDataGetBytePtr</span><span class="p">(</span><span class="n">serverCertificateData</span><span class="p">);</span>
+            <span class="k">const</span> <span class="n">CFIndex</span> <span class="n">size</span> <span class="o">=</span> <span class="n">CFDataGetLength</span><span class="p">(</span><span class="n">serverCertificateData</span><span class="p">);</span>
+            <span class="n">NSData</span><span class="o">*</span> <span class="n">cert1</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSData</span> <span class="nf">dataWithBytes</span><span class="p">:</span><span class="n">data</span> <span class="nf">length</span><span class="p">:(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="n">size</span><span class="p">];</span>
+
+            <span class="n">NSString</span> <span class="o">*</span><span class="n">file</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSBundle</span> <span class="nf">mainBundle</span><span class="p">]</span> <span class="nf">pathForResource</span><span class="p">:</span><span class="s">@"random-org"</span> <span class="nf">ofType</span><span class="p">:</span><span class="s">@"der"</span><span class="p">];</span>
+            <span class="n">NSData</span><span class="o">*</span> <span class="n">cert2</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSData</span> <span class="nf">dataWithContentsOfFile</span><span class="p">:</span><span class="n">file</span><span class="p">];</span>
+
+            <span class="k">if</span><span class="p">(</span><span class="nb">nil</span> <span class="o">==</span> <span class="n">cert1</span> <span class="o">||</span> <span class="nb">nil</span> <span class="o">==</span> <span class="n">cert2</span><span class="p">)</span>
+                <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
+
+            <span class="k">const</span> <span class="n">BOOL</span> <span class="n">equal</span> <span class="o">=</span> <span class="p">[</span><span class="n">cert1</span> <span class="nf">isEqualToData</span><span class="p">:</span><span class="n">cert2</span><span class="p">];</span>
+            <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">equal</span><span class="p">)</span>
+                <span class="k">break</span><span class="p">;</span> <span class="cm">/* failed */</span>
+
+            <span class="c1">// The only good exit point</span>
+            <span class="k">return</span> <span class="p">[[</span><span class="n">challenge</span> <span class="nf">sender</span><span class="p">]</span> <span class="nf">useCredential</span><span class="p">:</span> <span class="p">[</span><span class="n">NSURLCredential</span> <span class="nf">credentialForTrust</span><span class="p">:</span> <span class="n">serverTrust</span><span class="p">]</span>
+                        <span class="nl">forAuthenticationChallenge:</span> <span class="n">challenge</span><span class="p">];</span>
+        <span class="p">}</span> <span class="k">while</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="c1">// Bad dog</span>
+    <span class="k">return</span> <span class="p">[[</span><span class="n">challenge</span> <span class="nf">sender</span><span class="p">]</span> <span class="nf">cancelAuthenticationChallenge</span><span class="p">:</span> <span class="n">challenge</span><span class="p">];</span>
+<span class="p">}</span>
+</pre></td></tr></tbody></table></code></pre></figure>
 
 <p>處理方式與前面的 Android 情況2類同，做了 certificate pinning。</p>
 
 <h4 id="ios-錯誤處理情況3">iOS 錯誤處理情況3</h4>
 
-<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="lineno"> 1</span> <span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="nf">URLSession:</span><span class="p">(</span><span class="bp">NSURLSession</span> <span class="o">*</span><span class="p">)</span><span class="nv">session</span>
-<span class="lineno"> 2</span> <span class="nf">didReceiveChallenge:</span><span class="p">(</span><span class="bp">NSURLAuthenticationChallenge</span> <span class="o">*</span><span class="p">)</span><span class="nv">challenge</span>
-<span class="lineno"> 3</span>   <span class="nf">completionHandler:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">NSURLSessionAuthChallengeDisposition</span> <span class="n">disposition</span><span class="p">,</span>
-<span class="lineno"> 4</span>                               <span class="bp">NSURLCredential</span> <span class="o">*</span><span class="n">credential</span><span class="p">))</span><span class="n">completionHandler</span>
-<span class="lineno"> 5</span> <span class="p">{</span>
-<span class="lineno"> 6</span>     <span class="bp">NSURLProtectionSpace</span> <span class="o">*</span> <span class="n">protectionSpace</span> <span class="o">=</span> <span class="n">challenge</span><span class="p">.</span><span class="n">protectionSpace</span><span class="p">;</span>
-<span class="lineno"> 7</span>     <span class="k">if</span> <span class="p">([</span><span class="n">protectionSpace</span><span class="p">.</span><span class="n">authenticationMethod</span> <span class="nl">isEqualToString</span><span class="p">:</span><span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">])</span> <span class="p">{</span>
-<span class="lineno"> 8</span>         <span class="n">SecTrustRef</span> <span class="n">serverTrust</span> <span class="o">=</span> <span class="n">protectionSpace</span><span class="p">.</span><span class="n">serverTrust</span><span class="p">;</span>
-<span class="lineno"> 9</span>         <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengeUseCredential</span><span class="p">,</span> <span class="p">[</span><span class="bp">NSURLCredential</span> <span class="nl">credentialForTrust</span><span class="p">:</span> <span class="n">serverTrust</span><span class="p">]);</span>
-<span class="lineno">10</span>     <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-<span class="lineno">11</span>         <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengePerformDefaultHandling</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
-<span class="lineno">12</span>     <span class="p">}</span>
-<span class="lineno">13</span> <span class="p">}</span></code></pre></div>
+<figure class="highlight"><pre><code class="language-objc" data-lang="objc"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre></td><td class="code"><pre><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="nf">URLSession</span><span class="p">:(</span><span class="n">NSURLSession</span> <span class="o">*</span><span class="p">)</span><span class="nv">session</span>
+<span class="nf">didReceiveChallenge</span><span class="p">:(</span><span class="n">NSURLAuthenticationChallenge</span> <span class="o">*</span><span class="p">)</span><span class="nv">challenge</span>
+  <span class="nf">completionHandler</span><span class="p">:(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">NSURLSessionAuthChallengeDisposition</span> <span class="n">disposition</span><span class="p">,</span>
+                              <span class="n">NSURLCredential</span> <span class="o">*</span><span class="n">credential</span><span class="p">))</span><span class="n">completionHandler</span>
+<span class="p">{</span>
+    <span class="n">NSURLProtectionSpace</span> <span class="o">*</span> <span class="n">protectionSpace</span> <span class="o">=</span> <span class="n">challenge</span><span class="p">.</span><span class="n">protectionSpace</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">([</span><span class="n">protectionSpace</span><span class="p">.</span><span class="n">authenticationMethod</span> <span class="nf">isEqualToString</span><span class="p">:</span><span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">])</span> <span class="p">{</span>
+        <span class="n">SecTrustRef</span> <span class="n">serverTrust</span> <span class="o">=</span> <span class="n">protectionSpace</span><span class="p">.</span><span class="n">serverTrust</span><span class="p">;</span>
+        <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengeUseCredential</span><span class="p">,</span> <span class="p">[</span><span class="n">NSURLCredential</span> <span class="nf">credentialForTrust</span><span class="p">:</span> <span class="n">serverTrust</span><span class="p">]);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengePerformDefaultHandling</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></td></tr></tbody></table></code></pre></figure>
 
 <p>與前面 NSURLConnection 的情況類同，只是這裡使用到的是 iOS7  新增的 NSURLSession 元件。對應的處理方式如下：</p>
 
-<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="lineno"> 1</span> <span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="nf">URLSession:</span><span class="p">(</span><span class="bp">NSURLSession</span> <span class="o">*</span><span class="p">)</span><span class="nv">session</span>
-<span class="lineno"> 2</span> <span class="nf">didReceiveChallenge:</span><span class="p">(</span><span class="bp">NSURLAuthenticationChallenge</span> <span class="o">*</span><span class="p">)</span><span class="nv">challenge</span>
-<span class="lineno"> 3</span>   <span class="nf">completionHandler:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">NSURLSessionAuthChallengeDisposition</span> <span class="n">disposition</span><span class="p">,</span>
-<span class="lineno"> 4</span>                               <span class="bp">NSURLCredential</span> <span class="o">*</span><span class="n">credential</span><span class="p">))</span><span class="n">completionHandler</span>
-<span class="lineno"> 5</span> <span class="p">{</span>
-<span class="lineno"> 6</span>     <span class="k">if</span> <span class="p">([[[</span><span class="n">challenge</span> <span class="n">protectionSpace</span><span class="p">]</span> <span class="n">authenticationMethod</span><span class="p">]</span> <span class="nl">isEqualToString</span><span class="p">:</span><span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">])</span> <span class="p">{</span>
-<span class="lineno"> 7</span>         <span class="n">SecTrustRef</span> <span class="n">serverTrust</span> <span class="o">=</span> <span class="p">[[</span><span class="n">challenge</span> <span class="n">protectionSpace</span><span class="p">]</span> <span class="n">serverTrust</span><span class="p">];</span>
-<span class="lineno"> 8</span>         <span class="k">if</span> <span class="p">(</span><span class="n">serverTrust</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
-<span class="lineno"> 9</span>             <span class="n">OSStatus</span> <span class="n">status</span> <span class="o">=</span> <span class="n">SecTrustEvaluate</span><span class="p">(</span><span class="n">serverTrust</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
-<span class="lineno">10</span>             <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">errSecSuccess</span> <span class="o">==</span> <span class="n">status</span><span class="p">))</span> <span class="p">{</span>
-<span class="lineno">11</span>                 <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengeCancelAuthenticationChallenge</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
-<span class="lineno">12</span>                 <span class="k">return</span><span class="p">;</span>
-<span class="lineno">13</span>             <span class="p">}</span>
-<span class="lineno">14</span> 
-<span class="lineno">15</span>             <span class="bp">NSData</span> <span class="o">*</span><span class="n">localCertData</span> <span class="o">=</span> <span class="p">[</span><span class="bp">NSData</span> <span class="nl">dataWithContentsOfFile</span><span class="p">:[[</span><span class="bp">NSBundle</span> <span class="n">mainBundle</span><span class="p">]</span>
-<span class="lineno">16</span>                                                    <span class="nl">pathForResource</span><span class="p">:</span><span class="s">@&quot;random-org&quot;</span>
-<span class="lineno">17</span>                                                             <span class="nl">ofType</span><span class="p">:</span><span class="s">@&quot;der&quot;</span><span class="p">]];</span>
-<span class="lineno">18</span> 
-<span class="lineno">19</span>             <span class="n">SecCertificateRef</span> <span class="n">remoteServerCert</span> <span class="o">=</span> <span class="n">SecTrustGetCertificateAtIndex</span><span class="p">(</span><span class="n">serverTrust</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
-<span class="lineno">20</span>             <span class="n">CFDataRef</span> <span class="n">remoteCertData</span> <span class="o">=</span> <span class="n">SecCertificateCopyData</span><span class="p">(</span><span class="n">remoteServerCert</span><span class="p">);</span>
-<span class="lineno">21</span>             <span class="kt">BOOL</span> <span class="n">isMatch</span> <span class="o">=</span> <span class="p">[</span><span class="n">localCertData</span> <span class="nl">isEqualToData</span><span class="p">:</span> <span class="p">(</span><span class="k">__bridge</span> <span class="bp">NSData</span> <span class="o">*</span><span class="p">)</span><span class="n">remoteCertData</span><span class="p">];</span>
-<span class="lineno">22</span>             <span class="n">CFRelease</span><span class="p">(</span><span class="n">remoteCertData</span><span class="p">);</span>
-<span class="lineno">23</span> 
-<span class="lineno">24</span>             <span class="k">if</span> <span class="p">(</span><span class="n">isMatch</span><span class="p">)</span> <span class="p">{</span>
-<span class="lineno">25</span>                 <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengeUseCredential</span><span class="p">,</span> <span class="p">[</span><span class="bp">NSURLCredential</span> <span class="nl">credentialForTrust</span><span class="p">:</span><span class="n">serverTrust</span><span class="p">]);</span>
-<span class="lineno">26</span>             <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-<span class="lineno">27</span>                 <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengeCancelAuthenticationChallenge</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
-<span class="lineno">28</span>             <span class="p">}</span>
-<span class="lineno">29</span>         <span class="p">}</span>
-<span class="lineno">30</span>     <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-<span class="lineno">31</span>         <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengePerformDefaultHandling</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
-<span class="lineno">32</span>     <span class="p">}</span>
-<span class="lineno">33</span> <span class="p">}</span></code></pre></div>
+<figure class="highlight"><pre><code class="language-objc" data-lang="objc"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+</pre></td><td class="code"><pre><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="nf">URLSession</span><span class="p">:(</span><span class="n">NSURLSession</span> <span class="o">*</span><span class="p">)</span><span class="nv">session</span>
+<span class="nf">didReceiveChallenge</span><span class="p">:(</span><span class="n">NSURLAuthenticationChallenge</span> <span class="o">*</span><span class="p">)</span><span class="nv">challenge</span>
+  <span class="nf">completionHandler</span><span class="p">:(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">NSURLSessionAuthChallengeDisposition</span> <span class="n">disposition</span><span class="p">,</span>
+                              <span class="n">NSURLCredential</span> <span class="o">*</span><span class="n">credential</span><span class="p">))</span><span class="n">completionHandler</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">([[[</span><span class="n">challenge</span> <span class="nf">protectionSpace</span><span class="p">]</span> <span class="nf">authenticationMethod</span><span class="p">]</span> <span class="nf">isEqualToString</span><span class="p">:</span><span class="n">NSURLAuthenticationMethodServerTrust</span><span class="p">])</span> <span class="p">{</span>
+        <span class="n">SecTrustRef</span> <span class="n">serverTrust</span> <span class="o">=</span> <span class="p">[[</span><span class="n">challenge</span> <span class="nf">protectionSpace</span><span class="p">]</span> <span class="nf">serverTrust</span><span class="p">];</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">serverTrust</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">OSStatus</span> <span class="n">status</span> <span class="o">=</span> <span class="n">SecTrustEvaluate</span><span class="p">(</span><span class="n">serverTrust</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+            <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">errSecSuccess</span> <span class="o">==</span> <span class="n">status</span><span class="p">))</span> <span class="p">{</span>
+                <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengeCancelAuthenticationChallenge</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
+                <span class="k">return</span><span class="p">;</span>
+            <span class="p">}</span>
+
+            <span class="n">NSData</span> <span class="o">*</span><span class="n">localCertData</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSData</span> <span class="nf">dataWithContentsOfFile</span><span class="p">:[[</span><span class="n">NSBundle</span> <span class="nf">mainBundle</span><span class="p">]</span>
+                                                   <span class="nl">pathForResource:</span><span class="s">@"random-org"</span>
+                                                            <span class="nl">ofType:</span><span class="s">@"der"</span><span class="p">]];</span>
+
+            <span class="n">SecCertificateRef</span> <span class="n">remoteServerCert</span> <span class="o">=</span> <span class="n">SecTrustGetCertificateAtIndex</span><span class="p">(</span><span class="n">serverTrust</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+            <span class="n">CFDataRef</span> <span class="n">remoteCertData</span> <span class="o">=</span> <span class="n">SecCertificateCopyData</span><span class="p">(</span><span class="n">remoteServerCert</span><span class="p">);</span>
+            <span class="n">BOOL</span> <span class="n">isMatch</span> <span class="o">=</span> <span class="p">[</span><span class="n">localCertData</span> <span class="nf">isEqualToData</span><span class="p">:</span> <span class="p">(</span><span class="n">__bridge</span> <span class="n">NSData</span> <span class="o">*</span><span class="p">)</span><span class="n">remoteCertData</span><span class="p">];</span>
+            <span class="n">CFRelease</span><span class="p">(</span><span class="n">remoteCertData</span><span class="p">);</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="n">isMatch</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengeUseCredential</span><span class="p">,</span> <span class="p">[</span><span class="n">NSURLCredential</span> <span class="nf">credentialForTrust</span><span class="p">:</span><span class="n">serverTrust</span><span class="p">]);</span>
+            <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+                <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengeCancelAuthenticationChallenge</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="n">completionHandler</span><span class="p">(</span><span class="n">NSURLSessionAuthChallengePerformDefaultHandling</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></td></tr></tbody></table></code></pre></figure>
 
 <h4 id="對-webview-的一些補充">對 WebView 的一些補充</h4>
 <p>在對 WebView 做處理上，除了對 SSL 錯誤直接略過外，目前無論是在 Android 還是 iOS 上，SDK API 都尚未直接提供方法讓開發者能在 SSL Handshake 的途中作 Server Certificate Pinning。其中一個替代方法是，利用其他能夠作 Pinning 的元件將資料下載回來，接著把資料傳到 WebView 進行讀取，避開原本用 WebView 直接設定連線網址。蘋果公司有提供這種處理的<a href="https://developer.apple.com/library/ios/samplecode/CustomHTTPProtocol/Introduction/Intro.html">範例</a>。</p>
@@ -349,179 +958,190 @@
   <li><a href="https://www.owasp.org/index.php/Certificate_and_Public_Key_Pinning">Certificate and Public Key Pinning - OWASP</a></li>
 </ul>
 
-<div class="footnotes">
+<div class="footnotes" role="doc-endnotes">
   <ol>
-    <li id="fn:note1">
-      <p>Google 基於效能及有效性的考量，在 Android 系統上預設停用<a href="https://code.google.com/p/android/issues/detail?id=68643">憑證撤銷檢查</a><br /> <a href="#fnref:note1" class="reversefootnote">&#8617;</a></p>
+    <li id="fn:note1" role="doc-endnote">
+      <p>Google 基於效能及有效性的考量，在 Android 系統上預設停用<a href="https://code.google.com/p/android/issues/detail?id=68643">憑證撤銷檢查</a><br /> <a href="#fnref:note1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
-    <li id="fn:note2">
-      <p>OWASP 的 Android 範例中，內含的 PUB_KEY 是錯誤的 (最後更改日期 2014/08/14) <a href="#fnref:note2" class="reversefootnote">&#8617;</a></p>
+    <li id="fn:note2" role="doc-endnote">
+      <p>OWASP 的 Android 範例中，內含的 PUB_KEY 是錯誤的 (最後更改日期 2014/08/14) <a href="#fnref:note2" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
   </ol>
 </div>
 
-              </article>
-              <p class="sns-widgets">
-                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
-              </p>
-          
-              <div class="heading--side-lined">
-                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/anfasam.jpg)"></span> <a href="/blog/author/anfa" class="blog-author-name">Anfa Sam</a> 
-              </div>
-              <p class="blog-author-info">
-                熟識各種平台架構，以全面的思維評估問題，持續關注最新技術。現專注於 Android、iOS 等手機平台的安全問題上。
-              </p>
-          
-              <div class="heading--side-lined">
-                讀者留言
-              </div>
-              <div class="blog-comments">
-                
-
-
-  <div id="disqus_thread"></div>
-<script type="text/javascript">
-    var disqus_developer = 1;
-    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
-    
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-
-
-
-
-              </div>
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/blog/author/anfa">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/anfa.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/blog/author/anfa">
+                            <h3>Anfa Sam</h3>
+                        </a>
+                        <span>Senior Developer</span>
+                        <p>
+                            熟識各種平台架構，以全面的思維評估問題，持續關注最新技術。現專注於 Android、iOS 等手機平台的安全問題上。
+                        </p>
+                    </div>
+                </div>
             </div>
-          </div>
+        </section>
+        
 
+        <!-- 相關文章 -->
+        <section class="recommand articles-list">
+            <div class="container">
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> <a href="/blog/tag/徵才/">#徵才</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/01/14/3rd-internship-program-recruit/">DEVCORE 2023 第三屆實習生計畫</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2023-01-14</span>
+                        <p class="line-litmit-3">DEVCORE 第三屆實習生計畫開始，計畫目的希望能培育人才、增強新世代的資安技能，如果您對這個計畫有興趣，歡迎來信報名！
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/01/12/DEVCORE-conference-registration-open-now/">DEVCORE Conference 2023 即日起開放報名</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2023-01-12</span>
+                        <p class="line-litmit-3">純攻擊導向的專業技術研討會 DEVCORE Conference 將於 3 月 10 日至 11 日再次盛大舉行
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2022/12/23/2022-devcore-national-cyber-security-scholarship-results-announcement/">DEVCORE 2022 年度全國資訊安全獎學金頒獎餐敘順利落幕</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2022-12-23</span>
+                        <p class="line-litmit-3">全國資訊安全獎學金頒獎餐敘順利落幕，期待獲獎同學們未來持續深耕資安知識與技術，在資安舞台上發光發熱！
+                        </p>
+                    </div>
+                </article>
+              
 
-
-
-
-
-</main>
-      <div class="container--wrapper">
-
-        <div class="relative-posts">
-          <div class="heading--side-lined container">
-            最新消息
-          </div>
-          <div class="relative-posts__cells">
-  
-            <section class="card">
-              <a href="/blog/2023/01/14/3rd-internship-program-recruit/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20230114/cover.jpg)"></div>
-                <h3 class="card__title">
-                  DEVCORE 2023 第三屆實習生計畫
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/公告/" class="card__tag">公告</a><a href="/blog/tag/徵才/" class="card__tag">徵才</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/最新消息/">最新消息</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2023/01/12/DEVCORE-conference-registration-open-now/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20230112/cover.jpg)"></div>
-                <h3 class="card__title">
-                  DEVCORE Conference 2023 即日起開放報名
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/公告/" class="card__tag">公告</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/最新消息/">最新消息</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2022/12/23/2022-devcore-national-cyber-security-scholarship-results-announcement/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20221223/cover.jpg)"></div>
-                <h3 class="card__title">
-                  DEVCORE 2022 年度全國資訊安全獎學金頒獎餐敘順利落幕
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/公告/" class="card__tag">公告</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/最新消息/">最新消息</a></small>
-            </section>
-  
-          </div>
-        </div>
-
-
-        <div class="contact-section container">
-          <h2 class="contact-section__title">
-            用最真實的攻擊，驗證企業的防禦
-          </h2>
-          <a href="/contact/" class="home-contact__button button--dense">聯絡我們</a>
-        </div>
-
-        <footer class="main-footer">
-          <div class="main-footer__about">
-            戴夫寇爾提供<br class="mobile-only" /><a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務<br />在<a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a>或<a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>上追蹤我們的<a href="/blog/" class="link">最新訊息</a><br />瞭解更多戴夫寇爾的<a href="/about/" class="link">駭客思維</a>
-          </div>
-          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
-                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
-                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
-          </div>
-          <address class="main-footer__address">
-            <ul class="list--unstyled">
-              <li>
-                地址 105608 台北市松山區八德路三段 32 號 13 樓
-              </li>
-              <li>
-                Email contact@devco.re
-              </li>
-              <li>
-                電話 02-2577-0925
-              </li>
-              <li>
-                傳真 02-2577-0928
-              </li>
-              <li>
-                統編 53955237
-              </li>
-            </ul>
-          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2023 DEVCORE 戴夫寇爾</small>
-        </footer>
-      </div>
+            </div>
+        </section>
     </div>
-    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
 
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">服務</h6>
+        <ul>
+            <li><a href="/services/red-team/">紅隊演練</a></li>
+            <li><a href="/services/penetration-test/">滲透測試</a></li>
+            <li><a href="/services/security-consulting/">資安顧問服務</a></li>
+            <li><a href="/services/security-training/">資安教育訓練</a></li>
+        </ul>
+    </div>
 
-  <script type="text/javascript">
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-30830800-1']);
-  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+    <div class="column">
+        <h6 class="mobile_toggle">研究</h6>
+        <ul>
+            <li><a href="/research/overview/">總覽概要</a></li>
+            <li><a href="/research/awards/">競賽與獎項</a></li>
+            <li><a href="/research/bug-bounty/">企業漏洞回報</a></li>
+            <li><a href="/research/talks/">國際研討會</a></li>
+            <li><a href="/research/cve/">CVE 漏洞列表</a></li>
+        </ul>
+    </div>
 
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
-</script>
+    <div class="column">
+        <h6 class="mobile_toggle">公司</h6>
+        <ul>
+            <li><a href="/company/about/">公司簡介</a></li>
+            <li><a href="/company/our-team/">團隊成員</a></li>
+            <li><a href="/company/history/">成就與沿革</a></li>
+            <li><a href="/company/csr/">企業社會責任</a></li>
+            <li><a href="/company/jobs/">工作機會</a></li>
+            <li><a href="/contact/">聯絡我們</a></li>
+        </ul>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">新聞</h6>
+        <ul>
+            <li><a href="/blog/">所有文章</a></li>
+            <li><a href="/blog/category/最新消息/">最新消息</a></li>
+            <li><a href="/blog/category/技術專欄/">技術專欄</a></li>
+            <li><a href="/blog/category/科普文章/">科普文章</a></li>
+            <li><a href="/blog/category/資安新聞/">資安新聞</a></li>
+            <li><a href="/media-kit/">媒體素材下載</a></li>
+        </ul>
+    </div>
 
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
 
+    <div class="copyright">
+        <div class="info">
+            <span>© 2023 DEVCORE 戴夫寇爾股份有限公司. <b class="line-block">All right reserved.</b></span>
+            <span><a href="/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
 
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K5B8NW"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
-
-  </body>
+</div>
+    </footer>
+</body>
 </html>
-
-
-
 

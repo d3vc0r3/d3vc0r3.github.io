@@ -1,12 +1,21 @@
 
+
 <!DOCTYPE html>
-<html lang="zh-TW">
-  <head>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta charset="utf-8" />
-    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
-    <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>Hacking Jenkins Part 1 - Play with Dynamic Routing | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
-    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>Hacking Jenkins Part 1 - Play with Dynamic Routing | DEVCORE 戴夫寇爾</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
     <meta name="description" property="og:description" content="這篇文章主要是分享去年中針對 Jenkins 所做的一次簡單 Security Review, 過程中共發現了五個 CVE 如下： CVE-2018-1999002(Arbitrary file read vulnerability), CVE-2018-1000600(CSRF and missing permission checks in GitHub Plugin), CVE-2018-1999046(Unauthorized users could access agent logs), CVE-2018-1000861(Code execution through crafted URLs), CVE-2019-pending(Sandbox Bypass in Script Security and Pipeline Plugins)" />
     <meta name="keywords" content="Advisory, CVE-2018-1999002, CVE-2018-1000600, CVE-2018-1999046, CVE-2018-1000861" />
     <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
@@ -30,80 +39,519 @@
     <link rel="canonical" href="https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/"/>
     <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
 
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-K5B8NW');</script>
-    <!-- End Google Tag Manager -->
-  </head>
-  <body>
-    <div class="page">
-      <div class="container--wrapper">
-        <div class="topbar">
-          <div class="topbar__brand">
-            <a href="/">
-                <div class="logo">
-                  DEVCORE 戴夫寇爾
-                </div></a>
-            <p class="slogan">
-              我們提供<a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務
-            </p>
-          </div>
-          <div class="drawer" id="drawer">
-            <div class="drawer__container">
-              <nav class="main-menu">
-                <div class="hidden">
-                  主選單
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body>
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>服務<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    紅隊演練
+                                </h2>
+                                <p class="two-line">
+                                    在不影響企業營運前提下，無所不用其極，從各種進入點執行模擬入侵攻擊，達成企業指定的演練情境。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    滲透測試
+                                </h2>
+                                <p class="two-line">
+                                    以駭客思維及手法嘗試入侵企業指定系統，找出潛在漏洞，驗證企業資料與設備是否可被竊取或破壞。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    資安顧問服務
+                                </h2>
+                                <p class="two-line">
+                                    以紅隊演練為基礎，提供攻擊者視角與可能入侵路徑，協助企業評估資安資源優先順序，並擬定長期防禦策略。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    資安教育訓練
+                                </h2>
+                                <p class="two-line">
+                                    從攻擊思維出發，協助企業有效預防資安事故並防禦；以及事件發生時，如何快速判定攻擊目的、手法、漏洞與及應變方式。
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
                 </div>
-                <a href="/services/penetration-test" class="main-menu__link mobile-only">滲透測試</a>
-                <a href="/services/red-team" class="main-menu__link mobile-only">紅隊演練</a>
-                <a href="/services/security-consulting" class="main-menu__link mobile-only">資安顧問</a>
-                <a href="/services/security-training" class="main-menu__link mobile-only">教育訓練</a>
-                <a href="/about/" class="main-menu__link">駭客思維</a><a href="/blog/" class="main-menu__link">最新訊息</a><a href="/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">搜尋</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
-              </nav>
-              <a href="/contact/" class="drawer__contact button--dense">聯絡我們</a>
-              <nav class="lang-menu">
-                <div class="lang-menu__label">
-                  語言:
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>研究<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    總覽概要
+                                </h2>
+                                <p class="two-line">
+                                    持續精研資安最新技術及漏洞研究趨勢，全方位檢測企業產品安全性、吸取經驗並轉化為紅隊演練工具與手法。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    競賽與獎項
+                                </h2>
+                                <p class="two-line">
+                                    國際級資訊安全競賽獎項肯定。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    企業漏洞回報
+                                </h2>
+                                <p class="two-line">
+                                    研究企業系統中的資安風險及各種可能的突破口，並通報企業修補。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    國際研討會
+                                </h2>
+                                <p class="two-line">
+                                    參與全球資安盛會，發表、交流漏洞的知識與資訊。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE 漏洞列表
+                                </h2>
+                                <p class="two-line">
+                                    挖掘並回報國際知名產品與服務的重大漏洞。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
-                <a href="/" class="lang-menu__link">中文</a>
-                <a href="/en/" class="lang-menu__link">English</a>
-              </nav>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>公司<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                公司簡介
+                            </h2>
+                            <p>
+                                DEVCORE 戴夫寇爾由世界級白帽駭客團隊創立，提供紅隊演練、滲透測試、資安顧問服務、資安教育訓練等服務。
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    團隊成員
+                                </h2>
+                                <p class="two-line">
+                                    由熱衷挑戰、具備駭客思維的資安專家組成，專注於創新攻擊手法研究，並以「高道德、高自律、高嚴謹」為最高指導原則。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    成就與沿革
+                                </h2>
+                                <p class="two-line">
+                                    長期聚焦於攻擊研究，屢屢獲邀參與全球知名資安研討會，已揭露數百個重要產品漏洞、協助企業提升防禦能量。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    企業社會責任
+                                </h2>
+                                <p class="two-line">
+                                    提供多元實習管道和研習計畫，提升新世代人才資安能量，推廣資訊安全意識。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    工作機會
+                                </h2>
+                                <p class="two-line">
+                                    加入 DEVCORE，共同改善資安產業結構，與我們一起打造更安全的世界。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>新聞<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    DEVCORE 最新消息。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    媒體素材下載
+                                </h2>
+                                <p>
+                                    使用 DEVCORE 商標須遵循的使用規範。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/search/">搜尋</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/contact/">聯絡我們</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>服務</span>
+                <div class="menuItem">
+                    <a href="/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                紅隊演練
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                滲透測試
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                顧問服務
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                教育訓練
+                            </h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
-            <div class="bars">
-              <div class="bar"></div>
-              <div class="bar"></div>
-              <div class="bar"></div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>資安研究</span>
+                <div class="menuItem">
+                    <a href="/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>總覽概要</h2>
+                        </div>
+                    </a>
+                    <a href="/research/awards/">
+                        <div class="item">
+                            <h2>競賽與獎項</h2>
+                        </div>
+                    </a>
+                    <a href="/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Bug Bounty</h2>
+                        </div>
+                    </a>
+                    <a href="/research/talks/">
+                        <div class="item">
+                            <h2>國際研討會</h2>
+                        </div>
+                    </a>
+                    <a href="/research/cve/">
+                        <div class="item">
+                            <h2>CVE 漏洞列表</h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </button>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>公司</span>
+                <div class="menuItem">
+                    <a href="/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>公司簡介</h2>
+                        </div>
+                    </a>
+                    <a href="/company/our-team/">
+                        <div class="item">
+                            <h2>團隊成員</h2>
+                        </div>
+                    </a>
+                    <a href="/company/history/">
+                        <div class="item">
+                            <h2>成就與沿革</h2>
+                        </div>
+                    </a>
+                    <a href="/company/csr/">
+                        <div class="item">
+                            <h2>企業社會責任</h2>
+                        </div>
+                    </a>
+                    <a href="/company/jobs/">
+                        <div class="item">
+                            <h2>工作機會</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>新聞</span>
+                <div class="menuItem">
+                    <!-- <a href="/blog/">
+                    <div class="item">
+                        <h2>所有文章</h2>
+                    </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>案例剖析</h2>
+                        </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>科普文章</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>技術專欄</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>資安新聞</h2>
+                        </div>
+                    </a> -->
+                    <a href="/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/media-kit/">
+                        <div class="item">
+                            <h2>媒體素材下載</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                搜尋
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                聯絡我們
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/blog/">所有文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/最新消息/">最新消息</a>
+                </li>
+                <li>
+                    <a href="/blog/category/技術專欄/">技術專欄</a>
+                </li>
+                <li>
+                    <a href="/blog/category/科普文章/">科普文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/資安新聞/">資安新聞</a>
+                </li>
+                <li>
+                    <a href="/media-kit/">媒體素材下載</a>
+                </li>
+            </ul>
         </div>
-      </div><main role="main">
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                    <span class="tag">
 
+                      <a href="/blog/tag/Advisory/">#Advisory</a> <a href="/blog/tag/CVE/">#CVE</a> <a href="/blog/tag/infoleak/">#infoleak</a> <a href="/blog/tag/SSRF/">#SSRF</a> 
+                    </span>
+                    <h1>
+                        Hacking Jenkins Part 1 - Play with Dynamic Routing
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/blog/author/orange">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/orange.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/blog/author/orange">Orange Tsai</a></span>
+                        <span class="date">2019-01-16</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20190116/cover.jpg"/>
+                    </div>
+                    
 
-          <div class="container--wrapper">
-            <div class="container">
-              <section class="blog-header">
-                <small class="blog-header__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
-                <img src="https://devco.re/assets/img/blog/20190116/cover.jpg" class="blog-header__image" alt="Hacking Jenkins Part 1 - Play with Dynamic Routing" />
-                <h1 class="blog-header__title">
-                  Hacking Jenkins Part 1 - Play with Dynamic Routing
-                </h1>
-                <div class="blog-header__tags">
-                  
-                  <a href="/blog/tag/Advisory/" class="blog-header__tag">Advisory</a><a href="/blog/tag/CVE/" class="blog-header__tag">CVE</a><a href="/blog/tag/infoleak/" class="blog-header__tag">infoleak</a><a href="/blog/tag/SSRF/" class="blog-header__tag">SSRF</a>
-                </div>
-          
-          
-                <p class="blog-header__info">
-                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/blog/author/orange" class="author-name">Orange Tsai</a> <time class="date">on 2019-01-16 </time>
-                </p>
-          
-              </section>
-              <article class="article">
-          <p><a href="/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en/">English Version</a><br />
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p><a href="/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en/">English Version</a>
 <a href="/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/">中文版本</a></p>
 
 <p>在軟體工程中, <a href="https://en.wikipedia.org/wiki/Continuous_integration">Continuous Integration</a> 及 <a href="https://en.wikipedia.org/wiki/Continuous_delivery">Continuous Delivery</a> 一直都被譽為是軟體開發上的必備流程, 有多少優點就不多談, 光是幫助開發者減少許多雜事就是很大的優勢了! 而在 CI/CD 的領域中, Jenkins 是最為老牌且廣為人知的一套工具, 由於它的易用性, 強大的 Pipeline 系統以及對於容器完美的整合使得 Jenkins 也成為目前最多人使用的 CI/CD 應用, 根據 Snyk 在 2018 年所做出的 <a href="https://snyk.io/blog/jvm-ecosystem-report-2018-tools">JVM 生態報告</a> 中, Jenkins 在 CI/CD 應用中約佔六成的市佔率!</p>
@@ -171,18 +619,18 @@
 
 <p>在這個模式下, 所有的內容皆是可讀的, 例如可看到工作日誌或是一些 job/node 等敏感資訊, 對於攻擊者來說在這個模式下最大的好處就是可以獲得大量的原始碼! 但與 Full Access 模式最大的差異則是無法進行更進一步的操作或是執行 Groovy 代碼以取得控制權!</p>
 
-<p>雖然這不是 Jenkins 的預設設定, 但對於一些習慣自動化的 DevOps 來說還是有可能開啟這個選項, 根據實際在 <a href="https://www.shodan.io/search?query=jenkins">Shodan</a> 上的調查約 12% 的機器還是開啟這個選項! 以下使用 <code class="highlighter-rouge">ANONYMOUS_READ=True</code> 來代稱這個模式</p>
+<p>雖然這不是 Jenkins 的預設設定, 但對於一些習慣自動化的 DevOps 來說還是有可能開啟這個選項, 根據實際在 <a href="https://www.shodan.io/search?query=jenkins">Shodan</a> 上的調查約 12% 的機器還是開啟這個選項! 以下使用 <code class="language-plaintext highlighter-rouge">ANONYMOUS_READ=True</code> 來代稱這個模式</p>
 
 <h3 id="3-authenticated-mode">3. Authenticated Mode</h3>
 
-<p>這是 Jenkins 預設安裝好的設定, 在沒有一組有效的帳號密碼狀況下無法看到任何資訊及進行任何操作! 以下使用 <code class="highlighter-rouge">ANONYMOUS_READ=False</code> 來代稱此模式</p>
+<p>這是 Jenkins 預設安裝好的設定, 在沒有一組有效的帳號密碼狀況下無法看到任何資訊及進行任何操作! 以下使用 <code class="language-plaintext highlighter-rouge">ANONYMOUS_READ=False</code> 來代稱此模式</p>
 
 <p><br /></p>
 
 <h2 id="漏洞分析">漏洞分析</h2>
 <hr />
 
-<p>整個漏洞要從 Jenkins 的 <a href="https://jenkins.io/doc/developer/handling-requests/routing/">動態路由</a> 講起, 為了給開發者更大的彈性, Jenkins(嚴格來講是 Stapler)使用了一套 Naming Convention 去匹配路由及動態的執行! 首先 Jenkins 以 <code class="highlighter-rouge">/</code> 為分隔將 URL 符號化, 接著由 <a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/jenkins/model/Jenkins.java">jenkins.model.Jenkins</a> 為入口點開始往下搜尋, 如果符號符合 (1) Public 屬性的成員或是 (2) Public 屬性的方法符合下列命名規則, 則調用並繼續往下呼叫:</p>
+<p>整個漏洞要從 Jenkins 的 <a href="https://jenkins.io/doc/developer/handling-requests/routing/">動態路由</a> 講起, 為了給開發者更大的彈性, Jenkins(嚴格來講是 Stapler)使用了一套 Naming Convention 去匹配路由及動態的執行! 首先 Jenkins 以 <code class="language-plaintext highlighter-rouge">/</code> 為分隔將 URL 符號化, 接著由 <a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/jenkins/model/Jenkins.java">jenkins.model.Jenkins</a> 為入口點開始往下搜尋, 如果符號符合 (1) Public 屬性的成員或是 (2) Public 屬性的方法符合下列命名規則, 則調用並繼續往下呼叫:</p>
 
 <blockquote>
   <ol>
@@ -203,13 +651,13 @@
 <p>看起來 Jenkins 給予開發者很大程度的自由去訪問各個物件, 但過於自由總是不好的，根據這種調用方式這裡就出現了兩個問題!</p>
 
 <h3 id="1-萬物皆繼承-javalangobject">1. 萬物皆繼承 java.lang.Object</h3>
-<p>在 Java 中, 所有的物件皆繼承 <a href="https://docs.oracle.com/javase/7/docs/api/java/lang/Object.html">java.lang.Object</a> 這個類別, 因此所有在 Java 中的物件皆存在著 <code class="highlighter-rouge">getClass()</code> 這個方法! 而恰巧這個方法又符合命名規則 <code class="highlighter-rouge">#1</code>, 因此 <code class="highlighter-rouge">getClass()</code> 可在 Jenkins 調用鏈中被動態呼叫!</p>
+<p>在 Java 中, 所有的物件皆繼承 <a href="https://docs.oracle.com/javase/7/docs/api/java/lang/Object.html">java.lang.Object</a> 這個類別, 因此所有在 Java 中的物件皆存在著 <code class="language-plaintext highlighter-rouge">getClass()</code> 這個方法! 而恰巧這個方法又符合命名規則 <code class="language-plaintext highlighter-rouge">#1</code>, 因此 <code class="language-plaintext highlighter-rouge">getClass()</code> 可在 Jenkins 調用鏈中被動態呼叫!</p>
 
 <h3 id="2-跨物件操作導致白名單繞過">2. 跨物件操作導致白名單繞過</h3>
 
-<p>前面所提到的 <code class="highlighter-rouge">ANONYMOUS_READ</code>, 其中 <code class="highlighter-rouge">True</code> 與 <code class="highlighter-rouge">False</code> 間最大的不同在於當在禁止的狀況下, 最初的入口點會透過 <a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/jenkins/model/Jenkins.java#L4682">jenkins.model.Jenkins#getTarget()</a> 多做一個基於白名單的 URL 前綴檢查, 這個白名單如下:</p>
+<p>前面所提到的 <code class="language-plaintext highlighter-rouge">ANONYMOUS_READ</code>, 其中 <code class="language-plaintext highlighter-rouge">True</code> 與 <code class="language-plaintext highlighter-rouge">False</code> 間最大的不同在於當在禁止的狀況下, 最初的入口點會透過 <a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/jenkins/model/Jenkins.java#L4682">jenkins.model.Jenkins#getTarget()</a> 多做一個基於白名單的 URL 前綴檢查, 這個白名單如下:</p>
 
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">ImmutableSet</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">ALWAYS_READABLE_PATHS</span> <span class="o">=</span> <span class="n">ImmutableSet</span><span class="o">.</span><span class="na">of</span><span class="o">(</span>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="nc">ImmutableSet</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;</span> <span class="no">ALWAYS_READABLE_PATHS</span> <span class="o">=</span> <span class="nc">ImmutableSet</span><span class="o">.</span><span class="na">of</span><span class="o">(</span>
     <span class="s">"/login"</span><span class="o">,</span>
     <span class="s">"/logout"</span><span class="o">,</span>
     <span class="s">"/accessDenied"</span><span class="o">,</span>
@@ -226,7 +674,7 @@
 
 <p>這也代表著一開始可選的入口限制更嚴格選擇更少, 但如果能在一個白名單上的入口找到其他物件參考, 跳到非白名單上的成員豈不可以繞過前述的 URL 前綴限制? 可能有點難理解, 這裡先來一個簡單的範例來解釋 Jenkins 的動態路由機制:</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://jenkin.local/adjuncts/whatever/class/classLoader/resource/index.jsp/content
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://jenkin.local/adjuncts/whatever/class/classLoader/resource/index.jsp/content
 </code></pre></div></div>
 
 <p>以上網址會依序執行下列方法</p>
@@ -251,7 +699,7 @@
 
 <p>所以該如何利用這個漏洞呢? 簡單說, 這個漏洞所能做到的事情就只是透過物件間的參考去繞過 ACL 政策, 但在此之前我們必須先找到一個好的跳板好讓我們可以更方便的在物件中跳來跳去, 這裡我們選用了下面這個跳板:</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/securityRealm/user/[username]/descriptorByName/[descriptor_name]/
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/securityRealm/user/[username]/descriptorByName/[descriptor_name]/
 </code></pre></div></div>
 
 <p>這個跳板會依序執行下面方法</p>
@@ -263,12 +711,12 @@
 
 <p>在 Jenkins 中可以被操作的物件都會繼承一個 <a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/Descriptor.java">hudson.model.Descriptor</a> 類別, 而繼承這個類別的物件都可以透過 <a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/DescriptorByNameOwner.java#L51">hudson.model.DescriptorByNameOwner#getDescriptorByName(String)</a> 去存取, 所以總體來說, 可透過這個跳板取得在 Jenkins 中約 500 個 Despicable 的物件類別!</p>
 
-<p>不過雖是如此, 由於 Jenkins 的設計模式, 大部分開發者在危險動作之前都會再做一次權限檢查, 所以即使可呼叫到 <a href="http://jenkins.local/script">Script Console</a> 但在沒有 <code class="highlighter-rouge">Jenkins.RUN_SCRIPTS</code> 權限的情況下也無法做任何事 :(</p>
+<p>不過雖是如此, 由於 Jenkins 的設計模式, 大部分開發者在危險動作之前都會再做一次權限檢查, 所以即使可呼叫到 <a href="http://jenkins.local/script">Script Console</a> 但在沒有 <code class="language-plaintext highlighter-rouge">Jenkins.RUN_SCRIPTS</code> 權限的情況下也無法做任何事 :(</p>
 
-<p>但這個漏洞依然不失成為一個很好的膠水去繞過第一層的 ACL 限制串起其他的漏洞, 為後續的利用開啟了一道窗! 以下我們給出三個串出漏洞鏈的例子!<br />
+<p>但這個漏洞依然不失成為一個很好的膠水去繞過第一層的 ACL 限制串起其他的漏洞, 為後續的利用開啟了一道窗! 以下我們給出三個串出漏洞鏈的例子!
 (雖然只介紹三種, 但由於這個漏洞玩法非常自由可串的絕不只如此, 推薦有興趣的同學可在尋找更多的漏洞鏈!)</p>
 
-<p>P.S. 值得注意的一點是, 在 <code class="highlighter-rouge">getUser([username])</code> 的實現中會呼叫到 <code class="highlighter-rouge">getOrCreateById(...)</code> 並且傳入 <code class="highlighter-rouge">create=True</code> 導致在記憶體中創造出一個暫存使用者(會出現在使用者列表但無法進行登入操作), 雖然無用不過也被當成一個漏洞記錄在 <a href="https://jenkins.io/security/advisory/2018-10-10/">SECURITY-1128</a></p>
+<p>P.S. 值得注意的一點是, 在 <code class="language-plaintext highlighter-rouge">getUser([username])</code> 的實現中會呼叫到 <code class="language-plaintext highlighter-rouge">getOrCreateById(...)</code> 並且傳入 <code class="language-plaintext highlighter-rouge">create=True</code> 導致在記憶體中創造出一個暫存使用者(會出現在使用者列表但無法進行登入操作), 雖然無用不過也被當成一個漏洞記錄在 <a href="https://jenkins.io/security/advisory/2018-10-10/">SECURITY-1128</a></p>
 
 <p><br /></p>
 
@@ -276,17 +724,17 @@
 
 <p>在測試 Jenkins 時, 最怕的就是要進行字典檔攻擊時卻不知道該攻擊哪個帳號, 畢竟帳號永遠比密碼難猜! 這時這個漏洞就很好用了XD</p>
 
-<p>由於 Jenkins 對搜尋的功能並沒有加上適當的權限檢查, 因此在 <code class="highlighter-rouge">ANONYMOUS_READ=False</code> 的狀況下可以透過修改 <code class="highlighter-rouge">keyword</code> 參數從 a 到 z 去列舉出所有使用者!</p>
+<p>由於 Jenkins 對搜尋的功能並沒有加上適當的權限檢查, 因此在 <code class="language-plaintext highlighter-rouge">ANONYMOUS_READ=False</code> 的狀況下可以透過修改 <code class="language-plaintext highlighter-rouge">keyword</code> 參數從 a 到 z 去列舉出所有使用者!</p>
 
 <h4 id="poc">PoC:</h4>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://jenkins.local/securityRealm/user/admin/search/index?q=[keyword]
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://jenkins.local/securityRealm/user/admin/search/index?q=[keyword]
 </code></pre></div></div>
 
 <p><img src="/assets/img/blog/20190116/3.png" alt="" /></p>
 
-<p>除此之外也可搭配由 <code class="highlighter-rouge">Ananthapadmanabhan S R</code> 所回報的 <a href="https://jenkins.io/security/advisory/2017-10-11/#user-remote-api-disclosed-users-email-addresses">SECURITY-514</a> 進一步取得使用者信箱, 如:</p>
+<p>除此之外也可搭配由 <code class="language-plaintext highlighter-rouge">Ananthapadmanabhan S R</code> 所回報的 <a href="https://jenkins.io/security/advisory/2017-10-11/#user-remote-api-disclosed-users-email-addresses">SECURITY-514</a> 進一步取得使用者信箱, 如:</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://jenkins.local/securityRealm/user/admin/api/xml
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://jenkins.local/securityRealm/user/admin/api/xml
 </code></pre></div></div>
 
 <p><br /></p>
@@ -305,7 +753,7 @@
 <p>不僅如此, 這個 SSRF 還是一個有回顯的 SSRF! 沒有回顯的 SSRF 要利用起來有多困難我想大家都知道 :P 因此一個有回顯的 SSRF 也就顯得何其珍貴!</p>
 
 <h4 id="poc-1">PoC:</h4>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://jenkins.local/securityRealm/user/admin/descriptorByName/org.jenkinsci.plugins.github.config.GitHubTokenCredentialsCreator/createTokenByPassword
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://jenkins.local/securityRealm/user/admin/descriptorByName/org.jenkinsci.plugins.github.config.GitHubTokenCredentialsCreator/createTokenByPassword
 ?apiUrl=http://169.254.169.254/%23
 &amp;login=orange
 &amp;password=tsai
@@ -321,7 +769,7 @@
   <p>所以廢話少說, RCE 在哪?</p>
 </blockquote>
 
-<p>為了最大程度的去利用這個漏洞, 我也挖了一個<strong>非常有趣</strong>的 RCE 可以與這個漏洞搭配使用成為一個真正意義上不用認證的 RCE! 但由於這個漏洞目前還在 Responsible Disclosure 的時程內, 就請先期待 Hacking Jenkins Part 2 囉!<br />
+<p>為了最大程度的去利用這個漏洞, 我也挖了一個<strong>非常有趣</strong>的 RCE 可以與這個漏洞搭配使用成為一個真正意義上不用認證的 RCE! 但由於這個漏洞目前還在 Responsible Disclosure 的時程內, 就請先期待 Hacking Jenkins Part 2 囉!
 (預計二月中釋出!)</p>
 
 <p><br /></p>
@@ -332,8 +780,8 @@
 <p>這裡是一些我想繼續研究的方向, 可以讓這個漏洞變得更完美! 如果你發現了下面任何一個的解法請務必告訴我, 我會很感激的XD</p>
 
 <ul>
-  <li>在 <code class="highlighter-rouge">ANONYMOUS_READ=False</code> 的權限下拿到 <code class="highlighter-rouge">Plugin</code> 的物件參考, 如果拿到的可以繞過 <a href="https://jenkins.io/security/advisory/2018-07-18/#SECURITY-914">CVE-2018-1999002</a> 與 <a href="https://jenkins.io/security/advisory/2018-02-14/#SECURITY-705">CVE-2018-6356</a> 所需的最小權限限制, 成為一個真正意義上的免登入任意讀檔!</li>
-  <li>在 <code class="highlighter-rouge">ANONYMOUS_READ=False</code> 的權限下找出另一組跳板去呼叫 <code class="highlighter-rouge">getDescriptorByName(String)</code>. 為了修復 <a href="https://jenkins.io/security/advisory/2018-08-15/#SECURITY-672">SECURITY-672</a>, Jenkins 從 2.138 開始對 <a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/User.java">hudson.model.User</a> 增加判斷 <code class="highlighter-rouge">Jenkins.READ</code> 的<a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/User.java#L1026">檢查</a>, 導致原有的跳板失效!</li>
+  <li>在 <code class="language-plaintext highlighter-rouge">ANONYMOUS_READ=False</code> 的權限下拿到 <code class="language-plaintext highlighter-rouge">Plugin</code> 的物件參考, 如果拿到的可以繞過 <a href="https://jenkins.io/security/advisory/2018-07-18/#SECURITY-914">CVE-2018-1999002</a> 與 <a href="https://jenkins.io/security/advisory/2018-02-14/#SECURITY-705">CVE-2018-6356</a> 所需的最小權限限制, 成為一個真正意義上的免登入任意讀檔!</li>
+  <li>在 <code class="language-plaintext highlighter-rouge">ANONYMOUS_READ=False</code> 的權限下找出另一組跳板去呼叫 <code class="language-plaintext highlighter-rouge">getDescriptorByName(String)</code>. 為了修復 <a href="https://jenkins.io/security/advisory/2018-08-15/#SECURITY-672">SECURITY-672</a>, Jenkins 從 2.138 開始對 <a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/User.java">hudson.model.User</a> 增加判斷 <code class="language-plaintext highlighter-rouge">Jenkins.READ</code> 的<a href="https://github.com/jenkinsci/jenkins/blob/master/core/src/main/java/hudson/model/User.java#L1026">檢查</a>, 導致原有的跳板失效!</li>
 </ul>
 
 <p><br /></p>
@@ -354,168 +802,179 @@
 </ul>
 
 
-              </article>
-              <p class="sns-widgets">
-                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
-              </p>
-          
-              <div class="heading--side-lined">
-                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/orangetsai.jpg)"></span> <a href="/blog/author/orange" class="blog-author-name">Orange Tsai</a> 
-              </div>
-              <p class="blog-author-info">
-                I am Orange : )
-              </p>
-          
-              <div class="heading--side-lined">
-                讀者留言
-              </div>
-              <div class="blog-comments">
-                
-
-
-  <div id="disqus_thread"></div>
-<script type="text/javascript">
-    var disqus_developer = 1;
-    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
-    
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-
-
-
-
-              </div>
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/blog/author/orange">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/orange.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/blog/author/orange">
+                            <h3>Orange Tsai</h3>
+                        </a>
+                        <span>Principal Security Researcher</span>
+                        <p>
+                            I am Orange : )
+                        </p>
+                    </div>
+                </div>
             </div>
-          </div>
+        </section>
+        
 
+        <!-- 相關文章 -->
+        <section class="recommand articles-list">
+            <div class="container">
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> <a href="/blog/tag/徵才/">#徵才</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/01/14/3rd-internship-program-recruit/">DEVCORE 2023 第三屆實習生計畫</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2023-01-14</span>
+                        <p class="line-litmit-3">DEVCORE 第三屆實習生計畫開始，計畫目的希望能培育人才、增強新世代的資安技能，如果您對這個計畫有興趣，歡迎來信報名！
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/01/12/DEVCORE-conference-registration-open-now/">DEVCORE Conference 2023 即日起開放報名</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2023-01-12</span>
+                        <p class="line-litmit-3">純攻擊導向的專業技術研討會 DEVCORE Conference 將於 3 月 10 日至 11 日再次盛大舉行
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2022/12/23/2022-devcore-national-cyber-security-scholarship-results-announcement/">DEVCORE 2022 年度全國資訊安全獎學金頒獎餐敘順利落幕</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2022-12-23</span>
+                        <p class="line-litmit-3">全國資訊安全獎學金頒獎餐敘順利落幕，期待獲獎同學們未來持續深耕資安知識與技術，在資安舞台上發光發熱！
+                        </p>
+                    </div>
+                </article>
+              
 
-
-
-
-
-</main>
-      <div class="container--wrapper">
-
-        <div class="relative-posts">
-          <div class="heading--side-lined container">
-            最新消息
-          </div>
-          <div class="relative-posts__cells">
-  
-            <section class="card">
-              <a href="/blog/2023/01/14/3rd-internship-program-recruit/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20230114/cover.jpg)"></div>
-                <h3 class="card__title">
-                  DEVCORE 2023 第三屆實習生計畫
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/公告/" class="card__tag">公告</a><a href="/blog/tag/徵才/" class="card__tag">徵才</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/最新消息/">最新消息</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2023/01/12/DEVCORE-conference-registration-open-now/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20230112/cover.jpg)"></div>
-                <h3 class="card__title">
-                  DEVCORE Conference 2023 即日起開放報名
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/公告/" class="card__tag">公告</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/最新消息/">最新消息</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2022/12/23/2022-devcore-national-cyber-security-scholarship-results-announcement/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20221223/cover.jpg)"></div>
-                <h3 class="card__title">
-                  DEVCORE 2022 年度全國資訊安全獎學金頒獎餐敘順利落幕
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/公告/" class="card__tag">公告</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/最新消息/">最新消息</a></small>
-            </section>
-  
-          </div>
-        </div>
-
-
-        <div class="contact-section container">
-          <h2 class="contact-section__title">
-            用最真實的攻擊，驗證企業的防禦
-          </h2>
-          <a href="/contact/" class="home-contact__button button--dense">聯絡我們</a>
-        </div>
-
-        <footer class="main-footer">
-          <div class="main-footer__about">
-            戴夫寇爾提供<br class="mobile-only" /><a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務<br />在<a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a>或<a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>上追蹤我們的<a href="/blog/" class="link">最新訊息</a><br />瞭解更多戴夫寇爾的<a href="/about/" class="link">駭客思維</a>
-          </div>
-          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
-                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
-                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
-          </div>
-          <address class="main-footer__address">
-            <ul class="list--unstyled">
-              <li>
-                地址 105608 台北市松山區八德路三段 32 號 13 樓
-              </li>
-              <li>
-                Email contact@devco.re
-              </li>
-              <li>
-                電話 02-2577-0925
-              </li>
-              <li>
-                傳真 02-2577-0928
-              </li>
-              <li>
-                統編 53955237
-              </li>
-            </ul>
-          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2023 DEVCORE 戴夫寇爾</small>
-        </footer>
-      </div>
+            </div>
+        </section>
     </div>
-    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
 
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">服務</h6>
+        <ul>
+            <li><a href="/services/red-team/">紅隊演練</a></li>
+            <li><a href="/services/penetration-test/">滲透測試</a></li>
+            <li><a href="/services/security-consulting/">資安顧問服務</a></li>
+            <li><a href="/services/security-training/">資安教育訓練</a></li>
+        </ul>
+    </div>
 
-  <script type="text/javascript">
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-30830800-1']);
-  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+    <div class="column">
+        <h6 class="mobile_toggle">研究</h6>
+        <ul>
+            <li><a href="/research/overview/">總覽概要</a></li>
+            <li><a href="/research/awards/">競賽與獎項</a></li>
+            <li><a href="/research/bug-bounty/">企業漏洞回報</a></li>
+            <li><a href="/research/talks/">國際研討會</a></li>
+            <li><a href="/research/cve/">CVE 漏洞列表</a></li>
+        </ul>
+    </div>
 
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
-</script>
+    <div class="column">
+        <h6 class="mobile_toggle">公司</h6>
+        <ul>
+            <li><a href="/company/about/">公司簡介</a></li>
+            <li><a href="/company/our-team/">團隊成員</a></li>
+            <li><a href="/company/history/">成就與沿革</a></li>
+            <li><a href="/company/csr/">企業社會責任</a></li>
+            <li><a href="/company/jobs/">工作機會</a></li>
+            <li><a href="/contact/">聯絡我們</a></li>
+        </ul>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">新聞</h6>
+        <ul>
+            <li><a href="/blog/">所有文章</a></li>
+            <li><a href="/blog/category/最新消息/">最新消息</a></li>
+            <li><a href="/blog/category/技術專欄/">技術專欄</a></li>
+            <li><a href="/blog/category/科普文章/">科普文章</a></li>
+            <li><a href="/blog/category/資安新聞/">資安新聞</a></li>
+            <li><a href="/media-kit/">媒體素材下載</a></li>
+        </ul>
+    </div>
 
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
 
+    <div class="copyright">
+        <div class="info">
+            <span>© 2023 DEVCORE 戴夫寇爾股份有限公司. <b class="line-block">All right reserved.</b></span>
+            <span><a href="/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
 
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K5B8NW"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
-
-  </body>
+</div>
+    </footer>
+</body>
 </html>
-
-
-
 

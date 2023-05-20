@@ -6,6 +6,7 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
     <!-- web fullscreen -->
     <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
     <meta name="mobile-web-app-capable" content="yes"><!-- android -->
@@ -567,7 +568,7 @@
 
 <p><a href="https://devco.re/blog/2019/09/02/attacking-ssl-vpn-part-3-the-golden-Pulse-Secure-ssl-vpn-rce-chain-with-Twitter-as-case-study/">在我們上一個研究中</a>，發現了三個知名 SSL VPN 廠商中不用認證的遠端代碼執行漏洞，雖然成果豐碩，但也是花了整個研究組半年的時間(加上後續處理甚至可到一年)，甚至在前兩個月完全是零產出、找不到漏洞下持續完成的。 所以對於一個好的漏洞研究人員，除了綜合能力、見識多寡以及能否深度挖掘外，還需要具備能夠獨立思考，以及興趣濃厚到耐得住寂寞等等特質，才有辦法在高難度的挑戰中殺出一條血路!</p>
 
-<p>漏洞研究往往不是一間公司賺錢的項目，卻又是無法不投資的部門，有多少公司能夠允許員工半年、甚至一年去做一件不一定有產出的研究? 更何況是將研究成果無條件的回報廠商只是為了讓世界更加安全? 這也就是我們 DEVCORE 不論在<a href="https://devco.re/services/penetration-test">滲透測試</a>或是<a href="https://devco.re/services/red-team">紅隊演練</a>上比別人來的優秀的緣故，除了平日軍火庫的累積外，當遇到漏洞時，也會想盡辦法將這個漏洞的危害最大化，利用駭客思維、透過各種不同組合利用，將一個低風險漏洞利用到極致，這也才符合真實世界駭客對你的攻擊方式!</p>
+<p>漏洞研究往往不是一間公司賺錢的項目，卻又是無法不投資的部門，有多少公司能夠允許員工半年、甚至一年去做一件不一定有產出的研究? 更何況是將研究成果無條件的回報廠商只是為了讓世界更加安全? 這也就是我們 DEVCORE 不論在<a href="https://devco.re/services/penetration-test/">滲透測試</a>或是<a href="https://devco.re/services/red-team/">紅隊演練</a>上比別人來的優秀的緣故，除了平日軍火庫的累積外，當遇到漏洞時，也會想盡辦法將這個漏洞的危害最大化，利用駭客思維、透過各種不同組合利用，將一個低風險漏洞利用到極致，這也才符合真實世界駭客對你的攻擊方式!</p>
 
 <p><br /></p>
 
@@ -693,12 +694,12 @@ ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
       <span class="k">if</span> <span class="p">(</span><span class="n">strncmp</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="n">sub_cmd</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">sub_cmd</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
           <span class="k">break</span><span class="p">;</span>
   <span class="p">}</span>
-  
+
   <span class="k">if</span> <span class="p">(</span><span class="n">SUB_COMMAND_LIST</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">strchr</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="sc">'?'</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
       <span class="k">return</span> <span class="o">-</span><span class="mi">10</span><span class="p">;</span>
-      
+
   <span class="c1">// ...</span>
-  
+
   <span class="k">while</span> <span class="p">(</span><span class="n">BLACKLISTS</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">if</span> <span class="p">(</span><span class="n">strchr</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="n">BLACKLISTS</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
           <span class="n">util_fdprintf</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="s">"invalid char '%c' in command</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">BLACKLISTS</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
@@ -706,7 +707,7 @@ ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
       <span class="p">}</span>
       <span class="n">i</span><span class="o">++</span><span class="p">;</span>
   <span class="p">}</span>
-  
+
   <span class="n">snprintf</span><span class="p">(</span><span class="n">file_buf</span><span class="p">,</span>  <span class="mi">64</span><span class="p">,</span> <span class="s">"/tmp/tmpfile.%d.%06ld"</span><span class="p">,</span> <span class="n">getpid</span><span class="p">(),</span> <span class="n">random</span><span class="p">()</span> <span class="o">%</span> <span class="mi">1000000</span><span class="p">);</span>
   <span class="n">snprintf</span><span class="p">(</span><span class="n">cmd_buf</span><span class="p">,</span> <span class="mi">1024</span><span class="p">,</span> <span class="s">"/usr/bin/diag %s &gt; %s 2&gt;/dev/null"</span><span class="p">,</span> <span class="n">input</span><span class="p">,</span> <span class="n">file_buf</span><span class="p">);</span>
   <span class="n">system</span><span class="p">(</span><span class="n">cmd_buf</span><span class="p">);</span>

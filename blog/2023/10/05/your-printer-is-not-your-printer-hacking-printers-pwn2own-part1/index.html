@@ -1,0 +1,1358 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>Your printer is not your printer ! - Hacking Printers at Pwn2Own Part I | DEVCORE 戴夫寇爾</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="我們在 Canon 和 HP 的印表機中發現了 Pre-auth RCE 的漏洞(CVE-2022-24673 及 CVE-2022-3942) 及 Lexmark 發現漏洞(CVE-2021-44734)，並在 Pwn2Own Austin 2021 中取得所有印表機的控制權，成功獲得 Pwn2Own 中駭客大師(Master of Pwn) 的點數，這篇研究將講述 Canon 及 HP 漏洞的細節及我們的利用方式。" />
+    <meta name="keywords" content="CVE-2022-24673, CVE-2022-3942, CVE-2021-44734, Pwn2Own Austin 2021" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="Your printer is not your printer ! - Hacking Printers at Pwn2Own Part I | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20231005/cover.jpg" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="Your printer is not your printer ! - Hacking Printers at Pwn2Own Part I | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="我們在 Canon 和 HP 的印表機中發現了 Pre-auth RCE 的漏洞(CVE-2022-24673 及 CVE-2022-3942) 及 Lexmark 發現漏洞(CVE-2021-44734)，並在 Pwn2Own Austin 2021 中取得所有印表機的控制權，成功獲得 Pwn2Own 中駭客大師(Master of Pwn) 的點數，這篇研究將講述 Canon 及 HP 漏洞的細節及我們的利用方式。">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20231005/cover.jpg">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body>
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>服務<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    紅隊演練
+                                </h2>
+                                <p class="two-line">
+                                    在不影響企業營運前提下，無所不用其極，從各種進入點執行模擬入侵攻擊，達成企業指定的演練情境。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    滲透測試
+                                </h2>
+                                <p class="two-line">
+                                    以駭客思維及手法嘗試入侵企業指定系統，找出潛在漏洞，驗證企業資料與設備是否可被竊取或破壞。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    資安顧問服務
+                                </h2>
+                                <p class="two-line">
+                                    以紅隊演練為基礎，提供攻擊者視角與可能入侵路徑，協助企業評估資安資源優先順序，並擬定長期防禦策略。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    資安教育訓練
+                                </h2>
+                                <p class="two-line">
+                                    從攻擊思維出發，協助企業有效預防資安事故並防禦；以及事件發生時，如何快速判定攻擊目的、手法、漏洞與及應變方式。
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>研究<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    總覽概要
+                                </h2>
+                                <p class="two-line">
+                                    持續精研資安最新技術及漏洞研究趨勢，全方位檢測企業產品安全性、吸取經驗並轉化為紅隊演練工具與手法。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    競賽與獎項
+                                </h2>
+                                <p class="two-line">
+                                    國際級資訊安全競賽獎項肯定。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    企業漏洞回報
+                                </h2>
+                                <p class="two-line">
+                                    研究企業系統中的資安風險及各種可能的突破口，並通報企業修補。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    國際研討會
+                                </h2>
+                                <p class="two-line">
+                                    參與全球資安盛會，發表、交流漏洞的知識與資訊。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE 漏洞列表
+                                </h2>
+                                <p class="two-line">
+                                    挖掘並回報國際知名產品與服務的重大漏洞。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>公司<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                公司簡介
+                            </h2>
+                            <p>
+                                DEVCORE 戴夫寇爾由世界級白帽駭客團隊創立，提供紅隊演練、滲透測試、資安顧問服務、資安教育訓練等服務。
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    團隊成員
+                                </h2>
+                                <p class="two-line">
+                                    由熱衷挑戰、具備駭客思維的資安專家組成，專注於創新攻擊手法研究，並以「高道德、高自律、高嚴謹」為最高指導原則。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    成就與沿革
+                                </h2>
+                                <p class="two-line">
+                                    長期聚焦於攻擊研究，屢屢獲邀參與全球知名資安研討會，已揭露數百個重要產品漏洞、協助企業提升防禦能量。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    企業社會責任
+                                </h2>
+                                <p class="two-line">
+                                    提供多元實習管道和研習計畫，提升新世代人才資安能量，推廣資訊安全意識。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    工作機會
+                                </h2>
+                                <p class="two-line">
+                                    加入 DEVCORE，共同改善資安產業結構，與我們一起打造更安全的世界。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>新聞<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    DEVCORE 最新消息。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    媒體素材下載
+                                </h2>
+                                <p>
+                                    使用 DEVCORE 商標須遵循的使用規範。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/search/">搜尋</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/contact/">聯絡我們</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>服務</span>
+                <div class="menuItem">
+                    <a href="/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                紅隊演練
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                滲透測試
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                顧問服務
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                教育訓練
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>資安研究</span>
+                <div class="menuItem">
+                    <a href="/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>總覽概要</h2>
+                        </div>
+                    </a>
+                    <a href="/research/awards/">
+                        <div class="item">
+                            <h2>競賽與獎項</h2>
+                        </div>
+                    </a>
+                    <a href="/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Bug Bounty</h2>
+                        </div>
+                    </a>
+                    <a href="/research/talks/">
+                        <div class="item">
+                            <h2>國際研討會</h2>
+                        </div>
+                    </a>
+                    <a href="/research/cve/">
+                        <div class="item">
+                            <h2>CVE 漏洞列表</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>公司</span>
+                <div class="menuItem">
+                    <a href="/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>公司簡介</h2>
+                        </div>
+                    </a>
+                    <a href="/company/our-team/">
+                        <div class="item">
+                            <h2>團隊成員</h2>
+                        </div>
+                    </a>
+                    <a href="/company/history/">
+                        <div class="item">
+                            <h2>成就與沿革</h2>
+                        </div>
+                    </a>
+                    <a href="/company/csr/">
+                        <div class="item">
+                            <h2>企業社會責任</h2>
+                        </div>
+                    </a>
+                    <a href="/company/jobs/">
+                        <div class="item">
+                            <h2>工作機會</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>新聞</span>
+                <div class="menuItem">
+                    <!-- <a href="/blog/">
+                    <div class="item">
+                        <h2>所有文章</h2>
+                    </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>案例剖析</h2>
+                        </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>科普文章</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>技術專欄</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>資安新聞</h2>
+                        </div>
+                    </a> -->
+                    <a href="/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/media-kit/">
+                        <div class="item">
+                            <h2>媒體素材下載</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                搜尋
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                聯絡我們
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/blog/">所有文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/最新消息/">最新消息</a>
+                </li>
+                <li>
+                    <a href="/blog/category/技術專欄/">技術專欄</a>
+                </li>
+                <li>
+                    <a href="/blog/category/科普文章/">科普文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/資安新聞/">資安新聞</a>
+                </li>
+                <li>
+                    <a href="/media-kit/">媒體素材下載</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                    <span class="tag">
+
+                      <a href="/blog/tag/CVE/">#CVE</a> <a href="/blog/tag/Pwn2Own/">#Pwn2Own</a> <a href="/blog/tag/RCE/">#RCE</a> <a href="/blog/tag/IoT/">#IoT</a> 
+                    </span>
+                    <h1>
+                        Your printer is not your printer ! - Hacking Printers at Pwn2Own Part I
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/blog/author/angelboy">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/angelboy.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/blog/author/angelboy">Angelboy</a></span>
+                        <span class="date">2023-10-05</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20231005/cover.jpg"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p><a href="/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1-en/">English Version</a>, <a href="/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1/">中文版本</a></p>
+
+<p>印表機近年來已成為企業內網中不可或缺的設備之一，功能也隨著科技的發展日益增多，除了一般的傳真及列印之外，也開始支援 AirPrint 等雲端列印服務，讓列印更加方便，直接使用行動裝置就可以輕鬆列印，更成為了 IoT 中，不可或缺的一環，正因為其便利，也常被用於列印公司內部機敏文件，使得在企業中印表機的安全性更加的重要。</p>
+
+<p>而前年我們也在 Canon 及 HP 的印表機中發現了 Pre-auth RCE 的漏洞(<a href="https://www.zerodayinitiative.com/advisories/ZDI-22-515/">CVE-2022-24673</a> 及 <a href="https://www.zerodayinitiative.com/advisories/ZDI-22-532/">CVE-2022-3942</a>) 及 Lexmark 發現漏洞(<a href="https://www.zerodayinitiative.com/advisories/ZDI-22-332/">CVE-2021-44734</a>)，並在 Pwn2Own Austin 2021 中取得了 Canon ImageCLASS MF644Cdw、 HP Color LaserJet Pro MFP M283fdw 及 Lexmark MC3224i 的控制權，而成功獲得 Pwn2Own 中駭客大師(Master of Pwn) 的點數，這篇研究將講述 Canon 及 HP 漏洞的細節及我們的利用方式。</p>
+
+<p><img src="/assets/img/blog/20231005/1.jpg" alt="" /></p>
+
+<p>此份研究亦發表於 <a href="https://hitcon.org/2022/agenda/704bf58c-c42b-4593-97c0-9aba91caa6e4">HITCON 2022</a> 及 <a href="https://codeblue.jp/2022/en/talks/">CODE BLUE 2022</a>，你可以從<a href="https://hitcon.org/2022/slides/Your%20Printer%20is%20not%20your%20Printer%20!%20-%20Hacking%20Printers%20at%20Pwn2Own.pdf">這裡</a>取得投影片！</p>
+
+<h2 id="printer">Printer</h2>
+<p>早期在使用印表機時，往往會需要使用 IEEE1284 或是 USB 的 Printer cable 來將印表機接上電腦，並且在使用時會額外裝上廠商所附的驅動程式。而現今的印表機已可以接上網路，並多了各式各樣的功能，通常只要將印表機接上區網，區網中的電腦就可以輕易地發現你所新安裝的印表機。</p>
+
+<p>目前市面上的印表機預設都開了非常多的服務，不外乎就是為了讓列印更加方便，像是 FTP、AirPrint、Bonjour 等等服務。</p>
+
+<h2 id="motivation">Motivation</h2>
+
+<h3 id="為何要研究印表機呢">為何要研究印表機呢？</h3>
+
+<h4 id="紅隊內網需求">紅隊內網需求</h4>
+<p>過去我們團隊在執行紅隊演練過程中，印表機普遍出現於現代企業內網中，幾乎都會有一台以上，但往往是被忽略的一塊，也常常沒在更新。印表機本身也非常適合作為攻擊者的藏身處，通常很難被偵測出來。值得一提的是比較大型的企業也很有可能將其接上 AD，成為獲取機密資訊的入口。</p>
+
+<h4 id="pwn2own-austin-2021">Pwn2Own Austin 2021</h4>
+<p>另外一點是印表機在 2021 時，首次成為了 Pwn2Own Mobile 主要推動的目標之一，而我們剛好當時也準備再次挑戰 Pwn2Own 舞台，便決定一探究竟。</p>
+
+<p><img src="/assets/img/blog/20231005/2.jpg" alt="" /></p>
+
+<p>起初我們原本以為非常簡單，跟多數的 IoT 設備一樣，能輕易的找到 Command injection 問題，殊不知有不少印表機都是使用 RTOS，並非一般的 Linux 系統，但這更是驅動了我們挑戰它的決心。</p>
+
+<p>本篇將會著重在較為精彩的 Canon 及 HP 部分，Lexmark 有機會再談談。</p>
+
+<h2 id="analysis">Analysis</h2>
+<p>剛開始研究的時候，我們參考了許多<a href="https://chdk.fandom.com/wiki/DryOS_PIXMA_Printer_Shell">資料</a>都是需要拆解硬體來分析，才能獲得 debug console，再用 dump memory 方式來獲取原始的 firmware。但最終我們採用了其他的方式，並沒有拆解任何一台印表機。</p>
+
+<h3 id="canon">Canon</h3>
+
+<h4 id="firmware-extract">Firmware Extract</h4>
+<p>初始分析版本為 v6.03，我們一開始使用 <a href="https://github.com/ReFirmLabs/binwalk">binwalk</a> 去解析它，但 firmware 是經過混淆的，我們並沒辦法直接解開。</p>
+
+<p>圖: 經過混淆的 Canon ImageCLASS MF644Cdw fimware 
+<img src="/assets/img/blog/20231005/3.jpg" alt="" /></p>
+
+<p>我們這邊也嘗試過了 <a href="https://www.synacktiv.com/publications/treasure-chest-party-quest-from-doom-to-exploit.html">TREASURE CHEST PARTY QUEST: FROM DOOM TO EXPLOIT</a> by Synacktiv 及 <a href="https://web.archive.org/web/20220224100459/https://www.contextis.com/en/blog/hacking-canon-pixma-printers-doomed-encryption">Hacking Canon Pixma Printers – Doomed Encryption</a> by Contextis Research 的研究，但這次是完全不同的系列，我們無法使用同樣的方法解開混淆過的 firmware。</p>
+
+<p>於是我們開始分析混淆過的 firmware 格式及內容。</p>
+
+<p><img src="/assets/img/blog/20231005/4.jpg" alt="" /></p>
+
+<p>我們大致上可以從混淆過的 firmware 看到，每個混淆過的 firmware 的開頭都會是 NCFW 這個 Magic，並帶有該 firmware 大小，而其他部分則是混淆過的資料。</p>
+
+<p>於是我們開始猜想，也許這台印表機舊版本的 firmware 沒有混淆，直到某一版才開始混淆，如果可以抓到中介版本，可能有機會獲得解混淆的方法。而這個 Magic 也可以讓我們辨別是不是經過混淆的。</p>
+
+<p>以下這個網址是透過官網或是擷取封包獲得的 firmware 下載網址</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>https://pdisp01.c-wss.com/gdl/WWUFORedirectTarget.do?id=MDQwMDAwNDc1MjA1&amp;cmp=Z01&amp;lang=EN
+</code></pre></div></div>
+
+<p>經過分析後，可以拆分為多個部分</p>
+
+<p><img src="/assets/img/blog/20231005/5.jpg" alt="" /></p>
+
+<p>約略可以歸納出下載網址的規則，我們可以藉由這個方法來載到所有版本的 firmware，當時我們載到的版本有</p>
+
+<ul>
+  <li>V2.01</li>
+  <li>V4.02</li>
+  <li>V6.03</li>
+  <li>V9.03</li>
+  <li>V10.02</li>
+</ul>
+
+<p>而 v10.02 是幾周後會釋出的版本，可以先從這邊優先載到。載完所有版本後，我們發現該系列版本的 firmware 都是經過混淆的，無法從先前版本獲得解混淆的方法。但我們可以下載 Canon 其他系列的印表機，嘗試找找是否有類似的混淆演算法。載完約有 130 GB 大小。透過 grep 找 <code class="language-plaintext highlighter-rouge">NCFW</code> 及 <code class="language-plaintext highlighter-rouge">servicemode.html</code> 可以找到未混淆的 firmware。</p>
+
+<p><img src="/assets/img/blog/20231005/6.jpg" alt="" /></p>
+
+<p>最後找到四組符合條件的 firmware，我們這邊選擇了 WG7000 系列的印表機來分析，並找到了疑似解混淆的函式。</p>
+
+<p><img src="/assets/img/blog/20231005/7.jpg" alt="" /></p>
+
+<p>很幸運的，藉由重寫這個函式，可以解出明文的 MF644Cdw firmware。</p>
+
+<p><img src="/assets/img/blog/20231005/8.jpg" alt="" /></p>
+
+<p>在解出 firmware 之後，必須找出 firmware 的 image base address，IDA 才能有效地辨別跟 reference。此處可透過常見的分析工具 <a href="https://github.com/sgayou/rbasefind">rbasefind</a> 來找 image base。</p>
+
+<p><img src="/assets/img/blog/20231005/9.jpg" alt="" /></p>
+
+<p>一開始找出的 base 為 0x40b0000，但丟進 IDA 後，卻發現大部分的<code class="language-plaintext highlighter-rouge">函式</code>與 <code class="language-plaintext highlighter-rouge">debug message</code> 的字串對映不起來。</p>
+
+<p><img src="/assets/img/blog/20231005/10.jpg" alt="" /></p>
+
+<p>如上圖所示，<code class="language-plaintext highlighter-rouge">loc_4489AC08</code> 應該指向函式名稱的字串，然而此地址卻不是正常的字串，而是被當成 code 區段，內容也不是字串，表示此位置並非真正位置，而是有些許的偏移，但正常 function 的解析沒甚麼太大問題。這邊可以先找一個<code class="language-plaintext highlighter-rouge">已知函式名稱的函式</code>和找到屬於他的<code class="language-plaintext highlighter-rouge">函式名稱字串</code>來做調整，找到其中差異的 offset 後，將 image base 調到正確位置就可以了。最終找到的 image base 為 <strong>0x40affde0</strong>。調整完後，可看到原本的函式已可正確識別函式名稱。</p>
+
+<p><img src="/assets/img/blog/20231005/11.jpg" alt="" /></p>
+
+<p>接下來就可以正常分析 firmware，而初步分析後可得知，Canon ImageCLASS MF644Cdw 架構如下</p>
+
+<ul>
+  <li>OS - DryOSV2
+    <ul>
+      <li>Customized RTOS by Canon</li>
+    </ul>
+  </li>
+  <li>ARMv7 32bit little-endian</li>
+  <li>Linked with application code into single image
+    <ul>
+      <li>Kernel</li>
+      <li>Service</li>
+    </ul>
+  </li>
+</ul>
+
+<h3 id="hp">HP</h3>
+
+<p>HP 的 firmware 取得相對容易許多，我們可以透過 <a href="https://github.com/fkie-cad/fact_extractor/issues/37">binwalk -Z</a> 來獲得正確的 firmware，約略需要花 3-4 天左右的時間，而其他找 image base address 等步驟，則與 Canon 相同，此處就不贅述。經過初步分析後，HP Color LaserJet Pro MFP M283fdw 架構如下</p>
+
+<ul>
+  <li>OS
+    <ul>
+      <li>RTOS - Modify from ThreadX/Green Hills</li>
+    </ul>
+  </li>
+  <li>ARM11 Mixed-endian
+    <ul>
+      <li>Code - little-endian</li>
+      <li>Data - Big-endian</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="attack-surface">Attack Surface</h2>
+<p>在現今市面上大多數的多功能事務機中，預設都會開啟一堆服務</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Service</th>
+      <th>Port</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>RUI</td>
+      <td>TCP 80/443</td>
+      <td>Web interface</td>
+    </tr>
+    <tr>
+      <td>PDL</td>
+      <td>TCP 9100</td>
+      <td>Page Description Language</td>
+    </tr>
+    <tr>
+      <td>PJL</td>
+      <td>TCP 9100</td>
+      <td>Printer Job Language</td>
+    </tr>
+    <tr>
+      <td>IPP</td>
+      <td>TCP 631</td>
+      <td>Internet Printing Protocol</td>
+    </tr>
+    <tr>
+      <td>LPD</td>
+      <td>TCP 515</td>
+      <td>Line Printer Daemon Protocol</td>
+    </tr>
+    <tr>
+      <td>SNMP</td>
+      <td>UDP 161</td>
+      <td>Simple Network Management Protocol</td>
+    </tr>
+    <tr>
+      <td>SLP</td>
+      <td>TCP 427</td>
+      <td>Service Location Protocol</td>
+    </tr>
+    <tr>
+      <td>mDNS</td>
+      <td>UDP 5353</td>
+      <td>Multicast DNS</td>
+    </tr>
+    <tr>
+      <td>LLMNR</td>
+      <td>UDP 5355</td>
+      <td>Link-Local Multicast Name Resolution</td>
+    </tr>
+    <tr>
+      <td>…</td>
+      <td>…</td>
+      <td>…</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>一般來說，為了方便管理，通常都會開 RUI (web 介面) ，再來是 9100 Port 也是印表機常使用的 Port，主要會用來傳輸列印的資料。其他部分則會依照廠商不同而有所不同，不過上述所列的服務通常都會有，且預設大部分都是開啟的。在評估過這些服務後，決定注重在發現服務及 DNS 系列的協定，因為我們的長期經驗下來，常常觀察到 vendor 在開發這些服務時，往往是自行開發實作，而不是使用存在已久的 Open Source。但實際上來說，實作這些協定很容易出現問題的。我們當時主要分析的服務主要有 <strong>SLP</strong>、<strong>mDNS</strong> 及 <strong>LLMNR</strong>。</p>
+
+<p>接下來就以 Pwn2Own Austin 2021 作為 Case Study，來看看這些協定常會有哪些問題。</p>
+
+<h2 id="hacking-printers-at-pwn2own">Hacking printers at Pwn2Own</h2>
+
+<h3 id="canon-1">Canon</h3>
+
+<h4 id="service-location-protocol">Service Location Protocol</h4>
+<p>SLP 是一種服務發現協定，主要用於讓電腦快速找到印表機，過去在 ESXI 中，<a href="https://www.zerodayinitiative.com/blog/2021/3/1/cve-2020-3992-amp-cve-2021-21974-pre-auth-remote-code-execution-in-vmware-esxi">SLP 也常常出問題</a>，而在 Canon 的 SLP 服務，主要由 Canon 自己實作，SLP 服務細節可參考 <a href="https://www.ietf.org/rfc/rfc2608.txt">RFC2608</a>。在我們分析 SLP 前必須先了解 SLP 封包大致上的結構</p>
+
+<p>圖: SLP Packet Structure
+<img src="/assets/img/blog/20231005/12.jpg" alt="" /></p>
+
+<p>這邊只需要關注<code class="language-plaintext highlighter-rouge">function-id</code>，此欄位會決定請求型態，也會決定 payload 部分的格式。而 Canon 只有實作 Service Request 及 Attribute Request 兩種。</p>
+
+<p><img src="/assets/img/blog/20231005/13.jpg" alt="" /></p>
+
+<p>在 Attribute Request (AttrRqst) 的請求中，允許使用者可以根據 service 及 scope 來獲得 attribute list。
+scope 可以定義要找的範圍，如 canon 印表機。</p>
+
+<p>Example:
+<img src="/assets/img/blog/20231005/14.jpg" alt="" /></p>
+
+<p>而 Attribute request 結構大致如下</p>
+
+<p><img src="/assets/img/blog/20231005/15.jpg" alt="" /></p>
+
+<p>主要是長度(Length)及數值(Value)的組合，通常在 Parse 這種格式，很容易出問題，需要特別注意，而實際上 Canon 在 Parse 這個結構時就出了問題。</p>
+
+<h4 id="vulnerability">Vulnerability</h4>
+<p>Canon 在 parse scope list 時，會將跳脫字元轉換成 ASCII，例如 <code class="language-plaintext highlighter-rouge">\41</code> 會轉換成 <code class="language-plaintext highlighter-rouge">A</code> ，然而這個簡單轉換會有怎樣的問題呢? 我們來看一下 Pseudo code</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">parse_scope_list</span><span class="p">(...){</span>
+    <span class="kt">char</span> <span class="n">destbuf</span><span class="p">[</span><span class="mi">36</span><span class="p">];</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">max</span> <span class="o">=</span> <span class="mi">34</span><span class="p">;</span>
+    <span class="n">parse_escape_char</span><span class="p">(...,</span><span class="n">destbuf</span><span class="p">,</span><span class="n">max</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+<p>如上面程式碼所示，在 <code class="language-plaintext highlighter-rouge">parse_scope_list</code> 中，會先分配 36 bytes 的 <code class="language-plaintext highlighter-rouge">destbuf</code> 並且指定最大大小 34 到 <code class="language-plaintext highlighter-rouge">parse_escape_char</code> 中，這邊沒甚麼問題，讓我們來看一下 <code class="language-plaintext highlighter-rouge">parse_escape_char</code></p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="kr">__fastcall</span> <span class="nf">parse_escape_char</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">**</span><span class="n">pdata</span><span class="p">,</span> <span class="n">_WORD</span> <span class="o">*</span><span class="n">pdatalen</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">*</span><span class="n">destbuf</span><span class="p">,</span> <span class="n">_WORD</span> <span class="o">*</span><span class="n">max</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">idx</span><span class="p">;</span> <span class="c1">// r7</span>
+  <span class="kt">int</span> <span class="n">v7</span><span class="p">;</span> <span class="c1">// r9</span>
+  <span class="kt">int</span> <span class="n">v8</span><span class="p">;</span> <span class="c1">// r8</span>
+  <span class="kt">int</span> <span class="n">error</span><span class="p">;</span> <span class="c1">// r11</span>
+  <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">*</span><span class="n">v10</span><span class="p">;</span> <span class="c1">// r5</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">i</span><span class="p">;</span> <span class="c1">// r6</span>
+  <span class="kt">int</span> <span class="n">v12</span><span class="p">;</span> <span class="c1">// r1</span>
+  <span class="kt">int</span> <span class="n">v13</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">v14</span><span class="p">;</span> <span class="c1">// r1</span>
+  <span class="kt">bool</span> <span class="n">v15</span><span class="p">;</span> <span class="c1">// cc</span>
+  <span class="kt">int</span> <span class="n">v16</span><span class="p">;</span> <span class="c1">// r2</span>
+  <span class="kt">bool</span> <span class="n">v17</span><span class="p">;</span> <span class="c1">// cc</span>
+  <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="n">v18</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">int</span> <span class="n">v19</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="n">v20</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">v21</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">v22</span><span class="p">;</span> <span class="c1">// r0</span>
+
+  <span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">v7</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">v8</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">error</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">v10</span> <span class="o">=</span> <span class="o">*</span><span class="n">pdata</span><span class="p">;</span>
+  <span class="k">for</span> <span class="p">(</span> <span class="n">i</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int16</span><span class="p">)</span><span class="o">*</span><span class="n">pdatalen</span><span class="p">;</span> <span class="n">i</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">v7</span><span class="p">;</span> <span class="n">i</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int16</span><span class="p">)(</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">v12</span> <span class="o">=</span> <span class="o">*</span><span class="n">v10</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="n">v12</span> <span class="o">==</span> <span class="sc">','</span> <span class="p">)</span>
+    <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+      <span class="n">v7</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="n">v12</span> <span class="o">==</span> <span class="sc">'\\'</span> <span class="p">)</span> <span class="c1">//----------------------[1]</span>
+      <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="p">)</span>
+          <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+        <span class="n">v13</span> <span class="o">=</span> <span class="n">v10</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+        <span class="n">v14</span> <span class="o">=</span> <span class="n">v13</span> <span class="o">-</span> <span class="sc">'0'</span><span class="p">;</span>
+        <span class="n">v15</span> <span class="o">=</span> <span class="n">v13</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'0'</span> <span class="o">&gt;</span> <span class="mi">9</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">v13</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'0'</span> <span class="o">&gt;</span> <span class="mi">9</span> <span class="p">)</span>
+          <span class="n">v15</span> <span class="o">=</span> <span class="n">v13</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'A'</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">v15</span> <span class="o">&amp;&amp;</span> <span class="n">v13</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'a'</span> <span class="o">&gt;</span> <span class="mi">5</span> <span class="p">)</span>
+          <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+        <span class="n">v16</span> <span class="o">=</span> <span class="n">v10</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+        <span class="n">v17</span> <span class="o">=</span> <span class="n">v16</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'0'</span> <span class="o">&gt;</span> <span class="mi">9</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">v16</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'0'</span> <span class="o">&gt;</span> <span class="mi">9</span> <span class="p">)</span>
+          <span class="n">v17</span> <span class="o">=</span> <span class="n">v16</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'A'</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">v17</span> <span class="o">&amp;&amp;</span> <span class="n">v16</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'a'</span> <span class="o">&gt;</span> <span class="mi">5</span> <span class="p">)</span>
+          <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">v14</span> <span class="o">&lt;=</span> <span class="mi">9</span> <span class="p">)</span>
+          <span class="n">v18</span> <span class="o">=</span> <span class="mh">0x10</span> <span class="o">*</span> <span class="n">v14</span><span class="p">;</span>
+        <span class="k">else</span>
+          <span class="n">v18</span> <span class="o">=</span> <span class="n">v13</span> <span class="o">-</span> <span class="mh">0x37</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">v14</span> <span class="o">&gt;</span> <span class="mi">9</span> <span class="p">)</span>
+          <span class="n">v18</span> <span class="o">*=</span> <span class="mh">0x10</span><span class="p">;</span>
+        <span class="o">*</span><span class="n">destbuf</span> <span class="o">=</span> <span class="n">v18</span><span class="p">;</span> <span class="c1">//-------------------[2]</span>
+        <span class="n">v19</span> <span class="o">=</span> <span class="n">v10</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+        <span class="n">v10</span> <span class="o">+=</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="n">v20</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)(</span><span class="n">v19</span> <span class="o">-</span> <span class="mh">0x30</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">9</span> <span class="o">?</span> <span class="p">(</span><span class="n">v19</span> <span class="o">-</span> <span class="mi">55</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xF</span> <span class="o">|</span> <span class="o">*</span><span class="n">destbuf</span> <span class="o">:</span> <span class="o">*</span><span class="n">destbuf</span> <span class="o">|</span> <span class="p">(</span><span class="n">v19</span> <span class="o">-</span> <span class="mh">0x30</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xF</span><span class="p">;</span>
+        <span class="o">*</span><span class="n">destbuf</span> <span class="o">=</span> <span class="n">v20</span><span class="p">;</span>
+        <span class="n">LOWORD</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="o">!</span><span class="n">strchr</span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="s">"(),</span><span class="se">\\</span><span class="s">!&lt;=&gt;~;*+"</span><span class="p">,</span> <span class="o">*</span><span class="n">destbuf</span><span class="p">)</span> <span class="p">)</span>
+        <span class="p">{</span>
+          <span class="n">v21</span> <span class="o">=</span> <span class="o">*</span><span class="n">destbuf</span><span class="p">;</span>
+          <span class="k">if</span> <span class="p">(</span> <span class="n">v21</span> <span class="o">&gt;</span> <span class="mh">0x1F</span> <span class="o">&amp;&amp;</span> <span class="n">v21</span> <span class="o">!=</span> <span class="mh">0x7F</span> <span class="p">)</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">goto</span> <span class="n">LABEL_40</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="n">strchr</span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="s">"(),</span><span class="se">\\</span><span class="s">!&lt;=&gt;~;*+"</span><span class="p">,</span> <span class="n">v12</span><span class="p">)</span> <span class="p">)</span> <span class="c1">//-----------------------[3]</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+      <span class="n">v22</span> <span class="o">=</span> <span class="o">*</span><span class="n">v10</span><span class="p">;</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="n">v22</span> <span class="o">&lt;=</span> <span class="mh">0x1F</span> <span class="o">||</span> <span class="n">v22</span> <span class="o">==</span> <span class="mh">0x7F</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="n">v22</span> <span class="o">!=</span> <span class="sc">' '</span> <span class="p">)</span>
+      <span class="p">{</span>
+        <span class="n">v8</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="k">goto</span> <span class="n">LABEL_35</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="o">!</span><span class="n">v8</span> <span class="p">)</span>
+      <span class="p">{</span>
+        <span class="n">v8</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="nl">LABEL_35:</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int16</span><span class="p">)</span><span class="o">*</span><span class="n">max</span> <span class="o">&lt;=</span> <span class="n">idx</span> <span class="p">)</span> <span class="c1">//----------------------[4] </span>
+        <span class="p">{</span>
+          <span class="n">error</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+          <span class="k">goto</span> <span class="n">next_one</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">v8</span> <span class="p">)</span>
+          <span class="n">LOBYTE</span><span class="p">(</span><span class="n">v22</span><span class="p">)</span> <span class="o">=</span> <span class="mi">32</span><span class="p">;</span>
+        <span class="o">*</span><span class="n">destbuf</span> <span class="o">=</span> <span class="n">v22</span><span class="p">;</span>
+<span class="nl">LABEL_40:</span>
+        <span class="o">++</span><span class="n">destbuf</span><span class="p">;</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int16</span><span class="p">)(</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+<span class="nl">next_one:</span>
+    <span class="o">++</span><span class="n">v10</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">if</span> <span class="p">(</span> <span class="n">error</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="o">*</span><span class="n">max</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">debugprintff</span><span class="p">(</span><span class="mi">3645</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="s">"Scope longer than buffer provided"</span><span class="p">);</span>
+<span class="nl">LABEL_48:</span>
+    <span class="o">*</span><span class="n">pdata</span> <span class="o">=</span> <span class="n">v10</span><span class="p">;</span>
+    <span class="o">*</span><span class="n">pdatalen</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">if</span> <span class="p">(</span> <span class="n">idx</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="o">*</span><span class="n">max</span> <span class="o">=</span> <span class="n">idx</span><span class="p">;</span>
+    <span class="k">goto</span> <span class="n">LABEL_48</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>可以看到 <code class="language-plaintext highlighter-rouge">[3]</code> 針對是沒有跳脫字元的處理，會在 <code class="language-plaintext highlighter-rouge">[4]</code> 檢查是否有超過最大長度，然而在有跳脫字元的處理中 <code class="language-plaintext highlighter-rouge">[1]</code> ，並沒有任何對長度的檢查，直接將轉換後的結果放到 destatation buffer 中 <code class="language-plaintext highlighter-rouge">[2]</code>，一旦給定的字串多數為跳脫字元的情況，就會造成 stack overflow。</p>
+
+<p>在找到漏洞之後，第一件事就是先看看本身有甚麼保護，方便後續的利用。但分析了一下發現，Canon 印表機本身並沒有任何記憶體相關的保護。</p>
+
+<h4 id="protection">Protection</h4>
+<ul>
+  <li>No Stack Guard</li>
+  <li>No DEP</li>
+  <li>No ASLR</li>
+</ul>
+
+<p>沒有 Stack Guard、沒有 DEP 也沒有 ASLR，可以說是 <strong>hack friendly</strong> ! 如同回到 90 年代，一個 stack overflow 就可以打天下。接下來就如同過往的 Binary Exploitation 利用手法，找個地方放 shellcode 再覆蓋 return address 跳到 shellcode 就會有任意程式碼執行了! 最終我們找到了 BJNP 這個服務來放我們的 shellcode。</p>
+
+<h4 id="bjnp">BJNP</h4>
+<p>BJNP 本身也是個服務發現協定，由 Canon 自己所設計，過去也曾經有許多漏洞，<a href="https://www.synacktiv.com/publications/treasure-chest-party-quest-from-doom-to-exploit.html">Synacktiv</a> 也曾經利用該協定漏洞來獲得印表機控制權，這邊不多做細節上的介紹，更多細節可參考<a href="https://doar-e.github.io/blog/2022/06/11/pwn2own-2021-canon-imageclass-mf644cdw-writeup/#bjnp">這篇</a>，我們也用了類似的手法。 BJNP 本身會將可控的 session 資料放在已知的 global buffer 中，我們可用這個功能來將我們的 shellcode 放到一個固定的位置上，基本上也沒甚麼限制。</p>
+
+<p>我們重新整理一下利用步驟</p>
+
+<h4 id="exploitation-step">Exploitation Step</h4>
+<ul>
+  <li>使用 BJNP 將我們的 shellcode 放到固定的已知位置。</li>
+  <li>觸發 SLP 的 stack overflow 並覆蓋 return address</li>
+  <li>跳到我們的 shellcode 上執行程式碼。</li>
+</ul>
+
+<h4 id="pwn2own-austin-2021-1">Pwn2Own Austin 2021</h4>
+<p>通常 Pwn2Own 中會需要你證明已打下印表機，這邊可以自由選擇呈現方式，我們起初想要的是如同我們 exploit Lexmark 印表機一樣，直接將 logo 放到印表機的 LCD 螢幕上。</p>
+
+<p><img src="/assets/img/blog/20231005/16.jpg" alt="" /></p>
+
+<p>但在比賽前，我們花了很多時間在研究該怎麼把 logo 印到螢幕上，花在這邊時間可能比找洞跟寫 exploit 時間還要長，最後也因為時間上的因素，採取了比較保險的做法，直接改掉 <a href="https://doar-e.github.io/blog/2022/06/11/pwn2own-2021-canon-imageclass-mf644cdw-writeup/#service-mode">Service Mode</a> 字串，再印到螢幕上。</p>
+
+<p><img src="/assets/img/blog/20231005/17.jpg" alt="" /></p>
+
+<p>不過實際上印圖片到螢幕上並不難，其他隊伍有找到<a href="https://doar-e.github.io/blog/2022/06/11/pwn2own-2021-canon-imageclass-mf644cdw-writeup/#displaying-an-image">方法</a>，有興趣的人可以嘗試看看。</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/vQbQImZ3XRw?start=18400" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe>
+
+<h4 id="debug">Debug</h4>
+<p>看到這邊可能會有人想問這種環境如何 debug，實際上來說要 debug 通常有幾種方法：</p>
+<ul>
+  <li>接上硬體獲得 debug console 後，用裡面的功能來 debug</li>
+  <li>用舊的洞獲得程式碼執行後，裝上客製的 debugger</li>
+</ul>
+
+<p>不過我們當時已更新到最新，該版本不存在舊的漏洞，需要降版本回去，而拆解硬體同樣也須額外的時間，但當時我們已經有漏洞了，時間上來說不太合成本。最後我們還是採用最傳統的 sleep debug 法去 debug。</p>
+
+<p><img src="/assets/img/blog/20231005/18.jpg" alt="" /></p>
+
+<p>在 ROP 或執行 shellcode 後，將結果印到網頁或其他可見的地方，然後呼叫 sleep 後，就可從網頁或其他讀出結果，最後再重開機，接下來就是不斷重複此流程。不過實際上更好的做法還是接上 debug console 會方便一點。</p>
+
+<p>接下來講講 HP 印表機</p>
+
+<h3 id="hp-1">HP</h3>
+
+<h4 id="link-local-multicast-name-resolution">Link-Local Multicast Name Resolution</h4>
+<p><a href="https://en.wikipedia.org/wiki/Link-Local_Multicast_Name_Resolution">LLMNR</a> 是與 mDNS 非常相似的一個協定，提供了區網中的域名解析功能，但比 mDNS 更單純一點，通常也會配合一些服務發現協定。這邊簡單介紹此機制：</p>
+
+<p>在區網域名解析時，Client A 會先用 multicast 方式，尋找區網中 Client C 位置
+<img src="/assets/img/blog/20231005/19.jpg" alt="" /></p>
+
+<p>在 Client C 接收到之後，則會回傳給 Client A，簡單實現了區網域名的解析
+<img src="/assets/img/blog/20231005/20.jpg" alt="" /></p>
+
+<p>而基本上 LLMNR 大多建立在 <a href="https://datatracker.ietf.org/doc/html/rfc4795#section-2.1.1">DNS 封包格式</a> 上，格式如下：</p>
+
+<p><img src="/assets/img/blog/20231005/21.jpg" alt="" /></p>
+
+<p>主要會是 header 加上 Queries 這種格式，Count 表示不同型態的 query 數。</p>
+
+<p><img src="/assets/img/blog/20231005/22.jpg" alt="" /></p>
+
+<p>而每個 DNS Query 都是由許多 label 組成，每個 label 都會像上圖中這樣，都是長度加上字串的組合，也有 <a href="https://www.rfc-editor.org/rfc/rfc1035#section-4.1.4">Message Compression</a> 機制，過去在處理這些地方時，非常容易出現問題，在 BlackHat 2021 的 <a href="https://i.blackhat.com/asia-21/Thursday-Handouts/as-21-dosSantos-The-Cost-of-Complexity-Different-Vulnerabilities-While-Implementing-the-Same-RFC.pdf">THE COST OF COMPLEXITY:Different Vulnerabilities While Implementing the Same RFC</a> 中，也提到了類似的問題。</p>
+
+<h4 id="vulnerability-1">Vulnerability</h4>
+
+<p>我們回頭來看一下 HP 的實作：</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">llmnr_process_query</span><span class="p">(...){</span>
+    <span class="kt">char</span> <span class="n">result</span><span class="p">[</span><span class="mi">292</span><span class="p">];</span>
+    <span class="n">consume_labels</span><span class="p">(</span><span class="n">llmnr_packet</span><span class="o">-&gt;</span><span class="n">qname</span><span class="p">,</span><span class="n">result</span><span class="p">,...);</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+</code></pre></div></div>
+<p>這邊可以看到 HP 在處理 LLMNR 封包時，會將一個固定 buffer 傳入，用來放處理後的結果，而 consume_lables 則是主要用來處理 dns labels。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="kr">__fastcall</span> <span class="nf">consume_labels</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">src</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">dst</span><span class="p">,</span> <span class="n">llmnr_hdr</span> <span class="o">*</span><span class="n">a3</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">v3</span><span class="p">;</span> <span class="c1">// r5</span>
+  <span class="kt">int</span> <span class="n">v4</span><span class="p">;</span> <span class="c1">// r12</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">len</span><span class="p">;</span> <span class="c1">// r3</span>
+  <span class="kt">int</span> <span class="n">v6</span><span class="p">;</span> <span class="c1">// r4</span>
+  <span class="kt">char</span> <span class="n">v7</span><span class="p">;</span> <span class="c1">// r6</span>
+  <span class="kt">bool</span> <span class="n">v8</span><span class="p">;</span> <span class="c1">// cc</span>
+  <span class="kt">int</span> <span class="n">v9</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="n">chr</span><span class="p">;</span> <span class="c1">// r6</span>
+  <span class="kt">int</span> <span class="n">result</span><span class="p">;</span> <span class="c1">// r0</span>
+
+  <span class="n">v3</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">v4</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">v6</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="k">while</span> <span class="p">(</span> <span class="mi">1</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">chr</span> <span class="o">=</span> <span class="n">src</span><span class="p">[</span><span class="n">v3</span><span class="p">];</span> <span class="c1">//-------------[1]</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="o">!</span><span class="n">chr</span> <span class="p">)</span>
+      <span class="k">break</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">len</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="p">)</span>
+    <span class="p">{</span>
+      <span class="n">v8</span> <span class="o">=</span> <span class="n">chr</span> <span class="o">&lt;=</span> <span class="mh">0xC0u</span><span class="p">;</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="n">chr</span> <span class="o">==</span> <span class="mh">0xC0</span> <span class="p">)</span>
+      <span class="p">{</span>
+        <span class="n">v9</span> <span class="o">=</span> <span class="n">src</span><span class="p">[</span><span class="n">v3</span> <span class="o">+</span> <span class="mi">1</span><span class="p">];</span>
+        <span class="n">v6</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="n">v3</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="n">src</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">a3</span> <span class="o">+</span> <span class="n">v9</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="k">else</span>
+      <span class="p">{</span>
+        <span class="n">len</span> <span class="o">=</span> <span class="n">src</span><span class="p">[</span><span class="n">v3</span><span class="o">++</span><span class="p">];</span>
+        <span class="n">v8</span> <span class="o">=</span> <span class="n">v4</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="o">!</span><span class="n">v8</span> <span class="p">)</span>
+        <span class="n">dst</span><span class="p">[</span><span class="n">v4</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="sc">'.'</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+      <span class="n">v7</span> <span class="o">=</span> <span class="n">src</span><span class="p">[</span><span class="n">v3</span><span class="o">++</span><span class="p">];</span>
+      <span class="n">len</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span><span class="p">)(</span><span class="n">len</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+      <span class="n">dst</span><span class="p">[</span><span class="n">v4</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="n">v7</span><span class="p">;</span> <span class="c1">//----------[2]</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="n">result</span> <span class="o">=</span> <span class="n">v3</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="n">dst</span><span class="p">[</span><span class="n">v4</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="k">if</span> <span class="p">(</span> <span class="n">v6</span> <span class="p">)</span>
+    <span class="k">return</span> <span class="mi">2</span><span class="p">;</span>
+  <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+<p>而在 consume_labels 中的 <code class="language-plaintext highlighter-rouge">[1]</code> 會先取得 label 長度，接著根據型態去處理，而在<code class="language-plaintext highlighter-rouge">[2]</code> 則是處理一般長度的情況，此處並<strong>沒有對長度做檢查</strong>，就直接將 label 寫進 dst buffer 中，導致了 stack overflow，到此處我們原以為差不多結束了，接下來應該如同 Canon 類似的方法就可以 Exploit 了。然而當我們在寫 Exploit 時發現 HP 比 Canon 多了一些保護機制。</p>
+
+<h4 id="protection-1">Protection</h4>
+<ul>
+  <li>No Stack Guard</li>
+  <li><strong>XN(DEP)</strong></li>
+  <li><strong>Memory Protect Unit (MPU)</strong></li>
+  <li>No ASLR</li>
+</ul>
+
+<p>在 HP 印表機中，多了 XN 及 MPU 的記憶體保護措施，另外這個漏洞也有了更多的限制。我們<strong>只能 overflow 約 0x100 bytes</strong> 及<strong>不能有 null 字元</strong>，這大幅限制了我們的 ROP，使得我們沒辦法單靠 ROP 做到後續行動，需要另外找其他的漏洞或其他方法才能達成我們的目標。在一段時間後，我們開始思考，HP 印表機是如何去實作 <strong>XN(DEP)</strong> 及 <strong>MPU</strong> 的? 我們回顧一下 HP RTOS:</p>
+
+<ul>
+  <li>所有 Service code 及 Kernel Code 都在同一個 Binary 中。</li>
+  <li>大多數的 task 都跑在同一個記憶體空間底下(沒有 Process isolation)，也幾乎都跑在高權限模式</li>
+</ul>
+
+<p>看完以上兩點，會想到是不是理解 HP RTOS 中的 MMU 及 MPU 就可以繞過呢？</p>
+
+<p>我們來看一下 HP RTOS MMU 機制</p>
+
+<h4 id="mmu-in-hp-m283fdw">MMU in HP M283fdw</h4>
+<p>在 HP M283fdw 中使用的是一階層的 Translation table 來做 Address translation ，每個 translation table entry 都表示 1MB 的 Section，而 Translation table 則是<strong>固定在 0x4003c000</strong> 這個位置上</p>
+
+<p><img src="/assets/img/blog/20231005/23.jpg" alt="" /></p>
+
+<p>而每個 translation table entry 都會對應到 physical address 及該 section 的權限，CPU 就是根據這些內容決定執行權限、記憶體內容修改權限，如果我們可以修改 translation table entry 的內容就可以更改記憶體權限，也可以透過它來 Mapping 任意 Physical address，這邊跟權限有關的主要會有 AP APX 跟 XN。</p>
+
+<p><img src="/assets/img/blog/20231005/24.jpg" alt="" /></p>
+
+<p>我們可以從前述的漏洞中注意到，在有 stack overflow 且也跑在高權限下，就可通過 ROP 修改 translation table entry，但當我們對嘗試直接對 translation table 做寫入後，結果</p>
+
+<p><img src="/assets/img/blog/20231005/25.jpg" alt="" /></p>
+
+<p>造成印表機 Crash，查了一下發現是 memory fault exception，主要造成原因就是因為 Memory Protect Unit (MPU) 有對該記憶體區段做保護。</p>
+
+<p>好，那我們就來看看 MPU 的機制。</p>
+
+<h4 id="mpu-in-hp-m283fdw">MPU in HP M283fdw</h4>
+
+<p><a href="https://en.wikipedia.org/wiki/Memory_protection_unit">MPU</a> 主要功能是把 memory 拆分成好幾個 region 並定義每個 region 的權限，與 MMU 是完全不同的機制，很常出現在 IoT 設備中。
+HP 則是在開機就會啟用，並將每個 region 定義好權限，因此無法自己操作 page table。</p>
+
+<p><img src="/assets/img/blog/20231005/26.jpg" alt="" /></p>
+
+<p>在長時間逆向及參考 <a href="https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Address-Map/Protected-Memory-System-Architecture--PMSAv7/Register-support-for-PMSAv7-in-the-SCS?lang=en#BEHJFJDI">ARM Manual</a> 之後，我們發現事實上只要清空 MPU_CTRL 就可關閉 MPU，在經過逆向後 HP M283fdw 的 MPU_CTRL 位置是在 0xE0400304，這邊稍微跟 ARM 的 spec 有點不同，不太確定原因就是了。</p>
+
+<p><img src="/assets/img/blog/20231005/27.jpg" alt="" /></p>
+
+<h4 id="exploitation">Exploitation</h4>
+<p>在了解 HP 的 MMU 及 MPU 機制後，我們可輕易地利用 ROP 來關閉 MPU，並成功修改 translation table entry，我們可以任意的修改任何 serivce 的程式碼，這邊我們最後選擇了 <a href="https://en.wikipedia.org/wiki/Line_Printer_Daemon_protocol">Line Printer Daemon(LPD)</a> 這個服務來修改，將它修改成後門: 讀入更多的 Payload 到指定的位置上，最終執行我們送過去的 shellcode。</p>
+
+<p>但有一點必須特別注意，覆蓋完 translation table entry 跟 LPD 的 code 後，務必要 <strong>flush TLB</strong> 跟<strong>清掉 I-cache 和 D-cache</strong>  不然很有可能還是跑在舊有的程式碼上面導致 exploit 失敗。</p>
+
+<p>Flash TLB</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>flush_tlb:
+    mov r12, #0
+    mcr p15, 0, r12, c8, c7, 0
+</code></pre></div></div>
+
+<p>Invalidate I-cache</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>disable_icache:
+    mrc p15, 0, r1, c1, c0, 0
+    bic r1, r1, #(1 &lt;&lt; 12)
+    mcr p15, 0, r1, c1, c0, 0
+</code></pre></div></div>
+
+<p>我們重新整理了一下利用步驟</p>
+
+<h4 id="exploitation-step-1">Exploitation Step</h4>
+<ul>
+  <li>首先先觸發 LLMNR 的 stack overflow</li>
+  <li>利用有限的 ROP 關閉 MPU</li>
+  <li>利用 ROP 改掉 translation table entry 獲得讀寫執行權限</li>
+  <li>Flush TLB</li>
+  <li>改掉 LPD service 的程式碼</li>
+  <li>清掉 I-cache 和 D-cache</li>
+  <li>使用改過的 LPD 讀我們的 shellcode 後並執行</li>
+</ul>
+
+<h4 id="pwn2own-austin-2021-2">Pwn2Own Austin 2021</h4>
+<p>到可以執行 shellcode 時，我們只剩一週時間，我們最後選擇跟 Canon 一樣使用改字串顯示 <code class="language-plaintext highlighter-rouge">Pwned by DEVCORE</code> 到 LCD 上。</p>
+
+<p><img src="/assets/img/blog/20231005/28.jpg" alt="" /></p>
+
+<p>而幸運的是，我們第一次嘗試就成功了：）</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/vQbQImZ3XRw?start=29093" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe>
+
+<p>在這之後我們也嘗試了直接把後門改成 debug console 上面，方便利用許多功能，例如查看記憶體資訊，播放音樂等等功能，<a href="https://twitter.com/fsecurelabs">F-Secure Labs</a> 在比賽時就使用播放音樂這個功能來呈現，非常有趣，可以到<a href="https://youtu.be/c82uFBdTvII?t=1263">這裡</a>看當時的情況。</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/S9TkvaAmyMw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe>
+
+<h3 id="result">Result</h3>
+<p>在 Pwn2Own Austin 2021 中，我們打下其他設備跟印表機後最終獲得了第二名，以這次來說獲得不錯經驗，也學到了一些新東西。</p>
+
+<p><img src="/assets/img/blog/20231005/29.jpg" alt="" /></p>
+
+<p>而對於一般用戶們，有什麼方法可以避免印表機被當作攻擊目標甚至是跳板呢?</p>
+
+<h2 id="mitigation">Mitigation</h2>
+<h3 id="update">Update</h3>
+
+<p>首先就是定期更新，上述的印表機都已有 patch，這邊是很常被大家忽略的一部分，我們很常看到印表機好幾年了都沒更新，甚至直接預設密碼放著，很容易就被當成目標。</p>
+
+<h3 id="disable-unused-service">Disable unused service</h3>
+
+<p>另外一點就是盡可能關掉沒在用的服務， 大部分的印表機預設開啟過多平常根本不會用的服務，我們甚至認為可以關掉 discovery 服務，只要開你要用的就好了。</p>
+
+<h3 id="firewall">Firewall</h3>
+<p>更好的做法可以再加上 firewall，大部分印表機也都有提供相關功能。</p>
+
+<h2 id="summary">Summary</h2>
+<p>事實上，我們獲得 shellcode 執行後，除了印東西在 LCD 外，我們可以藉由印表機來竊取機密資訊，不論是機密文件或是一些 credential，印表機也是個平行移動 (Lateral Movement) 的點，而且很難被偵測到，是紅隊中非常好的目標。另外很多印表機上的發現服務系列的協定或是 DNS 系列的協定很常出問題，如果想找類似印表機或其他 IoT 設備的漏洞，也許可以優先朝這個方向看看。</p>
+
+<h2 id="to-be-continue">To be continue</h2>
+<p>最後，我們在去年 <a href="https://www.thezdi.com/blog/2022/8/29/announcing-pwn2own-toronto-2022-and-introducing-the-soho-smashup">Pwn2Own Toronto 2022</a> 中，也在印表機系列中找到幾個漏洞，我們也將會在近期發佈詳細資訊，敬請期待 Part II</p>
+
+<h2 id="reference">Reference</h2>
+<ul>
+  <li><a href="https://labs.withsecure.com/assets/BlogFiles/Printing-Shellz.pdf">https://labs.withsecure.com/assets/BlogFiles/Printing-Shellz.pdf</a></li>
+  <li><a href="https://foxglovesecurity.com/2017/11/20/a-sheep-in-wolfs-clothing-finding-rce-in-hps-printer-fleet/">https://foxglovesecurity.com/2017/11/20/a-sheep-in-wolfs-clothing-finding-rce-in-hps-printer-fleet/</a></li>
+  <li><a href="https://research.checkpoint.com/2018/sending-fax-back-to-the-dark-ages/">https://research.checkpoint.com/2018/sending-fax-back-to-the-dark-ages/</a></li>
+</ul>
+
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/blog/author/angelboy">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/angelboy.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>Angelboy</h3>
+                        </a>
+                        <span>Senior Security Researcher</span>
+                        <p>
+                            I am 👼 :)
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+        <!-- 相關文章 -->
+        <section class="recommand articles-list">
+            <div class="container">
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/CVE/">#CVE</a> <a href="/blog/tag/Pwn2Own/">#Pwn2Own</a> <a href="/blog/tag/RCE/">#RCE</a> <a href="/blog/tag/IoT/">#IoT</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1/">Your printer is not your printer ! - Hacking Printers at Pwn2Own Part I</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>angelboy</h3>
+                        </a>
+                    
+                        <span class="date">2023-10-05</span>
+                        <p class="line-litmit-3">我們在 Canon 和 HP 的印表機中發現了 Pre-auth RCE 的漏洞(CVE-2022-24673 及 CVE-2022-3942) 及 Lexmark 發現漏洞(CVE-2021-44734)，並在 Pwn2Own Austin 2021 中取得所有印表機的控制權，成功獲得 Pwn2Own 中駭客大師(Master of Pwn) 的點數，這篇研究將講述 Canon 及 HP 漏洞的細節及我們的利用方式。
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/Deserialize/">#Deserialize</a> <a href="/blog/tag/RCE/">#RCE</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/09/18/hitcon-2023-devcore-wargame-my-todolist-writeup/">HITCON 2023 x DEVCORE Wargame: My todolist Write-up</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>cyku</h3>
+                        </a>
+                    
+                        <span class="date">2023-09-18</span>
+                        <p class="line-litmit-3">HITCON 2023 x DEVCORE Wargame 最高分題 My todolist 出題概念及解答。從結論而言，這是一個簡單的 Json.NET 反序列化漏洞的白箱題目...
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/最新消息">最新消息</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> <a href="/blog/tag/資安人才/">#資安人才</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/08/30/2023-devcore-cybersecurity-scholarship-application-opens/">視人才培育為己任　DEVCORE 全國資訊安全獎學金、資安教育活動贊助計畫即日起開放報名</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2023-08-30</span>
+                        <p class="line-litmit-3">DEVCORE 秉持著提升台灣資安競爭力、讓世界更安全的初衷，將人才培育視為己任，透過參與教育部資安人才培育計畫、創辦 DEVCORE 實習生計畫、啟動戴夫寇爾資安獎學金、辦理資安教育活動贊助計畫等方式，協助資安人才茁壯成長。
+                        </p>
+                    </div>
+                </article>
+              
+
+            </div>
+        </section>
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">服務</h6>
+        <ul>
+            <li><a href="/services/red-team/">紅隊演練</a></li>
+            <li><a href="/services/penetration-test/">滲透測試</a></li>
+            <li><a href="/services/security-consulting/">資安顧問服務</a></li>
+            <li><a href="/services/security-training/">資安教育訓練</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">研究</h6>
+        <ul>
+            <li><a href="/research/overview/">總覽概要</a></li>
+            <li><a href="/research/awards/">競賽與獎項</a></li>
+            <li><a href="/research/bug-bounty/">企業漏洞回報</a></li>
+            <li><a href="/research/talks/">國際研討會</a></li>
+            <li><a href="/research/cve/">CVE 漏洞列表</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">公司</h6>
+        <ul>
+            <li><a href="/company/about/">公司簡介</a></li>
+            <li><a href="/company/our-team/">團隊成員</a></li>
+            <li><a href="/company/history/">成就與沿革</a></li>
+            <li><a href="/company/csr/">企業社會責任</a></li>
+            <li><a href="/company/jobs/">工作機會</a></li>
+            <li><a href="/contact/">聯絡我們</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">新聞</h6>
+        <ul>
+            <li><a href="/blog/">BLOG</a></li>
+            <li><a href="/media-kit/">媒體素材下載</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2023 DEVCORE 戴夫寇爾股份有限公司. <b class="line-block">All right reserved.</b></span>
+            <span><a href="/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+

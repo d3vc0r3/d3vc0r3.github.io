@@ -1,0 +1,1268 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>Your printer is not your printer ! - Hacking Printers at Pwn2Own Part I | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="At 2021, we found Pre-auth RCE vulnerabilities(CVE-2022-24673 and CVE-2022-3942) in Canon and HP printers, and vulnerabilty(CVE-2021-44734) in Lexmark. We used these vulnerabilities to exploit Canon ImageCLASS MF644Cdw, HP Color LaserJet Pro MFP M283fdw and Lexmark MC3224i in Pwn2Own Austin 2021. Following we will describe the details of the Canon and HP vulnerabilities and exploitation." />
+    <meta name="keywords" content="CVE-2022-24673, CVE-2022-3942, CVE-2021-44734, Pwn2Own Austin 2021" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="Your printer is not your printer ! - Hacking Printers at Pwn2Own Part I | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1-en/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20231005/cover.jpg" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="Your printer is not your printer ! - Hacking Printers at Pwn2Own Part I | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="At 2021, we found Pre-auth RCE vulnerabilities(CVE-2022-24673 and CVE-2022-3942) in Canon and HP printers, and vulnerabilty(CVE-2021-44734) in Lexmark. We used these vulnerabilities to exploit Canon ImageCLASS MF644Cdw, HP Color LaserJet Pro MFP M283fdw and Lexmark MC3224i in Pwn2Own Austin 2021. Following we will describe the details of the Canon and HP vulnerabilities and exploitation.">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20231005/cover.jpg">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1-en/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Simulation of real-world attacks to identify vulnerabilities and achieve objectives without disrupting business operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltration of designated enterprise systems to uncover potential vulnerabilities and assess the risks or damages.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Consultation of resource distribution and long-term defensive strategies from the attacker’s perspective.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Instruction on defending and preventing incidents with the hacker mindset, also the response procedures and analysis of attacks when incidents happen.
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research of updated cybersecurity techniques and trends, assess the security of products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research of the risk of enterprise systems, identification of potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Sharing vulnerability research and security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Discovery of critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                Founded by a world-class white hat hacker team, providing cybersecurity services including Red Team Assessment,  Penetration Testing, Security Consulting, and Security Training.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    Composed of cybersecurity experts with the hacker mindset, exploring innovative exploitation techniques with high morality and extreme caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    DEVCORE has been invited to leading cybersecurity conferences, has uncovered hundreds of critical product vulnerabilities, and helped enterprises improve their defensive capabilities.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    We provide diverse internship channels and programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Media Kit, Logo and Usage Guideline
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Tech Editorials">Tech Editorials</a>
+                    <span class="tag">
+
+                      <a href="/en/blog/tag/CVE/">#CVE</a> <a href="/en/blog/tag/Pwn2Own/">#Pwn2Own</a> <a href="/en/blog/tag/IoT/">#IoT</a> 
+                    </span>
+                    <h1>
+                        Your printer is not your printer ! - Hacking Printers at Pwn2Own Part I
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/en/blog/author/angelboy">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/angelboy.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/en/blog/author/angelboy">Angelboy</a></span>
+                        <span class="date">2023-10-05</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20231005/cover.jpg"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p><a href="/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1-en/">English Version</a>, <a href="/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1/">中文版本</a></p>
+
+<p>Printer has become one of the essential devices in the corporate intranet in the past few years, and its functionalities have also increased significantly. Not only printing or faxing, cloud printing services like AirPrint are also supported to make it easier to use. Direct printing from mobile devices is now a basic requirement in the IoT era. We also use it to print some internal business documents of the company, which makes it even more important to keep the printer secure.</p>
+
+<p>At 2021, we found Pre-auth RCE vulnerabilities(<a href="https://www.zerodayinitiative.com/advisories/ZDI-22-515/">CVE-2022-24673</a> and <a href="https://www.zerodayinitiative.com/advisories/ZDI-22-532/">CVE-2022-3942</a>) in Canon and HP printers, and vulnerabilty(<a href="https://www.zerodayinitiative.com/advisories/ZDI-22-332/">CVE-2021-44734</a>) in Lexmark. We used these vulnerabilities to exploit Canon ImageCLASS MF644Cdw, HP Color LaserJet Pro MFP M283fdw and Lexmark MC3224i in <a href="https://www.zerodayinitiative.com/blog/2021/11/1/pwn2ownaustin">Pwn2Own Austin 2021</a>. Following we will describe the details of the Canon and HP vulnerabilities and exploitation.</p>
+
+<p><img src="/assets/img/blog/20231005/1.jpg" alt="" /></p>
+
+<p>This research is also presented at <a href="https://hitcon.org/2022/agenda/704bf58c-c42b-4593-97c0-9aba91caa6e4">HITCON 2022</a> and <a href="https://codeblue.jp/2022/en/talks/">CODE BLUE 2022</a>. You can check the <a href="https://hitcon.org/2022/slides/Your%20Printer%20is%20not%20your%20Printer%20!%20-%20Hacking%20Printers%20at%20Pwn2Own.pdf">slides</a> here.</p>
+
+<h2 id="printer">Printer</h2>
+<p>In the early days, it often required an IEEE1284 or USB Printer cable to connect the printer to the computer. We also had to install the printer driver provided by the manufacturer. Nowadays, most of the printers on the market do not requires USB or traditional cable. As long as the printer is connected to the intranet through a LAN cable, we can find and utilize the printer immediately.</p>
+
+<p>Printer also provides not only printing but also various services such as FTP, AirPrint, Bonjour. Nothing more than to make printing more convenient.</p>
+
+<h2 id="motivation">Motivation</h2>
+
+<h3 id="why-do-we-want-to-research-printers-">Why do we want to research Printers ?</h3>
+
+<h4 id="red-team">Red Team</h4>
+<p>While doing red team assessment, we found that printers generally appeared in the corporate intranet. There are almost always more than one, but they are usually overlooked and lack of update. It is also an excellent target for red team to hide the action because it is often difficult to detect. It is worth mentioning that larger enterprises are also likely to connect them to AD and become the entry point for confidential information.</p>
+
+<h4 id="pwn2own-austin-2021">Pwn2Own Austin 2021</h4>
+<p>Another reason is that printers have become one of the main targets of Pwn2Own Mobile. We were also preparing to participate the Pwn2Own stage again, so we decided to start with it.</p>
+
+<p><img src="/assets/img/blog/20231005/2.jpg" alt="" /></p>
+
+<p>At first, we thought they were trivial. Like most IoT devices, there are often many command injection vulnerabilities. However, many printers use RTOS instead of Linux systems, which drove our determination to challenge it.</p>
+
+<p>This article will focus on the Canon and HP parts.</p>
+
+<h2 id="analysis">Analysis</h2>
+<p>In the beginning, we read many <a href="https://chdk.fandom.com/wiki/DryOS_PIXMA_Printer_Shell">articles</a>, all of them need to tear down the hardware for analysis and obtaining the debug console. Then they use the memory dumping method to obtain the original firmware. But in the end, we chose another way and didn’t tear down any of the printers.</p>
+
+<h3 id="canon">Canon</h3>
+
+<h4 id="firmware-extract">Firmware Extract</h4>
+<p>The initial analysis version is v6.03, we used binwalk to analyze it at the beginning, but the firmware is obfuscated, we can’t analyze it directly.</p>
+
+<p>Obfuscated Canon ImageCLASS MF644Cdw fimware
+<img src="/assets/img/blog/20231005/3.jpg" alt="" /></p>
+
+<p>We also tried <a href="https://www.synacktiv.com/publications/treasure-chest-party-quest-from-doom-to-exploit.html">“TREASURE CHEST PARTY QUEST: FROM DOOM TO EXPLOIT”</a> by Synacktiv and <a href="https://web.archive.org/web/20220224100459/https://www.contextis.com/en/blog/hacking-canon-pixma-printers-doomed-encryption">“Hacking Canon Pixma Printers – Doomed Encryption”</a> by Contextis research. But this time, it’s an entirely different series, and we can’t use the same method to deobfuscate the firmware.</p>
+
+<p>So we started to analyze the obfuscated firmware format and content.</p>
+
+<p><img src="/assets/img/blog/20231005/4.jpg" alt="" /></p>
+
+<p>We can see from the obfuscated firmware that the beginning is the Magic NCFW, followed by the size of the firmware, and other parts are obfuscated data.</p>
+
+<p>So we started to think that maybe the old firmware of this printer is not obfuscated until a specific version. If we can get the intermediate version, maybe there is a chance to get the deobfuscation method. The magic header also lets us distinguish whether it is obfuscated.</p>
+
+<p>We can obtain the firmware download URL through the official website or the update packet.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>https://pdisp01.c-wss.com/gdl/WWUFORedirectTarget.do?id=MDQwMDAwNDc1MjA1&amp;cmp=Z01&amp;lang=EN
+</code></pre></div></div>
+
+<p>After analysis, it can be split into three parts.
+<img src="/assets/img/blog/20231005/5.jpg" alt="" /></p>
+
+<p>Ｗe can roughly infer the rules of the download URL. We use this method to download all versions of firmware. The versions we downloaded at that time included:</p>
+
+<ul>
+  <li>V2.01</li>
+  <li>V4.02</li>
+  <li>V6.03</li>
+  <li>V9.03</li>
+  <li>V10.02</li>
+</ul>
+
+<p>V10.02 is a version that will be released in a few weeks, and you can download it from here first. After downloading all versions, we found that the firmware for this series is obfuscated, and there is no way to deobfuscate it from the previous version.</p>
+
+<p>But we can try downloading Canon’s other series firmware and find out if there is a similar obfuscation algorithm. After all the firmware is downloaded, the total file size is 130 GB. We can find unobfuscated firmware by grepping for <code class="language-plaintext highlighter-rouge">NCFW</code> and <code class="language-plaintext highlighter-rouge">servicemode.html</code>.</p>
+
+<p><img src="/assets/img/blog/20231005/6.jpg" alt="" /></p>
+
+<p>Finally, we found four firmware that meets the conditions. We chose WG7000 series printers to analyze and found the suspected deobfuscation function.</p>
+
+<p><img src="/assets/img/blog/20231005/7.jpg" alt="" /></p>
+
+<p>Fortunately, by rewriting this function, the MF644Cdw firmware can be deobfuscated.</p>
+
+<p><img src="/assets/img/blog/20231005/8.jpg" alt="" /></p>
+
+<p>After the firmware is extracted, we needed the image base address so that IDA can effectively identify and reference the strings. At first, we find the image base through the common analysis tool <a href="https://github.com/sgayou/rbasefind">rbasefind</a>.</p>
+
+<p><img src="/assets/img/blog/20231005/9.jpg" alt="" /></p>
+
+<p>The first base we found was 0x40b0000. But after decompiled it with IDA, most of the <code class="language-plaintext highlighter-rouge">function</code> did not correspond to the <code class="language-plaintext highlighter-rouge">debug message</code> string.</p>
+
+<p><img src="/assets/img/blog/20231005/10.jpg" alt="" /></p>
+
+<p>As shown in the figure above, <code class="language-plaintext highlighter-rouge">loc_4489AC08</code> should point to the string of the function name, but this address is not a regular string. Instead, it is recognized as a code section, and the content is not a string. This indicates that this location is not an actual address. We thought there was a slight offset, but it did not cause big problem for decompiling functions.</p>
+
+<p>How to solve this problem? We first found a <code class="language-plaintext highlighter-rouge">function with a known function name</code> and the <code class="language-plaintext highlighter-rouge">function name string</code> belonging to it to make adjustments. After finding the offset, we adjusted the image base to the correct address. The final image base found is <strong>0x40affde0</strong>. After adjustment, you can see that the original function name can be identified correctly.</p>
+
+<p><img src="/assets/img/blog/20231005/11.jpg" alt="" /></p>
+
+<p>Next, we can analyze the firmware typically. After preliminary analysis, we can find out the of Canon ImageCLASS MF644Cdw:</p>
+
+<ul>
+  <li>OS - DryOSV2
+    <ul>
+      <li>Customized RTOS by Canon</li>
+    </ul>
+  </li>
+  <li>ARMv7 32bit little-endian</li>
+  <li>Linked with application code into single image
+    <ul>
+      <li>Kernel</li>
+      <li>Service</li>
+    </ul>
+  </li>
+</ul>
+
+<h3 id="hp">HP</h3>
+<p>HP’s firmware is relatively easy to obtain. We can use <a href="https://github.com/fkie-cad/fact_extractor/issues/37">binwalk -Z</a> to obtain the correct firmware. It took about 3-4 days. The other steps, such as finding the image base address, are just the same as Canon. After preliminary analysis, the architecture of HP Color LaserJet Pro MFP M283fdw is as follows:</p>
+
+<ul>
+  <li>OS
+    <ul>
+      <li>RTOS - Modify from ThreadX/Green Hills</li>
+    </ul>
+  </li>
+  <li>ARM11 Mixed-endian
+    <ul>
+      <li>Code - little-endian</li>
+      <li>Data - Big-endian</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="attack-surface">Attack Surface</h2>
+<p>Many services are enabled by default in most printers on the market today.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Service</th>
+      <th>Port</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>RUI</td>
+      <td>TCP 80/443</td>
+      <td>Web interface</td>
+    </tr>
+    <tr>
+      <td>PDL</td>
+      <td>TCP 9100</td>
+      <td>Page Description Language</td>
+    </tr>
+    <tr>
+      <td>PJL</td>
+      <td>TCP 9100</td>
+      <td>Printer Job Language</td>
+    </tr>
+    <tr>
+      <td>IPP</td>
+      <td>TCP 631</td>
+      <td>Internet Printing Protocol</td>
+    </tr>
+    <tr>
+      <td>LPD</td>
+      <td>TCP 515</td>
+      <td>Line Printer Daemon Protocol</td>
+    </tr>
+    <tr>
+      <td>SNMP</td>
+      <td>UDP 161</td>
+      <td>Simple Network Management Protocol</td>
+    </tr>
+    <tr>
+      <td>SLP</td>
+      <td>TCP 427</td>
+      <td>Service Location Protocol</td>
+    </tr>
+    <tr>
+      <td>mDNS</td>
+      <td>UDP 5353</td>
+      <td>Multicast DNS</td>
+    </tr>
+    <tr>
+      <td>LLMNR</td>
+      <td>UDP 5355</td>
+      <td>Link-Local Multicast Name Resolution</td>
+    </tr>
+    <tr>
+      <td>…</td>
+      <td>…</td>
+      <td>…</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Usually, RUI (web interface) is opened for facilitate management. The 9100 Port is also commonly used by printers, mainly used to transmit printed data.</p>
+
+<p>Others vary between vendors, but the listed ones are usually present, and most are enabled by default. After evaluating the overall architecture, we focus on service discovery and the DNS series of services. Our long-term experience has often observed that such protocols implemented by manufacturers are often prone to vulnerabilities. The primary services we analyzed were <strong>SLP</strong>, <strong>mDNS</strong>, and <strong>LLMNR</strong>.</p>
+
+<p>Next, we take Pwn2Own Austin 2021 as a case study to see what problems these protocols often have.</p>
+
+<h2 id="hacking-printers-at-pwn2own">Hacking printers at Pwn2Own</h2>
+
+<h3 id="canon-1">Canon</h3>
+
+<h4 id="service-location-protocol">Service Location Protocol</h4>
+<p>SLP is a service discovery protocol that allows computers and other devices to find services in local area network. In the past, there were many <a href="https://www.zerodayinitiative.com/blog/2021/3/1/cve-2020-3992-amp-cve-2021-21974-pre-auth-remote-code-execution-in-vmware-esxi">vulnerabilities</a> in EXSI’s SLP. Canon implements the SLP service mainly by themselves. For details about SLP service, please refer to <a href="https://www.ietf.org/rfc/rfc2608.txt">RFC2608</a>.</p>
+
+<p>Before we look into the detail of SLP, we need to talk about the structure of SLP packets.</p>
+
+<p>SLP Packet Structure
+<img src="/assets/img/blog/20231005/12.jpg" alt="" /></p>
+
+<p>Here we only need to pay attention to <code class="language-plaintext highlighter-rouge">function-id</code>. This field determines the request type and the format of the payload part. Canon only implements Service Request and Attribute Request.</p>
+
+<p><img src="/assets/img/blog/20231005/13.jpg" alt="" /></p>
+
+<p>In the Attribute Request (AttrRqst), the user can obtain the attribute list according to the service and scope. We can specify a scope to look for, such as Canon printers.</p>
+
+<p>Example:
+<img src="/assets/img/blog/20231005/14.jpg" alt="" /></p>
+
+<p>The Attribute Request structure is as follows
+<img src="/assets/img/blog/20231005/15.jpg" alt="" /></p>
+
+<p>It mainly comprises length (Length) and value (Value). Parsing this kind of format should be careful because there are often bugs here. 
+In fact, there is a vulnerability in Canon when paring this format.</p>
+
+<h4 id="vulnerability">Vulnerability</h4>
+<p>When it parses the scope list, it converts escape characters to ASCII. For example, <code class="language-plaintext highlighter-rouge">\41</code> will be converted to <code class="language-plaintext highlighter-rouge">A</code>.  But what’s wrong with this simple transformation? Let’s take a look at the pseudocode.</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">parse_scope_list</span><span class="p">(...){</span>
+	<span class="kt">char</span> <span class="n">destbuf</span><span class="p">[</span><span class="mi">36</span><span class="p">];</span>
+	<span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">max</span> <span class="o">=</span> <span class="mi">34</span><span class="p">;</span>
+	<span class="n">parse_escape_char</span><span class="p">(...,</span><span class="n">destbuf</span><span class="p">,</span><span class="n">max</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>As shown in the above code, in <code class="language-plaintext highlighter-rouge">parse_scope_list</code>, it passes a fixed size buffer <code class="language-plaintext highlighter-rouge">destbuf</code> and the maximum size 34 to <code class="language-plaintext highlighter-rouge">parse_escape_char</code>. No vulnerability here.  Let’s take a look at <code class="language-plaintext highlighter-rouge">parse_escape_char</code>.</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="kr">__fastcall</span> <span class="nf">parse_escape_char</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">**</span><span class="n">pdata</span><span class="p">,</span> <span class="n">_WORD</span> <span class="o">*</span><span class="n">pdatalen</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">*</span><span class="n">destbuf</span><span class="p">,</span> <span class="n">_WORD</span> <span class="o">*</span><span class="n">max</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">idx</span><span class="p">;</span> <span class="c1">// r7</span>
+  <span class="kt">int</span> <span class="n">v7</span><span class="p">;</span> <span class="c1">// r9</span>
+  <span class="kt">int</span> <span class="n">v8</span><span class="p">;</span> <span class="c1">// r8</span>
+  <span class="kt">int</span> <span class="n">error</span><span class="p">;</span> <span class="c1">// r11</span>
+  <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">*</span><span class="n">v10</span><span class="p">;</span> <span class="c1">// r5</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">i</span><span class="p">;</span> <span class="c1">// r6</span>
+  <span class="kt">int</span> <span class="n">v12</span><span class="p">;</span> <span class="c1">// r1</span>
+  <span class="kt">int</span> <span class="n">v13</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">v14</span><span class="p">;</span> <span class="c1">// r1</span>
+  <span class="kt">bool</span> <span class="n">v15</span><span class="p">;</span> <span class="c1">// cc</span>
+  <span class="kt">int</span> <span class="n">v16</span><span class="p">;</span> <span class="c1">// r2</span>
+  <span class="kt">bool</span> <span class="n">v17</span><span class="p">;</span> <span class="c1">// cc</span>
+  <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="n">v18</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">int</span> <span class="n">v19</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="n">v20</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">v21</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">v22</span><span class="p">;</span> <span class="c1">// r0</span>
+
+  <span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">v7</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">v8</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">error</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">v10</span> <span class="o">=</span> <span class="o">*</span><span class="n">pdata</span><span class="p">;</span>
+  <span class="k">for</span> <span class="p">(</span> <span class="n">i</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int16</span><span class="p">)</span><span class="o">*</span><span class="n">pdatalen</span><span class="p">;</span> <span class="n">i</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">v7</span><span class="p">;</span> <span class="n">i</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int16</span><span class="p">)(</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">v12</span> <span class="o">=</span> <span class="o">*</span><span class="n">v10</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="n">v12</span> <span class="o">==</span> <span class="sc">','</span> <span class="p">)</span>
+    <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+      <span class="n">v7</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="n">v12</span> <span class="o">==</span> <span class="sc">'\\'</span> <span class="p">)</span> <span class="c1">//----------------------[1]</span>
+      <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="p">)</span>
+          <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+        <span class="n">v13</span> <span class="o">=</span> <span class="n">v10</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+        <span class="n">v14</span> <span class="o">=</span> <span class="n">v13</span> <span class="o">-</span> <span class="sc">'0'</span><span class="p">;</span>
+        <span class="n">v15</span> <span class="o">=</span> <span class="n">v13</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'0'</span> <span class="o">&gt;</span> <span class="mi">9</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">v13</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'0'</span> <span class="o">&gt;</span> <span class="mi">9</span> <span class="p">)</span>
+          <span class="n">v15</span> <span class="o">=</span> <span class="n">v13</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'A'</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">v15</span> <span class="o">&amp;&amp;</span> <span class="n">v13</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'a'</span> <span class="o">&gt;</span> <span class="mi">5</span> <span class="p">)</span>
+          <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+        <span class="n">v16</span> <span class="o">=</span> <span class="n">v10</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+        <span class="n">v17</span> <span class="o">=</span> <span class="n">v16</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'0'</span> <span class="o">&gt;</span> <span class="mi">9</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">v16</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'0'</span> <span class="o">&gt;</span> <span class="mi">9</span> <span class="p">)</span>
+          <span class="n">v17</span> <span class="o">=</span> <span class="n">v16</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'A'</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">v17</span> <span class="o">&amp;&amp;</span> <span class="n">v16</span> <span class="o">-</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)</span><span class="sc">'a'</span> <span class="o">&gt;</span> <span class="mi">5</span> <span class="p">)</span>
+          <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">v14</span> <span class="o">&lt;=</span> <span class="mi">9</span> <span class="p">)</span>
+          <span class="n">v18</span> <span class="o">=</span> <span class="mh">0x10</span> <span class="o">*</span> <span class="n">v14</span><span class="p">;</span>
+        <span class="k">else</span>
+          <span class="n">v18</span> <span class="o">=</span> <span class="n">v13</span> <span class="o">-</span> <span class="mh">0x37</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">v14</span> <span class="o">&gt;</span> <span class="mi">9</span> <span class="p">)</span>
+          <span class="n">v18</span> <span class="o">*=</span> <span class="mh">0x10</span><span class="p">;</span>
+        <span class="o">*</span><span class="n">destbuf</span> <span class="o">=</span> <span class="n">v18</span><span class="p">;</span> <span class="c1">//-------------------[2]</span>
+        <span class="n">v19</span> <span class="o">=</span> <span class="n">v10</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+        <span class="n">v10</span> <span class="o">+=</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="n">v20</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span><span class="p">)(</span><span class="n">v19</span> <span class="o">-</span> <span class="mh">0x30</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">9</span> <span class="o">?</span> <span class="p">(</span><span class="n">v19</span> <span class="o">-</span> <span class="mi">55</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xF</span> <span class="o">|</span> <span class="o">*</span><span class="n">destbuf</span> <span class="o">:</span> <span class="o">*</span><span class="n">destbuf</span> <span class="o">|</span> <span class="p">(</span><span class="n">v19</span> <span class="o">-</span> <span class="mh">0x30</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xF</span><span class="p">;</span>
+        <span class="o">*</span><span class="n">destbuf</span> <span class="o">=</span> <span class="n">v20</span><span class="p">;</span>
+        <span class="n">LOWORD</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">2</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="o">!</span><span class="n">strchr</span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="s">"(),</span><span class="se">\\</span><span class="s">!&lt;=&gt;~;*+"</span><span class="p">,</span> <span class="o">*</span><span class="n">destbuf</span><span class="p">)</span> <span class="p">)</span>
+        <span class="p">{</span>
+          <span class="n">v21</span> <span class="o">=</span> <span class="o">*</span><span class="n">destbuf</span><span class="p">;</span>
+          <span class="k">if</span> <span class="p">(</span> <span class="n">v21</span> <span class="o">&gt;</span> <span class="mh">0x1F</span> <span class="o">&amp;&amp;</span> <span class="n">v21</span> <span class="o">!=</span> <span class="mh">0x7F</span> <span class="p">)</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">goto</span> <span class="n">LABEL_40</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="n">strchr</span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="s">"(),</span><span class="se">\\</span><span class="s">!&lt;=&gt;~;*+"</span><span class="p">,</span> <span class="n">v12</span><span class="p">)</span> <span class="p">)</span> <span class="c1">//-----------------------[3]</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+      <span class="n">v22</span> <span class="o">=</span> <span class="o">*</span><span class="n">v10</span><span class="p">;</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="n">v22</span> <span class="o">&lt;=</span> <span class="mh">0x1F</span> <span class="o">||</span> <span class="n">v22</span> <span class="o">==</span> <span class="mh">0x7F</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="n">v22</span> <span class="o">!=</span> <span class="sc">' '</span> <span class="p">)</span>
+      <span class="p">{</span>
+        <span class="n">v8</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="k">goto</span> <span class="n">LABEL_35</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="o">!</span><span class="n">v8</span> <span class="p">)</span>
+      <span class="p">{</span>
+        <span class="n">v8</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="nl">LABEL_35:</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int16</span><span class="p">)</span><span class="o">*</span><span class="n">max</span> <span class="o">&lt;=</span> <span class="n">idx</span> <span class="p">)</span> <span class="c1">//----------------------[4] </span>
+        <span class="p">{</span>
+          <span class="n">error</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+          <span class="k">goto</span> <span class="n">next_one</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">v8</span> <span class="p">)</span>
+          <span class="n">LOBYTE</span><span class="p">(</span><span class="n">v22</span><span class="p">)</span> <span class="o">=</span> <span class="mi">32</span><span class="p">;</span>
+        <span class="o">*</span><span class="n">destbuf</span> <span class="o">=</span> <span class="n">v22</span><span class="p">;</span>
+<span class="nl">LABEL_40:</span>
+        <span class="o">++</span><span class="n">destbuf</span><span class="p">;</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int16</span><span class="p">)(</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+<span class="nl">next_one:</span>
+    <span class="o">++</span><span class="n">v10</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">if</span> <span class="p">(</span> <span class="n">error</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="o">*</span><span class="n">max</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">debugprintff</span><span class="p">(</span><span class="mi">3645</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="s">"Scope longer than buffer provided"</span><span class="p">);</span>
+<span class="nl">LABEL_48:</span>
+    <span class="o">*</span><span class="n">pdata</span> <span class="o">=</span> <span class="n">v10</span><span class="p">;</span>
+    <span class="o">*</span><span class="n">pdatalen</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">if</span> <span class="p">(</span> <span class="n">idx</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="o">*</span><span class="n">max</span> <span class="o">=</span> <span class="n">idx</span><span class="p">;</span>
+    <span class="k">goto</span> <span class="n">LABEL_48</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="o">-</span><span class="mi">4</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>You can see that <code class="language-plaintext highlighter-rouge">[3]</code> is a case that handles no escape characters. It checks whether the length exceeds the maximum<code class="language-plaintext highlighter-rouge">[4]</code>. However, in case <code class="language-plaintext highlighter-rouge">[1]</code> handling escape characters, there is no length check, and the converted result is directly copied to the destination buffer <code class="language-plaintext highlighter-rouge">[2]</code>.</p>
+
+<p>Once given a long escape characters string, it leads to a stack overflow.</p>
+
+<p>After finding the vulnerability, the first thing is to see what protection it has to decide on the exploit plan. But after analysis, we found that the Canon printer <strong>does not have any memory-related protection</strong>.</p>
+
+<h4 id="protection">Protection</h4>
+<ul>
+  <li>No Stack Guard</li>
+  <li>No DEP</li>
+  <li>No ASLR</li>
+</ul>
+
+<p>No Stack Guard, no DEP and no ASLR, <strong>hacker friendly</strong> ! Like back to the 90s, just a stack overflow can control the world. Next, like the past stack overflow exploit method, we just need to find a fixed address to store the shellcode, overwrite the return address, and jump to the shellcode. Eventually, we found the <strong>BJNP</strong> service to store our shellcode.</p>
+
+<h4 id="bjnp">BJNP</h4>
+<p>BJNP is also a service discovery protocol designed by Canon, and there have been many vulnerabilities in the past. <a href="https://www.synacktiv.com/publications/treasure-chest-party-quest-from-doom-to-exploit.html">Synacktiv</a> has also exploited Pixma MX925 through this protocol. For more details, please refer to <a href="https://doar-e.github.io/blog/2022/06/11/pwn2own-2021-canon-imageclass-mf644cdw-writeup/#bjnp">here</a>. BJNP stores the controllable session data in the global buffer. We can use this function to put our shellcode in a fixed location without strict restrictions.</p>
+
+<h4 id="exploitation-step">Exploitation Step</h4>
+<ul>
+  <li>Use BJNP to store our shellcode on a global buffer</li>
+  <li>Trigger stack overflow in SLP and overwrite return address</li>
+  <li>Return to the global buffer</li>
+</ul>
+
+<h4 id="pwn2own-austin-2021-1">Pwn2Own Austin 2021</h4>
+<p>Generally, the Pwn2Own organizer(ZDI) requests participants to prove that we have pwned the target. The presentation method here is up to players. Initially, we wanted to print the logo directly on the LCD screen as we exploited the Lexmark printer.</p>
+
+<p><img src="/assets/img/blog/20231005/16.jpg" alt="" /></p>
+
+<p>However, we spent a lot of time figuring out how to print the image on the screen, which was longer than finding vulnerabilities and writing exploits. In the end, a safer approach was adopted because of the time constraints, directly changing the <a href="https://doar-e.github.io/blog/2022/06/11/pwn2own-2021-canon-imageclass-mf644cdw-writeup/#service-mode">Service Mode</a> string and printing it on the screen.</p>
+
+<p><img src="/assets/img/blog/20231005/17.jpg" alt="" /></p>
+
+<p>In fact, it is not that difficult to print the image on the screen. Other teams have found <a href="https://doar-e.github.io/blog/2022/06/11/pwn2own-2021-canon-imageclass-mf644cdw-writeup/#displaying-an-image">methods</a>. Those who are interested can try it out :)</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/vQbQImZ3XRw?start=18400" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe>
+
+<h4 id="debug">Debug</h4>
+<p>Some people may wonder how to debug in this environment. There are usually several ways to debug:</p>
+
+<ul>
+  <li>Teardown the printer and get debug console.</li>
+  <li>Use an old exploit to install customized debugger</li>
+</ul>
+
+<p>However, we have updated to the latest version at that time. There is no known vulnerability in this version, so we need to downgrade the version back. Tearing down the hardware also takes additional time and cost. But we already had a vulnerability at that time, it was not cost-effective to tear down the hardware or downgrade. Finally, we still used the most traditional sleep debug method.</p>
+
+<p><img src="/assets/img/blog/20231005/18.jpg" alt="" /></p>
+
+<p>After ROP or executing shellcode, print the result to a web page or other visible place, then call sleep. We can read the result from the web page and finally restart the machine to repeat this process.</p>
+
+<p>Next, let’s talk about HP printers.</p>
+
+<h3 id="hp-1">HP</h3>
+
+<h4 id="link-local-multicast-name-resolution">Link-Local Multicast Name Resolution</h4>
+<p><a href="https://en.wikipedia.org/wiki/Link-Local_Multicast_Name_Resolution">LLMNR</a> is very similar to mDNS. It provides base name resolution on the same local link. But it is more straightforward than mDNS and usually also cooperates with some service discovery protocols. Here is a brief introduction to this mechanism:</p>
+
+<p>In the domain name resolution of the local area network, Client A will first use multicast to find the location of Client C in the local area network.
+<img src="/assets/img/blog/20231005/19.jpg" alt="" /></p>
+
+<p>After Client C receives, Client C sends it back to Client A, which implements the link-local domain name resolution.</p>
+
+<p><img src="/assets/img/blog/20231005/20.jpg" alt="" /></p>
+
+<p>LLMNR is mainly based on the <a href="https://datatracker.ietf.org/doc/html/rfc4795#section-2.1.1">DNS packet</a> format, and the format is as follows:</p>
+
+<p><img src="/assets/img/blog/20231005/21.jpg" alt="" /></p>
+
+<p>The main format is the header followed by Queries, and Count represents the number of queries of different types.</p>
+
+<p><img src="/assets/img/blog/20231005/22.jpg" alt="" /></p>
+
+<p>Each DNS Query is composed of many labels, and each label will comprise length and string, as shown in the figure above. There is also a <a href="https://www.rfc-editor.org/rfc/rfc1035#section-4.1.4">Message Compression</a> mechanism. Dealing with these is very prone to vulnerabilities. <a href="https://i.blackhat.com/asia-21/Thursday-Handouts/as-21-dosSantos-The-Cost-of-Complexity-Different-Vulnerabilities-While-Implementing-the-Same-RFC.pdf">“THE COST OF COMPLEXITY: Different Vulnerabilities While Implementing the Same RFC”</a> at BlackHat 2021 also mentions similar problems.</p>
+
+<h4 id="vulnerability-1">Vulnerability</h4>
+
+<p>Let’s look at HP’s implementation:</p>
+<pre><code class="language-cpp=">int llmnr_process_query(...){
+    char result[292];
+    consume_labels(llmnr_packet-&gt;qname,result,...);
+    ...
+}
+</code></pre>
+<p>Here you can see that when HP processes LLMNR packets, it passes a fixed size buffer to consume_lables. <code class="language-plaintext highlighter-rouge">consume_lables</code> is used to process DNS labels, and the fixed buffer is used to store the results.</p>
+
+<pre><code class="language-cpp=">int __fastcall consume_labels(char *src, char *dst, llmnr_hdr *a3)
+{
+  int v3; // r5
+  int v4; // r12
+  unsigned int len; // r3
+  int v6; // r4
+  char v7; // r6
+  bool v8; // cc
+  int v9; // r0
+  unsigned __int8 chr; // r6
+  int result; // r0
+
+  v3 = 0;
+  v4 = 0;
+  len = 0;
+  v6 = 0;
+  while ( 1 )
+  {
+    chr = src[v3]; //-------------[1]
+    if ( !chr )
+      break;
+    if ( (int)len &lt;= 0 )
+    {
+      v8 = chr &lt;= 0xC0u;
+      if ( chr == 0xC0 )
+      {
+        v9 = src[v3 + 1];
+        v6 = 1;
+        v3 = 0;
+        src = (char *)a3 + v9;
+      }
+      else
+      {
+        len = src[v3++];
+        v8 = v4 &lt;= 0;
+      }
+      if ( !v8 )
+        dst[v4++] = '.';
+    }
+    else
+    {
+      v7 = src[v3++];
+      len = (char)(len - 1);
+      dst[v4++] = v7; //----------[2]
+    }
+  }
+  result = v3 + 1;
+  dst[v4] = 0;
+  if ( v6 )
+    return 2;
+  return result;
+}
+</code></pre>
+
+<p>We can see that <code class="language-plaintext highlighter-rouge">[1]</code> will get the label length and then process it according to the type. <code class="language-plaintext highlighter-rouge">[2]</code> is used as a case of length. There is no length check here, and the label is directly written into the dst buffer, leading to stack overflow. At this point, we thought we could exploit it in the similar way as Canon. However, when we were writing the exploit, we found that HP printers have more protection mechanisms.</p>
+
+<h4 id="protection-1">Protection</h4>
+<ul>
+  <li>No Stack Guard</li>
+  <li><strong>XN(DEP)</strong></li>
+  <li><strong>Memory Protect Unit (MPU)</strong></li>
+  <li>No ASLR</li>
+</ul>
+
+<p>In this case, XN and MPU memory protection mechanisms are enabled, and this vulnerability has more restrictions. We <strong>can only overflow about 0x100 bytes without null byte</strong>, which significantly restricts our ROP and makes it more challenging. We need to find other vulnerabilities or methods to achieve our goal.</p>
+
+<p>After a while, we started thinking about how HP printers implement XN(DEP) and MPU. Let’s review HP RTOS:</p>
+
+<ul>
+  <li>Linked with application code into single image</li>
+  <li>Many tasks run
+    <ul>
+      <li>in the same virtual address space</li>
+      <li>in kernel-mode</li>
+    </ul>
+  </li>
+</ul>
+
+<p>After reviewing, we thought, can we bypass it by understanding the MMU and MPU in HP RTOS?</p>
+
+<h4 id="mmu-in-hp-m283fdw">MMU in HP M283fdw</h4>
+
+<p>HP M283fdw uses one-level page table translation and each translation table entry for translating a 1MB section. The translation table is located at <strong>0x4003c000</strong>.</p>
+
+<p><img src="/assets/img/blog/20231005/23.jpg" alt="" /></p>
+
+<p>Each translation table entry corresponds to a physical address and the permissions of the section. The CPU determines whether it can be executed or modified according to the entry. The permissions related here are AP, APX, and XN. We can also map any physical address through this translation table entry.</p>
+
+<p><img src="/assets/img/blog/20231005/24.jpg" alt="" /></p>
+
+<p>Generally, we can modify the translation table entry through ROP if we have stack overflow under high privileges. But when we tried to write directly to the translation table, the HP printer crashed.</p>
+
+<p><img src="/assets/img/blog/20231005/25.jpg" alt="" /></p>
+
+<p>We checked and found that the leading cause of the memory fault exception is that Memory Protection Unit(MPU) protects the translation table.</p>
+
+<h4 id="mpu-in-hp-m283fdw">MPU in HP M283fdw</h4>
+<p>The MPU enables you to partition memory into regions and set individual protection attributes for each regions. It is an entirely different mechanism from MMU and is often found in IoT devices. HP enables MPU at boot and defines permissions for each region, so we cannot manipulate the page table.</p>
+
+<p><img src="/assets/img/blog/20231005/26.jpg" alt="" /></p>
+
+<p>After a long time of reverse engineering and referencing the <a href="https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Address-Map/Protected-Memory-System-Architecture--PMSAv7/Register-support-for-PMSAv7-in-the-SCS?lang=en#BEHJFJDI">ARM Manual</a>, we found that the MPU can be turned off by clearing MPU_CTRL. We found that the location is 0xE0400304, slightly different from ARM’s spec.</p>
+
+<p><img src="/assets/img/blog/20231005/27.jpg" alt="" /></p>
+
+<h4 id="exploitation">Exploitation</h4>
+<p>After understanding HP’s MMU and MPU mechanism, we can easily use ROP to turn off the MPU and successfully modify the translation table entry. We can arbitrarily modify the code of any service, and we finally chose <a href="https://en.wikipedia.org/wiki/Line_Printer_Daemon_protocol">Line Printer Daemon(LPD)</a>. We modified it into a backdoor, read more payloads to the specified location, and finally executed the shellcode.</p>
+
+<p>But there is one thing that must be mentioned. After the translation table entry and LPD code are overwritten, be sure to <strong>flush TLB</strong> and <strong>invalidate I-cache and D-cache</strong>. Otherwise, it is very likely to execute in the old one, causing the exploit to fail.</p>
+
+<p>Flash TLB</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>flush_tlb:
+    mov r12, #0
+    mcr p15, 0, r12, c8, c7, 0
+</code></pre></div></div>
+
+<p>Invalidate I-cache</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>disable_icache:
+    mrc p15, 0, r1, c1, c0, 0
+    bic r1, r1, #(1 &lt;&lt; 12)
+    mcr p15, 0, r1, c1, c0, 0
+</code></pre></div></div>
+
+<h4 id="exploitation-step-1">Exploitation Step</h4>
+<ul>
+  <li>Trigger stack overflow in LLMNR and overwrite return address</li>
+  <li>Use limited ROP to
+    <ul>
+      <li>disable MPU</li>
+      <li>modify translation table entry and get read-write execute permission</li>
+      <li>flush TLB</li>
+      <li>modify the code of LPD</li>
+      <li>invalidate I-cache and D-cache</li>
+    </ul>
+  </li>
+  <li>Use modified LPD to read our shellcode and jump to shellcode</li>
+</ul>
+
+<h4 id="pwn2own-austin-2021-2">Pwn2Own Austin 2021</h4>
+<p>When we could execute the shellcode, we only had one week left, and we finally chose to use the exact string to display <code class="language-plaintext highlighter-rouge">Pwned by DEVCORE</code> on the LCD.</p>
+
+<p><img src="/assets/img/blog/20231005/28.jpg" alt="" /></p>
+
+<p>After that, we also tried to change the backdoor to the debug console to facilitate many functions, such as viewing memory information, playing music, etc.</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/S9TkvaAmyMw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe>
+
+<p><a href="https://twitter.com/fsecurelabs">F-Secure Labs</a> used the function of playing music to present it at that time. It is fascinating. You can go <a href="https://youtu.be/c82uFBdTvII?t=1263">here</a> to look at the situation at the Pwn2Own.</p>
+
+<h3 id="result">Result</h3>
+<p>In Pwn2Own Austin 2021, we got 2nd place after pwning other devices and printers. We had a good experience and learned some new things.</p>
+
+<p><img src="/assets/img/blog/20231005/29.jpg" alt="" /></p>
+
+<h2 id="mitigation">Mitigation</h2>
+<h3 id="update">Update</h3>
+<p>The first is to update regularly. All the printers mentioned have been patched. It is often ignored. We usually find printers lack of update for several years and even leave the default password directly in the corporate intranet.</p>
+
+<h3 id="disable-unused-service">Disable unused service</h3>
+<p>Another mitigation is to turn off services that are not in use as much as possible. Most printers default enable too many services that are usually unused. We even think that you can turn off the discovery service,
+just open the service you want to use.</p>
+
+<h3 id="firewall">Firewall</h3>
+<p>It would be better if you could apply a firewall. Most printers provide related functions.</p>
+
+<h2 id="summary">Summary</h2>
+<p>With code execution on the printers, in addition to printing things on the LCD, we can use the printer to steal confidential information, whether it is confidential documents or some credential. We can also use the printer for <a href="https://en.wikipedia.org/wiki/Network_Lateral_Movement">lateral movement</a>, and because it is hard to detect, making it an excellent target for the red team.</p>
+
+<p>By the way, the protocols of the discovery service series on many printers are often vulnerable. If you want to find vulnerabilities in printers or other IoT devices, you can look in this direction.</p>
+
+<h2 id="to-be-continue">To Be Continue</h2>
+<p>We also found several vulnerabilities in the printer series at <a href="https://www.thezdi.com/blog/2022/8/29/announcing-pwn2own-toronto-2022-and-introducing-the-soho-smashup">Pwn2Own Toronto 2022</a> last year. We will be releasing detailed information soon, so stay tuned for Part II.</p>
+
+<h2 id="reference">Reference</h2>
+<ul>
+  <li><a href="https://labs.withsecure.com/assets/BlogFiles/Printing-Shellz.pdf">https://labs.withsecure.com/assets/BlogFiles/Printing-Shellz.pdf</a></li>
+  <li><a href="https://foxglovesecurity.com/2017/11/20/a-sheep-in-wolfs-clothing-finding-rce-in-hps-printer-fleet/">https://foxglovesecurity.com/2017/11/20/a-sheep-in-wolfs-clothing-finding-rce-in-hps-printer-fleet/</a></li>
+  <li><a href="https://research.checkpoint.com/2018/sending-fax-back-to-the-dark-ages/">https://research.checkpoint.com/2018/sending-fax-back-to-the-dark-ages/</a></li>
+</ul>
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/en/blog/author/angelboy">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/angelboy.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/en/blog/author/angelboy">
+                            <h3>Angelboy</h3>
+                        </a>
+                        <span>Senior Security Researcher</span>
+                        <p>
+                            I am 👼 :)
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2023 DEVCORE <b class="line-block">All right reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

@@ -4,11 +4,1276 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Mon, 18 Sep 2023 19:30:26 +0800</lastBuildDate>
-        <pubDate>Mon, 18 Sep 2023 19:30:26 +0800</pubDate>
+        <lastBuildDate>Thu, 05 Oct 2023 04:31:56 +0800</lastBuildDate>
+        <pubDate>Thu, 05 Oct 2023 04:31:56 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>Your printer is not your printer ! - Hacking Printers at Pwn2Own Part I</title>
+                <description>&lt;p&gt;印表機近年來已成為企業內網中不可或缺的設備之一，功能也隨著科技的發展日益增多，除了一般的傳真及列印之外，也開始支援 AirPrint 等雲端列印服務，讓列印更加方便，直接使用行動裝置就可以輕鬆列印，更成為了 IoT 中，不可或缺的一環，正因為其便利，也常被用於列印公司內部機敏文件，使得在企業中印表機的安全性更加的重要。&lt;/p&gt;
+
+&lt;p&gt;而前年我們也在 Canon 及 HP 的印表機中發現了 Pre-auth RCE 的漏洞(&lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-515/&quot;&gt;CVE-2022-24673&lt;/a&gt; 及 &lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-532/&quot;&gt;CVE-2022-3942&lt;/a&gt;) 及 Lexmark 發現漏洞(&lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-332/&quot;&gt;CVE-2021-44734&lt;/a&gt;)，並在 Pwn2Own Austin 2021 中取得了 Canon ImageCLASS MF644Cdw、 HP Color LaserJet Pro MFP M283fdw 及 Lexmark MC3224i 的控制權，而成功獲得 Pwn2Own 中駭客大師(Master of Pwn) 的點數，這篇研究將講述 Canon 及 HP 漏洞的細節及我們的利用方式。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/1.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;此份研究亦發表於 &lt;a href=&quot;https://hitcon.org/2022/agenda/704bf58c-c42b-4593-97c0-9aba91caa6e4&quot;&gt;HITCON 2022&lt;/a&gt; 及 &lt;a href=&quot;https://codeblue.jp/2022/en/talks/&quot;&gt;CODE BLUE 2022&lt;/a&gt;，你可以從&lt;a href=&quot;https://hitcon.org/2022/slides/Your%20Printer%20is%20not%20your%20Printer%20!%20-%20Hacking%20Printers%20at%20Pwn2Own.pdf&quot;&gt;這裡&lt;/a&gt;取得投影片！&lt;/p&gt;
+
+&lt;h2 id=&quot;printer&quot;&gt;Printer&lt;/h2&gt;
+&lt;p&gt;早期在使用印表機時，往往會需要使用 IEEE1284 或是 USB 的 Printer cable 來將印表機接上電腦，並且在使用時會額外裝上廠商所附的驅動程式。而現今的印表機已可以接上網路，並多了各式各樣的功能，通常只要將印表機接上區網，區網中的電腦就可以輕易地發現你所新安裝的印表機。&lt;/p&gt;
+
+&lt;p&gt;目前市面上的印表機預設都開了非常多的服務，不外乎就是為了讓列印更加方便，像是 FTP、AirPrint、Bonjour 等等服務。&lt;/p&gt;
+
+&lt;h2 id=&quot;motivation&quot;&gt;Motivation&lt;/h2&gt;
+
+&lt;h3 id=&quot;為何要研究印表機呢&quot;&gt;為何要研究印表機呢？&lt;/h3&gt;
+
+&lt;h4 id=&quot;紅隊內網需求&quot;&gt;紅隊內網需求&lt;/h4&gt;
+&lt;p&gt;過去我們團隊在執行紅隊演練過程中，印表機普遍出現於現代企業內網中，幾乎都會有一台以上，但往往是被忽略的一塊，也常常沒在更新。印表機本身也非常適合作為攻擊者的藏身處，通常很難被偵測出來。值得一提的是比較大型的企業也很有可能將其接上 AD，成為獲取機密資訊的入口。&lt;/p&gt;
+
+&lt;h4 id=&quot;pwn2own-austin-2021&quot;&gt;Pwn2Own Austin 2021&lt;/h4&gt;
+&lt;p&gt;另外一點是印表機在 2021 時，首次成為了 Pwn2Own Mobile 主要推動的目標之一，而我們剛好當時也準備再次挑戰 Pwn2Own 舞台，便決定一探究竟。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/2.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;起初我們原本以為非常簡單，跟多數的 IoT 設備一樣，能輕易的找到 Command injection 問題，殊不知有不少印表機都是使用 RTOS，並非一般的 Linux 系統，但這更是驅動了我們挑戰它的決心。&lt;/p&gt;
+
+&lt;p&gt;本篇將會著重在較為精彩的 Canon 及 HP 部分，Lexmark 有機會再談談。&lt;/p&gt;
+
+&lt;h2 id=&quot;analysis&quot;&gt;Analysis&lt;/h2&gt;
+&lt;p&gt;剛開始研究的時候，我們參考了許多&lt;a href=&quot;https://chdk.fandom.com/wiki/DryOS_PIXMA_Printer_Shell&quot;&gt;資料&lt;/a&gt;都是需要拆解硬體來分析，才能獲得 debug console，再用 dump memory 方式來獲取原始的 firmware。但最終我們採用了其他的方式，並沒有拆解任何一台印表機。&lt;/p&gt;
+
+&lt;h3 id=&quot;canon&quot;&gt;Canon&lt;/h3&gt;
+
+&lt;h4 id=&quot;firmware-extract&quot;&gt;Firmware Extract&lt;/h4&gt;
+&lt;p&gt;初始分析版本為 v6.03，我們一開始使用 &lt;a href=&quot;https://github.com/ReFirmLabs/binwalk&quot;&gt;binwalk&lt;/a&gt; 去解析它，但 firmware 是經過混淆的，我們並沒辦法直接解開。&lt;/p&gt;
+
+&lt;p&gt;圖: 經過混淆的 Canon ImageCLASS MF644Cdw fimware 
+&lt;img src=&quot;/assets/img/blog/20231005/3.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們這邊也嘗試過了 &lt;a href=&quot;https://www.synacktiv.com/publications/treasure-chest-party-quest-from-doom-to-exploit.html&quot;&gt;TREASURE CHEST PARTY QUEST: FROM DOOM TO EXPLOIT&lt;/a&gt; by Synacktiv 及 &lt;a href=&quot;https://web.archive.org/web/20220224100459/https://www.contextis.com/en/blog/hacking-canon-pixma-printers-doomed-encryption&quot;&gt;Hacking Canon Pixma Printers – Doomed Encryption&lt;/a&gt; by Contextis Research 的研究，但這次是完全不同的系列，我們無法使用同樣的方法解開混淆過的 firmware。&lt;/p&gt;
+
+&lt;p&gt;於是我們開始分析混淆過的 firmware 格式及內容。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/4.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們大致上可以從混淆過的 firmware 看到，每個混淆過的 firmware 的開頭都會是 NCFW 這個 Magic，並帶有該 firmware 大小，而其他部分則是混淆過的資料。&lt;/p&gt;
+
+&lt;p&gt;於是我們開始猜想，也許這台印表機舊版本的 firmware 沒有混淆，直到某一版才開始混淆，如果可以抓到中介版本，可能有機會獲得解混淆的方法。而這個 Magic 也可以讓我們辨別是不是經過混淆的。&lt;/p&gt;
+
+&lt;p&gt;以下這個網址是透過官網或是擷取封包獲得的 firmware 下載網址&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;https://pdisp01.c-wss.com/gdl/WWUFORedirectTarget.do?id=MDQwMDAwNDc1MjA1&amp;amp;cmp=Z01&amp;amp;lang=EN
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;經過分析後，可以拆分為多個部分&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/5.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;約略可以歸納出下載網址的規則，我們可以藉由這個方法來載到所有版本的 firmware，當時我們載到的版本有&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;V2.01&lt;/li&gt;
+  &lt;li&gt;V4.02&lt;/li&gt;
+  &lt;li&gt;V6.03&lt;/li&gt;
+  &lt;li&gt;V9.03&lt;/li&gt;
+  &lt;li&gt;V10.02&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;而 v10.02 是幾周後會釋出的版本，可以先從這邊優先載到。載完所有版本後，我們發現該系列版本的 firmware 都是經過混淆的，無法從先前版本獲得解混淆的方法。但我們可以下載 Canon 其他系列的印表機，嘗試找找是否有類似的混淆演算法。載完約有 130 GB 大小。透過 grep 找 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;NCFW&lt;/code&gt; 及 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;servicemode.html&lt;/code&gt; 可以找到未混淆的 firmware。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/6.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;最後找到四組符合條件的 firmware，我們這邊選擇了 WG7000 系列的印表機來分析，並找到了疑似解混淆的函式。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/7.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;很幸運的，藉由重寫這個函式，可以解出明文的 MF644Cdw firmware。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/8.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在解出 firmware 之後，必須找出 firmware 的 image base address，IDA 才能有效地辨別跟 reference。此處可透過常見的分析工具 &lt;a href=&quot;https://github.com/sgayou/rbasefind&quot;&gt;rbasefind&lt;/a&gt; 來找 image base。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/9.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;一開始找出的 base 為 0x40b0000，但丟進 IDA 後，卻發現大部分的&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;函式&lt;/code&gt;與 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;debug message&lt;/code&gt; 的字串對映不起來。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/10.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;如上圖所示，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;loc_4489AC08&lt;/code&gt; 應該指向函式名稱的字串，然而此地址卻不是正常的字串，而是被當成 code 區段，內容也不是字串，表示此位置並非真正位置，而是有些許的偏移，但正常 function 的解析沒甚麼太大問題。這邊可以先找一個&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;已知函式名稱的函式&lt;/code&gt;和找到屬於他的&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;函式名稱字串&lt;/code&gt;來做調整，找到其中差異的 offset 後，將 image base 調到正確位置就可以了。最終找到的 image base 為 &lt;strong&gt;0x40affde0&lt;/strong&gt;。調整完後，可看到原本的函式已可正確識別函式名稱。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/11.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;接下來就可以正常分析 firmware，而初步分析後可得知，Canon ImageCLASS MF644Cdw 架構如下&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;OS - DryOSV2
+    &lt;ul&gt;
+      &lt;li&gt;Customized RTOS by Canon&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;ARMv7 32bit little-endian&lt;/li&gt;
+  &lt;li&gt;Linked with application code into single image
+    &lt;ul&gt;
+      &lt;li&gt;Kernel&lt;/li&gt;
+      &lt;li&gt;Service&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;hp&quot;&gt;HP&lt;/h3&gt;
+
+&lt;p&gt;HP 的 firmware 取得相對容易許多，我們可以透過 &lt;a href=&quot;https://github.com/fkie-cad/fact_extractor/issues/37&quot;&gt;binwalk -Z&lt;/a&gt; 來獲得正確的 firmware，約略需要花 3-4 天左右的時間，而其他找 image base address 等步驟，則與 Canon 相同，此處就不贅述。經過初步分析後，HP Color LaserJet Pro MFP M283fdw 架構如下&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;OS
+    &lt;ul&gt;
+      &lt;li&gt;RTOS - Modify from ThreadX/Green Hills&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;ARM11 Mixed-endian
+    &lt;ul&gt;
+      &lt;li&gt;Code - little-endian&lt;/li&gt;
+      &lt;li&gt;Data - Big-endian&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;attack-surface&quot;&gt;Attack Surface&lt;/h2&gt;
+&lt;p&gt;在現今市面上大多數的多功能事務機中，預設都會開啟一堆服務&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Service&lt;/th&gt;
+      &lt;th&gt;Port&lt;/th&gt;
+      &lt;th&gt;Description&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;RUI&lt;/td&gt;
+      &lt;td&gt;TCP 80/443&lt;/td&gt;
+      &lt;td&gt;Web interface&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;PDL&lt;/td&gt;
+      &lt;td&gt;TCP 9100&lt;/td&gt;
+      &lt;td&gt;Page Description Language&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;PJL&lt;/td&gt;
+      &lt;td&gt;TCP 9100&lt;/td&gt;
+      &lt;td&gt;Printer Job Language&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;IPP&lt;/td&gt;
+      &lt;td&gt;TCP 631&lt;/td&gt;
+      &lt;td&gt;Internet Printing Protocol&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;LPD&lt;/td&gt;
+      &lt;td&gt;TCP 515&lt;/td&gt;
+      &lt;td&gt;Line Printer Daemon Protocol&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;SNMP&lt;/td&gt;
+      &lt;td&gt;UDP 161&lt;/td&gt;
+      &lt;td&gt;Simple Network Management Protocol&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;SLP&lt;/td&gt;
+      &lt;td&gt;TCP 427&lt;/td&gt;
+      &lt;td&gt;Service Location Protocol&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;mDNS&lt;/td&gt;
+      &lt;td&gt;UDP 5353&lt;/td&gt;
+      &lt;td&gt;Multicast DNS&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;LLMNR&lt;/td&gt;
+      &lt;td&gt;UDP 5355&lt;/td&gt;
+      &lt;td&gt;Link-Local Multicast Name Resolution&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;…&lt;/td&gt;
+      &lt;td&gt;…&lt;/td&gt;
+      &lt;td&gt;…&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;一般來說，為了方便管理，通常都會開 RUI (web 介面) ，再來是 9100 Port 也是印表機常使用的 Port，主要會用來傳輸列印的資料。其他部分則會依照廠商不同而有所不同，不過上述所列的服務通常都會有，且預設大部分都是開啟的。在評估過這些服務後，決定注重在發現服務及 DNS 系列的協定，因為我們的長期經驗下來，常常觀察到 vendor 在開發這些服務時，往往是自行開發實作，而不是使用存在已久的 Open Source。但實際上來說，實作這些協定很容易出現問題的。我們當時主要分析的服務主要有 &lt;strong&gt;SLP&lt;/strong&gt;、&lt;strong&gt;mDNS&lt;/strong&gt; 及 &lt;strong&gt;LLMNR&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;接下來就以 Pwn2Own Austin 2021 作為 Case Study，來看看這些協定常會有哪些問題。&lt;/p&gt;
+
+&lt;h2 id=&quot;hacking-printers-at-pwn2own&quot;&gt;Hacking printers at Pwn2Own&lt;/h2&gt;
+
+&lt;h3 id=&quot;canon-1&quot;&gt;Canon&lt;/h3&gt;
+
+&lt;h4 id=&quot;service-location-protocol&quot;&gt;Service Location Protocol&lt;/h4&gt;
+&lt;p&gt;SLP 是一種服務發現協定，主要用於讓電腦快速找到印表機，過去在 ESXI 中，&lt;a href=&quot;https://www.zerodayinitiative.com/blog/2021/3/1/cve-2020-3992-amp-cve-2021-21974-pre-auth-remote-code-execution-in-vmware-esxi&quot;&gt;SLP 也常常出問題&lt;/a&gt;，而在 Canon 的 SLP 服務，主要由 Canon 自己實作，SLP 服務細節可參考 &lt;a href=&quot;https://www.ietf.org/rfc/rfc2608.txt&quot;&gt;RFC2608&lt;/a&gt;。在我們分析 SLP 前必須先了解 SLP 封包大致上的結構&lt;/p&gt;
+
+&lt;p&gt;圖: SLP Packet Structure
+&lt;img src=&quot;/assets/img/blog/20231005/12.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這邊只需要關注&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;function-id&lt;/code&gt;，此欄位會決定請求型態，也會決定 payload 部分的格式。而 Canon 只有實作 Service Request 及 Attribute Request 兩種。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/13.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 Attribute Request (AttrRqst) 的請求中，允許使用者可以根據 service 及 scope 來獲得 attribute list。
+scope 可以定義要找的範圍，如 canon 印表機。&lt;/p&gt;
+
+&lt;p&gt;Example:
+&lt;img src=&quot;/assets/img/blog/20231005/14.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而 Attribute request 結構大致如下&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/15.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;主要是長度(Length)及數值(Value)的組合，通常在 Parse 這種格式，很容易出問題，需要特別注意，而實際上 Canon 在 Parse 這個結構時就出了問題。&lt;/p&gt;
+
+&lt;h4 id=&quot;vulnerability&quot;&gt;Vulnerability&lt;/h4&gt;
+&lt;p&gt;Canon 在 parse scope list 時，會將跳脫字元轉換成 ASCII，例如 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\41&lt;/code&gt; 會轉換成 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;A&lt;/code&gt; ，然而這個簡單轉換會有怎樣的問題呢? 我們來看一下 Pseudo code&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;parse_scope_list&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(...){&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;36&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;max&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;34&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;parse_escape_char&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(...,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;max&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;如上面程式碼所示，在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;parse_scope_list&lt;/code&gt; 中，會先分配 36 bytes 的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;destbuf&lt;/code&gt; 並且指定最大大小 34 到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;parse_escape_char&lt;/code&gt; 中，這邊沒甚麼問題，讓我們來看一下 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;parse_escape_char&lt;/code&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__fastcall&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;parse_escape_char&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int8&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;**&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_WORD&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pdatalen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int8&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_WORD&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;max&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r7&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v7&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r9&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r8&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;error&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r11&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int8&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r5&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r6&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r1&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r0&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v14&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r1&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;bool&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v15&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// cc&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r2&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;bool&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v17&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// cc&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int8&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v18&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r0&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v19&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r0&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int8&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v20&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r0&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r0&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v22&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r0&lt;/span&gt;
+
+  &lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;v7&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;error&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pdatalen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v7&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;v12&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v12&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&apos;,&apos;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;v7&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v12&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&apos;\\&apos;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//----------------------[1]&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v14&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&apos;0&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v15&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;0&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;0&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;v15&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;A&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v15&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;a&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v16&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v17&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v16&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;0&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v16&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;0&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;v17&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v16&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;A&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v17&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v16&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;a&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v14&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;v18&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v14&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;v18&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x37&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v14&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;v18&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v18&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//-------------------[2]&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v19&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v20&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v19&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v19&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;55&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0xF&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v19&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0xF&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v20&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;LOWORD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;strchr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;(),&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\\&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;!&amp;lt;=&amp;gt;~;*+&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;v21&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v21&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x1F&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v21&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x7F&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;goto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;LABEL_40&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;strchr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;(),&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\\&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;!&amp;lt;=&amp;gt;~;*+&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//-----------------------[3]&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;v22&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v22&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x1F&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v22&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x7F&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v22&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&apos; &apos;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;goto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;LABEL_35&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;nl&quot;&gt;LABEL_35:&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;max&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//----------------------[4] &lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;error&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;goto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;next_one&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;LOBYTE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v22&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;32&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v22&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;nl&quot;&gt;LABEL_40:&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;nl&quot;&gt;next_one:&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;error&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;max&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;debugprintff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3645&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;Scope longer than buffer provided&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nl&quot;&gt;LABEL_48:&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pdata&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pdatalen&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;max&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;goto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;LABEL_48&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;可以看到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[3]&lt;/code&gt; 針對是沒有跳脫字元的處理，會在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[4]&lt;/code&gt; 檢查是否有超過最大長度，然而在有跳脫字元的處理中 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[1]&lt;/code&gt; ，並沒有任何對長度的檢查，直接將轉換後的結果放到 destatation buffer 中 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[2]&lt;/code&gt;，一旦給定的字串多數為跳脫字元的情況，就會造成 stack overflow。&lt;/p&gt;
+
+&lt;p&gt;在找到漏洞之後，第一件事就是先看看本身有甚麼保護，方便後續的利用。但分析了一下發現，Canon 印表機本身並沒有任何記憶體相關的保護。&lt;/p&gt;
+
+&lt;h4 id=&quot;protection&quot;&gt;Protection&lt;/h4&gt;
+&lt;ul&gt;
+  &lt;li&gt;No Stack Guard&lt;/li&gt;
+  &lt;li&gt;No DEP&lt;/li&gt;
+  &lt;li&gt;No ASLR&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;沒有 Stack Guard、沒有 DEP 也沒有 ASLR，可以說是 &lt;strong&gt;hack friendly&lt;/strong&gt; ! 如同回到 90 年代，一個 stack overflow 就可以打天下。接下來就如同過往的 Binary Exploitation 利用手法，找個地方放 shellcode 再覆蓋 return address 跳到 shellcode 就會有任意程式碼執行了! 最終我們找到了 BJNP 這個服務來放我們的 shellcode。&lt;/p&gt;
+
+&lt;h4 id=&quot;bjnp&quot;&gt;BJNP&lt;/h4&gt;
+&lt;p&gt;BJNP 本身也是個服務發現協定，由 Canon 自己所設計，過去也曾經有許多漏洞，&lt;a href=&quot;https://www.synacktiv.com/publications/treasure-chest-party-quest-from-doom-to-exploit.html&quot;&gt;Synacktiv&lt;/a&gt; 也曾經利用該協定漏洞來獲得印表機控制權，這邊不多做細節上的介紹，更多細節可參考&lt;a href=&quot;https://doar-e.github.io/blog/2022/06/11/pwn2own-2021-canon-imageclass-mf644cdw-writeup/#bjnp&quot;&gt;這篇&lt;/a&gt;，我們也用了類似的手法。 BJNP 本身會將可控的 session 資料放在已知的 global buffer 中，我們可用這個功能來將我們的 shellcode 放到一個固定的位置上，基本上也沒甚麼限制。&lt;/p&gt;
+
+&lt;p&gt;我們重新整理一下利用步驟&lt;/p&gt;
+
+&lt;h4 id=&quot;exploitation-step&quot;&gt;Exploitation Step&lt;/h4&gt;
+&lt;ul&gt;
+  &lt;li&gt;使用 BJNP 將我們的 shellcode 放到固定的已知位置。&lt;/li&gt;
+  &lt;li&gt;觸發 SLP 的 stack overflow 並覆蓋 return address&lt;/li&gt;
+  &lt;li&gt;跳到我們的 shellcode 上執行程式碼。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&quot;pwn2own-austin-2021-1&quot;&gt;Pwn2Own Austin 2021&lt;/h4&gt;
+&lt;p&gt;通常 Pwn2Own 中會需要你證明已打下印表機，這邊可以自由選擇呈現方式，我們起初想要的是如同我們 exploit Lexmark 印表機一樣，直接將 logo 放到印表機的 LCD 螢幕上。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/16.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但在比賽前，我們花了很多時間在研究該怎麼把 logo 印到螢幕上，花在這邊時間可能比找洞跟寫 exploit 時間還要長，最後也因為時間上的因素，採取了比較保險的做法，直接改掉 &lt;a href=&quot;https://doar-e.github.io/blog/2022/06/11/pwn2own-2021-canon-imageclass-mf644cdw-writeup/#service-mode&quot;&gt;Service Mode&lt;/a&gt; 字串，再印到螢幕上。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/17.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;不過實際上印圖片到螢幕上並不難，其他隊伍有找到&lt;a href=&quot;https://doar-e.github.io/blog/2022/06/11/pwn2own-2021-canon-imageclass-mf644cdw-writeup/#displaying-an-image&quot;&gt;方法&lt;/a&gt;，有興趣的人可以嘗試看看。&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/vQbQImZ3XRw?start=18400&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;h4 id=&quot;debug&quot;&gt;Debug&lt;/h4&gt;
+&lt;p&gt;看到這邊可能會有人想問這種環境如何 debug，實際上來說要 debug 通常有幾種方法：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;接上硬體獲得 debug console 後，用裡面的功能來 debug&lt;/li&gt;
+  &lt;li&gt;用舊的洞獲得程式碼執行後，裝上客製的 debugger&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;不過我們當時已更新到最新，該版本不存在舊的漏洞，需要降版本回去，而拆解硬體同樣也須額外的時間，但當時我們已經有漏洞了，時間上來說不太合成本。最後我們還是採用最傳統的 sleep debug 法去 debug。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/18.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 ROP 或執行 shellcode 後，將結果印到網頁或其他可見的地方，然後呼叫 sleep 後，就可從網頁或其他讀出結果，最後再重開機，接下來就是不斷重複此流程。不過實際上更好的做法還是接上 debug console 會方便一點。&lt;/p&gt;
+
+&lt;p&gt;接下來講講 HP 印表機&lt;/p&gt;
+
+&lt;h3 id=&quot;hp-1&quot;&gt;HP&lt;/h3&gt;
+
+&lt;h4 id=&quot;link-local-multicast-name-resolution&quot;&gt;Link-Local Multicast Name Resolution&lt;/h4&gt;
+&lt;p&gt;&lt;a href=&quot;https://en.wikipedia.org/wiki/Link-Local_Multicast_Name_Resolution&quot;&gt;LLMNR&lt;/a&gt; 是與 mDNS 非常相似的一個協定，提供了區網中的域名解析功能，但比 mDNS 更單純一點，通常也會配合一些服務發現協定。這邊簡單介紹此機制：&lt;/p&gt;
+
+&lt;p&gt;在區網域名解析時，Client A 會先用 multicast 方式，尋找區網中 Client C 位置
+&lt;img src=&quot;/assets/img/blog/20231005/19.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 Client C 接收到之後，則會回傳給 Client A，簡單實現了區網域名的解析
+&lt;img src=&quot;/assets/img/blog/20231005/20.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而基本上 LLMNR 大多建立在 &lt;a href=&quot;https://datatracker.ietf.org/doc/html/rfc4795#section-2.1.1&quot;&gt;DNS 封包格式&lt;/a&gt; 上，格式如下：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/21.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;主要會是 header 加上 Queries 這種格式，Count 表示不同型態的 query 數。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/22.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而每個 DNS Query 都是由許多 label 組成，每個 label 都會像上圖中這樣，都是長度加上字串的組合，也有 &lt;a href=&quot;https://www.rfc-editor.org/rfc/rfc1035#section-4.1.4&quot;&gt;Message Compression&lt;/a&gt; 機制，過去在處理這些地方時，非常容易出現問題，在 BlackHat 2021 的 &lt;a href=&quot;https://i.blackhat.com/asia-21/Thursday-Handouts/as-21-dosSantos-The-Cost-of-Complexity-Different-Vulnerabilities-While-Implementing-the-Same-RFC.pdf&quot;&gt;THE COST OF COMPLEXITY:Different Vulnerabilities While Implementing the Same RFC&lt;/a&gt; 中，也提到了類似的問題。&lt;/p&gt;
+
+&lt;h4 id=&quot;vulnerability-1&quot;&gt;Vulnerability&lt;/h4&gt;
+
+&lt;p&gt;我們回頭來看一下 HP 的實作：&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;llmnr_process_query&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(...){&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;result&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;292&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;consume_labels&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;llmnr_packet&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;qname&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;result&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,...);&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;這邊可以看到 HP 在處理 LLMNR 封包時，會將一個固定 buffer 傳入，用來放處理後的結果，而 consume_lables 則是主要用來處理 dns labels。&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__fastcall&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;consume_labels&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dst&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;llmnr_hdr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r5&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r12&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r3&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v6&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r4&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v7&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r6&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;bool&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// cc&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v9&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r0&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int8&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;chr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r6&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;result&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r0&lt;/span&gt;
+
+  &lt;span class=&quot;n&quot;&gt;v3&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;v4&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;len&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;v6&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;chr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//-------------[1]&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;chr&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;break&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;len&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;chr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0xC0u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;chr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0xC0&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v9&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v3&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v6&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v3&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;src&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a3&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v9&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;len&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v3&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v4&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;dst&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v4&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&apos;.&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;v7&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;src&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v3&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;len&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;len&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;dst&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v4&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v7&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//----------[2]&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;result&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v3&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;dst&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v6&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;result&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;而在 consume_labels 中的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[1]&lt;/code&gt; 會先取得 label 長度，接著根據型態去處理，而在&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[2]&lt;/code&gt; 則是處理一般長度的情況，此處並&lt;strong&gt;沒有對長度做檢查&lt;/strong&gt;，就直接將 label 寫進 dst buffer 中，導致了 stack overflow，到此處我們原以為差不多結束了，接下來應該如同 Canon 類似的方法就可以 Exploit 了。然而當我們在寫 Exploit 時發現 HP 比 Canon 多了一些保護機制。&lt;/p&gt;
+
+&lt;h4 id=&quot;protection-1&quot;&gt;Protection&lt;/h4&gt;
+&lt;ul&gt;
+  &lt;li&gt;No Stack Guard&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;XN(DEP)&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Memory Protect Unit (MPU)&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;No ASLR&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;在 HP 印表機中，多了 XN 及 MPU 的記憶體保護措施，另外這個漏洞也有了更多的限制。我們&lt;strong&gt;只能 overflow 約 0x100 bytes&lt;/strong&gt; 及&lt;strong&gt;不能有 null 字元&lt;/strong&gt;，這大幅限制了我們的 ROP，使得我們沒辦法單靠 ROP 做到後續行動，需要另外找其他的漏洞或其他方法才能達成我們的目標。在一段時間後，我們開始思考，HP 印表機是如何去實作 &lt;strong&gt;XN(DEP)&lt;/strong&gt; 及 &lt;strong&gt;MPU&lt;/strong&gt; 的? 我們回顧一下 HP RTOS:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;所有 Service code 及 Kernel Code 都在同一個 Binary 中。&lt;/li&gt;
+  &lt;li&gt;大多數的 task 都跑在同一個記憶體空間底下(沒有 Process isolation)，也幾乎都跑在高權限模式&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;看完以上兩點，會想到是不是理解 HP RTOS 中的 MMU 及 MPU 就可以繞過呢？&lt;/p&gt;
+
+&lt;p&gt;我們來看一下 HP RTOS MMU 機制&lt;/p&gt;
+
+&lt;h4 id=&quot;mmu-in-hp-m283fdw&quot;&gt;MMU in HP M283fdw&lt;/h4&gt;
+&lt;p&gt;在 HP M283fdw 中使用的是一階層的 Translation table 來做 Address translation ，每個 translation table entry 都表示 1MB 的 Section，而 Translation table 則是&lt;strong&gt;固定在 0x4003c000&lt;/strong&gt; 這個位置上&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/23.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而每個 translation table entry 都會對應到 physical address 及該 section 的權限，CPU 就是根據這些內容決定執行權限、記憶體內容修改權限，如果我們可以修改 translation table entry 的內容就可以更改記憶體權限，也可以透過它來 Mapping 任意 Physical address，這邊跟權限有關的主要會有 AP APX 跟 XN。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/24.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們可以從前述的漏洞中注意到，在有 stack overflow 且也跑在高權限下，就可通過 ROP 修改 translation table entry，但當我們對嘗試直接對 translation table 做寫入後，結果&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/25.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;造成印表機 Crash，查了一下發現是 memory fault exception，主要造成原因就是因為 Memory Protect Unit (MPU) 有對該記憶體區段做保護。&lt;/p&gt;
+
+&lt;p&gt;好，那我們就來看看 MPU 的機制。&lt;/p&gt;
+
+&lt;h4 id=&quot;mpu-in-hp-m283fdw&quot;&gt;MPU in HP M283fdw&lt;/h4&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://en.wikipedia.org/wiki/Memory_protection_unit&quot;&gt;MPU&lt;/a&gt; 主要功能是把 memory 拆分成好幾個 region 並定義每個 region 的權限，與 MMU 是完全不同的機制，很常出現在 IoT 設備中。
+HP 則是在開機就會啟用，並將每個 region 定義好權限，因此無法自己操作 page table。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/26.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在長時間逆向及參考 &lt;a href=&quot;https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Address-Map/Protected-Memory-System-Architecture--PMSAv7/Register-support-for-PMSAv7-in-the-SCS?lang=en#BEHJFJDI&quot;&gt;ARM Manual&lt;/a&gt; 之後，我們發現事實上只要清空 MPU_CTRL 就可關閉 MPU，在經過逆向後 HP M283fdw 的 MPU_CTRL 位置是在 0xE0400304，這邊稍微跟 ARM 的 spec 有點不同，不太確定原因就是了。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/27.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;exploitation&quot;&gt;Exploitation&lt;/h4&gt;
+&lt;p&gt;在了解 HP 的 MMU 及 MPU 機制後，我們可輕易地利用 ROP 來關閉 MPU，並成功修改 translation table entry，我們可以任意的修改任何 serivce 的程式碼，這邊我們最後選擇了 &lt;a href=&quot;https://en.wikipedia.org/wiki/Line_Printer_Daemon_protocol&quot;&gt;Line Printer Daemon(LPD)&lt;/a&gt; 這個服務來修改，將它修改成後門: 讀入更多的 Payload 到指定的位置上，最終執行我們送過去的 shellcode。&lt;/p&gt;
+
+&lt;p&gt;但有一點必須特別注意，覆蓋完 translation table entry 跟 LPD 的 code 後，務必要 &lt;strong&gt;flush TLB&lt;/strong&gt; 跟&lt;strong&gt;清掉 I-cache 和 D-cache&lt;/strong&gt;  不然很有可能還是跑在舊有的程式碼上面導致 exploit 失敗。&lt;/p&gt;
+
+&lt;p&gt;Flash TLB&lt;/p&gt;
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;flush_tlb:
+    mov r12, #0
+    mcr p15, 0, r12, c8, c7, 0
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Invalidate I-cache&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;disable_icache:
+    mrc p15, 0, r1, c1, c0, 0
+    bic r1, r1, #(1 &amp;lt;&amp;lt; 12)
+    mcr p15, 0, r1, c1, c0, 0
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;我們重新整理了一下利用步驟&lt;/p&gt;
+
+&lt;h4 id=&quot;exploitation-step-1&quot;&gt;Exploitation Step&lt;/h4&gt;
+&lt;ul&gt;
+  &lt;li&gt;首先先觸發 LLMNR 的 stack overflow&lt;/li&gt;
+  &lt;li&gt;利用有限的 ROP 關閉 MPU&lt;/li&gt;
+  &lt;li&gt;利用 ROP 改掉 translation table entry 獲得讀寫執行權限&lt;/li&gt;
+  &lt;li&gt;Flush TLB&lt;/li&gt;
+  &lt;li&gt;改掉 LPD service 的程式碼&lt;/li&gt;
+  &lt;li&gt;清掉 I-cache 和 D-cache&lt;/li&gt;
+  &lt;li&gt;使用改過的 LPD 讀我們的 shellcode 後並執行&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&quot;pwn2own-austin-2021-2&quot;&gt;Pwn2Own Austin 2021&lt;/h4&gt;
+&lt;p&gt;到可以執行 shellcode 時，我們只剩一週時間，我們最後選擇跟 Canon 一樣使用改字串顯示 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Pwned by DEVCORE&lt;/code&gt; 到 LCD 上。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/28.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而幸運的是，我們第一次嘗試就成功了：）&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/vQbQImZ3XRw?start=29093&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;p&gt;在這之後我們也嘗試了直接把後門改成 debug console 上面，方便利用許多功能，例如查看記憶體資訊，播放音樂等等功能，&lt;a href=&quot;https://twitter.com/fsecurelabs&quot;&gt;F-Secure Labs&lt;/a&gt; 在比賽時就使用播放音樂這個功能來呈現，非常有趣，可以到&lt;a href=&quot;https://youtu.be/c82uFBdTvII?t=1263&quot;&gt;這裡&lt;/a&gt;看當時的情況。&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/S9TkvaAmyMw&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;h3 id=&quot;result&quot;&gt;Result&lt;/h3&gt;
+&lt;p&gt;在 Pwn2Own Austin 2021 中，我們打下其他設備跟印表機後最終獲得了第二名，以這次來說獲得不錯經驗，也學到了一些新東西。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/29.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而對於一般用戶們，有什麼方法可以避免印表機被當作攻擊目標甚至是跳板呢?&lt;/p&gt;
+
+&lt;h2 id=&quot;mitigation&quot;&gt;Mitigation&lt;/h2&gt;
+&lt;h3 id=&quot;update&quot;&gt;Update&lt;/h3&gt;
+
+&lt;p&gt;首先就是定期更新，上述的印表機都已有 patch，這邊是很常被大家忽略的一部分，我們很常看到印表機好幾年了都沒更新，甚至直接預設密碼放著，很容易就被當成目標。&lt;/p&gt;
+
+&lt;h3 id=&quot;disable-unused-service&quot;&gt;Disable unused service&lt;/h3&gt;
+
+&lt;p&gt;另外一點就是盡可能關掉沒在用的服務， 大部分的印表機預設開啟過多平常根本不會用的服務，我們甚至認為可以關掉 discovery 服務，只要開你要用的就好了。&lt;/p&gt;
+
+&lt;h3 id=&quot;firewall&quot;&gt;Firewall&lt;/h3&gt;
+&lt;p&gt;更好的做法可以再加上 firewall，大部分印表機也都有提供相關功能。&lt;/p&gt;
+
+&lt;h2 id=&quot;summary&quot;&gt;Summary&lt;/h2&gt;
+&lt;p&gt;事實上，我們獲得 shellcode 執行後，除了印東西在 LCD 外，我們可以藉由印表機來竊取機密資訊，不論是機密文件或是一些 credential，印表機也是個平行移動 (Lateral Movement) 的點，而且很難被偵測到，是紅隊中非常好的目標。另外很多印表機上的發現服務系列的協定或是 DNS 系列的協定很常出問題，如果想找類似印表機或其他 IoT 設備的漏洞，也許可以優先朝這個方向看看。&lt;/p&gt;
+
+&lt;h2 id=&quot;to-be-continue&quot;&gt;To be continue&lt;/h2&gt;
+&lt;p&gt;最後，我們在去年 &lt;a href=&quot;https://www.thezdi.com/blog/2022/8/29/announcing-pwn2own-toronto-2022-and-introducing-the-soho-smashup&quot;&gt;Pwn2Own Toronto 2022&lt;/a&gt; 中，也在印表機系列中找到幾個漏洞，我們也將會在近期發佈詳細資訊，敬請期待 Part II&lt;/p&gt;
+
+&lt;h2 id=&quot;reference&quot;&gt;Reference&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://labs.withsecure.com/assets/BlogFiles/Printing-Shellz.pdf&quot;&gt;https://labs.withsecure.com/assets/BlogFiles/Printing-Shellz.pdf&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://foxglovesecurity.com/2017/11/20/a-sheep-in-wolfs-clothing-finding-rce-in-hps-printer-fleet/&quot;&gt;https://foxglovesecurity.com/2017/11/20/a-sheep-in-wolfs-clothing-finding-rce-in-hps-printer-fleet/&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://research.checkpoint.com/2018/sending-fax-back-to-the-dark-ages/&quot;&gt;https://research.checkpoint.com/2018/sending-fax-back-to-the-dark-ages/&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+                <link>https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1/</link>
+                <guid>https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1</guid>
+                <pubDate>Thu, 05 Oct 2023 00:00:00 +0800</pubDate>
+        </item>
+
+        <item>
+                <title>Your printer is not your printer ! - Hacking Printers at Pwn2Own Part I</title>
+                <description>&lt;p&gt;Printer has become one of the essential devices in the corporate intranet in the past few years, and its functionalities have also increased significantly. Not only printing or faxing, cloud printing services like AirPrint are also supported to make it easier to use. Direct printing from mobile devices is now a basic requirement in the IoT era. We also use it to print some internal business documents of the company, which makes it even more important to keep the printer secure.&lt;/p&gt;
+
+&lt;p&gt;At 2021, we found Pre-auth RCE vulnerabilities(&lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-515/&quot;&gt;CVE-2022-24673&lt;/a&gt; and &lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-532/&quot;&gt;CVE-2022-3942&lt;/a&gt;) in Canon and HP printers, and vulnerabilty(&lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-332/&quot;&gt;CVE-2021-44734&lt;/a&gt;) in Lexmark. We used these vulnerabilities to exploit Canon ImageCLASS MF644Cdw, HP Color LaserJet Pro MFP M283fdw and Lexmark MC3224i in &lt;a href=&quot;https://www.zerodayinitiative.com/blog/2021/11/1/pwn2ownaustin&quot;&gt;Pwn2Own Austin 2021&lt;/a&gt;. Following we will describe the details of the Canon and HP vulnerabilities and exploitation.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/1.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;This research is also presented at &lt;a href=&quot;https://hitcon.org/2022/agenda/704bf58c-c42b-4593-97c0-9aba91caa6e4&quot;&gt;HITCON 2022&lt;/a&gt; and &lt;a href=&quot;https://codeblue.jp/2022/en/talks/&quot;&gt;CODE BLUE 2022&lt;/a&gt;. You can check the &lt;a href=&quot;https://hitcon.org/2022/slides/Your%20Printer%20is%20not%20your%20Printer%20!%20-%20Hacking%20Printers%20at%20Pwn2Own.pdf&quot;&gt;slides&lt;/a&gt; here.&lt;/p&gt;
+
+&lt;h2 id=&quot;printer&quot;&gt;Printer&lt;/h2&gt;
+&lt;p&gt;In the early days, it often required an IEEE1284 or USB Printer cable to connect the printer to the computer. We also had to install the printer driver provided by the manufacturer. Nowadays, most of the printers on the market do not requires USB or traditional cable. As long as the printer is connected to the intranet through a LAN cable, we can find and utilize the printer immediately.&lt;/p&gt;
+
+&lt;p&gt;Printer also provides not only printing but also various services such as FTP, AirPrint, Bonjour. Nothing more than to make printing more convenient.&lt;/p&gt;
+
+&lt;h2 id=&quot;motivation&quot;&gt;Motivation&lt;/h2&gt;
+
+&lt;h3 id=&quot;why-do-we-want-to-research-printers-&quot;&gt;Why do we want to research Printers ?&lt;/h3&gt;
+
+&lt;h4 id=&quot;red-team&quot;&gt;Red Team&lt;/h4&gt;
+&lt;p&gt;While doing red team assessment, we found that printers generally appeared in the corporate intranet. There are almost always more than one, but they are usually overlooked and lack of update. It is also an excellent target for red team to hide the action because it is often difficult to detect. It is worth mentioning that larger enterprises are also likely to connect them to AD and become the entry point for confidential information.&lt;/p&gt;
+
+&lt;h4 id=&quot;pwn2own-austin-2021&quot;&gt;Pwn2Own Austin 2021&lt;/h4&gt;
+&lt;p&gt;Another reason is that printers have become one of the main targets of Pwn2Own Mobile. We were also preparing to participate the Pwn2Own stage again, so we decided to start with it.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/2.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;At first, we thought they were trivial. Like most IoT devices, there are often many command injection vulnerabilities. However, many printers use RTOS instead of Linux systems, which drove our determination to challenge it.&lt;/p&gt;
+
+&lt;p&gt;This article will focus on the Canon and HP parts.&lt;/p&gt;
+
+&lt;h2 id=&quot;analysis&quot;&gt;Analysis&lt;/h2&gt;
+&lt;p&gt;In the beginning, we read many &lt;a href=&quot;https://chdk.fandom.com/wiki/DryOS_PIXMA_Printer_Shell&quot;&gt;articles&lt;/a&gt;, all of them need to tear down the hardware for analysis and obtaining the debug console. Then they use the memory dumping method to obtain the original firmware. But in the end, we chose another way and didn’t tear down any of the printers.&lt;/p&gt;
+
+&lt;h3 id=&quot;canon&quot;&gt;Canon&lt;/h3&gt;
+
+&lt;h4 id=&quot;firmware-extract&quot;&gt;Firmware Extract&lt;/h4&gt;
+&lt;p&gt;The initial analysis version is v6.03, we used binwalk to analyze it at the beginning, but the firmware is obfuscated, we can’t analyze it directly.&lt;/p&gt;
+
+&lt;p&gt;Obfuscated Canon ImageCLASS MF644Cdw fimware
+&lt;img src=&quot;/assets/img/blog/20231005/3.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We also tried &lt;a href=&quot;https://www.synacktiv.com/publications/treasure-chest-party-quest-from-doom-to-exploit.html&quot;&gt;“TREASURE CHEST PARTY QUEST: FROM DOOM TO EXPLOIT”&lt;/a&gt; by Synacktiv and &lt;a href=&quot;https://web.archive.org/web/20220224100459/https://www.contextis.com/en/blog/hacking-canon-pixma-printers-doomed-encryption&quot;&gt;“Hacking Canon Pixma Printers – Doomed Encryption”&lt;/a&gt; by Contextis research. But this time, it’s an entirely different series, and we can’t use the same method to deobfuscate the firmware.&lt;/p&gt;
+
+&lt;p&gt;So we started to analyze the obfuscated firmware format and content.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/4.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We can see from the obfuscated firmware that the beginning is the Magic NCFW, followed by the size of the firmware, and other parts are obfuscated data.&lt;/p&gt;
+
+&lt;p&gt;So we started to think that maybe the old firmware of this printer is not obfuscated until a specific version. If we can get the intermediate version, maybe there is a chance to get the deobfuscation method. The magic header also lets us distinguish whether it is obfuscated.&lt;/p&gt;
+
+&lt;p&gt;We can obtain the firmware download URL through the official website or the update packet.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;https://pdisp01.c-wss.com/gdl/WWUFORedirectTarget.do?id=MDQwMDAwNDc1MjA1&amp;amp;cmp=Z01&amp;amp;lang=EN
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;After analysis, it can be split into three parts.
+&lt;img src=&quot;/assets/img/blog/20231005/5.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Ｗe can roughly infer the rules of the download URL. We use this method to download all versions of firmware. The versions we downloaded at that time included:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;V2.01&lt;/li&gt;
+  &lt;li&gt;V4.02&lt;/li&gt;
+  &lt;li&gt;V6.03&lt;/li&gt;
+  &lt;li&gt;V9.03&lt;/li&gt;
+  &lt;li&gt;V10.02&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;V10.02 is a version that will be released in a few weeks, and you can download it from here first. After downloading all versions, we found that the firmware for this series is obfuscated, and there is no way to deobfuscate it from the previous version.&lt;/p&gt;
+
+&lt;p&gt;But we can try downloading Canon’s other series firmware and find out if there is a similar obfuscation algorithm. After all the firmware is downloaded, the total file size is 130 GB. We can find unobfuscated firmware by grepping for &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;NCFW&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;servicemode.html&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/6.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Finally, we found four firmware that meets the conditions. We chose WG7000 series printers to analyze and found the suspected deobfuscation function.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/7.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Fortunately, by rewriting this function, the MF644Cdw firmware can be deobfuscated.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/8.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After the firmware is extracted, we needed the image base address so that IDA can effectively identify and reference the strings. At first, we find the image base through the common analysis tool &lt;a href=&quot;https://github.com/sgayou/rbasefind&quot;&gt;rbasefind&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/9.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The first base we found was 0x40b0000. But after decompiled it with IDA, most of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;function&lt;/code&gt; did not correspond to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;debug message&lt;/code&gt; string.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/10.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As shown in the figure above, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;loc_4489AC08&lt;/code&gt; should point to the string of the function name, but this address is not a regular string. Instead, it is recognized as a code section, and the content is not a string. This indicates that this location is not an actual address. We thought there was a slight offset, but it did not cause big problem for decompiling functions.&lt;/p&gt;
+
+&lt;p&gt;How to solve this problem? We first found a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;function with a known function name&lt;/code&gt; and the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;function name string&lt;/code&gt; belonging to it to make adjustments. After finding the offset, we adjusted the image base to the correct address. The final image base found is &lt;strong&gt;0x40affde0&lt;/strong&gt;. After adjustment, you can see that the original function name can be identified correctly.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/11.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Next, we can analyze the firmware typically. After preliminary analysis, we can find out the of Canon ImageCLASS MF644Cdw:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;OS - DryOSV2
+    &lt;ul&gt;
+      &lt;li&gt;Customized RTOS by Canon&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;ARMv7 32bit little-endian&lt;/li&gt;
+  &lt;li&gt;Linked with application code into single image
+    &lt;ul&gt;
+      &lt;li&gt;Kernel&lt;/li&gt;
+      &lt;li&gt;Service&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;hp&quot;&gt;HP&lt;/h3&gt;
+&lt;p&gt;HP’s firmware is relatively easy to obtain. We can use &lt;a href=&quot;https://github.com/fkie-cad/fact_extractor/issues/37&quot;&gt;binwalk -Z&lt;/a&gt; to obtain the correct firmware. It took about 3-4 days. The other steps, such as finding the image base address, are just the same as Canon. After preliminary analysis, the architecture of HP Color LaserJet Pro MFP M283fdw is as follows:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;OS
+    &lt;ul&gt;
+      &lt;li&gt;RTOS - Modify from ThreadX/Green Hills&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;ARM11 Mixed-endian
+    &lt;ul&gt;
+      &lt;li&gt;Code - little-endian&lt;/li&gt;
+      &lt;li&gt;Data - Big-endian&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;attack-surface&quot;&gt;Attack Surface&lt;/h2&gt;
+&lt;p&gt;Many services are enabled by default in most printers on the market today.&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Service&lt;/th&gt;
+      &lt;th&gt;Port&lt;/th&gt;
+      &lt;th&gt;Description&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;RUI&lt;/td&gt;
+      &lt;td&gt;TCP 80/443&lt;/td&gt;
+      &lt;td&gt;Web interface&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;PDL&lt;/td&gt;
+      &lt;td&gt;TCP 9100&lt;/td&gt;
+      &lt;td&gt;Page Description Language&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;PJL&lt;/td&gt;
+      &lt;td&gt;TCP 9100&lt;/td&gt;
+      &lt;td&gt;Printer Job Language&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;IPP&lt;/td&gt;
+      &lt;td&gt;TCP 631&lt;/td&gt;
+      &lt;td&gt;Internet Printing Protocol&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;LPD&lt;/td&gt;
+      &lt;td&gt;TCP 515&lt;/td&gt;
+      &lt;td&gt;Line Printer Daemon Protocol&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;SNMP&lt;/td&gt;
+      &lt;td&gt;UDP 161&lt;/td&gt;
+      &lt;td&gt;Simple Network Management Protocol&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;SLP&lt;/td&gt;
+      &lt;td&gt;TCP 427&lt;/td&gt;
+      &lt;td&gt;Service Location Protocol&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;mDNS&lt;/td&gt;
+      &lt;td&gt;UDP 5353&lt;/td&gt;
+      &lt;td&gt;Multicast DNS&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;LLMNR&lt;/td&gt;
+      &lt;td&gt;UDP 5355&lt;/td&gt;
+      &lt;td&gt;Link-Local Multicast Name Resolution&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;…&lt;/td&gt;
+      &lt;td&gt;…&lt;/td&gt;
+      &lt;td&gt;…&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;Usually, RUI (web interface) is opened for facilitate management. The 9100 Port is also commonly used by printers, mainly used to transmit printed data.&lt;/p&gt;
+
+&lt;p&gt;Others vary between vendors, but the listed ones are usually present, and most are enabled by default. After evaluating the overall architecture, we focus on service discovery and the DNS series of services. Our long-term experience has often observed that such protocols implemented by manufacturers are often prone to vulnerabilities. The primary services we analyzed were &lt;strong&gt;SLP&lt;/strong&gt;, &lt;strong&gt;mDNS&lt;/strong&gt;, and &lt;strong&gt;LLMNR&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;Next, we take Pwn2Own Austin 2021 as a case study to see what problems these protocols often have.&lt;/p&gt;
+
+&lt;h2 id=&quot;hacking-printers-at-pwn2own&quot;&gt;Hacking printers at Pwn2Own&lt;/h2&gt;
+
+&lt;h3 id=&quot;canon-1&quot;&gt;Canon&lt;/h3&gt;
+
+&lt;h4 id=&quot;service-location-protocol&quot;&gt;Service Location Protocol&lt;/h4&gt;
+&lt;p&gt;SLP is a service discovery protocol that allows computers and other devices to find services in local area network. In the past, there were many &lt;a href=&quot;https://www.zerodayinitiative.com/blog/2021/3/1/cve-2020-3992-amp-cve-2021-21974-pre-auth-remote-code-execution-in-vmware-esxi&quot;&gt;vulnerabilities&lt;/a&gt; in EXSI’s SLP. Canon implements the SLP service mainly by themselves. For details about SLP service, please refer to &lt;a href=&quot;https://www.ietf.org/rfc/rfc2608.txt&quot;&gt;RFC2608&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Before we look into the detail of SLP, we need to talk about the structure of SLP packets.&lt;/p&gt;
+
+&lt;p&gt;SLP Packet Structure
+&lt;img src=&quot;/assets/img/blog/20231005/12.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Here we only need to pay attention to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;function-id&lt;/code&gt;. This field determines the request type and the format of the payload part. Canon only implements Service Request and Attribute Request.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/13.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In the Attribute Request (AttrRqst), the user can obtain the attribute list according to the service and scope. We can specify a scope to look for, such as Canon printers.&lt;/p&gt;
+
+&lt;p&gt;Example:
+&lt;img src=&quot;/assets/img/blog/20231005/14.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The Attribute Request structure is as follows
+&lt;img src=&quot;/assets/img/blog/20231005/15.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It mainly comprises length (Length) and value (Value). Parsing this kind of format should be careful because there are often bugs here. 
+In fact, there is a vulnerability in Canon when paring this format.&lt;/p&gt;
+
+&lt;h4 id=&quot;vulnerability&quot;&gt;Vulnerability&lt;/h4&gt;
+&lt;p&gt;When it parses the scope list, it converts escape characters to ASCII. For example, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\41&lt;/code&gt; will be converted to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;A&lt;/code&gt;.  But what’s wrong with this simple transformation? Let’s take a look at the pseudocode.&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;parse_scope_list&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(...){&lt;/span&gt;
+	&lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;36&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+	&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;max&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;34&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+	&lt;span class=&quot;n&quot;&gt;parse_escape_char&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(...,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;max&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;As shown in the above code, in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;parse_scope_list&lt;/code&gt;, it passes a fixed size buffer &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;destbuf&lt;/code&gt; and the maximum size 34 to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;parse_escape_char&lt;/code&gt;. No vulnerability here.  Let’s take a look at &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;parse_escape_char&lt;/code&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__fastcall&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;parse_escape_char&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int8&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;**&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_WORD&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pdatalen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int8&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_WORD&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;max&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r7&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v7&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r9&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r8&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;error&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r11&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int8&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r5&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r6&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r1&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r0&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v14&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r1&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;bool&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v15&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// cc&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r2&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;bool&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v17&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// cc&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int8&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v18&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r0&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v19&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r0&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int8&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v20&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r0&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r0&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v22&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// r0&lt;/span&gt;
+
+  &lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;v7&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;error&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pdata&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pdatalen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v7&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;v12&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v12&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&apos;,&apos;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;v7&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v12&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&apos;\\&apos;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//----------------------[1]&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v14&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&apos;0&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v15&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;0&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;0&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;v15&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;A&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v15&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;a&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v16&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v17&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v16&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;0&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v16&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;0&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;v17&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v16&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;A&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v17&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v16&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;sc&quot;&gt;&apos;a&apos;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v14&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;v18&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v14&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;v18&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v13&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x37&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v14&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;v18&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v18&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//-------------------[2]&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v19&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v20&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v19&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;?&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v19&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;55&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0xF&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;|&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v19&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0xF&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v20&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;LOWORD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;strchr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;(),&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\\&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;!&amp;lt;=&amp;gt;~;*+&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;v21&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v21&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x1F&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v21&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x7F&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;goto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;LABEL_40&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;strchr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;(),&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\\&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;!&amp;lt;=&amp;gt;~;*+&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//-----------------------[3]&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;v22&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v22&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x1F&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v22&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x7F&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v22&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;sc&quot;&gt;&apos; &apos;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;goto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;LABEL_35&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;nl&quot;&gt;LABEL_35:&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;max&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//----------------------[4] &lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;error&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+          &lt;span class=&quot;k&quot;&gt;goto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;next_one&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v8&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;LOBYTE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v22&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;32&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v22&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;nl&quot;&gt;LABEL_40:&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;destbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__int16&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+      &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;nl&quot;&gt;next_one:&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;error&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;max&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;debugprintff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3645&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;Scope longer than buffer provided&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nl&quot;&gt;LABEL_48:&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pdata&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pdatalen&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;max&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;idx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;goto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;LABEL_48&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;You can see that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[3]&lt;/code&gt; is a case that handles no escape characters. It checks whether the length exceeds the maximum&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[4]&lt;/code&gt;. However, in case &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[1]&lt;/code&gt; handling escape characters, there is no length check, and the converted result is directly copied to the destination buffer &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[2]&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Once given a long escape characters string, it leads to a stack overflow.&lt;/p&gt;
+
+&lt;p&gt;After finding the vulnerability, the first thing is to see what protection it has to decide on the exploit plan. But after analysis, we found that the Canon printer &lt;strong&gt;does not have any memory-related protection&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;h4 id=&quot;protection&quot;&gt;Protection&lt;/h4&gt;
+&lt;ul&gt;
+  &lt;li&gt;No Stack Guard&lt;/li&gt;
+  &lt;li&gt;No DEP&lt;/li&gt;
+  &lt;li&gt;No ASLR&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;No Stack Guard, no DEP and no ASLR, &lt;strong&gt;hacker friendly&lt;/strong&gt; ! Like back to the 90s, just a stack overflow can control the world. Next, like the past stack overflow exploit method, we just need to find a fixed address to store the shellcode, overwrite the return address, and jump to the shellcode. Eventually, we found the &lt;strong&gt;BJNP&lt;/strong&gt; service to store our shellcode.&lt;/p&gt;
+
+&lt;h4 id=&quot;bjnp&quot;&gt;BJNP&lt;/h4&gt;
+&lt;p&gt;BJNP is also a service discovery protocol designed by Canon, and there have been many vulnerabilities in the past. &lt;a href=&quot;https://www.synacktiv.com/publications/treasure-chest-party-quest-from-doom-to-exploit.html&quot;&gt;Synacktiv&lt;/a&gt; has also exploited Pixma MX925 through this protocol. For more details, please refer to &lt;a href=&quot;https://doar-e.github.io/blog/2022/06/11/pwn2own-2021-canon-imageclass-mf644cdw-writeup/#bjnp&quot;&gt;here&lt;/a&gt;. BJNP stores the controllable session data in the global buffer. We can use this function to put our shellcode in a fixed location without strict restrictions.&lt;/p&gt;
+
+&lt;h4 id=&quot;exploitation-step&quot;&gt;Exploitation Step&lt;/h4&gt;
+&lt;ul&gt;
+  &lt;li&gt;Use BJNP to store our shellcode on a global buffer&lt;/li&gt;
+  &lt;li&gt;Trigger stack overflow in SLP and overwrite return address&lt;/li&gt;
+  &lt;li&gt;Return to the global buffer&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&quot;pwn2own-austin-2021-1&quot;&gt;Pwn2Own Austin 2021&lt;/h4&gt;
+&lt;p&gt;Generally, the Pwn2Own organizer(ZDI) requests participants to prove that we have pwned the target. The presentation method here is up to players. Initially, we wanted to print the logo directly on the LCD screen as we exploited the Lexmark printer.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/16.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, we spent a lot of time figuring out how to print the image on the screen, which was longer than finding vulnerabilities and writing exploits. In the end, a safer approach was adopted because of the time constraints, directly changing the &lt;a href=&quot;https://doar-e.github.io/blog/2022/06/11/pwn2own-2021-canon-imageclass-mf644cdw-writeup/#service-mode&quot;&gt;Service Mode&lt;/a&gt; string and printing it on the screen.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/17.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In fact, it is not that difficult to print the image on the screen. Other teams have found &lt;a href=&quot;https://doar-e.github.io/blog/2022/06/11/pwn2own-2021-canon-imageclass-mf644cdw-writeup/#displaying-an-image&quot;&gt;methods&lt;/a&gt;. Those who are interested can try it out :)&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/vQbQImZ3XRw?start=18400&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;h4 id=&quot;debug&quot;&gt;Debug&lt;/h4&gt;
+&lt;p&gt;Some people may wonder how to debug in this environment. There are usually several ways to debug:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Teardown the printer and get debug console.&lt;/li&gt;
+  &lt;li&gt;Use an old exploit to install customized debugger&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;However, we have updated to the latest version at that time. There is no known vulnerability in this version, so we need to downgrade the version back. Tearing down the hardware also takes additional time and cost. But we already had a vulnerability at that time, it was not cost-effective to tear down the hardware or downgrade. Finally, we still used the most traditional sleep debug method.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/18.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After ROP or executing shellcode, print the result to a web page or other visible place, then call sleep. We can read the result from the web page and finally restart the machine to repeat this process.&lt;/p&gt;
+
+&lt;p&gt;Next, let’s talk about HP printers.&lt;/p&gt;
+
+&lt;h3 id=&quot;hp-1&quot;&gt;HP&lt;/h3&gt;
+
+&lt;h4 id=&quot;link-local-multicast-name-resolution&quot;&gt;Link-Local Multicast Name Resolution&lt;/h4&gt;
+&lt;p&gt;&lt;a href=&quot;https://en.wikipedia.org/wiki/Link-Local_Multicast_Name_Resolution&quot;&gt;LLMNR&lt;/a&gt; is very similar to mDNS. It provides base name resolution on the same local link. But it is more straightforward than mDNS and usually also cooperates with some service discovery protocols. Here is a brief introduction to this mechanism:&lt;/p&gt;
+
+&lt;p&gt;In the domain name resolution of the local area network, Client A will first use multicast to find the location of Client C in the local area network.
+&lt;img src=&quot;/assets/img/blog/20231005/19.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After Client C receives, Client C sends it back to Client A, which implements the link-local domain name resolution.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/20.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;LLMNR is mainly based on the &lt;a href=&quot;https://datatracker.ietf.org/doc/html/rfc4795#section-2.1.1&quot;&gt;DNS packet&lt;/a&gt; format, and the format is as follows:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/21.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The main format is the header followed by Queries, and Count represents the number of queries of different types.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/22.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Each DNS Query is composed of many labels, and each label will comprise length and string, as shown in the figure above. There is also a &lt;a href=&quot;https://www.rfc-editor.org/rfc/rfc1035#section-4.1.4&quot;&gt;Message Compression&lt;/a&gt; mechanism. Dealing with these is very prone to vulnerabilities. &lt;a href=&quot;https://i.blackhat.com/asia-21/Thursday-Handouts/as-21-dosSantos-The-Cost-of-Complexity-Different-Vulnerabilities-While-Implementing-the-Same-RFC.pdf&quot;&gt;“THE COST OF COMPLEXITY: Different Vulnerabilities While Implementing the Same RFC”&lt;/a&gt; at BlackHat 2021 also mentions similar problems.&lt;/p&gt;
+
+&lt;h4 id=&quot;vulnerability-1&quot;&gt;Vulnerability&lt;/h4&gt;
+
+&lt;p&gt;Let’s look at HP’s implementation:&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;int llmnr_process_query(...){
+    char result[292];
+    consume_labels(llmnr_packet-&amp;gt;qname,result,...);
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;Here you can see that when HP processes LLMNR packets, it passes a fixed size buffer to consume_lables. &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;consume_lables&lt;/code&gt; is used to process DNS labels, and the fixed buffer is used to store the results.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;int __fastcall consume_labels(char *src, char *dst, llmnr_hdr *a3)
+{
+  int v3; // r5
+  int v4; // r12
+  unsigned int len; // r3
+  int v6; // r4
+  char v7; // r6
+  bool v8; // cc
+  int v9; // r0
+  unsigned __int8 chr; // r6
+  int result; // r0
+
+  v3 = 0;
+  v4 = 0;
+  len = 0;
+  v6 = 0;
+  while ( 1 )
+  {
+    chr = src[v3]; //-------------[1]
+    if ( !chr )
+      break;
+    if ( (int)len &amp;lt;= 0 )
+    {
+      v8 = chr &amp;lt;= 0xC0u;
+      if ( chr == 0xC0 )
+      {
+        v9 = src[v3 + 1];
+        v6 = 1;
+        v3 = 0;
+        src = (char *)a3 + v9;
+      }
+      else
+      {
+        len = src[v3++];
+        v8 = v4 &amp;lt;= 0;
+      }
+      if ( !v8 )
+        dst[v4++] = &apos;.&apos;;
+    }
+    else
+    {
+      v7 = src[v3++];
+      len = (char)(len - 1);
+      dst[v4++] = v7; //----------[2]
+    }
+  }
+  result = v3 + 1;
+  dst[v4] = 0;
+  if ( v6 )
+    return 2;
+  return result;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;We can see that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[1]&lt;/code&gt; will get the label length and then process it according to the type. &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[2]&lt;/code&gt; is used as a case of length. There is no length check here, and the label is directly written into the dst buffer, leading to stack overflow. At this point, we thought we could exploit it in the similar way as Canon. However, when we were writing the exploit, we found that HP printers have more protection mechanisms.&lt;/p&gt;
+
+&lt;h4 id=&quot;protection-1&quot;&gt;Protection&lt;/h4&gt;
+&lt;ul&gt;
+  &lt;li&gt;No Stack Guard&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;XN(DEP)&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Memory Protect Unit (MPU)&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;No ASLR&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;In this case, XN and MPU memory protection mechanisms are enabled, and this vulnerability has more restrictions. We &lt;strong&gt;can only overflow about 0x100 bytes without null byte&lt;/strong&gt;, which significantly restricts our ROP and makes it more challenging. We need to find other vulnerabilities or methods to achieve our goal.&lt;/p&gt;
+
+&lt;p&gt;After a while, we started thinking about how HP printers implement XN(DEP) and MPU. Let’s review HP RTOS:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Linked with application code into single image&lt;/li&gt;
+  &lt;li&gt;Many tasks run
+    &lt;ul&gt;
+      &lt;li&gt;in the same virtual address space&lt;/li&gt;
+      &lt;li&gt;in kernel-mode&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;After reviewing, we thought, can we bypass it by understanding the MMU and MPU in HP RTOS?&lt;/p&gt;
+
+&lt;h4 id=&quot;mmu-in-hp-m283fdw&quot;&gt;MMU in HP M283fdw&lt;/h4&gt;
+
+&lt;p&gt;HP M283fdw uses one-level page table translation and each translation table entry for translating a 1MB section. The translation table is located at &lt;strong&gt;0x4003c000&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/23.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Each translation table entry corresponds to a physical address and the permissions of the section. The CPU determines whether it can be executed or modified according to the entry. The permissions related here are AP, APX, and XN. We can also map any physical address through this translation table entry.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/24.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Generally, we can modify the translation table entry through ROP if we have stack overflow under high privileges. But when we tried to write directly to the translation table, the HP printer crashed.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/25.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We checked and found that the leading cause of the memory fault exception is that Memory Protection Unit(MPU) protects the translation table.&lt;/p&gt;
+
+&lt;h4 id=&quot;mpu-in-hp-m283fdw&quot;&gt;MPU in HP M283fdw&lt;/h4&gt;
+&lt;p&gt;The MPU enables you to partition memory into regions and set individual protection attributes for each regions. It is an entirely different mechanism from MMU and is often found in IoT devices. HP enables MPU at boot and defines permissions for each region, so we cannot manipulate the page table.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/26.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After a long time of reverse engineering and referencing the &lt;a href=&quot;https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Address-Map/Protected-Memory-System-Architecture--PMSAv7/Register-support-for-PMSAv7-in-the-SCS?lang=en#BEHJFJDI&quot;&gt;ARM Manual&lt;/a&gt;, we found that the MPU can be turned off by clearing MPU_CTRL. We found that the location is 0xE0400304, slightly different from ARM’s spec.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/27.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;exploitation&quot;&gt;Exploitation&lt;/h4&gt;
+&lt;p&gt;After understanding HP’s MMU and MPU mechanism, we can easily use ROP to turn off the MPU and successfully modify the translation table entry. We can arbitrarily modify the code of any service, and we finally chose &lt;a href=&quot;https://en.wikipedia.org/wiki/Line_Printer_Daemon_protocol&quot;&gt;Line Printer Daemon(LPD)&lt;/a&gt;. We modified it into a backdoor, read more payloads to the specified location, and finally executed the shellcode.&lt;/p&gt;
+
+&lt;p&gt;But there is one thing that must be mentioned. After the translation table entry and LPD code are overwritten, be sure to &lt;strong&gt;flush TLB&lt;/strong&gt; and &lt;strong&gt;invalidate I-cache and D-cache&lt;/strong&gt;. Otherwise, it is very likely to execute in the old one, causing the exploit to fail.&lt;/p&gt;
+
+&lt;p&gt;Flash TLB&lt;/p&gt;
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;flush_tlb:
+    mov r12, #0
+    mcr p15, 0, r12, c8, c7, 0
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Invalidate I-cache&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;disable_icache:
+    mrc p15, 0, r1, c1, c0, 0
+    bic r1, r1, #(1 &amp;lt;&amp;lt; 12)
+    mcr p15, 0, r1, c1, c0, 0
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h4 id=&quot;exploitation-step-1&quot;&gt;Exploitation Step&lt;/h4&gt;
+&lt;ul&gt;
+  &lt;li&gt;Trigger stack overflow in LLMNR and overwrite return address&lt;/li&gt;
+  &lt;li&gt;Use limited ROP to
+    &lt;ul&gt;
+      &lt;li&gt;disable MPU&lt;/li&gt;
+      &lt;li&gt;modify translation table entry and get read-write execute permission&lt;/li&gt;
+      &lt;li&gt;flush TLB&lt;/li&gt;
+      &lt;li&gt;modify the code of LPD&lt;/li&gt;
+      &lt;li&gt;invalidate I-cache and D-cache&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Use modified LPD to read our shellcode and jump to shellcode&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&quot;pwn2own-austin-2021-2&quot;&gt;Pwn2Own Austin 2021&lt;/h4&gt;
+&lt;p&gt;When we could execute the shellcode, we only had one week left, and we finally chose to use the exact string to display &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Pwned by DEVCORE&lt;/code&gt; on the LCD.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/28.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After that, we also tried to change the backdoor to the debug console to facilitate many functions, such as viewing memory information, playing music, etc.&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/S9TkvaAmyMw&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://twitter.com/fsecurelabs&quot;&gt;F-Secure Labs&lt;/a&gt; used the function of playing music to present it at that time. It is fascinating. You can go &lt;a href=&quot;https://youtu.be/c82uFBdTvII?t=1263&quot;&gt;here&lt;/a&gt; to look at the situation at the Pwn2Own.&lt;/p&gt;
+
+&lt;h3 id=&quot;result&quot;&gt;Result&lt;/h3&gt;
+&lt;p&gt;In Pwn2Own Austin 2021, we got 2nd place after pwning other devices and printers. We had a good experience and learned some new things.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/29.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;mitigation&quot;&gt;Mitigation&lt;/h2&gt;
+&lt;h3 id=&quot;update&quot;&gt;Update&lt;/h3&gt;
+&lt;p&gt;The first is to update regularly. All the printers mentioned have been patched. It is often ignored. We usually find printers lack of update for several years and even leave the default password directly in the corporate intranet.&lt;/p&gt;
+
+&lt;h3 id=&quot;disable-unused-service&quot;&gt;Disable unused service&lt;/h3&gt;
+&lt;p&gt;Another mitigation is to turn off services that are not in use as much as possible. Most printers default enable too many services that are usually unused. We even think that you can turn off the discovery service,
+just open the service you want to use.&lt;/p&gt;
+
+&lt;h3 id=&quot;firewall&quot;&gt;Firewall&lt;/h3&gt;
+&lt;p&gt;It would be better if you could apply a firewall. Most printers provide related functions.&lt;/p&gt;
+
+&lt;h2 id=&quot;summary&quot;&gt;Summary&lt;/h2&gt;
+&lt;p&gt;With code execution on the printers, in addition to printing things on the LCD, we can use the printer to steal confidential information, whether it is confidential documents or some credential. We can also use the printer for &lt;a href=&quot;https://en.wikipedia.org/wiki/Network_Lateral_Movement&quot;&gt;lateral movement&lt;/a&gt;, and because it is hard to detect, making it an excellent target for the red team.&lt;/p&gt;
+
+&lt;p&gt;By the way, the protocols of the discovery service series on many printers are often vulnerable. If you want to find vulnerabilities in printers or other IoT devices, you can look in this direction.&lt;/p&gt;
+
+&lt;h2 id=&quot;to-be-continue&quot;&gt;To Be Continue&lt;/h2&gt;
+&lt;p&gt;We also found several vulnerabilities in the printer series at &lt;a href=&quot;https://www.thezdi.com/blog/2022/8/29/announcing-pwn2own-toronto-2022-and-introducing-the-soho-smashup&quot;&gt;Pwn2Own Toronto 2022&lt;/a&gt; last year. We will be releasing detailed information soon, so stay tuned for Part II.&lt;/p&gt;
+
+&lt;h2 id=&quot;reference&quot;&gt;Reference&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://labs.withsecure.com/assets/BlogFiles/Printing-Shellz.pdf&quot;&gt;https://labs.withsecure.com/assets/BlogFiles/Printing-Shellz.pdf&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://foxglovesecurity.com/2017/11/20/a-sheep-in-wolfs-clothing-finding-rce-in-hps-printer-fleet/&quot;&gt;https://foxglovesecurity.com/2017/11/20/a-sheep-in-wolfs-clothing-finding-rce-in-hps-printer-fleet/&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://research.checkpoint.com/2018/sending-fax-back-to-the-dark-ages/&quot;&gt;https://research.checkpoint.com/2018/sending-fax-back-to-the-dark-ages/&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+                <link>https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1-en/</link>
+                <guid>https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1-en</guid>
+                <pubDate>Thu, 05 Oct 2023 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>HITCON 2023 x DEVCORE Wargame: My todolist Write-up</title>

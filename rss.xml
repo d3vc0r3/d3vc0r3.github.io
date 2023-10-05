@@ -4,15 +4,17 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Thu, 05 Oct 2023 04:31:56 +0800</lastBuildDate>
-        <pubDate>Thu, 05 Oct 2023 04:31:56 +0800</pubDate>
+        <lastBuildDate>Fri, 06 Oct 2023 13:48:59 +0800</lastBuildDate>
+        <pubDate>Fri, 06 Oct 2023 13:48:59 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
 
         <item>
                 <title>Your printer is not your printer ! - Hacking Printers at Pwn2Own Part I</title>
-                <description>&lt;p&gt;印表機近年來已成為企業內網中不可或缺的設備之一，功能也隨著科技的發展日益增多，除了一般的傳真及列印之外，也開始支援 AirPrint 等雲端列印服務，讓列印更加方便，直接使用行動裝置就可以輕鬆列印，更成為了 IoT 中，不可或缺的一環，正因為其便利，也常被用於列印公司內部機敏文件，使得在企業中印表機的安全性更加的重要。&lt;/p&gt;
+                <description>&lt;p&gt;&lt;a href=&quot;/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1-en/&quot;&gt;English Version&lt;/a&gt;, &lt;a href=&quot;/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;印表機近年來已成為企業內網中不可或缺的設備之一，功能也隨著科技的發展日益增多，除了一般的傳真及列印之外，也開始支援 AirPrint 等雲端列印服務，讓列印更加方便，直接使用行動裝置就可以輕鬆列印，更成為了 IoT 中，不可或缺的一環，正因為其便利，也常被用於列印公司內部機敏文件，使得在企業中印表機的安全性更加的重要。&lt;/p&gt;
 
 &lt;p&gt;而前年我們也在 Canon 及 HP 的印表機中發現了 Pre-auth RCE 的漏洞(&lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-515/&quot;&gt;CVE-2022-24673&lt;/a&gt; 及 &lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-532/&quot;&gt;CVE-2022-3942&lt;/a&gt;) 及 Lexmark 發現漏洞(&lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-332/&quot;&gt;CVE-2021-44734&lt;/a&gt;)，並在 Pwn2Own Austin 2021 中取得了 Canon ImageCLASS MF644Cdw、 HP Color LaserJet Pro MFP M283fdw 及 Lexmark MC3224i 的控制權，而成功獲得 Pwn2Own 中駭客大師(Master of Pwn) 的點數，這篇研究將講述 Canon 及 HP 漏洞的細節及我們的利用方式。&lt;/p&gt;
 
@@ -367,7 +369,7 @@ scope 可以定義要找的範圍，如 canon 印表機。&lt;/p&gt;
 &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;p&gt;可以看到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[3]&lt;/code&gt; 針對是沒有跳脫字元的處理，會在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[4]&lt;/code&gt; 檢查是否有超過最大長度，然而在有跳脫字元的處理中 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[1]&lt;/code&gt; ，並沒有任何對長度的檢查，直接將轉換後的結果放到 destatation buffer 中 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[2]&lt;/code&gt;，一旦給定的字串多數為跳脫字元的情況，就會造成 stack overflow。&lt;/p&gt;
+&lt;p&gt;可以看到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[3]&lt;/code&gt; 針對是沒有跳脫字元的處理，會在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[4]&lt;/code&gt; 檢查是否有超過最大長度，然而在有跳脫字元的處理中 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[1]&lt;/code&gt; ，並沒有任何對長度的檢查，直接將轉換後的結果放到 destination buffer 中 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[2]&lt;/code&gt;，一旦給定的字串多數為跳脫字元的情況，就會造成 stack overflow。&lt;/p&gt;
 
 &lt;p&gt;在找到漏洞之後，第一件事就是先看看本身有甚麼保護，方便後續的利用。但分析了一下發現，Canon 印表機本身並沒有任何記憶體相關的保護。&lt;/p&gt;
 
@@ -378,7 +380,7 @@ scope 可以定義要找的範圍，如 canon 印表機。&lt;/p&gt;
   &lt;li&gt;No ASLR&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;沒有 Stack Guard、沒有 DEP 也沒有 ASLR，可以說是 &lt;strong&gt;hack friendly&lt;/strong&gt; ! 如同回到 90 年代，一個 stack overflow 就可以打天下。接下來就如同過往的 Binary Exploitation 利用手法，找個地方放 shellcode 再覆蓋 return address 跳到 shellcode 就會有任意程式碼執行了! 最終我們找到了 BJNP 這個服務來放我們的 shellcode。&lt;/p&gt;
+&lt;p&gt;沒有 Stack Guard、沒有 DEP 也沒有 ASLR，可以說是 &lt;strong&gt;hacker friendly&lt;/strong&gt; ! 如同回到 90 年代，一個 stack overflow 就可以打天下。接下來就如同過往的 Binary Exploitation 利用手法，找個地方放 shellcode 再覆蓋 return address 跳到 shellcode 就會有任意程式碼執行了! 最終我們找到了 BJNP 這個服務來放我們的 shellcode。&lt;/p&gt;
 
 &lt;h4 id=&quot;bjnp&quot;&gt;BJNP&lt;/h4&gt;
 &lt;p&gt;BJNP 本身也是個服務發現協定，由 Canon 自己所設計，過去也曾經有許多漏洞，&lt;a href=&quot;https://www.synacktiv.com/publications/treasure-chest-party-quest-from-doom-to-exploit.html&quot;&gt;Synacktiv&lt;/a&gt; 也曾經利用該協定漏洞來獲得印表機控制權，這邊不多做細節上的介紹，更多細節可參考&lt;a href=&quot;https://doar-e.github.io/blog/2022/06/11/pwn2own-2021-canon-imageclass-mf644cdw-writeup/#bjnp&quot;&gt;這篇&lt;/a&gt;，我們也用了類似的手法。 BJNP 本身會將可控的 session 資料放在已知的 global buffer 中，我們可用這個功能來將我們的 shellcode 放到一個固定的位置上，基本上也沒甚麼限制。&lt;/p&gt;
@@ -641,16 +643,18 @@ HP 則是在開機就會啟用，並將每個 region 定義好權限，因此無
 
         <item>
                 <title>Your printer is not your printer ! - Hacking Printers at Pwn2Own Part I</title>
-                <description>&lt;p&gt;Printer has become one of the essential devices in the corporate intranet in the past few years, and its functionalities have also increased significantly. Not only printing or faxing, cloud printing services like AirPrint are also supported to make it easier to use. Direct printing from mobile devices is now a basic requirement in the IoT era. We also use it to print some internal business documents of the company, which makes it even more important to keep the printer secure.&lt;/p&gt;
+                <description>&lt;p&gt;&lt;a href=&quot;/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1-en/&quot;&gt;English Version&lt;/a&gt;, &lt;a href=&quot;/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
 
-&lt;p&gt;At 2021, we found Pre-auth RCE vulnerabilities(&lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-515/&quot;&gt;CVE-2022-24673&lt;/a&gt; and &lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-532/&quot;&gt;CVE-2022-3942&lt;/a&gt;) in Canon and HP printers, and vulnerabilty(&lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-332/&quot;&gt;CVE-2021-44734&lt;/a&gt;) in Lexmark. We used these vulnerabilities to exploit Canon ImageCLASS MF644Cdw, HP Color LaserJet Pro MFP M283fdw and Lexmark MC3224i in &lt;a href=&quot;https://www.zerodayinitiative.com/blog/2021/11/1/pwn2ownaustin&quot;&gt;Pwn2Own Austin 2021&lt;/a&gt;. Following we will describe the details of the Canon and HP vulnerabilities and exploitation.&lt;/p&gt;
+&lt;p&gt;Printer has become one of the essential devices in the corporate intranet in the past few years, and its functionalities have also increased significantly. Not only printing or faxing, cloud printing services like AirPrint are also supported to make it easier to use. Direct printing from mobile devices is now a basic requirement in the IoT era. We also use it to print some internal business documents of the company, which makes it even more important to keep the printer secure.&lt;/p&gt;
+
+&lt;p&gt;In 2021, we found Pre-auth RCE vulnerabilities(&lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-515/&quot;&gt;CVE-2022-24673&lt;/a&gt; and &lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-532/&quot;&gt;CVE-2022-3942&lt;/a&gt;) in Canon and HP printers, and vulnerability(&lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-22-332/&quot;&gt;CVE-2021-44734&lt;/a&gt;) in Lexmark. We used these vulnerabilities to exploit Canon ImageCLASS MF644Cdw, HP Color LaserJet Pro MFP M283fdw and Lexmark MC3224i in &lt;a href=&quot;https://www.zerodayinitiative.com/blog/2021/11/1/pwn2ownaustin&quot;&gt;Pwn2Own Austin 2021&lt;/a&gt;. Following we will describe the details of the Canon and HP vulnerabilities and exploitation.&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20231005/1.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;This research is also presented at &lt;a href=&quot;https://hitcon.org/2022/agenda/704bf58c-c42b-4593-97c0-9aba91caa6e4&quot;&gt;HITCON 2022&lt;/a&gt; and &lt;a href=&quot;https://codeblue.jp/2022/en/talks/&quot;&gt;CODE BLUE 2022&lt;/a&gt;. You can check the &lt;a href=&quot;https://hitcon.org/2022/slides/Your%20Printer%20is%20not%20your%20Printer%20!%20-%20Hacking%20Printers%20at%20Pwn2Own.pdf&quot;&gt;slides&lt;/a&gt; here.&lt;/p&gt;
 
 &lt;h2 id=&quot;printer&quot;&gt;Printer&lt;/h2&gt;
-&lt;p&gt;In the early days, it often required an IEEE1284 or USB Printer cable to connect the printer to the computer. We also had to install the printer driver provided by the manufacturer. Nowadays, most of the printers on the market do not requires USB or traditional cable. As long as the printer is connected to the intranet through a LAN cable, we can find and utilize the printer immediately.&lt;/p&gt;
+&lt;p&gt;In the early days, it often required an IEEE1284 or USB Printer cable to connect the printer to the computer. We also had to install the printer driver provided by the manufacturer. Nowadays, most of the printers on the market do not require USB or traditional cable. As long as the printer is connected to the intranet through a LAN cable, we can find and utilize the printer immediately.&lt;/p&gt;
 
 &lt;p&gt;Printer also provides not only printing but also various services such as FTP, AirPrint, Bonjour. Nothing more than to make printing more convenient.&lt;/p&gt;
 
@@ -678,7 +682,7 @@ HP 則是在開機就會啟用，並將每個 region 定義好權限，因此無
 &lt;h4 id=&quot;firmware-extract&quot;&gt;Firmware Extract&lt;/h4&gt;
 &lt;p&gt;The initial analysis version is v6.03, we used binwalk to analyze it at the beginning, but the firmware is obfuscated, we can’t analyze it directly.&lt;/p&gt;
 
-&lt;p&gt;Obfuscated Canon ImageCLASS MF644Cdw fimware
+&lt;p&gt;Obfuscated Canon ImageCLASS MF644Cdw firmware
 &lt;img src=&quot;/assets/img/blog/20231005/3.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;We also tried &lt;a href=&quot;https://www.synacktiv.com/publications/treasure-chest-party-quest-from-doom-to-exploit.html&quot;&gt;“TREASURE CHEST PARTY QUEST: FROM DOOM TO EXPLOIT”&lt;/a&gt; by Synacktiv and &lt;a href=&quot;https://web.archive.org/web/20220224100459/https://www.contextis.com/en/blog/hacking-canon-pixma-printers-doomed-encryption&quot;&gt;“Hacking Canon Pixma Printers – Doomed Encryption”&lt;/a&gt; by Contextis research. But this time, it’s an entirely different series, and we can’t use the same method to deobfuscate the firmware.&lt;/p&gt;

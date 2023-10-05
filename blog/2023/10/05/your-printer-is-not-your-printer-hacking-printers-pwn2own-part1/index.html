@@ -909,7 +909,7 @@ scope 可以定義要找的範圍，如 canon 印表機。</p>
 <span class="p">}</span>
 </code></pre></div></div>
 
-<p>可以看到 <code class="language-plaintext highlighter-rouge">[3]</code> 針對是沒有跳脫字元的處理，會在 <code class="language-plaintext highlighter-rouge">[4]</code> 檢查是否有超過最大長度，然而在有跳脫字元的處理中 <code class="language-plaintext highlighter-rouge">[1]</code> ，並沒有任何對長度的檢查，直接將轉換後的結果放到 destatation buffer 中 <code class="language-plaintext highlighter-rouge">[2]</code>，一旦給定的字串多數為跳脫字元的情況，就會造成 stack overflow。</p>
+<p>可以看到 <code class="language-plaintext highlighter-rouge">[3]</code> 針對是沒有跳脫字元的處理，會在 <code class="language-plaintext highlighter-rouge">[4]</code> 檢查是否有超過最大長度，然而在有跳脫字元的處理中 <code class="language-plaintext highlighter-rouge">[1]</code> ，並沒有任何對長度的檢查，直接將轉換後的結果放到 destination buffer 中 <code class="language-plaintext highlighter-rouge">[2]</code>，一旦給定的字串多數為跳脫字元的情況，就會造成 stack overflow。</p>
 
 <p>在找到漏洞之後，第一件事就是先看看本身有甚麼保護，方便後續的利用。但分析了一下發現，Canon 印表機本身並沒有任何記憶體相關的保護。</p>
 
@@ -920,7 +920,7 @@ scope 可以定義要找的範圍，如 canon 印表機。</p>
   <li>No ASLR</li>
 </ul>
 
-<p>沒有 Stack Guard、沒有 DEP 也沒有 ASLR，可以說是 <strong>hack friendly</strong> ! 如同回到 90 年代，一個 stack overflow 就可以打天下。接下來就如同過往的 Binary Exploitation 利用手法，找個地方放 shellcode 再覆蓋 return address 跳到 shellcode 就會有任意程式碼執行了! 最終我們找到了 BJNP 這個服務來放我們的 shellcode。</p>
+<p>沒有 Stack Guard、沒有 DEP 也沒有 ASLR，可以說是 <strong>hacker friendly</strong> ! 如同回到 90 年代，一個 stack overflow 就可以打天下。接下來就如同過往的 Binary Exploitation 利用手法，找個地方放 shellcode 再覆蓋 return address 跳到 shellcode 就會有任意程式碼執行了! 最終我們找到了 BJNP 這個服務來放我們的 shellcode。</p>
 
 <h4 id="bjnp">BJNP</h4>
 <p>BJNP 本身也是個服務發現協定，由 Canon 自己所設計，過去也曾經有許多漏洞，<a href="https://www.synacktiv.com/publications/treasure-chest-party-quest-from-doom-to-exploit.html">Synacktiv</a> 也曾經利用該協定漏洞來獲得印表機控制權，這邊不多做細節上的介紹，更多細節可參考<a href="https://doar-e.github.io/blog/2022/06/11/pwn2own-2021-canon-imageclass-mf644cdw-writeup/#bjnp">這篇</a>，我們也用了類似的手法。 BJNP 本身會將可控的 session 資料放在已知的 global buffer 中，我們可用這個功能來將我們的 shellcode 放到一個固定的位置上，基本上也沒甚麼限制。</p>

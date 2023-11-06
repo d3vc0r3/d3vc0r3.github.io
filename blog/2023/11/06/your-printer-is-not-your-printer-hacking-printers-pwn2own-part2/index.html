@@ -1,0 +1,1475 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>Your printer is not your printer ! - Hacking Printers at Pwn2Own Part II | DEVCORE 戴夫寇爾</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="我們在 Canon 的印表機找到了 Pre-auth RCE 漏洞 (CVE-2023-0853、CVE-2023-0854)，同時在 HP 印表機也有找到 Pre-auth RCE 的漏洞。最終拿下 Pwn2Own Toronto 2022 Master of Pwn。我們將在本文介紹 Canon 及 HP 漏洞的細節及利用方式。" />
+    <meta name="keywords" content="CVE-2023-0853, CVE-2023-0854, CVE-2023-35178, Pwn2Own Toronto 2022" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="Your printer is not your printer ! - Hacking Printers at Pwn2Own Part II | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2023/11/06/your-printer-is-not-your-printer-hacking-printers-pwn2own-part2/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20231106/cover.jpg" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="Your printer is not your printer ! - Hacking Printers at Pwn2Own Part II | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="我們在 Canon 的印表機找到了 Pre-auth RCE 漏洞 (CVE-2023-0853、CVE-2023-0854)，同時在 HP 印表機也有找到 Pre-auth RCE 的漏洞。最終拿下 Pwn2Own Toronto 2022 Master of Pwn。我們將在本文介紹 Canon 及 HP 漏洞的細節及利用方式。">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20231106/cover.jpg">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2023/11/06/your-printer-is-not-your-printer-hacking-printers-pwn2own-part2/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body>
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>服務<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    紅隊演練
+                                </h2>
+                                <p class="two-line">
+                                    在不影響企業營運前提下，無所不用其極，從各種進入點執行模擬入侵攻擊，達成企業指定的演練情境。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    滲透測試
+                                </h2>
+                                <p class="two-line">
+                                    以駭客思維及手法嘗試入侵企業指定系統，找出潛在漏洞，驗證企業資料與設備是否可被竊取或破壞。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    資安顧問服務
+                                </h2>
+                                <p class="two-line">
+                                    以紅隊演練為基礎，提供攻擊者視角與可能入侵路徑，協助企業評估資安資源優先順序，並擬定長期防禦策略。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    資安教育訓練
+                                </h2>
+                                <p class="two-line">
+                                    從攻擊思維出發，協助企業有效預防資安事故並防禦；以及事件發生時，如何快速判定攻擊目的、手法、漏洞與及應變方式。
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>研究<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    總覽概要
+                                </h2>
+                                <p class="two-line">
+                                    持續精研資安最新技術及漏洞研究趨勢，全方位檢測企業產品安全性、吸取經驗並轉化為紅隊演練工具與手法。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    競賽與獎項
+                                </h2>
+                                <p class="two-line">
+                                    國際級資訊安全競賽獎項肯定。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    企業漏洞回報
+                                </h2>
+                                <p class="two-line">
+                                    研究企業系統中的資安風險及各種可能的突破口，並通報企業修補。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    國際研討會
+                                </h2>
+                                <p class="two-line">
+                                    參與全球資安盛會，發表、交流漏洞的知識與資訊。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE 漏洞列表
+                                </h2>
+                                <p class="two-line">
+                                    挖掘並回報國際知名產品與服務的重大漏洞。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>公司<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                公司簡介
+                            </h2>
+                            <p>
+                                DEVCORE 戴夫寇爾由世界級白帽駭客團隊創立，提供紅隊演練、滲透測試、資安顧問服務、資安教育訓練等服務。
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    團隊成員
+                                </h2>
+                                <p class="two-line">
+                                    由熱衷挑戰、具備駭客思維的資安專家組成，專注於創新攻擊手法研究，並以「高道德、高自律、高嚴謹」為最高指導原則。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    成就與沿革
+                                </h2>
+                                <p class="two-line">
+                                    長期聚焦於攻擊研究，屢屢獲邀參與全球知名資安研討會，已揭露數百個重要產品漏洞、協助企業提升防禦能量。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    企業社會責任
+                                </h2>
+                                <p class="two-line">
+                                    提供多元實習管道和研習計畫，提升新世代人才資安能量，推廣資訊安全意識。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    工作機會
+                                </h2>
+                                <p class="two-line">
+                                    加入 DEVCORE，共同改善資安產業結構，與我們一起打造更安全的世界。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>新聞<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    DEVCORE 最新消息。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    媒體素材下載
+                                </h2>
+                                <p>
+                                    使用 DEVCORE 商標須遵循的使用規範。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/search/">搜尋</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/contact/">聯絡我們</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>服務</span>
+                <div class="menuItem">
+                    <a href="/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                紅隊演練
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                滲透測試
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                顧問服務
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                教育訓練
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>資安研究</span>
+                <div class="menuItem">
+                    <a href="/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>總覽概要</h2>
+                        </div>
+                    </a>
+                    <a href="/research/awards/">
+                        <div class="item">
+                            <h2>競賽與獎項</h2>
+                        </div>
+                    </a>
+                    <a href="/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Bug Bounty</h2>
+                        </div>
+                    </a>
+                    <a href="/research/talks/">
+                        <div class="item">
+                            <h2>國際研討會</h2>
+                        </div>
+                    </a>
+                    <a href="/research/cve/">
+                        <div class="item">
+                            <h2>CVE 漏洞列表</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>公司</span>
+                <div class="menuItem">
+                    <a href="/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>公司簡介</h2>
+                        </div>
+                    </a>
+                    <a href="/company/our-team/">
+                        <div class="item">
+                            <h2>團隊成員</h2>
+                        </div>
+                    </a>
+                    <a href="/company/history/">
+                        <div class="item">
+                            <h2>成就與沿革</h2>
+                        </div>
+                    </a>
+                    <a href="/company/csr/">
+                        <div class="item">
+                            <h2>企業社會責任</h2>
+                        </div>
+                    </a>
+                    <a href="/company/jobs/">
+                        <div class="item">
+                            <h2>工作機會</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>新聞</span>
+                <div class="menuItem">
+                    <!-- <a href="/blog/">
+                    <div class="item">
+                        <h2>所有文章</h2>
+                    </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>案例剖析</h2>
+                        </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>科普文章</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>技術專欄</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>資安新聞</h2>
+                        </div>
+                    </a> -->
+                    <a href="/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/media-kit/">
+                        <div class="item">
+                            <h2>媒體素材下載</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                搜尋
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                聯絡我們
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/blog/">所有文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/最新消息/">最新消息</a>
+                </li>
+                <li>
+                    <a href="/blog/category/技術專欄/">技術專欄</a>
+                </li>
+                <li>
+                    <a href="/blog/category/科普文章/">科普文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/資安新聞/">資安新聞</a>
+                </li>
+                <li>
+                    <a href="/media-kit/">媒體素材下載</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                    <span class="tag">
+
+                      <a href="/blog/tag/CVE/">#CVE</a> <a href="/blog/tag/Pwn2Own/">#Pwn2Own</a> <a href="/blog/tag/RCE/">#RCE</a> <a href="/blog/tag/IoT/">#IoT</a> 
+                    </span>
+                    <h1>
+                        Your printer is not your printer ! - Hacking Printers at Pwn2Own Part II
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/blog/author/angelboy">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/angelboy.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/blog/author/angelboy">Angelboy</a></span>
+                        <span class="date">2023-11-06</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20231106/cover.jpg"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p><a href="/blog/2023/11/06/your-printer-is-not-your-printer-hacking-printers-pwn2own-part2-en/">English Version</a>, <a href="/blog/2023/11/06/your-printer-is-not-your-printer-hacking-printers-pwn2own-part2/">中文版本</a></p>
+
+<p><strong>Hacking Printers at Pwn2Own Toronto 2022</strong></p>
+
+<p>延續<a href="/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1/">之前</a>的研究，去年我們也在 Canon 的其他型號中，找到了 Pre-auth RCE 漏洞 <a href="https://www.zerodayinitiative.com/advisories/ZDI-23-553/">(CVE-2023-0853</a>、<a href="https://www.zerodayinitiative.com/advisories/ZDI-23-554/">CVE-2023-0854</a>)，同時 HP 的印表機也有找到 Pre-auth RCE 的漏洞，然而最終與其他隊伍撞洞。我們將在本文講述我們在 Pwn2own Toronto 中所使用的 Canon 及 <a href="https://nvd.nist.gov/vuln/detail/CVE-2023-35178">HP 漏洞</a>的細節，以及我們的利用方式。</p>
+
+<ul>
+  <li>Pwn2Own Toronto 2022 Target</li>
+</ul>
+
+<table>
+  <thead>
+    <tr>
+      <th>Target</th>
+      <th>Price</th>
+      <th>Master of Pwn Points</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>HP Collor LaserJet Pro M479fdw</td>
+      <td>$20000</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <td>Lexmark MC3224i</td>
+      <td>$20000</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <td>Canon imageCLASS MF743Cdw</td>
+      <td>$20000</td>
+      <td>2</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="analysis">Analysis</h2>
+
+<h3 id="canon">Canon</h3>
+<h4 id="firmware-extract">Firmware Extract</h4>
+
+<p>與 2021 年相同，可參考<a href="/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1/">前述</a>部分，本次版本為 v11.04 。</p>
+
+<h3 id="hp">HP</h3>
+
+<p>Firmware 本身可以從 HP 的 Firmware <a href="https://ftp.ext.hp.com/pub/networking/software/pfirmware/pfirmware.glf">網站</a> 中取得，但與 2021 年不同，並<strong>無法</strong>直接用 binwalk 解出，這邊的 Firmware 是透過 AES 加密的，從現有的資訊中不太好直接解開。</p>
+
+<p>而這邊起初想法是找相同系列的 Fimware 看看是否有未加密版本，然而 HP 官方的 Firmware 中，並沒有符合條件的 Firmware，原本打算拆印表機想辦法 Dump firmware，但我們後來在 Google 的過程中，找到了舊版的 mirror 站，而該網站有開 index of，我們可以從中獲得所有在 mirror 網站中的 Firmware。</p>
+
+<p>但這邊問題是該 Mirror 網站只有 mirror 到 2016 並沒有最新版本的資訊，不過後來可以從網站資訊中，獲得官方的目錄結構，從而取得相同系列的但沒有加密的 Firmware。</p>
+
+<p><img src="/assets/img/blog/20231106/1.png" alt="" /></p>
+
+<p>在分析過後，我們從 Firmware 中找到 fwupd 中有解密相關資訊，透過逆向可以知道加密方法及 Key，進而解出目標版本的 Firmware。</p>
+
+<p><img src="/assets/img/blog/20231106/2.png" alt="" /></p>
+
+<h4 id="hp-collor-laserjet-pro-m479fdw">HP Collor LaserJet Pro M479fdw</h4>
+<ul>
+  <li>OS - Linux Base</li>
+  <li>ARMv7 32bit little-endian</li>
+</ul>
+
+<h2 id="vulnerability--exploitation">Vulnerability &amp; Exploitation</h2>
+
+<h3 id="canon-1">Canon</h3>
+
+<h4 id="mdns-cve-2023-0853">mDNS (CVE-2023-0853)</h4>
+<p>mDNS 協定主要提供了區網中的域名解析功能，並且不需要有 Name Server 的介入，常用於 Apple 及 IoT 設備中。</p>
+
+<p>而在 Canon 中，預設情況下，也提供了相同的功能，方便使用者尋找區網中的印表機。</p>
+
+<p>該協定主要以 DNS 為基礎，基本上 mDNS 也大多建立在 DNS 封包格式 <a href="https://www.ietf.org/rfc/rfc1035.txt">(RFC1035)</a> 上，格式如下：</p>
+
+<p><strong>The packet format:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    +---------------------+
+    |        Header       |
+    +---------------------+
+    |       Question      | the question for the name server
+    +---------------------+
+    |        Answer       | RRs answering the question
+    +---------------------+
+    |      Authority      | RRs pointing toward an authority
+    +---------------------+
+    |      Additional     | RRs holding additional information
+    +---------------------+
+(diagram from https://www.ietf.org/rfc/rfc1035.txt)
+</code></pre></div></div>
+
+<p><strong>The header contains the following fields:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                                    1  1  1  1  1  1
+      0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                      ID                       |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                    QDCOUNT                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                    ANCOUNT                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                    NSCOUNT                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                    ARCOUNT                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+(diagram from https://www.ietf.org/rfc/rfc1035.txt)
+</code></pre></div></div>
+
+<p>主要可以拆分為 Header 及 body 部分，主要的請求都放在 body 中，後面三個欄位為同樣的格式。 Answer 欄位主要紀錄針對 Question 的 Resource records (RRs)，</p>
+
+<p><strong>Resource record format:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                                    1  1  1  1  1  1
+      0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                                               |
+    /                                               /
+    /                      NAME                     /
+    |                                               |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                      TYPE                     |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                     CLASS                     |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                      TTL                      |
+    |                                               |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                   RDLENGTH                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--|
+    /                     RDATA                     /
+    /                                               /
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+(diagram from https://www.ietf.org/rfc/rfc1035.txt)
+</code></pre></div></div>
+
+<p>RDATA 部分會根據 type 不同而有所不同，而當 type=NSEC 其格式如下</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   The RDATA of the NSEC RR is as shown below:
+
+                        1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   /                      Next Domain Name                         /
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   /                       Type Bit Maps                           /
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+(diagram from https://www.ietf.org/rfc/rfc4034.txt)
+
+</code></pre></div></div>
+
+<p>其餘部分在這個漏洞中不太重要，不另外多做詳細解釋，更多細節可以參考 <a href="https://datatracker.ietf.org/doc/rfc6762/">RFC6762</a> 、 <a href="https://datatracker.ietf.org/doc/rfc1035/">RFC1035</a>
+以及 <a href="https://datatracker.ietf.org/doc/rfc4034/">RFC4034</a></p>
+
+<p><strong>漏洞位置</strong>
+當 Canon ImageCLASS MF743Cdw 在處理 Answer 欄位(type=NSEC)時，並沒有檢查長度導致 stack overflow 。</p>
+
+<p><img src="/assets/img/blog/20231106/3.jpg" alt="" /></p>
+
+<p><code class="language-plaintext highlighter-rouge">bnMdnsParseAnswers</code> function 是主要負責處理封包中 answer 欄位</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="kr">__fastcall</span> <span class="nf">bnMdnsParseAnswers</span><span class="p">(</span>
+        <span class="n">netbios_header</span> <span class="o">*</span><span class="n">mdns_packet</span><span class="p">,</span>
+        <span class="kt">unsigned</span> <span class="kt">int</span> <span class="o">*</span><span class="n">ppayloadlen</span><span class="p">,</span>
+        <span class="n">netbios_header</span> <span class="o">*</span><span class="n">pmdns_header</span><span class="p">,</span>
+        <span class="n">_WORD</span> <span class="o">*</span><span class="n">anwser_rr</span><span class="p">,</span>
+        <span class="n">rrlist</span> <span class="o">**</span><span class="n">payload</span><span class="p">,</span>
+        <span class="n">_DWORD</span> <span class="o">*</span><span class="n">pinfo</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="p">...</span>
+  <span class="kt">char</span> <span class="n">nsec_buf</span><span class="p">[</span><span class="mi">256</span><span class="p">];</span> <span class="c1">// ------ fixed size on the stack</span>
+  <span class="p">...</span>
+    
+  <span class="n">_mdns_packet</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">mdns_packet</span><span class="p">;</span>
+  <span class="n">p_payloadlen</span> <span class="o">=</span> <span class="n">ppayloadlen</span><span class="p">;</span>
+  <span class="n">p_mdns_header</span> <span class="o">=</span> <span class="n">pmdns_header</span><span class="p">;</span>
+  <span class="n">anwser_cnt</span> <span class="o">=</span> <span class="n">anwser_rr</span><span class="p">;</span>
+  <span class="n">v66</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">cur_ptr</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">mdns_packet</span><span class="o">-&gt;</span><span class="n">payload</span><span class="p">[</span><span class="o">*</span><span class="n">pinfo</span><span class="p">];</span>
+  <span class="n">v9</span> <span class="o">=</span> <span class="o">*</span><span class="n">payload</span><span class="p">;</span>
+  <span class="n">v10</span> <span class="o">=</span> <span class="o">*</span><span class="n">payload</span><span class="p">;</span>
+  <span class="k">do</span>
+  <span class="p">{</span>
+    <span class="n">v11</span> <span class="o">=</span> <span class="n">v10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="n">v10</span> <span class="p">)</span>
+    <span class="p">{</span>
+      <span class="n">v9</span> <span class="o">=</span> <span class="n">v10</span><span class="p">;</span>
+      <span class="n">v10</span> <span class="o">=</span> <span class="p">(</span><span class="n">rrlist</span> <span class="o">*</span><span class="p">)</span><span class="n">v10</span><span class="o">-&gt;</span><span class="n">c</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+      <span class="n">v6</span> <span class="o">=</span> <span class="n">aBnmdnsparseans</span><span class="p">;</span>
+      <span class="n">v10</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+      <span class="n">v67</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="k">while</span> <span class="p">(</span> <span class="o">!</span><span class="n">v11</span> <span class="p">);</span>
+  <span class="k">while</span> <span class="p">(</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int16</span><span class="p">)</span><span class="o">*</span><span class="n">anwser_cnt</span> <span class="o">&gt;</span> <span class="n">v67</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="p">...</span>
+    <span class="k">if</span><span class="p">...</span>
+    <span class="n">type</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int16</span><span class="p">)</span><span class="n">pname</span><span class="o">-&gt;</span><span class="n">type</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="n">type</span> <span class="o">==</span> <span class="mi">28</span> <span class="p">)</span>
+      <span class="k">goto</span> <span class="n">LABEL_36</span><span class="p">;</span>
+    <span class="k">if</span><span class="p">...</span>
+    <span class="k">if</span><span class="p">...</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="n">type</span> <span class="o">!=</span> <span class="mh">0x21</span> <span class="p">)</span>
+    <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="n">type</span> <span class="o">!=</span> <span class="mi">47</span> <span class="p">)</span>                         <span class="c1">// NSEC</span>
+      <span class="p">{</span>
+        <span class="p">...</span>
+        <span class="k">goto</span> <span class="n">LABEL_95</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="n">v62</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+      <span class="n">v63</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+      <span class="n">zeromemory</span><span class="p">(</span><span class="n">nsec_buf</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="n">v19</span><span class="p">,</span> <span class="n">v20</span><span class="p">);</span>
+      <span class="n">v47</span> <span class="o">=</span> <span class="n">bnMdnsMalloc</span><span class="p">(</span><span class="mi">8</span><span class="p">);</span>
+      <span class="n">rrlist</span><span class="o">-&gt;</span><span class="n">pname</span><span class="o">-&gt;</span><span class="n">nsec</span> <span class="o">=</span> <span class="n">v47</span><span class="p">;</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="o">!</span><span class="n">v47</span> <span class="p">)</span>
+      <span class="p">{</span>
+        <span class="n">bnMdnsFreeRRLIST</span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="n">rrlist</span><span class="p">);</span>
+        <span class="n">v50</span> <span class="o">=</span> <span class="mi">2720</span><span class="p">;</span>
+<span class="nl">LABEL_76:</span>
+        <span class="n">debugprintff</span><span class="p">(</span>
+          <span class="mi">3610</span><span class="p">,</span>
+          <span class="mi">3</span><span class="p">,</span>
+          <span class="s">"[bnjr] [%s] &lt;%s:%d&gt; bnMdnsParseAnswers error in malloc(NSEC)</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span>
+          <span class="s">"IMP/mdns/common/tcBnMdnsMsg.c"</span><span class="p">,</span>
+          <span class="n">v6</span><span class="p">,</span>
+          <span class="n">v50</span><span class="p">);</span>
+        <span class="k">return</span> <span class="mi">3</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="n">maybe_realloc</span><span class="p">(</span><span class="n">v47</span><span class="p">,</span> <span class="mi">8</span><span class="p">);</span>
+      <span class="n">nsec</span> <span class="o">=</span> <span class="n">rrlist</span><span class="o">-&gt;</span><span class="n">pname</span><span class="o">-&gt;</span><span class="n">nsec</span><span class="p">;</span>
+      <span class="n">nsec_len</span> <span class="o">=</span> <span class="n">bnMdnsGetDecodedRRNameLen</span><span class="p">(</span><span class="n">cur_ptr</span><span class="p">,</span> <span class="o">*</span><span class="n">ppayloadlen</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">_mdns_packet</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">dwbyte</span><span class="p">);</span>
+      <span class="k">if</span><span class="p">...</span>
+      <span class="k">if</span><span class="p">...</span>
+      <span class="n">v51</span> <span class="o">=</span> <span class="p">(</span><span class="n">_BYTE</span> <span class="o">*</span><span class="p">)</span><span class="n">bnMdnsMalloc</span><span class="p">(</span><span class="n">nsec_len</span><span class="p">);</span>
+      <span class="o">*</span><span class="p">(</span><span class="n">_DWORD</span> <span class="o">*</span><span class="p">)</span><span class="n">nsec</span> <span class="o">=</span> <span class="n">v51</span><span class="p">;</span>
+      <span class="k">if</span><span class="p">...</span>
+      <span class="n">consume_label</span><span class="p">(</span><span class="n">cur_ptr</span><span class="p">,</span> <span class="o">*</span><span class="n">ppayloadlen</span><span class="p">,</span> <span class="n">_mdns_packet</span><span class="p">,</span> <span class="n">v51</span><span class="p">,</span> <span class="n">nsec_len</span><span class="p">);</span>
+      <span class="n">v52</span> <span class="o">=</span> <span class="n">dwbyte</span><span class="p">;</span>
+      <span class="n">v53</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">cur_ptr</span><span class="p">[</span><span class="n">dwbyte</span><span class="p">];</span>
+      <span class="n">v54</span> <span class="o">=</span> <span class="o">*</span><span class="n">ppayloadlen</span> <span class="o">-</span> <span class="n">dwbyte</span><span class="p">;</span>
+      <span class="o">*</span><span class="n">ppayloadlen</span> <span class="o">=</span> <span class="n">v54</span><span class="p">;</span>
+      <span class="n">v55</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int8</span><span class="p">)</span><span class="n">v53</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+      <span class="n">v56</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int8</span><span class="p">)</span><span class="o">*</span><span class="n">v53</span><span class="p">;</span>
+      <span class="n">nsec_</span> <span class="o">=</span> <span class="n">v53</span> <span class="o">+</span> <span class="mi">2</span><span class="p">;</span>
+      <span class="o">*</span><span class="n">ppayloadlen</span> <span class="o">=</span> <span class="n">v54</span> <span class="o">-</span> <span class="mi">2</span><span class="p">;</span>
+      <span class="n">v57</span> <span class="o">=</span> <span class="n">v56</span> <span class="o">|</span> <span class="p">(</span><span class="n">v55</span> <span class="o">&lt;&lt;</span> <span class="mi">8</span><span class="p">);</span>
+      <span class="n">nsec_len_</span> <span class="o">=</span> <span class="n">__rev16</span><span class="p">(</span><span class="n">v57</span><span class="p">);</span>
+      <span class="k">if</span><span class="p">...</span>
+      <span class="n">memcpy</span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="n">nsec_buf</span><span class="p">,</span> <span class="n">nsec_</span><span class="p">,</span> <span class="n">nsec_len_</span><span class="p">,</span> <span class="n">v57</span><span class="p">);</span> <span class="c1">//-------- [1]  stack overflow </span>
+      <span class="k">for</span> <span class="p">(</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">nsec_len_</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span> <span class="p">)</span>
+      <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">nsec_buf</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="p">)</span>
+        <span class="p">{</span>
+          <span class="k">for</span> <span class="p">(</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="mi">8</span><span class="p">;</span> <span class="o">++</span><span class="n">j</span> <span class="p">)</span>
+          <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">j</span> <span class="o">==</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int8</span><span class="p">)</span><span class="n">nsec_buf</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="p">)</span>
+            <span class="p">{</span>
+              <span class="k">if</span> <span class="p">(</span> <span class="n">v62</span> <span class="p">)</span>
+                <span class="n">v63</span> <span class="o">=</span> <span class="mi">7</span> <span class="o">-</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">8</span> <span class="o">*</span> <span class="n">i</span><span class="p">;</span>
+              <span class="k">else</span>
+                <span class="n">v62</span> <span class="o">=</span> <span class="mi">7</span> <span class="o">-</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">8</span> <span class="o">*</span> <span class="n">i</span><span class="p">;</span>
+            <span class="p">}</span>
+          <span class="p">}</span>
+        <span class="p">}</span>
+      <span class="p">}</span>
+      <span class="o">*</span><span class="p">(</span><span class="n">_WORD</span> <span class="o">*</span><span class="p">)(</span><span class="n">nsec</span> <span class="o">+</span> <span class="mi">4</span><span class="p">)</span> <span class="o">=</span> <span class="n">v62</span><span class="p">;</span>
+   <span class="p">...</span>
+
+  <span class="p">}</span>
+  <span class="o">*</span><span class="n">pinfo</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">cur_ptr</span><span class="p">[</span><span class="o">-</span><span class="n">_mdns_packet</span> <span class="o">-</span> <span class="mh">0xC</span><span class="p">];</span>
+  <span class="o">*</span><span class="n">anwser_cnt</span> <span class="o">-=</span> <span class="n">v66</span><span class="p">;</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>當他在處理 NSEC(47) 的 Record 時，並沒有檢查長度就直接複製 data 到 local buffer(<code class="language-plaintext highlighter-rouge">nsec_buf[256]</code>) ，如上述程式碼的 <code class="language-plaintext highlighter-rouge">[1]</code>，導致 stack overflow</p>
+
+<p><strong>Exploitation</strong></p>
+
+<p>這裡利用方法與 Pwn2Own 2021 Austin 時<a href="/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1/">相同</a>，這邊就不在多做敘述。</p>
+
+<h4 id="netbios-cve-2023-0854">NetBIOS (CVE-2023-0854)</h4>
+
+<p>在 NetBIOS 中主要提供下列三種不同的服務:</p>
+
+<ul>
+  <li>Name service (NetBIOS-NS) : Port 137/TCP and 137/UDP</li>
+  <li>Datagram distribution service (NetBIOS-DGM) : Port 138/UDP</li>
+  <li>Session service (NetBIOS-SSN) : Port 139/TCP</li>
+</ul>
+
+<p>這邊我們將會把重點放在 NetBIOS-NS 中，NetBIOS-NS 也會提供區網中域名解析的服務，常見於 Windows 作業系統中，而該封包格式也是基於 DNS 的封包。其詳細內容定義於 <a href="https://datatracker.ietf.org/doc/html/rfc1002">RFC1002</a> 中</p>
+
+<p><strong>The packet format:</strong></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>     1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |         NAME_TRN_ID           | OPCODE  |   NM_FLAGS  | RCODE |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |          QDCOUNT              |           ANCOUNT             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |          NSCOUNT              |           ARCOUNT             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+(diagram from https://datatracker.ietf.org/doc/html/rfc1002)
+</code></pre></div></div>
+
+<p>而 Query 則會被放在 header 之後</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                        1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                                                               |
+   + ------                                                ------- +
+   |                            HEADER                             |
+   + ------                                                ------- +
+   |                                                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                                                               |
+   /                       QUESTION ENTRIES                        /
+   |                                                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                                                               |
+   /                    ANSWER RESOURCE RECORDS                    /
+   |                                                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                                                               |
+   /                  AUTHORITY RESOURCE RECORDS                   /
+   |                                                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                                                               |
+   /                  ADDITIONAL RESOURCE RECORDS                  /
+   |                                                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+(diagram from https://datatracker.ietf.org/doc/html/rfc1002)
+
+</code></pre></div></div>
+
+<p>其中我們只須關注於 Question Entries 欄位</p>
+
+<p><strong>Question Section:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>                        1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                                                               |
+   /                         QUESTION_NAME                         /
+   /                                                               /
+   |                                                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |         QUESTION_TYPE         |        QUESTION_CLASS         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+</code></pre></div></div>
+
+<p>Question Name 都是由許多 label 組成，每個 label 都如同前述 LLMNR 所述，都是長度加上字串的組合。其餘欄位則不另外多加敘述，詳細內容可參考 <a href="https://datatracker.ietf.org/doc/html/rfc1002">RFC1002</a>。</p>
+
+<p><strong>漏洞位置</strong>
+當 Canon ImageCLASS MF743Cdw 在處理 NetBIOS 封包的 Question 欄位時，沒有正確檢查長度導致 Heap Overflow 。</p>
+
+<p>其漏洞位置在 <code class="language-plaintext highlighter-rouge">cmNetBiosParseName</code> 中，我們可透過 ndNameProcessExternalMessage 觸發。</p>
+
+<p>我們這邊就稍微來分析一下漏洞成因:</p>
+
+<p>當 Canon 中的 NetBIOS 服務啟動時，會先去初始化 <code class="language-plaintext highlighter-rouge">netbios_ns_buffer</code> ，並分配 0xff 大小空間給該 buffer。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">ndNameInit</span><span class="p">()</span>
+<span class="p">{</span>
+  <span class="n">sub_41C47A20</span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="s">"netcifsnqendapp/IMP/nq/ndnampro.c"</span><span class="p">,</span> <span class="mh">0x44ED3194</span><span class="p">,</span> <span class="mi">97</span><span class="p">,</span> <span class="mh">0x64u</span><span class="p">);</span>
+  <span class="n">netbios_ns_buffer</span> <span class="o">=</span> <span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mh">0xFF</span><span class="p">);</span>
+  <span class="p">...</span>
+  <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>當接收到來自 137/UDP 的 NetBIOS 封包時，就會透過 <code class="language-plaintext highlighter-rouge">ndNameProcessExternalMessage </code> 來處理封包</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="kr">__fastcall</span> <span class="nf">ndNameProcessExternalMessage</span><span class="p">(</span><span class="n">Adapter</span> <span class="o">*</span><span class="n">a1</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">netbios_header</span> <span class="o">*</span><span class="n">packet</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">*</span><span class="n">v3</span><span class="p">;</span> <span class="c1">// r6</span>
+  <span class="kt">int</span> <span class="n">flag</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">int</span> <span class="n">v5</span><span class="p">;</span> <span class="c1">// r5</span>
+  <span class="kt">int</span> <span class="n">v6</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">int</span> <span class="n">v8</span><span class="p">;</span> <span class="c1">// r4</span>
+  <span class="kt">char</span> <span class="n">nbname</span><span class="p">[</span><span class="mi">40</span><span class="p">];</span> <span class="c1">// [sp+8h] [bp-28h] BYREF</span>
+
+  <span class="n">sub_41C47A20</span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="s">"netcifsnqendapp/IMP/nq/ndnampro.c"</span><span class="p">,</span> <span class="mh">0x44ED31AC</span><span class="p">,</span> <span class="mi">178</span><span class="p">,</span> <span class="mh">0x64u</span><span class="p">);</span>
+  <span class="n">packet</span> <span class="o">=</span> <span class="p">(</span><span class="n">netbios_header</span> <span class="o">*</span><span class="p">)</span><span class="n">a1</span><span class="o">-&gt;</span><span class="n">packet</span><span class="p">;</span>
+  <span class="n">LOWORD</span><span class="p">(</span><span class="n">a1</span><span class="o">-&gt;</span><span class="n">vvv</span><span class="p">)</span> <span class="o">=</span> <span class="n">LOBYTE</span><span class="p">(</span><span class="n">packet</span><span class="o">-&gt;</span><span class="n">id</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">HIBYTE</span><span class="p">(</span><span class="n">packet</span><span class="o">-&gt;</span><span class="n">id</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">8</span><span class="p">);</span>
+  <span class="n">v3</span> <span class="o">=</span> <span class="n">cmNetBiosParseName</span><span class="p">(</span><span class="n">packet</span><span class="p">,</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">*</span><span class="p">)</span><span class="n">packet</span><span class="o">-&gt;</span><span class="n">payload</span><span class="p">,</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">nbname</span><span class="p">,</span> <span class="n">netbios_ns_buffer</span><span class="p">,</span> <span class="mh">0xFFu</span><span class="p">);</span>  <span class="c1">//---- [1]</span>
+  <span class="c1">//heap overflow at netbios_ns_buffer  </span>
+  <span class="k">if</span><span class="p">...</span>
+  <span class="n">flag</span> <span class="o">=</span> <span class="n">getname_query_flag</span><span class="p">((</span><span class="n">netbios_header</span> <span class="o">*</span><span class="p">)</span><span class="n">a1</span><span class="o">-&gt;</span><span class="n">packet</span><span class="p">);</span>
+  <span class="n">v5</span> <span class="o">=</span> <span class="n">flag</span><span class="p">;</span>
+  <span class="k">if</span> <span class="p">(</span> <span class="n">flag</span> <span class="o">==</span> <span class="mh">0xA800</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">v6</span> <span class="o">=</span> <span class="n">ndInternalNamePositiveRegistration</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">nbname</span><span class="p">,</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">v3</span><span class="p">);</span>
+    <span class="k">goto</span> <span class="n">LABEL_17</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">if</span> <span class="p">(</span> <span class="n">flag</span> <span class="o">&gt;</span> <span class="mh">0xA800</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">switch</span> <span class="p">(</span> <span class="n">flag</span> <span class="p">)</span>
+    <span class="p">{</span>
+      <span class="k">case</span> <span class="mh">0xA801</span><span class="p">:</span>
+        <span class="n">v6</span> <span class="o">=</span> <span class="n">ndInternalNameNegativeRegistration</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">nbname</span><span class="p">);</span>
+        <span class="k">goto</span> <span class="n">LABEL_17</span><span class="p">;</span>
+   <span class="p">...</span>
+    <span class="p">}</span>
+    <span class="k">goto</span> <span class="n">LABEL_14</span><span class="p">;</span>
+  <span class="p">}</span>
+   
+  <span class="p">...</span>
+  <span class="n">ndInternalNameNegativeQuery</span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="n">a1</span><span class="p">,</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">nbname</span><span class="p">);</span>
+  <span class="n">v6</span> <span class="o">=</span> <span class="n">ndExternalNameNegativeQuery</span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="n">a1</span><span class="p">,</span> <span class="n">nbname</span><span class="p">);</span>
+<span class="nl">LABEL_17:</span>
+  <span class="n">v8</span> <span class="o">=</span> <span class="n">v6</span><span class="p">;</span>
+  <span class="n">assset</span><span class="p">(</span><span class="s">"netcifsnqendapp/IMP/nq/ndnampro.c"</span><span class="p">,</span> <span class="mh">0x44ED31AC</span><span class="p">,</span> <span class="mi">238</span><span class="p">,</span> <span class="mi">100</span><span class="p">);</span>
+  <span class="k">return</span> <span class="n">v8</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+</code></pre></div></div>
+
+<p>在上述程式碼<code class="language-plaintext highlighter-rouge">[1]</code> 中，該 <code class="language-plaintext highlighter-rouge">cmNetBiosParseName</code> 函式，會去處理 Question 欄位中的名稱，也提供了 buffer 大小給該函式，然而該函式並沒有正確檢查長度，導致複製過多的資料到 netbios_ns_buff 導致 heap overflow</p>
+
+<p>我們來看一下 <code class="language-plaintext highlighter-rouge">cmNetBiosParseName</code> 函式</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">*</span><span class="kr">__fastcall</span> <span class="nf">cmNetBiosParseName</span><span class="p">(</span>
+        <span class="n">netbios_header</span> <span class="o">*</span><span class="n">netbios_packet</span><span class="p">,</span>
+        <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">*</span><span class="n">netbios_label</span><span class="p">,</span>
+        <span class="kt">int</span> <span class="n">netbios_name</span><span class="p">,</span>
+        <span class="n">_BYTE</span> <span class="o">*</span><span class="n">domain_name</span><span class="p">,</span>
+        <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">maxlen</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">char</span> <span class="n">v5</span><span class="p">;</span> <span class="c1">// r9</span>
+  <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">*</span><span class="n">v11</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="n">_BYTE</span> <span class="o">*</span><span class="n">v12</span><span class="p">;</span> <span class="c1">// r1</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">i</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">char</span> <span class="n">v15</span><span class="p">;</span> <span class="c1">// r3</span>
+  <span class="kt">char</span> <span class="n">v16</span><span class="p">;</span> <span class="c1">// r2</span>
+  <span class="kt">int</span> <span class="n">v17</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">*</span><span class="n">v18</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">v19</span><span class="p">;</span> <span class="c1">// r3</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">label_</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">labellen_</span><span class="p">;</span> <span class="c1">// r4</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">labellen</span><span class="p">;</span> <span class="c1">// t1</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">v23</span><span class="p">;</span> <span class="c1">// r5</span>
+  <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">*</span><span class="n">next</span><span class="p">[</span><span class="mi">9</span><span class="p">];</span> <span class="c1">// [sp+4h] [bp-24h] BYREF</span>
+
+  <span class="p">...</span>
+  <span class="k">if</span> <span class="p">(</span> <span class="o">*</span><span class="n">v11</span> <span class="o">==</span> <span class="mh">0x20</span> <span class="p">)</span>
+  <span class="p">{</span>
+   <span class="p">...</span>
+    <span class="n">v17</span> <span class="o">=</span> <span class="o">*</span><span class="n">next</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="o">*</span><span class="n">next</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">)</span>
+      <span class="n">v5</span> <span class="o">=</span> <span class="sc">'.'</span><span class="p">;</span>
+    <span class="k">else</span>
+      <span class="o">*</span><span class="n">domain_name</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="n">v17</span> <span class="p">)</span>
+    <span class="p">{</span>
+      <span class="k">do</span>
+      <span class="p">{</span>
+        <span class="n">v18</span> <span class="o">=</span> <span class="n">resolveLabel</span><span class="p">(</span><span class="n">netbios_packet</span><span class="p">,</span> <span class="n">next</span><span class="p">);</span>
+        <span class="n">labellen</span> <span class="o">=</span> <span class="o">*</span><span class="n">v18</span><span class="p">;</span>
+        <span class="n">label_</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)(</span><span class="n">v18</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+        <span class="n">labellen_</span> <span class="o">=</span> <span class="n">labellen</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">maxlen</span> <span class="o">&gt;</span> <span class="n">labellen</span> <span class="p">)</span>
+        <span class="p">{</span>
+          <span class="n">memcpy</span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="n">domain_name</span><span class="p">,</span> <span class="n">label_</span><span class="p">,</span> <span class="n">labellen_</span><span class="p">,</span> <span class="n">v19</span><span class="p">);</span>
+          <span class="n">v23</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">domain_name</span><span class="p">[</span><span class="n">labellen_</span><span class="p">];</span>
+          <span class="n">maxlan</span> <span class="o">-=</span> <span class="n">labellen_</span><span class="p">;</span>    <span class="c1">// ---------- [2]              // it does not subtract the length of "."</span>
+          <span class="o">*</span><span class="n">v23</span> <span class="o">=</span> <span class="n">v5</span><span class="p">;</span>
+          <span class="n">domain_name</span> <span class="o">=</span> <span class="n">v23</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="p">}</span>
+      <span class="p">}</span>
+      <span class="k">while</span> <span class="p">(</span> <span class="o">*</span><span class="n">next</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">);</span>
+      <span class="o">*</span><span class="p">(</span><span class="n">domain_name</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">assset</span><span class="p">(</span><span class="s">"netcifsnqecorelib/IMP/nq/cmnbname.c"</span><span class="p">,</span> <span class="mh">0x44A86D7C</span><span class="p">,</span> <span class="mi">634</span><span class="p">,</span> <span class="mi">100</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">next</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">else</span>
+  <span class="p">{</span>
+    <span class="n">logg</span><span class="p">(</span><span class="s">"netcifsnqecorelib/IMP/nq/cmnbname.c"</span><span class="p">,</span> <span class="mh">0x44A86D7C</span><span class="p">,</span> <span class="mi">595</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+
+</code></pre></div></div>
+
+<p>從這個函式中，可以看出他在處理 domain name 時，有按照所提供的參數來檢查長度，並且會在每個 label 間加入 <code class="language-plaintext highlighter-rouge">.</code>，然而在 <code class="language-plaintext highlighter-rouge">[2]</code> 的部分並沒有去檢查 <code class="language-plaintext highlighter-rouge">.</code> 這個字元的長度，實際上的長度可以比原本的 buffer 還要長，導致 buffer overflow。</p>
+
+<p><strong>Exploitation</strong></p>
+
+<p>原本以為會需要更詳細去逆向 Heap internal，不過幸運的是，後來發現到 buffer 後面有好用的結構可以利用。</p>
+
+<p>在 <code class="language-plaintext highlighter-rouge">netbios_ns_buffer</code> 後，存在一個結構，這邊先命名為 <code class="language-plaintext highlighter-rouge">nb_info</code></p>
+
+<p><strong>The layout of heap memory:</strong></p>
+
+<p><img src="/assets/img/blog/20231106/4.png" alt="" /></p>
+
+<p><strong>The structure of <code class="language-plaintext highlighter-rouge">nb_info</code> :</strong></p>
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="nc">nb_info</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">active</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">nbname</span><span class="p">[</span><span class="mi">16</span><span class="p">];</span>
+    <span class="kt">int</span> <span class="n">x</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">y</span><span class="p">;</span>
+    <span class="kt">short</span> <span class="n">z</span><span class="p">;</span>
+    <span class="kt">short</span> <span class="n">src_port</span><span class="p">;</span>
+    <span class="kt">short</span> <span class="n">tid</span><span class="p">;</span>
+    <span class="kt">short</span> <span class="n">w</span><span class="p">;</span>
+    <span class="n">Adapter</span> <span class="o">*</span><span class="n">adapter</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">state</span><span class="p">;</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>該結構主要用來儲存 NetBIOS 的名稱資訊，而其中也包含另外一個結構，這裡命名為 <code class="language-plaintext highlighter-rouge">Adapter</code>，主要儲存該 NetBIOS 的連線資訊。</p>
+
+<p><strong>The structure of <code class="language-plaintext highlighter-rouge">Adapter</code> :</strong></p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="nc">Adapter</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">idx</span><span class="p">;</span>
+  <span class="n">_BYTE</span> <span class="n">gap0</span><span class="p">[</span><span class="mi">16</span><span class="p">];</span>
+  <span class="kt">int</span> <span class="n">x</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">fd_1022</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">fd_1023</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">y</span><span class="p">;</span>
+  <span class="n">_WORD</span> <span class="n">src_port</span><span class="p">;</span>
+  <span class="n">_DWORD</span> <span class="n">src_ip</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">vvv</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">packet</span><span class="p">;</span>
+  <span class="n">_DWORD</span> <span class="n">recv_bytes</span><span class="p">;</span>
+  <span class="kt">char</span><span class="o">*</span> <span class="n">response_buf</span><span class="p">;</span>
+  <span class="n">_DWORD</span> <span class="n">dword3C</span><span class="p">;</span>
+<span class="p">};</span>
+
+</code></pre></div></div>
+
+<p>在初步了解這些結構之後，我們可以先回頭看一下 <code class="language-plaintext highlighter-rouge">ndNameProcessExternalMessage</code>，如果將封包中的 flag 欄位設成 <code class="language-plaintext highlighter-rouge">0xA801</code>，將會使用 <code class="language-plaintext highlighter-rouge">ndInternalNameNegativeRegistration</code> 去處理 NetBIOS name. 該結果將會寫入<code class="language-plaintext highlighter-rouge">Adapter-&gt;responsebuf</code>.</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="k">case</span> <span class="mh">0xA801</span><span class="p">:</span>
+        <span class="n">v6</span> <span class="o">=</span> <span class="n">ndInternalNameNegativeRegistration</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">nbname</span><span class="p">);</span>
+        <span class="k">goto</span> <span class="n">LABEL_17</span><span class="p">;</span>
+
+</code></pre></div></div>
+
+<p>在 ndInternalNameNegativeRegistration 中:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="kr">__fastcall</span> <span class="nf">ndInternalNameNegativeRegistration</span><span class="p">(</span><span class="n">Adapter</span> <span class="o">*</span><span class="n">adapter</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a2</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="p">...</span>
+     <span class="k">if</span> <span class="p">(</span> <span class="n">v8</span> <span class="p">)</span>
+    <span class="p">{</span>
+      <span class="n">returnNegativeRegistrationResponse</span><span class="p">((</span><span class="n">nb_info</span> <span class="o">*</span><span class="p">)</span><span class="n">v6</span><span class="p">,</span> <span class="n">adapter</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span>
+    <span class="p">}</span>
+   
+<span class="p">...</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>只要滿足條件就會去 returnNegativeRegistrationResponse 處理 Response，而在 returnNegativeRegistrationResponse 中:</p>
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="kt">int</span> <span class="kr">__fastcall</span> <span class="nf">returnNegativeRegistrationResponse</span><span class="p">(</span><span class="n">nb_info</span> <span class="o">*</span><span class="n">nbinfo</span><span class="p">,</span> <span class="n">Adapter</span> <span class="o">*</span><span class="n">adapter</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a3</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">v6</span><span class="p">;</span> <span class="c1">// r2</span>
+  <span class="n">netbios_header</span> <span class="o">*</span><span class="n">response_buf</span><span class="p">;</span> <span class="c1">// r5</span>
+  <span class="kt">int</span> <span class="n">NameWhateverResponse</span><span class="p">;</span> <span class="c1">// r2</span>
+  <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="n">v10</span><span class="p">[</span><span class="mi">20</span><span class="p">];</span> <span class="c1">// [sp+4h] [bp-2Ch] BYREF</span>
+  <span class="kr">__int16</span> <span class="n">v11</span><span class="p">;</span> <span class="c1">// [sp+18h] [bp-18h] BYREF</span>
+  <span class="kt">int</span> <span class="n">v12</span><span class="p">;</span> <span class="c1">// [sp+1Ah] [bp-16h] BYREF</span>
+
+  <span class="n">maybe_memcpy_s</span><span class="p">(</span><span class="n">v10</span><span class="p">,</span> <span class="mh">0x44ED3100</span><span class="p">,</span> <span class="mi">20</span><span class="p">);</span>
+  <span class="n">sub_41C47A20</span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="s">"netcifsnqendapp/IMP/nq/ndinname.c"</span><span class="p">,</span> <span class="mh">0x44ED30DC</span><span class="p">,</span> <span class="mi">2349</span><span class="p">,</span> <span class="mh">0x64u</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">...</span>
+  <span class="n">v11</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="n">sub_40B06FD8</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">_DWORD</span> <span class="o">*</span><span class="p">)</span><span class="n">adapter</span><span class="o">-&gt;</span><span class="n">gap0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">v12</span><span class="p">);</span>
+  <span class="n">response_buf</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="n">netbios_header</span> <span class="o">**</span><span class="p">)</span><span class="n">nbinfo</span><span class="o">-&gt;</span><span class="n">adapter</span><span class="o">-&gt;</span><span class="n">responsebuf</span><span class="p">;</span>
+  <span class="n">NameWhateverResponse</span> <span class="o">=</span> <span class="n">ndGenerateNameWhateverResponse</span><span class="p">(</span><span class="n">response_buf</span><span class="p">,</span> <span class="n">nbinfo</span><span class="o">-&gt;</span><span class="n">name</span><span class="p">,</span> <span class="mh">0x20u</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="o">&amp;</span><span class="n">v11</span><span class="p">,</span> <span class="mi">6u</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span> <span class="n">NameWhateverResponse</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">response_buf</span><span class="o">-&gt;</span><span class="n">id</span> <span class="o">=</span> <span class="n">nbinfo</span><span class="o">-&gt;</span><span class="n">id</span><span class="p">;</span> <span class="c1">//------[3]</span>
+    <span class="n">response_buf</span><span class="o">-&gt;</span><span class="n">flag</span> <span class="o">=</span> <span class="n">__rev16</span><span class="p">(</span><span class="n">a3</span> <span class="o">|</span> <span class="mh">0xA800</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="n">sySendToSocket</span><span class="p">(</span>
+           <span class="n">nbinfo</span><span class="o">-&gt;</span><span class="n">adapter</span><span class="o">-&gt;</span><span class="n">fd_1022</span><span class="p">,</span>
+           <span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">response_buf</span><span class="p">,</span>
+           <span class="n">NameWhateverResponse</span><span class="p">,</span>
+           <span class="n">v10</span><span class="p">,</span>
+           <span class="p">(</span><span class="kt">unsigned</span> <span class="kr">__int16</span><span class="p">)</span><span class="n">nbinfo</span><span class="o">-&gt;</span><span class="n">src_port</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="p">)</span>
+    <span class="p">{</span>
+      <span class="n">logg</span><span class="p">(</span><span class="s">"netcifsnqendapp/IMP/nq/ndinname.c"</span><span class="p">,</span> <span class="mh">0x44ED30DC</span><span class="p">,</span> <span class="mi">2392</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+      <span class="n">v6</span> <span class="o">=</span> <span class="mi">2393</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+      <span class="n">v6</span> <span class="o">=</span> <span class="mi">2396</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">goto</span> <span class="n">LABEL_9</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="n">assset</span><span class="p">(</span><span class="s">"netcifsnqendapp/IMP/nq/ndinname.c"</span><span class="p">,</span> <span class="mh">0x44ED30DC</span><span class="p">,</span> <span class="mi">2372</span><span class="p">,</span> <span class="mi">100</span><span class="p">);</span>
+  <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+   
+</code></pre></div></div>
+
+<p>可以看到 <code class="language-plaintext highlighter-rouge">[3]</code> 會把 response_buf-&gt;id 寫成 nbinfo-&gt;id。</p>
+
+<p>也就是說，如果我們可以覆蓋掉 <code class="language-plaintext highlighter-rouge">nb_info</code> 結構，並且構造 <code class="language-plaintext highlighter-rouge">Adapter</code> 我們就會有一個任意記憶體寫入，而實際上構造方式很簡單，只要找個 Global Buffer 去構造就可以了，我們這邊選擇了 BJNP Session Buffer 去構造我們結構。</p>
+
+<p><img src="/assets/img/blog/20231106/5.png" alt="" /></p>
+
+<p>而在我們有任意寫入之後，我們可以覆蓋 SLP 的函數指針來達成 RCE，後續利用就與前述相同，這邊就不另外多做介紹了。</p>
+
+<h3 id="hp-1">HP</h3>
+
+<p>這次目標是 HP Collor LaserJet Pro M479fdw 這台印表機，其主要是 Linux Base 的，分析起來相對單純很多，而其中 Web Service 底下有許多的 cgi 來提供各種不同的印表機操作，這些都是透過 FastCGI 方式來運作，可參考 nginx config 來看每個 path 分別對應到哪個 Port 及哪個 Service</p>
+
+<p><code class="language-plaintext highlighter-rouge">/Sirius/rom/httpmgr_nginx/ledm.conf</code>
+<img src="/assets/img/blog/20231106/6.png" alt="" /></p>
+
+<p><strong>/usr/bin/local/slanapp</strong> 負責處理 scan 相關的操作，主要 listen 在 127.0.0.1:14030</p>
+
+<p><img src="/assets/img/blog/20231106/7.jpg" alt="" /></p>
+
+<p>當我們存取 /Scan/Jobs 路徑時，就會透過這個 cgi 來處理</p>
+
+<p><strong>漏洞位置</strong></p>
+
+<p>當 HP 處理 /Scan/Jobs 底下的 get 請求時，會使用 rest_scan_handle_get_request 來處理，同時也會將 pathinfo 一起傳入</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="kr">__fastcall</span> <span class="nf">rest_scan_handle_get_request</span><span class="p">(</span><span class="kt">int</span> <span class="n">a1</span><span class="p">,</span> <span class="kt">int</span> <span class="n">a2</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s1</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">*</span><span class="n">pathinfo</span><span class="p">,</span> <span class="kt">int</span> <span class="n">pathinfo_len</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">struct</span> <span class="nc">httpmgr_fptrtbl</span> <span class="o">**</span><span class="n">v8</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">int</span> <span class="n">v9</span><span class="p">;</span> <span class="c1">// r1</span>
+  <span class="kt">int</span> <span class="n">v10</span><span class="p">;</span> <span class="c1">// r2</span>
+  <span class="k">struct</span> <span class="nc">httpmgr_fptrtbl</span> <span class="o">**</span><span class="n">v11</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">int</span> <span class="n">v12</span><span class="p">;</span> <span class="c1">// r1</span>
+  <span class="kt">int</span> <span class="n">result</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">int</span> <span class="n">v14</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">int</span> <span class="n">next_char</span><span class="p">;</span> <span class="c1">// r4</span>
+  <span class="kt">unsigned</span> <span class="kr">__int8</span> <span class="o">*</span><span class="n">v16</span><span class="p">;</span> <span class="c1">// r3</span>
+  <span class="kt">int</span> <span class="n">v17</span><span class="p">;</span> <span class="c1">// r1</span>
+  <span class="kt">int</span> <span class="n">v18</span><span class="p">;</span> <span class="c1">// t1</span>
+  <span class="kt">char</span> <span class="o">*</span><span class="n">v19</span><span class="p">;</span> <span class="c1">// r5</span>
+  <span class="kt">int</span> <span class="n">v20</span><span class="p">;</span> <span class="c1">// r5</span>
+  <span class="kt">int</span> <span class="n">v21</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">int</span> <span class="n">v22</span><span class="p">;</span> <span class="c1">// r7</span>
+  <span class="kt">size_t</span> <span class="n">v23</span><span class="p">;</span> <span class="c1">// r8</span>
+  <span class="kt">int</span> <span class="n">v24</span><span class="p">;</span> <span class="c1">// r0</span>
+  <span class="kt">char</span> <span class="n">first_path_info</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span> <span class="c1">// [sp+8h] [bp-D8h] BYREF</span>
+  <span class="kt">char</span> <span class="n">second_path_info</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span> <span class="c1">// [sp+28h] [bp-B8h] BYREF</span>
+  <span class="kt">char</span> <span class="n">pagenumber</span><span class="p">[</span><span class="mi">152</span><span class="p">];</span> <span class="c1">// [sp+48h] [bp-98h] BYREF</span>
+
+  <span class="k">if</span><span class="p">...</span>
+  <span class="k">if</span><span class="p">...</span>
+  <span class="k">if</span> <span class="p">(</span> <span class="o">!</span><span class="n">strncmp</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span> <span class="s">"/Scan/UserReadyToScan"</span><span class="p">,</span> <span class="mh">0x15u</span><span class="p">)</span> <span class="p">)</span>
+  <span class="p">{</span>
+   <span class="p">...</span>
+  <span class="p">}</span>
+  <span class="k">else</span>
+  <span class="p">{</span>
+    <span class="n">v14</span> <span class="o">=</span> <span class="n">strncmp</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span> <span class="s">"/Scan/Jobs"</span><span class="p">,</span> <span class="mh">0xAu</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="n">v14</span> <span class="p">)</span>
+    <span class="p">{</span>
+     <span class="p">...</span>
+    <span class="p">}</span>
+    <span class="p">...</span>
+    <span class="n">next_char</span> <span class="o">=</span> <span class="o">*</span><span class="n">pathinfo</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="p">(</span><span class="n">next_char</span> <span class="o">&amp;</span> <span class="mh">0xDF</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">)</span>
+    <span class="p">{</span>
+      <span class="n">first_path_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="nl">LABEL_37:</span>
+      <span class="n">_DEBUG_syslog</span><span class="p">(</span><span class="s">"REST_SCAN_DEBUG"</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mh">0x411FA215</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+      <span class="n">v8</span> <span class="o">=</span> <span class="n">rest_scan_req_ifc_tbl</span><span class="p">;</span>
+      <span class="n">v9</span> <span class="o">=</span> <span class="n">a1</span><span class="p">;</span>
+      <span class="n">v10</span> <span class="o">=</span> <span class="mi">400</span><span class="p">;</span>
+      <span class="k">goto</span> <span class="n">LABEL_6</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">v16</span> <span class="o">=</span> <span class="n">pathinfo</span><span class="p">;</span>
+    <span class="n">v17</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">do</span>  <span class="c1">//------------------------------------------------------ [2]  </span>
+    <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="n">next_char</span> <span class="o">!=</span> <span class="sc">'/'</span> <span class="p">)</span>
+        <span class="n">first_path_info</span><span class="p">[</span><span class="mi">32</span> <span class="o">*</span> <span class="n">v17</span> <span class="o">+</span> <span class="n">v14</span><span class="p">]</span> <span class="o">=</span> <span class="n">next_char</span><span class="p">;</span>
+      <span class="n">v19</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">first_path_info</span><span class="p">[</span><span class="mi">32</span> <span class="o">*</span> <span class="n">v17</span><span class="p">];</span>
+      <span class="k">if</span> <span class="p">(</span> <span class="n">next_char</span> <span class="o">==</span> <span class="sc">'/'</span> <span class="p">)</span>
+      <span class="p">{</span>
+        <span class="n">v20</span> <span class="o">=</span> <span class="mi">32</span> <span class="o">*</span> <span class="n">v17</span><span class="o">++</span><span class="p">;</span>
+        <span class="n">pagenumber</span><span class="p">[</span><span class="n">v20</span> <span class="o">-</span> <span class="mi">64</span> <span class="o">+</span> <span class="n">v14</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="n">v19</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">first_path_info</span><span class="p">[</span><span class="n">v20</span> <span class="o">+</span> <span class="mi">32</span><span class="p">];</span>
+        <span class="n">v14</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="k">else</span>
+      <span class="p">{</span>
+        <span class="o">++</span><span class="n">v14</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="n">v18</span> <span class="o">=</span> <span class="o">*++</span><span class="n">v16</span><span class="p">;</span>
+      <span class="n">next_char</span> <span class="o">=</span> <span class="n">v18</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">while</span> <span class="p">(</span> <span class="p">(</span><span class="n">v18</span> <span class="o">&amp;</span> <span class="mh">0xDF</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span> <span class="p">);</span>
+    <span class="n">v19</span><span class="p">[</span><span class="n">v14</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="n">v17</span> <span class="o">!=</span> <span class="mi">2</span> <span class="o">||</span> <span class="n">strcmp</span><span class="p">(</span><span class="n">second_path_info</span><span class="p">,</span> <span class="s">"Pages"</span><span class="p">)</span> <span class="o">||</span> <span class="n">dword_5DBC8</span> <span class="o">!=</span> <span class="n">strtol</span><span class="p">(</span><span class="n">first_path_info</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="p">)</span>
+      <span class="k">goto</span> <span class="n">LABEL_37</span><span class="p">;</span>
+    <span class="n">v24</span> <span class="o">=</span> <span class="n">strtol</span><span class="p">(</span><span class="n">pagenumber</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">rest_scan_send_scan_data</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">v24</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="n">result</span> <span class="p">)</span>
+      <span class="n">rest_scan_vp_thread_created</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">else</span>
+      <span class="k">return</span> <span class="n">rest_scan_send_err_reply</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="mi">400</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>但當在 <code class="language-plaintext highlighter-rouge">[2]</code> 處理 pathinfo 時，並沒有檢查長度，並且直接複製到 local buffer(first_path_info[32]) 中，導致 stack overflow。</p>
+
+<p><strong>Exploitation</strong></p>
+
+<p>我們可以構造很長的 request 到 /Scan/Jobs/ 來觸發漏洞，並且該處沒有 Stack Guard 也沒有 ASLR，可以直接覆蓋 return address，這邊只需要做 ROP 覆蓋掉 strncmp 的 GOT 到 system 後，就可以透過 <code class="language-plaintext highlighter-rouge">/Copy/{cmd}</code> 來執行任意指令了。</p>
+
+<p>不過最終這個漏洞與其他隊伍撞洞了。</p>
+
+<h2 id="summary">Summary</h2>
+<p>從 Pwn2Own Austin 2021 到 Pwn2Own Toronto 2022 的結果看下來，印表機安全依舊是容易被忽略的，短短一年間，能打下印表機的隊伍也大幅增加，甚至到第三年 <a href="https://www.zerodayinitiative.com/blog/2023/10/23/pwn2own-toronto-2023-the-schedule">Pwn2Own Toronto 2023</a> 也還是被許多隊伍找到漏洞，最後也建議大家如果有使用到這些 IoT 設備，盡量把不必要的服務關閉並且設好防火牆及做好權限控管，以減少被攻擊的可能。</p>
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/blog/author/angelboy">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/angelboy.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>Angelboy</h3>
+                        </a>
+                        <span>Senior Security Researcher</span>
+                        <p>
+                            I am 👼 :)
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+        <!-- 相關文章 -->
+        <section class="recommand articles-list">
+            <div class="container">
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/CVE/">#CVE</a> <a href="/blog/tag/Pwn2Own/">#Pwn2Own</a> <a href="/blog/tag/RCE/">#RCE</a> <a href="/blog/tag/IoT/">#IoT</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/11/06/your-printer-is-not-your-printer-hacking-printers-pwn2own-part2/">Your printer is not your printer ! - Hacking Printers at Pwn2Own Part II</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>angelboy</h3>
+                        </a>
+                    
+                        <span class="date">2023-11-06</span>
+                        <p class="line-litmit-3">我們在 Canon 的印表機找到了 Pre-auth RCE 漏洞 (CVE-2023-0853、CVE-2023-0854)，同時在 HP 印表機也有找到 Pre-auth RCE 的漏洞。最終拿下 Pwn2Own Toronto 2022 Master of Pwn。我們將在本文介紹 Canon 及 HP 漏洞的細節及利用方式。
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/CVE/">#CVE</a> <a href="/blog/tag/Pwn2Own/">#Pwn2Own</a> <a href="/blog/tag/RCE/">#RCE</a> <a href="/blog/tag/IoT/">#IoT</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1/">Your printer is not your printer ! - Hacking Printers at Pwn2Own Part I</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>angelboy</h3>
+                        </a>
+                    
+                        <span class="date">2023-10-05</span>
+                        <p class="line-litmit-3">我們在 Canon 和 HP 的印表機中發現了 Pre-auth RCE 的漏洞(CVE-2022-24673 及 CVE-2022-3942) 及 Lexmark 發現漏洞(CVE-2021-44734)，並在 Pwn2Own Austin 2021 中取得所有印表機的控制權，成功獲得 Pwn2Own 中駭客大師(Master of Pwn) 的點數，這篇研究將講述 Canon 及 HP 漏洞的細節及我們的利用方式。
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/Deserialize/">#Deserialize</a> <a href="/blog/tag/RCE/">#RCE</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2023/09/18/hitcon-2023-devcore-wargame-my-todolist-writeup/">HITCON 2023 x DEVCORE Wargame: My todolist Write-up</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>cyku</h3>
+                        </a>
+                    
+                        <span class="date">2023-09-18</span>
+                        <p class="line-litmit-3">HITCON 2023 x DEVCORE Wargame 最高分題 My todolist 出題概念及解答。從結論而言，這是一個簡單的 Json.NET 反序列化漏洞的白箱題目...
+                        </p>
+                    </div>
+                </article>
+              
+
+            </div>
+        </section>
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">服務</h6>
+        <ul>
+            <li><a href="/services/red-team/">紅隊演練</a></li>
+            <li><a href="/services/penetration-test/">滲透測試</a></li>
+            <li><a href="/services/security-consulting/">資安顧問服務</a></li>
+            <li><a href="/services/security-training/">資安教育訓練</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">研究</h6>
+        <ul>
+            <li><a href="/research/overview/">總覽概要</a></li>
+            <li><a href="/research/awards/">競賽與獎項</a></li>
+            <li><a href="/research/bug-bounty/">企業漏洞回報</a></li>
+            <li><a href="/research/talks/">國際研討會</a></li>
+            <li><a href="/research/cve/">CVE 漏洞列表</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">公司</h6>
+        <ul>
+            <li><a href="/company/about/">公司簡介</a></li>
+            <li><a href="/company/our-team/">團隊成員</a></li>
+            <li><a href="/company/history/">成就與沿革</a></li>
+            <li><a href="/company/csr/">企業社會責任</a></li>
+            <li><a href="/company/jobs/">工作機會</a></li>
+            <li><a href="/contact/">聯絡我們</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">新聞</h6>
+        <ul>
+            <li><a href="/blog/">BLOG</a></li>
+            <li><a href="/media-kit/">媒體素材下載</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2023 DEVCORE 戴夫寇爾股份有限公司. <b class="line-block">All right reserved.</b></span>
+            <span><a href="/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+

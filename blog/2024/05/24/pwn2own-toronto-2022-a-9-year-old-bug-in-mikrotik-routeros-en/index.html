@@ -1,0 +1,1267 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>Pwn2Own Toronto 2022 : A 9-year-old bug in MikroTik RouterOS | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="DEVCORE research team found a 9-year-old WAN bug on RouterOS, the product of MikroTik. Combined with another bug of the Canon printer, DEVCORE becomes the first team ever to successfully complete an attack chain in the brand new SOHO Smashup category of Pwn2Own. And DEVCORE also won the title of Master of Pwn in Pwn2Own Toronto 2022." />
+    <meta name="keywords" content="CVE-2023-32154, Pwn2Own, MikroTik RouterOS" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="Pwn2Own Toronto 2022 : A 9-year-old bug in MikroTik RouterOS | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros-en/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20240524/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="Pwn2Own Toronto 2022 : A 9-year-old bug in MikroTik RouterOS | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="DEVCORE research team found a 9-year-old WAN bug on RouterOS, the product of MikroTik. Combined with another bug of the Canon printer, DEVCORE becomes the first team ever to successfully complete an attack chain in the brand new SOHO Smashup category of Pwn2Own. And DEVCORE also won the title of Master of Pwn in Pwn2Own Toronto 2022.">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20240524/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros-en/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Simulation of real-world attacks to identify vulnerabilities and achieve objectives without disrupting business operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltration of designated enterprise systems to uncover potential vulnerabilities and assess the risks or damages.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Consultation of resource distribution and long-term defensive strategies from the attacker’s perspective.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Instruction on defending and preventing incidents with the hacker mindset, also the response procedures and analysis of attacks when incidents happen.
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research of updated cybersecurity techniques and trends, assess the security of products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research of the risk of enterprise systems, identification of potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Sharing vulnerability research and security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Discovery of critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                Founded by a world-class white hat hacker team, providing cybersecurity services including Red Team Assessment,  Penetration Testing, Security Consulting, and Security Training.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    Composed of cybersecurity experts with the hacker mindset, exploring innovative exploitation techniques with high morality and extreme caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    DEVCORE has been invited to leading cybersecurity conferences, has uncovered hundreds of critical product vulnerabilities, and helped enterprises improve their defensive capabilities.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    We provide diverse internship channels and programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Media Kit, Logo and Usage Guideline
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Tech Editorials">Tech Editorials</a>
+                    <span class="tag">
+
+                      <a href="/en/blog/tag/CVE/">#CVE</a> <a href="/en/blog/tag/Pwn2Own/">#Pwn2Own</a> <a href="/en/blog/tag/IoT/">#IoT</a> 
+                    </span>
+                    <h1>
+                        Pwn2Own Toronto 2022 : A 9-year-old bug in MikroTik RouterOS
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/en/blog/author/terrynini">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/nini.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/en/blog/author/terrynini">Terrynini</a></span>
+                        <span class="date">2024-05-24</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20240524/cover.png"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p><a href="/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros-en/">English Version</a>, <a href="/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros/">中文版本</a></p>
+
+<h2 id="tldr">TL;DR</h2>
+
+<p>DEVCORE research team found a 9-year-old WAN bug on RouterOS, the product of MikroTik. Combined with another bug of the Canon printer, DEVCORE becomes the first team ever to successfully complete an attack chain in the brand new SOHO Smashup category of Pwn2Own. And DEVCORE also won the title of Master of Pwn in Pwn2Own Toronto 2022.</p>
+
+<p>The vulnerability occurs in the radvd of RouterOS, which does not check the length of the RDNSS field when processing ICMPv6 packets for IPv6 SLAAC. As a result, an attacker can trigger the buffer overflow by sending two crafted Router Advertisement packets, that allows an attacker to gain full control over the underlying Linux system of the router without logging in and without user interaction. This vulnerability was assigned as CVE-2023-32154 with a CVSS score of 7.5.</p>
+
+<p>The vulnerability was reported to MikroTik by <a href="https://www.zerodayinitiative.com/advisories/ZDI-23-710/">ZDI</a> on 2022/12/29 and patched on 2023/05/19. It has been patched in the following RouterOS releases:</p>
+<ul>
+  <li>Long-term Release 6.48.7</li>
+  <li>Stable Release 6.49.8</li>
+  <li>Stable Release 7.10</li>
+  <li>Testing Release 7.10rc6</li>
+</ul>
+
+<h2 id="pwn2own-soho-smashup">Pwn2Own SOHO Smashup</h2>
+
+<p>Pwn2Own is a series of contests organized by The Trend Micro Zero Day Initiative (ZDI). They pick popular products as targets for different categories, such as: operating systems, browsers, electric cars, industrial control systems, routers, printers, smart speakers, smartphones, NAS, webcams, etc.</p>
+
+<p>As long as the participants can exploit a target without user interaction while the device is in its default state and the software is updated to the latest version, the team will receive the corresponding Master of Pwn points and bounty. And the team which has the highest Master of Pwn points will be the winner, who is also known as the “Master of Pwn.”</p>
+
+<p>Due to the epidemic, Work From Home or SOHO (Small Office/Home Office) has become very common. Consider that, the Pwn2Own Toronto 2022 has  a special category called SOHO Smashup, in which participants need to hack routers from the WAN side, and then use the router as a trampoline to attack common household devices in LAN, such as smart speakers, printers, etc.</p>
+
+<p>In addition to the second highest prize of $100,000 (USD), the SOHO Smashup also has the highest score of 10, so if you’re aiming to win, you’ll want to complete this category! We’ve also chosen the lesser-explored MikroTik’s RouterBoard as the target to avoid bug collisions with others (both the bounty and score are halved when you have a collision with someone else).</p>
+
+<h2 id="routeros">RouterOS</h2>
+
+<p>The RouterOS is based on the Linux kernel and it’s also the default operating system of MikroTik’s RouterBoard. It can also be installed on a PC to turn it into a router.</p>
+
+<p>Though the RouterOS do use some GPL-License software, according to the <a href="https://web.archive.org/web/20220603140018/https://mikrotik.com/downloadterms.html">downloadterms</a> page from MikroTik’s website, you have to pay $45 to MikroTik for sending a CD with GPL source, very interesting.</p>
+
+<p>Glad that there is already a nice guy who uploaded the <a href="https://github.com/robimarko/routeros-GPL">GPL source on the Github</a>, though they didn’t help much on reversing the RouterOS.</p>
+
+<h3 id="routeros-v7-and-routeros-v6">RouterOS v7 and RouterOS v6</h3>
+
+<p>There are two versions of RouterOS on the download page of MikroTik’s website: RouterOS v7 and RouterOS v6. They are more like two branches of the RouterOS and share a similar design pattern. Because the default installed version of our target, RB2011UiAS-IN, is RouterOS v6, we focus on that version.
+<img src="/assets/img/blog/20240524/1.png" alt="" /></p>
+
+<p>RouterOS does not provide a formal way for users to manipulate the underlying Linux system, and users are trapped in a restricted console with a limited number of commands to manage the router, so there has been a lot of research on how to jailbreak RouterOS.</p>
+
+<p><img src="/assets/img/blog/20240524/2.png" alt="" /></p>
+
+<p>The binary on the RouterOS uses a customized IPC to communicate with each other, and the IPC uses the “nova message” format to pack messages. So we call such kinds of binary “nova binary” afterward.</p>
+
+<p>Besides, the RouterOS has a special attack surface. The user can manage a RouterOS device remotely from a Windows computer with a GUI tool, WinBox, by sending a nova message through the TCP. So, if the RouterOS fails to validate the privilege of a nova message, the attacker can possibly invade the router by sending a crafted nova message from remote, but it’s not a top priority  because the WinBox is unavailable from WAN by default.</p>
+
+<p><img src="/assets/img/blog/20240524/3.png" alt="" /></p>
+
+<h2 id="review-of-related-cves">Review of Related CVEs</h2>
+
+<p>We started by reviewing the CVEs in the past few years. There were 80 CVEs related to RouterOS at that time, of which 28 targeted the router itself in pre-auth scenarios.</p>
+
+<p><img src="/assets/img/blog/20240524/4.png" alt="" /></p>
+
+<p>4 out of the 28 CVEs are in scenarios that are more in line with the Pwn2Own rules, which means these vulnerabilities could allow an attacker to spawn a shell on the router or log in as admin without user interaction. Three of the vulnerabilities were discovered between 2017 and 2019, and three of these were discovered “in the wild.” These four vulnerabilities are:</p>
+
+<ul>
+  <li>CVE-2017-20149: Also known as Chimay-Red, this is one of the leaked vulnerabilities from the CIA’s “Vault 7” in 2017. The vulnerability occurs when RouterOS parses HTTP requests, and if the Content-Length in the HTTP headers is negative, it will cause Integer Underflow, which together with the Stack Clash attack technique can control the program flow to achieve RCE.</li>
+  <li><a href="https://medium.com/@maxi./finding-and-exploiting-cve-2018-7445-f3103f163cc1">CVE-2018-7445</a>: A buffer overflow in the SMB service of RouterOS, which found by black-box fuzzing and is the only one of the four vulnerabilities that was reported by the discoverer. Though the SMB is not  enabled defaultly.</li>
+  <li>CVE-2018-14847: Also the one of the leaked vulnerabilities from the “Vault 7”, which could allow an attacker to achieve arbitrary file read. Which doesn’t sound like a big problem, but because in the earlier version of RouterOS, the user’s password was stored in a file as <code class="language-plaintext highlighter-rouge">password xor md5(username + "283i4jfkai3389")</code>, the attacker can calculate the password of admin as long as the attacker can read the file.</li>
+  <li><a href="https://teamt5.org/en/posts/vulnerability-mikrotik-cve-2021-41987/">CVE-2021-41987</a>：A heap buffer overflow vulnerability in the base64 decoding process of the SCEP service due to a length miscalculation. The vulnerability was discovered after security researchers analyzed an APT’s exploit on its C2 server.</li>
+</ul>
+
+<p>As we can see, most of these vulnerabilities are “in the wild.” We can only learn limited knowledge about analyzing and reversing the RouterOS.</p>
+
+<h2 id="review-of-related-research">Review of Related Research</h2>
+
+<p>We continue to seek out publicly available research materials, and we have these articles and presentations available at the time of the competition:</p>
+
+<ul>
+  <li>2017
+    <ul>
+      <li><a href="https://kirils.org/slides/2017-08-06_prez_SHA_MT_pub.pdf">Kirils. Rooting the MikroTik routers</a>
+        <ul>
+          <li>Mainly about jailbreak</li>
+        </ul>
+      </li>
+      <li><a href="https://kirils.org/slides/2017-09-15_prez_15_MT_Balccon_pub.pdf">Kirils. A deeper journey into MikroTik routers</a>
+        <ul>
+          <li>Mainly about jailbreak</li>
+        </ul>
+      </li>
+      <li><a href="https://kirils.org/slides/2017-10-21_MT_Hacktivity_pub.pdf">Kirils. Tools for effortless reverse engineering of MikroTik routers</a>
+        <ul>
+          <li>Mainly about jailbreak</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>2018
+    <ul>
+      <li><a href="https://github.com/tenable/routeros">Jacob Baines. Bug Hunting in RouterOS</a>
+        <ul>
+          <li>Explaining how nova message works in IPC</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>2019
+    <ul>
+      <li><a href="https://medium.com/tenable-techblog/make-it-rain-with-mikrotik-c90705459bc6">Jacob Baines. Make It Rain with MikroTik</a>
+        <ul>
+          <li>Identical to the talk in 2018</li>
+        </ul>
+      </li>
+      <li><a href="https://medium.com/tenable-techblog/mikrotik-firewall-nat-bypass-b8d46398bf24">Jacob Baines. MikroTik Firewall &amp; NAT Bypass</a>
+        <ul>
+          <li>A vulnerability in WinBox: it can be used to scan the intranet once it’s exposed to the WAN</li>
+        </ul>
+      </li>
+      <li><a href="https://medium.com/@maxi./finding-and-exploiting-cve-2018-7445-f3103f163cc1">Maximiliano Vidal, Juan Caillava. Finding and exploiting CVE-2018–7445</a>
+        <ul>
+          <li>Found buffer overflow in SMB by black-box fuzzing and how to exploit the vulnerability to get shell</li>
+        </ul>
+      </li>
+      <li><a href="https://mum.mikrotik.com/presentations/ID18/presentation_6149_1540240927.pdf">Tomas Kirnak. Deep-dive: MikroTik exploits - a security analysis</a>
+        <ul>
+          <li>Discussing the mass exploit event after the leakage of CIA’s “Vault7” arsenal</li>
+        </ul>
+      </li>
+      <li><a href="https://media.defcon.org/DEF%20CON%2027/DEF%20CON%2027%20presentations/DEFCON-27-Jacob-Baines-Help-Me-Vulnerabilities.-Youre-My-Only-Hope.pdf">Jacob Baines. Help Me Vulnerabilities You’re My Only Hope</a>
+        <ul>
+          <li>Release a tool for jailbreaking RouterOS to help user to check if their router has been compromised in the mass exploit event</li>
+        </ul>
+      </li>
+      <li><a href="https://medium.com/tenable-techblog/routeros-chain-to-root-f4e0b07c0b21">Jacob Baines. RouterOS: Chain to Root</a>
+        <ul>
+          <li>Get shell by chaining DNS poisoning and downgrade vulnerabilities</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>2022
+    <ul>
+      <li><a href="https://teamt5.org/en/posts/vulnerability-mikrotik-cve-2021-41987/">D39. Vulnerability Exposure &amp; Notification on Mikrotik (CVE-2021-41987)</a>
+        <ul>
+          <li>Found an exploit contains 0-day that targets RouterOS on an APT’s C2 server</li>
+        </ul>
+      </li>
+      <li><a href="https://margin.re/2022/06/pulling-mikrotik-into-the-limelight/">Ian Dupont, Harrison Green. Pulling MikroTik into the Limelight</a>
+        <ul>
+          <li>Detail the IPC mechanism of the RouterOS and release a jailbreak tool “FOISted” to help researchers do further research on the amd64 version of RouterOS.</li>
+        </ul>
+      </li>
+      <li><a href="https://powerofcommunity.net/poc2022/QianChen.pdf">Qian Chen. MikroTik RouterOS Security: The Forgotten IPC Message</a>
+        <ul>
+          <li>Found several vulnerabilities in IPC by fuzzing</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="review-of-the-ipc-and-the-nova-message">Review of the IPC and the Nova Message</h2>
+
+<p>Most of the research centers around RouterOS’s homebrew IPC, so we also took some time to review it. Here is a simple example to explain the main idea of the IPC.</p>
+
+<p>Normally, a user can log in to the RouterOS through telnet, and manage the router by console.
+<img src="/assets/img/blog/20240524/5.png" alt="" /></p>
+
+<p>Let’s follow the procedure step by step:</p>
+
+<ol>
+  <li>When the user tries to access the console of RouterOS through the telnet. The <code class="language-plaintext highlighter-rouge">telnet</code> process will spawn the <code class="language-plaintext highlighter-rouge">login</code> process by <code class="language-plaintext highlighter-rouge">execl</code>, which asks the user for account and password.
+<img src="/assets/img/blog/20240524/6.png" alt="" /></li>
+  <li>After getting the account and password, the <code class="language-plaintext highlighter-rouge">login</code> would pack that info into a nova message, and send it to the <code class="language-plaintext highlighter-rouge">user</code> process for authentication.
+<img src="/assets/img/blog/20240524/7.png" alt="" /></li>
+  <li>The <code class="language-plaintext highlighter-rouge">user</code> process returns the result by sending back a nova message
+<img src="/assets/img/blog/20240524/8.png" alt="" /></li>
+  <li>If the login succeeds, the <code class="language-plaintext highlighter-rouge">console</code> process is spawned, and the user interaction with the <code class="language-plaintext highlighter-rouge">console</code> is actually proxied through the <code class="language-plaintext highlighter-rouge">login</code> process.</li>
+</ol>
+
+<h3 id="ipc">IPC</h3>
+
+<p>The above example simply describes the basic concept of IPC, but the communication between the two processes is actually more complex.</p>
+
+<p>Every nova message would be sent to the <code class="language-plaintext highlighter-rouge">loader</code> process through the socket first, then the <code class="language-plaintext highlighter-rouge">loader</code> dispatches each nova message to the corresponding nova binary.</p>
+
+<p>Suppose the id of the <code class="language-plaintext highlighter-rouge">login</code> process is 1039, the id of the <code class="language-plaintext highlighter-rouge">user</code> process is 13, and the handler with id 4 in the <code class="language-plaintext highlighter-rouge">user</code> process is responsible for verifying the account and password.</p>
+
+<p>Firstly, the <code class="language-plaintext highlighter-rouge">login</code> process sends a request with an account and password to the <code class="language-plaintext highlighter-rouge">user</code> process, so the <code class="language-plaintext highlighter-rouge">SYS_TO</code> in nova message is an array with two elements <code class="language-plaintext highlighter-rouge">13, 4</code>, which means that the message should be sent to the handler with id 4 in the process with binary id 13.</p>
+
+<p><img src="/assets/img/blog/20240524/9.png" alt="" /></p>
+
+<p>When <code class="language-plaintext highlighter-rouge">loader</code> receives the message, it will remove the 13 in <code class="language-plaintext highlighter-rouge">SYS_TO</code> of the message which represents the target binary id, and add the source binary id in <code class="language-plaintext highlighter-rouge">SYS_FROM</code>, which is 1039, and then send the message to the <code class="language-plaintext highlighter-rouge">user</code> process.</p>
+
+<p><img src="/assets/img/blog/20240524/10.png" alt="" /></p>
+
+<p>The <code class="language-plaintext highlighter-rouge">user</code> process does a similar thing when it receives a message: removing the 4 from <code class="language-plaintext highlighter-rouge">SYS_TO</code> that represents the target handler id and sending the nova message to handler 4 for processing.</p>
+
+<p><img src="/assets/img/blog/20240524/11.png" alt="" /></p>
+
+<h3 id="nova-message">Nova Message</h3>
+
+<p>The nova message used in IPC is initialized and set by <code class="language-plaintext highlighter-rouge">nv::message</code> and related functions. Nova message is composed of typed key-value pairs, and the key can only be an integer, so keys such as <code class="language-plaintext highlighter-rouge">SYS_TO</code> and <code class="language-plaintext highlighter-rouge">SYS_FROM</code> are just simple macros.</p>
+
+<p>The types that can be used in a nova message include u32, u64, bool, string, bytes, IP and nova message (i.e. you can create a nested nova message).</p>
+
+<p><img src="/assets/img/blog/20240524/12.png" alt="" /></p>
+
+<p>Because the RouterOS doesn’t use nova messages in JSON anymore, we only focus on the binary format of it.</p>
+
+<p>During IPC communication, the receiver’s socket receives an integer that expresses the length of the current nova message, followed by the nova message in binary format.
+<img src="/assets/img/blog/20240524/13.png" alt="" /></p>
+
+<p>The nova message starts with two magic bytes: <code class="language-plaintext highlighter-rouge">M2</code>. Next, each key is described by 4 bytes; the first 3 bytes are used to express the id of the key, and the last byte is the type of the key. Depending on the type, the next bytes will be parsed differently as data, and the next key will come after data, and so on. A special feature is that a bool can be represented by only one bit, so the lowest bit of the type is used to represent True/False. For a more detailed format, see <a href="https://margin.re/2022/06/pulling-mikrotik-into-the-limelight/">Ian Dupont, Harrison Green. Pulling MikroTik into the Limelight</a>：
+<img src="/assets/img/blog/20240524/14.png" alt="" /></p>
+
+<h3 id="the-x3-format">The x3 format</h3>
+
+<p>In order to understand which nova binary the ids in the <code class="language-plaintext highlighter-rouge">SYS_TO</code> and the <code class="language-plaintext highlighter-rouge">SYS_FROM</code> in the nova message refer to, we need to parse a file with the extension x3, which is an xml in binary format. By parsing the <code class="language-plaintext highlighter-rouge">/nova/etc/loader/system.x3</code> with the tool, we can map which nova binary each id corresponds to.</p>
+
+<p><img src="/assets/img/blog/20240524/15.png" alt="" /></p>
+
+<p>The id of some binaries are absent in this file, because some of them have been made available by installing an official RouterOS package. In which case the binary’s id will exist in the <code class="language-plaintext highlighter-rouge">/ram/pckg/&lt;package_name&gt;/nova/etc/loader/&lt;package_name&gt;.x3</code>. The <code class="language-plaintext highlighter-rouge">radvd</code> is an example.
+<img src="/assets/img/blog/20240524/16.png" alt="" /></p>
+
+<p>However, there are still some id of binaries that cannot be found in any .x3 files because these types of processes are not persistent, e.g., the <code class="language-plaintext highlighter-rouge">login</code> process, which is only spawned when the user tries to log in and uses a serial number as its id.</p>
+
+<p>The .x3 file is also used to record nova binary related settings, e.g. <code class="language-plaintext highlighter-rouge">www</code> specifies in .x3 which servlet should be used for each URI.
+<img src="/assets/img/blog/20240524/17.png" alt="" /></p>
+
+<h2 id="summary">Summary</h2>
+
+<p>After reviewing the research and CVEs from the past, we can see that most vulnerabilities we are interested in have been concentrated in the past, and it seems to be difficult to find  pre-auth vulnerabilities on the WAN side of RouterOS nowadays.</p>
+
+<p>While vulnerabilities continue to be revealed, the RouterOS is becoming more and more secure. Is it true that there are no more pre-auth vulnerabilities on the RouterOS? Or maybe it’s just that everyone is missing something?</p>
+
+<p>Most of the public research mentioned earlier falls into the following three categories:</p>
+<ul>
+  <li>Jailbreaking</li>
+  <li>The analysis of the exploits in the wild</li>
+  <li>The nova message in the IPC</li>
+</ul>
+
+<p>However, after reversing the binary on RouterOS for a while, we realized that the complexity of the whole system was more than that, but no one mentioned the details. This led to the following thought: “No one with sanity would like to dive into the details of nova binary”.</p>
+
+<p>Aside from the exploits leaked from the CIA and APT, most of the research about finding vulnerabilities in RouterOS are: fuzzing network protocols, playing with nova messages, or performing fuzzing tests on nova messages.</p>
+
+<p>By the outcome, it seems that attackers understand the RouterOS much better than we do, and we need to explore more details about the nova binary to fill in the gaps and increase the possibility to find the vulnerabilities we are looking for. Don’t get me wrong. I don’t against fuzzing. But we must ensure we check everything essential to take advantage of the contest.</p>
+
+<h2 id="where-to-begin">Where to begin</h2>
+
+<p>We don’t think the RouterOS is flawless, there is a gap between researchers’ and attackers’ understanding of RouterOS. So, what are we missing to find pre-auth RCE on RouterOS?</p>
+
+<p>The first question that comes to mind is “where is the entry point of IPC and where does it lead?” Because most of the functionality triggered by IPC requires login, it is to be expected that sticking to IPC will only lead to more findings in post-auth. IPC is just one part of the main functionality implemented on RouterOS, and we would like to look at the core code of each functionality directly and carefully.</p>
+
+<p>For example, how do the process that deal with DHCP extract the info needed in a DHCP packet? This information may be stored directly in the process, or may need to be sent to other processes via IPC for further processing.
+<img src="/assets/img/blog/20240524/18.png" alt="" /></p>
+
+<h3 id="the-architecture-of-nova-binary">The Architecture of Nova Binary</h3>
+
+<p>Hence, we must first understand the architecture of the nova binary. Each nova binary has an instance of the Looper class (or a derivative of it: MultifiberLooper), which is a class for event loop logic. In each iteration, it calls <code class="language-plaintext highlighter-rouge">runTimer</code> to execute the timer that is expired, and use <code class="language-plaintext highlighter-rouge">poll</code> to check the status of the sockets then process them accordingly.
+<img src="/assets/img/blog/20240524/19.png" alt="" /></p>
+
+<p>Looper is responsible for the communication between its nova binary and the loader. Looper first registers a special callback function: <code class="language-plaintext highlighter-rouge">onMsgSock</code>, which is responsible for dispatching the nova message received from the socket to the corresponding handler in the nova binary.</p>
+
+<p><img src="/assets/img/blog/20240524/20.png" alt="" /></p>
+
+<h3 id="the-handler-class-and-its-derivatives">The Handler class and its derivatives</h3>
+
+<p>When a looper receives a nova message, it will dispatch it to the corresponding handler, e.g., a message with <code class="language-plaintext highlighter-rouge">SYS_TO</code> of <code class="language-plaintext highlighter-rouge">[14, 0]</code> will be dispatched by the loader to a nova binary with a binary id of 14. By the time the looper in the binary with a binary id of 14 receives it, <code class="language-plaintext highlighter-rouge">SYS_TO</code> has <code class="language-plaintext highlighter-rouge">[0]</code> left, so the looper will dispatch it to handler 0 for processing. If the <code class="language-plaintext highlighter-rouge">SYS_TO</code> in the initial nova message is <code class="language-plaintext highlighter-rouge">[14]</code>, then the looper receives it with <code class="language-plaintext highlighter-rouge">SYS_TO</code> as <code class="language-plaintext highlighter-rouge">[]</code>, and the looper handles this message on its own.</p>
+
+<p><img src="/assets/img/blog/20240524/21.png" alt="" /></p>
+
+<p>Now let’s assume that the Looper receives a nova message that should be handled by handler 1 and dispatches it to handler 1. At this point, handler 1 calls the methods <code class="language-plaintext highlighter-rouge">nv::Handler::handleCmd</code> in the vtable of the handler class, which looks for the corresponding function to execute in the vtable based on the <code class="language-plaintext highlighter-rouge">SYS_CMD</code> specified in the nova message.</p>
+
+<p><img src="/assets/img/blog/20240524/22.png" alt="" /></p>
+
+<p>The <code class="language-plaintext highlighter-rouge">cmdUnknown</code> in the vtable is often overridden to extend the functionality, but sometimes the developer overrides <code class="language-plaintext highlighter-rouge">handleCmd</code> instead, depending on the developer’s mood. The handler class is a base class, so  commands related to objects are not implemented.</p>
+
+<h3 id="derived-class">Derived class</h3>
+
+<p>However, the basic handler class is not the most used one in nova binaries, but rather a derivative of it. Derived classes can be used to store multiple objects of a single type, similar to C++ STL containers.</p>
+
+<p>For example, when a user creates a DHCP server through the web panel, a nova message with the command “add object” is sent to handler 0 of the <code class="language-plaintext highlighter-rouge">dhcp</code> process, which then creates a dhcp server object. And the object will be stored in a tree of handler 0.</p>
+
+<p><img src="/assets/img/blog/20240524/23.png" alt="" /></p>
+
+<p>The handler 0 here is an instance of <code class="language-plaintext highlighter-rouge">AMap</code>, <code class="language-plaintext highlighter-rouge">AMap</code> is a derived class of <code class="language-plaintext highlighter-rouge">Handler</code>. Since the command is “add object”, it triggers the member function <code class="language-plaintext highlighter-rouge">AMap::cmdAddObj</code>, which calls a function at offset 0x7c in handler 0’s vtable. And that function is actually the constructor of the object contained in <code class="language-plaintext highlighter-rouge">AMap</code>. For example, if the developer defines handler 0 to be of type <code class="language-plaintext highlighter-rouge">AMap&lt;string&gt;</code>, then the function at offset 0x7c is the constructor of the <code class="language-plaintext highlighter-rouge">string</code>.</p>
+
+<p>The offset of the constructor of the inner object in the vtable is different for each derived class, and locating the constructor to determine what type of objects are contained in the derived class can be done by reversing their individual <code class="language-plaintext highlighter-rouge">cmdAddObj</code> function.</p>
+
+<h3 id="ipc-and-something-other-than-ipc">IPC, and something other than IPC</h3>
+
+<p>Some of the functions in RouterOS are not driven by IPC. Take the two layer 2 discovery protocols, CDP and LLDP, implemented in the <code class="language-plaintext highlighter-rouge">discover</code> program as an example.</p>
+
+<ol>
+  <li>When starting the two services, handler 0 will be responsible for calling <code class="language-plaintext highlighter-rouge">nv::createPacketReceiver</code> to open the sockets and register the callback functions for CDP and LLDP.</li>
+  <li>In each iteration of the Looper, call <code class="language-plaintext highlighter-rouge">poll</code> to check if the sockets of CDP and LLDP have received any packets.</li>
+  <li>If packets are received, the corresponding callback function will be called to handle the packets.</li>
+</ol>
+
+<p><img src="/assets/img/blog/20240524/24.png" alt="" /></p>
+
+<p>What CDP’s callback does is very simple: it makes sure that the interface that received the packet is allowed, and if it is, it parses the packet and stores the information directly into the <code class="language-plaintext highlighter-rouge">nv::ASecMap</code> instead of using a nova message, and then returns.
+<img src="/assets/img/blog/20240524/25.png" alt="" /></p>
+
+<p>It follows that IPC has no ability to trigger any function of CDP or LLDP other than to turn on CDP or LLDP services (which are turned on by default), so it is likely that previous research focused on IPC has not tested the program logic of such implementation.</p>
+
+<h2 id="the-story-of-pre-auth-rce">The Story of Pre-Auth RCE</h2>
+
+<p>With the knowledge of RouterOS, a surprising accident led us to a long hidden vulnerability.</p>
+
+<p>One day, when we plugged and unplugged the network cable as usual for reversing and debugging on RouterOS, we found that the log file recorded that the program <code class="language-plaintext highlighter-rouge">radvd</code> had crashed several times! So we tried plugging and unplugging the cable to manually reproduce the crash so that we could use the debugger to locate the problem, but after thousands of plugs and unplugs, we still couldn’t determine the conditions under which the crash was occurring, and it appeared to be just a random crash.</p>
+
+<p>After a period of trial and error, we tried to find out where the crash occurred by static reversing the <code class="language-plaintext highlighter-rouge">radvd</code> rather than blindly trying. Though we still couldn’t find the root cause of the crash in the end, we found another vulnerability in <code class="language-plaintext highlighter-rouge">radvd</code> after reviewing the core logic in binary with the benefit of our understanding of the nova binary.</p>
+
+<p>Before describing this vulnerability, let’s first explain what the <code class="language-plaintext highlighter-rouge">radvd</code> process does.</p>
+
+<h3 id="slaac-stateless-address-auto-configuration-">SLAAC (Stateless Address Auto-Configuration )</h3>
+
+<p>In short, the <code class="language-plaintext highlighter-rouge">radvd</code> is a service that handles SLAAC for IPv6.</p>
+
+<p>In a SLAAC environment, suppose a computer wants to get an IPv6 address to access the Internet, it will first broadcast an RS (Router Solicitation) request to all routers. After the router receives the RS, it will broadcast the network prefix through RA (Router Advertisement); computers receiving the RA can take the network prefix then combine it with the EUI-64 to decide what IPv6 address they’re going to use for connecting to the Internet.</p>
+
+<p><img src="/assets/img/blog/20240524/26.png" alt="" /></p>
+
+<p>If an ISP or network administrator wants to assign a network segment to a user, so that the user can assign the address to the user-managed machines. How to assign a segment to the user when only using SLAAC without DHCP? Because SLAAC does not have a way to delegate directly, this is how it usually works:</p>
+
+<p>Suppose there is an upstream router: Router A, which belongs to an ISP or a network administrator, a user-managed Router B, and a user-managed computer. The ISP or the network administrator will notify the user via email in advance about a /48 network prefix assigned to the user, which is <code class="language-plaintext highlighter-rouge">2001:db8::/48</code> in this case. Users can set it on Router B, then when the computer sends RS to Router B, Router B will put this prefix into RA for return, this prefix is called routed prefix.</p>
+
+<p><img src="/assets/img/blog/20240524/27.png" alt="" /></p>
+
+<p>In order to make Router B be able to communicate with Router A, it also needs to get network prefix from Router A for an IPv6 address of its own. And the network prefix that Router B gets from Router A is called a link prefix.</p>
+
+<p><img src="/assets/img/blog/20240524/28.png" alt="" /></p>
+
+<h3 id="the-execution-flow-of-the-radvd">The execution flow of the radvd</h3>
+
+<ol>
+  <li>When the <code class="language-plaintext highlighter-rouge">radvd</code> process is started, the socket used by <code class="language-plaintext highlighter-rouge">radvd</code> is opened by <code class="language-plaintext highlighter-rouge">nv::ThinRunner::addSocket</code> and the corresponding callback function is registered.
+<img src="/assets/img/blog/20240524/29.png" alt="" /></li>
+  <li>
+    <p>In each iteration of the <code class="language-plaintext highlighter-rouge">Looper</code> in <code class="language-plaintext highlighter-rouge">radavd</code>, the socket is checked by calling the <code class="language-plaintext highlighter-rouge">poll</code> to see if it has received any packets.
+<img src="/assets/img/blog/20240524/30.png" alt="" /></p>
+  </li>
+  <li>If any packets are received, the corresponding callback function will be called to process the packets.
+<img src="/assets/img/blog/20240524/31.png" alt="" /></li>
+</ol>
+
+<p>In the callback function of <code class="language-plaintext highlighter-rouge">rardvd</code>, it will first check if the packet is a legitimate RA or RS, if it’s RA, store the information, if it’s RS, start broadcasting RA in LAN.</p>
+
+<p>There are total three cases in which the RouterOS broadcasts the network prefix:</p>
+<ol>
+  <li>Received RS from LAN</li>
+  <li>Received RA from WAN</li>
+  <li>Timed broadcast of RA packets on LAN (default random broadcast after 200~600 seconds)</li>
+</ol>
+
+<p>But we didn’t find the code that’s responsible for case 2 in the callback function by statically reversing. At that time we were not sure why, it is actually related to the subscription mechanism in the RouterOS IPC, which we will explain in a later chapter. However, there are two other cases that we can find out directly through static analysis.</p>
+
+<p>In case 1, when an RS is received from the LAN, <code class="language-plaintext highlighter-rouge">radvd</code> will call <code class="language-plaintext highlighter-rouge">sendRA</code> to broadcast the RA packet:
+<img src="/assets/img/blog/20240524/32.png" alt="" /></p>
+
+<p>In case 2, handler 1 will register a timer, <code class="language-plaintext highlighter-rouge">RAroutine</code>, after initialization:
+<img src="/assets/img/blog/20240524/33.png" alt="" /></p>
+
+<p>The <code class="language-plaintext highlighter-rouge">RAroutine</code> is used to call <code class="language-plaintext highlighter-rouge">sendRA</code> at regular intervals to broadcast packets:
+<img src="/assets/img/blog/20240524/34.png" alt="" /></p>
+
+<h2 id="cve-2023-32154">CVE-2023-32154</h2>
+
+<p>After digging deeper into <code class="language-plaintext highlighter-rouge">sendRA</code>, we found that <code class="language-plaintext highlighter-rouge">radvd</code> has a vulnerability in handling DNS advisory. First, <code class="language-plaintext highlighter-rouge">radvd</code> will store the DNS advisory from the RA received from the upstream router (the data structure is a tree), and when it wants to broadcast the RA to the LAN, these DNS will also be wrapped in the RA and broadcast to the LAN.</p>
+
+<p>In <code class="language-plaintext highlighter-rouge">radvd</code>, it is the <code class="language-plaintext highlighter-rouge">addDNS</code> function that expands the tree and puts it into the ICMPv6 packet. In the following figure, the first parameter of <code class="language-plaintext highlighter-rouge">addDNS</code>, <code class="language-plaintext highlighter-rouge">RA_raw</code>, is a buffer of 4096 bytes, which is the final ICMPv6 packet.</p>
+
+<p><img src="/assets/img/blog/20240524/35.png" alt="" /></p>
+
+<p>Stepping into the <code class="language-plaintext highlighter-rouge">addDNS</code>, we can immediately see that there may be a stack buffer overflow here. The <code class="language-plaintext highlighter-rouge">addDNS</code> puts DNS into ICMPv6 packets via <code class="language-plaintext highlighter-rouge">memcpy</code> without any boundary check, and as long as the DNS advisory is big enough, it can trigger a stack buffer overflow.
+<img src="/assets/img/blog/20240524/36.png" alt="" /></p>
+
+<p>The DNS records used here come from the RDNSS field in the RA packet, but according to the RFC, we can find that the field used to describe the length of RDNSS is only 8-bit. It can cover only 255*16 bytes at most, and this length is insufficient for us to overwrite the return address.</p>
+
+<p><img src="/assets/img/blog/20240524/37.png" alt="" /></p>
+
+<p>But if this is not the first time the <code class="language-plaintext highlighter-rouge">radvd</code> received RA, <code class="language-plaintext highlighter-rouge">radvd</code> needs to mark the old DNS as expired in the next packet, so we can actually cover twice the length, which is 255*16*2 bytes. That is enough for us to overwrite the return address.</p>
+
+<p><img src="/assets/img/blog/20240524/38.png" alt="" /></p>
+
+<h2 id="attacking">Attacking</h2>
+
+<p>Now, the attacker only needs to send two crafted RA packets with RDNSS field length of 255 to the target RouterOS, and the attacker can control the execution flow of the <code class="language-plaintext highlighter-rouge">radvd</code> program through the IPv6 address in the RDNSS.</p>
+
+<p><img src="/assets/img/blog/20240524/39.png" alt="" /></p>
+
+<h3 id="the-protection-of-binaries">The Protection of Binaries</h3>
+
+<p>Since the architecture of target RouterOS is MIPS architecture, the CPU doesn’t support NX, but other protections are also not enabled.</p>
+
+<p>So it’s just a matter of finding a good ROP gadget and letting the execution flow eventually jump to the shellcode we place on the stack, easy peasy lemon squeezy.</p>
+
+<p><img src="/assets/img/blog/20240524/40.png" alt="" /></p>
+
+<h3 id="the-constraint-of-shellcode">The Constraint of Shellcode</h3>
+
+<p>However, there are actually quite a number of limitations in the process of constructing an exploit, for example, since IPv6 addresses are stored in a tree structure, they are sorted before being placed on the stack, so we need to make sure that the payload we build remains the same after sorting.</p>
+
+<p>The simplest way to do this is to make the IPv6 prefix to be a serial number, which ensures that the contents of our payload are in order, and that we can accurately jump to the shellcode through the ROP gadget. When writing the shellcode, we just need to construct the suffix of each address as a <code class="language-plaintext highlighter-rouge">jump</code>, so that we can skip the non-executable  serial number.</p>
+
+<p><img src="/assets/img/blog/20240524/41.png" alt="" /></p>
+
+<p>However, due to the delay slot in MIPS, the CPU will actually execute the next instruction of the <code class="language-plaintext highlighter-rouge">jump</code> instruction first.</p>
+
+<p><img src="/assets/img/blog/20240524/42.png" alt="" /></p>
+
+<p>So we have to move the <code class="language-plaintext highlighter-rouge">jump</code> forward, but since we can’t use the <code class="language-plaintext highlighter-rouge">syscall</code> command in the delay slot, the payload will be a pain to construct, and may exceed the length we can use, which is basically a bad idea.</p>
+
+<p><img src="/assets/img/blog/20240524/43.png" alt="" /></p>
+
+<p>In fact, this is a common beginner level problem in CTF. All we need is to make the prefix of IPv6 address a legal instruction that does not affect the execution result. We change the prefix to <code class="language-plaintext highlighter-rouge">addi s8, s0, 1</code>, <code class="language-plaintext highlighter-rouge">addi s8, s0, 2</code>, <code class="language-plaintext highlighter-rouge">addi s8, s0, 3</code>…… and so on. In addition to the payloads being sorted, it also saves the space that would otherwise be used for <code class="language-plaintext highlighter-rouge">jump</code> instructions.</p>
+
+<p><img src="/assets/img/blog/20240524/44.png" alt="" /></p>
+
+<p>But since we didn’t leak the stack address, and since we can’t find any gadgets available to move the stack address from the <code class="language-plaintext highlighter-rouge">$sp</code> register to the <code class="language-plaintext highlighter-rouge">$t9</code> register, what we’ve done here is to first write the <code class="language-plaintext highlighter-rouge">jalr $sp</code> instruction to memory via a ROP gadget, and then jump to it and execute it with a ROP gadget, which then directs the flow to the shellcode that we’ve constructed, and that sounds pretty good:
+<img src="/assets/img/blog/20240524/45.png" alt="" /></p>
+
+<p>But this is not enough to run shellcode, because MIPS has two different cache for memory access.</p>
+
+<h3 id="cache">Cache</h3>
+
+<p>MIPS has two caches: I-cache (instruction cache) and D-cache (data cache).</p>
+
+<p>When we write the <code class="language-plaintext highlighter-rouge">jslr $sp</code> instruction to the memory, it’s actually written to D-cache.
+<img src="/assets/img/blog/20240524/46.png" alt="" /></p>
+
+<p>When we control the execution flow to jump on the address of <code class="language-plaintext highlighter-rouge">jslr $sp</code>, the processor will first check whether the instruction at this address is in the I-cache or not, and since we jump to a data section, the cache will always miss it. And so, the contents of the memory will be loaded into the I-cache.
+<img src="/assets/img/blog/20240524/47.png" alt="" /></p>
+
+<p>However, since the contents of the D-cache have not been written back to memory, I-cache will only copy a bunch of null bytes from memory, which is nop in MIPS, so the <code class="language-plaintext highlighter-rouge">radvd</code> only runs a bunch of nop until it crashes.</p>
+
+<p><img src="/assets/img/blog/20240524/48.png" alt="" /></p>
+
+<p>Here we need to make the processor write the contents of the D-cache back to memory, and there are two ways to do this: a context switch or exhausting the D-cache space (32 KB).</p>
+
+<p>Triggering a context switch is easier, but there is no <code class="language-plaintext highlighter-rouge">sleep</code> in <code class="language-plaintext highlighter-rouge">radvd</code> that we can use to trigger a context switch, and while other functions can trap into the kernel, the chances of a context switch occurring are not very high. In order to compete for the Pwn2Own, it is necessary to have a consistent attack that is close to 100% successful. Therefore, we turned to find a way to exhaust the 32kb D-cache.</p>
+
+<p>First , a simple check shows that the <code class="language-plaintext highlighter-rouge">radomize_va_space</code> variable of RouterOS is 1, which means that the memory address of the heap is not random, so we don’t need a leak to know where the heap is. We just need to find a way to make the heap allocate enough space, and then write some gibberish on it to deplete the 32kb D-cache.</p>
+
+<p><img src="/assets/img/blog/20240524/49.png" alt="" /></p>
+
+<p>However, since there are no good ROP gadgets, such a payload will need too many ROP gadgets, and eventually the payload length may exceed the length we can cover.</p>
+
+<p>Luckily, as mentioned earlier, DNS itself is stored in a tree structure, so it already occupies a large chunk of memory in the heap. Through the step-by-step execution of gdb, we can make sure that by the time DNS is being processed, the heap is already bigger than 32kb, so we just need to call memcpy to write 32kb of gibberish to the heap through the GOT hijack and that’s it!</p>
+
+<p><img src="/assets/img/blog/20240524/50.png" alt="" /></p>
+
+<p>Finally, our exploit is complete:</p>
+
+<p><img src="/assets/img/blog/20240524/51.png" alt="" /></p>
+
+<p>Combined with another Canon printer vulnerability we found for Pwn2Own, the attack flow would be:</p>
+
+<ol>
+  <li>The attacker, as a bad neighbor of the router, sends crafted ICMPv6 packets to it</li>
+  <li>After successfully controlling the router, we perform port forwarding to direct the payload to the Canon printer on the LAN.</li>
+</ol>
+
+<p><img src="/assets/img/blog/20240524/52.png" alt="" /></p>
+
+<p>In a Pwn2Own environment, the network environment can be simplified a bit as follows:
+<img src="/assets/img/blog/20240524/53.png" alt="" /></p>
+
+<h2 id="debugging-for-exploit">Debugging for Exploit</h2>
+
+<p>Just when we thought we had the $100,000 prize in the pocket, something unexpected happened: our exploit failed on Ubuntu, whether it was a virtual machine in MacOS or an Ubuntu machine; and Pwn2Own officials, who basically used Ubuntu to execute our exploit, so we had to solve this problem.</p>
+
+<p><img src="/assets/img/blog/20240524/54.png" alt="" /></p>
+
+<p>We tried running the exploit on MacOS and recording the network traffic, then replaying the traffic on Ubuntu, and we can observe that the replay fails:
+<img src="/assets/img/blog/20240524/55.png" alt="" /></p>
+
+<p>We also tried running the exploit on Ubuntu and recording the network traffic, of course it failed on Ubuntu. But when we replayed the failed traffic on MacOS, it succeeded:
+<img src="/assets/img/blog/20240524/56.png" alt="" /></p>
+
+<p>Up to this point, we guessed that one of the OSes reordered the packets before sending them out, and that might have been done after Wireshark captured the packets. So we wrote a sniffer and put it on the router to monitor the traffic, and the result should be very reliable since <code class="language-plaintext highlighter-rouge">AF_PACKET</code> type of sockets are not affected by the firewall rules:</p>
+
+<p><img src="/assets/img/blog/20240524/57.png" alt="" /></p>
+
+<p>However, the packets recorded from both sides are <strong>exactly the same</strong> ……</p>
+
+<p>So, apparently I’m the bus factor now. Exploit has only worked on my macOS so far, and if the situation remains, the last resort would be to fly myself to Toronto with my Mac laptop and do the attack on site with my own laptop. But there’s no way we’re going to leave this problem of unknown cause unattended, who knows if it might happen to my laptop during the Pwn2Own as well, and that would be a real loss.</p>
+
+<p><img src="/assets/img/blog/20240524/58.png" alt="" /></p>
+
+<p>After a few careful reviews, we finally know the cause of the problem: speed. Since the time window between the two RA packets is not that big, it’s hard to tell from the Wireshark timeline, but if you do some math, you’ll see that the difference in time between the two packets <strong>is 390 times</strong>. So the problem is not with Ubuntu, it’s because the Mac sent the two packets too fast, and accidentally triggered the race condition in radvd (plus I didn’t properly calculate how many bytes it takes to overwrite the return address, I just wrote all the gibberish on it and did a pattern match. So the offset is only correct under the race condition).</p>
+
+<p><img src="/assets/img/blog/20240524/59.png" alt="" /></p>
+
+<p>The solution is to sleep for a while between sending two RA packets and fix the offset in the payload, which will stabilize our attack with a 100% chance of success.</p>
+
+<h3 id="fix">Fix</h3>
+
+<p>This vulnerability has been fixed in the following releases:</p>
+
+<ul>
+  <li>Long-term Release 6.48.7</li>
+  <li>Stable Release 6.49.8, 7.10</li>
+  <li>Testing Release 7.10rc6</li>
+</ul>
+
+<p>At the same time, we also found that this vulnerability has existed since RouterOS v6.0. From the official website can be found 6.0 release date is 2013-05-20, that is to say, this vulnerability has existed there <strong>nine years</strong>, but no one has found him.</p>
+
+<p><img src="/assets/img/blog/20240524/60.png" alt="" /></p>
+
+<p>Echoing our initial thought, “No one with sanity would like to dive into the details of nova binary”, Q.E.D.</p>
+
+<h2 id="the-race-condition">The Race Condition</h2>
+
+<p>But how did this race condition that prevents us from easily earning $100,000 happen? As mentioned above, nova binary has a Looper that loops for dealing with events, i.e. it’s a single thread program, so what’s the race condition all about? (Some nova binary is multi-fiber, but <code class="language-plaintext highlighter-rouge">radvd</code> isn’t.)</p>
+
+<p>I didn’t mention that when <code class="language-plaintext highlighter-rouge">radvd</code> parse the RA packets received from WAN, the DNS is stored in a “vector”, but when preparing the RA packets for broadcasting on LAN, <code class="language-plaintext highlighter-rouge">addDNS</code> expands a “tree” with DNS stored in it, so what is the relationship between this vector and the tree?</p>
+
+<p><img src="/assets/img/blog/20240524/61.png" alt="" /></p>
+
+<p>That’s why we didn’t find the logic “broadcasts RA packets to the LAN when it receives RA from the WAN” in the callback, because it’s the result of the interaction between the two processes.</p>
+
+<p>If we take a closer look at what the callback does, we can see that there is an array that holds an object called the “remote object”. The code looks intuitive, it iterates over a vector of DNS addresses, calls <code class="language-plaintext highlighter-rouge">nv::roDNS</code> once for each DNS address, and saves the result of the function execution in the and saves the result of the function execution in the <code class="language-plaintext highlighter-rouge">DNS_remoteObject</code> vector.</p>
+
+<p><img src="/assets/img/blog/20240524/62.png" alt="" /></p>
+
+<h3 id="remote-object">Remote Object</h3>
+
+<p>So what is a remote object? Remote object is a mechanism used in RouterOS to share resources across processes, one process is responsible for storing this shared resource, then another process can send requests to the process responsible for storing it to make additions, deletions, and modifications by specifying the ids. For example, the DNS remote object is actually placed in handler 2 of the <code class="language-plaintext highlighter-rouge">resolver</code> process, while handler 1 of <code class="language-plaintext highlighter-rouge">radvd</code> simply keeps the ids of these objects.</p>
+
+<p><img src="/assets/img/blog/20240524/63.png" alt="" /></p>
+
+<h3 id="subscription-and-notification">Subscription and Notification</h3>
+
+<p>When a remote object is updated, some process may want to respond, so the nova binary can subscribe to other nova binary in advance. Take <code class="language-plaintext highlighter-rouge">dhcp</code> and <code class="language-plaintext highlighter-rouge">ippool6</code> for example, handler 1 in <code class="language-plaintext highlighter-rouge">ippool6</code> is responsible for managing the ipv6 address pool, the dhcp process subscribes to handler 1 in <code class="language-plaintext highlighter-rouge">ippool6</code>, so when there are changes in the ipv6 address pool, dhcp can check whether they need to be processed further, such as shutting down a dhcp server.</p>
+
+<p>The subscription behavior is achieved by sending a nova message to the binary that wants to subscribe, with a <code class="language-plaintext highlighter-rouge">SYS_NOTIFYCMD</code> that contains the specific conditions that it wants to be notified about.</p>
+
+<p><img src="/assets/img/blog/20240524/64.png" alt="" /></p>
+
+<p>When another process adds an object to <code class="language-plaintext highlighter-rouge">ippool6</code>, handler 1’s <code class="language-plaintext highlighter-rouge">cmdAddObj</code> function will be executed.</p>
+
+<p><img src="/assets/img/blog/20240524/65.png" alt="" /></p>
+
+<p>In most cases, <code class="language-plaintext highlighter-rouge">AddObj</code> will call <code class="language-plaintext highlighter-rouge">sendNotifies</code> to notify subscribers who have subscribed to the 0xfe000b event that their subscribed objects have been altered, so <code class="language-plaintext highlighter-rouge">ippool6</code> here sends a nova message to the <code class="language-plaintext highlighter-rouge">dhcp</code> process informing it of the result of the object being altered.</p>
+
+<p><img src="/assets/img/blog/20240524/66.png" alt="" /></p>
+
+<p>After understanding the subscription mechanism, we can more fully understand the interaction between radvd and the resolver as follows:</p>
+
+<p>When <code class="language-plaintext highlighter-rouge">radvd</code> receives the RA packet from the WAN, it will call <code class="language-plaintext highlighter-rouge">roDNS</code> for each IPv6 address. Handler 4 in <code class="language-plaintext highlighter-rouge">resolver</code> handles this request and creates the corresponding ipv6 object in handler 2. Then, because handler 1 in <code class="language-plaintext highlighter-rouge">radvd</code> subscribes to handler 2 in <code class="language-plaintext highlighter-rouge">resolver</code>, handler 2 in <code class="language-plaintext highlighter-rouge">resolver</code> pushes all the DNS addresses that it has to <code class="language-plaintext highlighter-rouge">radvd</code>, then handler 1 constructs a RA packet based on the DNS address he received, and then broadcasts the packet on the LAN.</p>
+
+<p><img src="/assets/img/blog/20240524/67.png" alt="" /></p>
+
+<h3 id="the-root-cause-of-race-condition">The Root Cause of Race Condition</h3>
+
+<p>The problem is actually in the implementation of <code class="language-plaintext highlighter-rouge">roDNS</code>, where <code class="language-plaintext highlighter-rouge">roDNS</code> uses <code class="language-plaintext highlighter-rouge">postMessage</code> to send a nova message. <code class="language-plaintext highlighter-rouge">postMessage</code> is non-blocking, meaning that the remote object in <code class="language-plaintext highlighter-rouge">radvd</code> doesn’t immediately know what id of a remote object corresponds to in the resolver.</p>
+
+<p><img src="/assets/img/blog/20240524/68.png" alt="" /></p>
+
+<p>If our second packet arrives too soon, so that <code class="language-plaintext highlighter-rouge">radvd</code> doesn’t know what the remote object’s id is, then <code class="language-plaintext highlighter-rouge">radvd</code> can’t delete these objects in the first place, it can only mark them as destroyed for soft deletion, which results in a race condition.</p>
+
+<p><img src="/assets/img/blog/20240524/69.png" alt="" /></p>
+
+<p>Let’s try to understand the whole process step by step:</p>
+
+<p>First, since both processes are single thread, we can assume that <code class="language-plaintext highlighter-rouge">radvd</code> and <code class="language-plaintext highlighter-rouge">resolver</code> are in their first loop. The <code class="language-plaintext highlighter-rouge">radvd</code> receives an RA from the WAN with only one DNS address, and <code class="language-plaintext highlighter-rouge">radvd</code> sends a request for creating a remote object to the <code class="language-plaintext highlighter-rouge">resolver</code>.</p>
+
+<p><img src="/assets/img/blog/20240524/70.png" alt="" /></p>
+
+<p>At the same time, <code class="language-plaintext highlighter-rouge">resolver</code> will set a timer when it receives the first request, because in the IPC mechanism, <code class="language-plaintext highlighter-rouge">resolver</code> has no way of knowing how many <code class="language-plaintext highlighter-rouge">AddObj</code> requests belong to the same group, so it simply sets a timer , and sends out a notification when the time is up. The <code class="language-plaintext highlighter-rouge">resolver</code> should reply with a nova message as a response, informing <code class="language-plaintext highlighter-rouge">radvd</code> of the id of the remote object that has just been added, and <code class="language-plaintext highlighter-rouge">radvd</code> will register a corresponding <code class="language-plaintext highlighter-rouge">ResponseHandler</code> to handle this request.</p>
+
+<p><img src="/assets/img/blog/20240524/71.png" alt="" /></p>
+
+<p>However, if the second RA packet is delivered so fast that the <code class="language-plaintext highlighter-rouge">resolver</code> hasn’t sent the response back yet, <code class="language-plaintext highlighter-rouge">radvd</code> can only mark the old DNS remote object as destroyed for soft deletion first.</p>
+
+<p><img src="/assets/img/blog/20240524/72.png" alt="" /></p>
+
+<p>Then <code class="language-plaintext highlighter-rouge">radvd</code> proceeds to create a new DNS remote object for the RDNSS field in the second RA packet received, but since the <code class="language-plaintext highlighter-rouge">resolver</code> hasn’t finished the first iteration yet, this new request stays in the socket until the next iteration.</p>
+
+<p><img src="/assets/img/blog/20240524/73.png" alt="" /></p>
+
+<p>Going back to <code class="language-plaintext highlighter-rouge">resolver</code>, the first iteration ends by passing back an id to <code class="language-plaintext highlighter-rouge">radvd</code>. <code class="language-plaintext highlighter-rouge">radvd</code>’s <code class="language-plaintext highlighter-rouge">ResponseHandler</code> will update the remote object based on the id it gets. But since the corresponding remote object has been marked for deletion, the <code class="language-plaintext highlighter-rouge">ResponseHandler</code> will delete the object instead of updating the object id.</p>
+
+<p><img src="/assets/img/blog/20240524/74.png" alt="" /></p>
+
+<p>After the <code class="language-plaintext highlighter-rouge">ResponseHandler</code> deletes the remote object saved in <code class="language-plaintext highlighter-rouge">radvd</code>, it will send a delete object message to <code class="language-plaintext highlighter-rouge">resolver</code>, informing it that the corresponding remote object is no longer in use and has to be deleted, but the request will still be stuck in the socket waiting to be processed.</p>
+
+<p><img src="/assets/img/blog/20240524/75.png" alt="" /></p>
+
+<p>The <code class="language-plaintext highlighter-rouge">resolver</code> then proceeds to the second iteration, where it gets a request from the socket to create a remote object for the second RA.</p>
+
+<p><img src="/assets/img/blog/20240524/76.png" alt="" /></p>
+
+<p>At this point, the previously set timer expires and the resolver calls <code class="language-plaintext highlighter-rouge">nv::Handler::sendChanges</code> to notify all subscribers what DNSs the resolver now knows about, since object 1 has not been deleted yet, so the resolver pushes the DNS that was created by the two requests. The DNS created by the two requests will be pushed out.</p>
+
+<p>When <code class="language-plaintext highlighter-rouge">radvd</code> receives this information, it immediately constructs a RA packet to broadcast over the LAN, and the results of the two requests are mixed together, which is why our attack only succeeds on MacOS in the first place.</p>
+
+<p>The race condition itself sounds hard to be triggered (it won’t be triggered if the delete request is processed before the timer), but this is because the whole process has been greatly simplified for ease of explanation, and in fact, as long as the time between the arrival of the two packets is short enough, the race will be successful.</p>
+
+<p><img src="/assets/img/blog/20240524/77.png" alt="" /></p>
+
+<h3 id="summary-1">Summary</h3>
+
+<p>Through the above analysis, we found a pattern of race conditions in the remote object mechanism of RouterOS:</p>
+<ul>
+  <li>Use non-blocking methods to create/delete the remote object</li>
+  <li>Subscribe to the remote object</li>
+</ul>
+
+<p>Because it is possible to mix the results of two requests into a single response, this could possibly be used to bypass some security checks. If we can find such a vulnerability, it could be used to participate in the router category.</p>
+
+<p>In the end, we were pressed for time and we didn’t find any exploitable vulnerabilities through the race condition.</p>
+
+<p>And not only that, we realized that the exploit that we had tested hundreds of times over the past few months still had some issues, and we still couldn’t get it to work three hours before the registration deadline. We kept updating the exploit and the white paper we were going to submit, and it was done until half an hour before the deadline (4:00 AM deadline).</p>
+
+<p>But luckily, we were able to complete the attack with only one attempt at Pwn2Own, becoming the first team in history to complete the new category of SOHO SMASHUP:</p>
+
+<p><img src="/assets/img/blog/20240524/78.png" alt="" /></p>
+
+<p>We earned 10 Master of Pwn points and $100,000 by this category, and at the end of the tournament, DEVCORE was crowned the winner with 18.5 Master of Pwn points.
+<img src="/assets/img/blog/20240524/79.png" alt="" /></p>
+
+<p>In addition to receiving the Master of Pwn title, trophy, and jacket, the organizers will also send us one of each of the devices we hacked.</p>
+
+<p>(We can’t fit all of them into a picture)
+<img src="/assets/img/blog/20240524/80.png" alt="" /></p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>In this study, we have explored RouterOS in depth and revealed a security vulnerability that has been hidden in RouterOS for nine years. In addition, we found a design pattern in IPC that leads to a race condition. Meanwhile, we also open-source the tools used in the research at https://github.com/terrynini/routeros-tools for your reference.</p>
+
+<p>Through this paper, DEVCORE hopes to share our discoveries and experiences to help white hat hackers gain a deeper understanding of RouterOS and make it more understandable.</p>
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/en/blog/author/terrynini">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/nini.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/en/blog/author/terrynini">
+                            <h3>Terrynini</h3>
+                        </a>
+                        <span>Security Researcher</span>
+                        <p>
+                            I’m NiNi, hunting the demons that lurk in your binary every day. <br>๛ฅ(=ˇωˇ=)ฅ
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2024 DEVCORE <b class="line-block">All rights reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

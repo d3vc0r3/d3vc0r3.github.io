@@ -4,13 +4,1265 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2024-04-10T03:47:06+08:00</updated>
+ <updated>2024-05-24T17:28:29+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name></name>
    <email></email>
  </author>
 
+ 
+ <entry>
+   <title>Pwn2Own Toronto 2022 : A 9-year-old bug in MikroTik RouterOS</title>
+   <link href="https://devco.re/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros/"/>
+   <updated>2024-05-24T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros</id>
+   <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros-en/&quot;&gt;English Version&lt;/a&gt;, &lt;a href=&quot;/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;tldr&quot;&gt;TL;DR&lt;/h2&gt;
+
+&lt;p&gt;DEVCORE 研究組在 Pwn2Own Toronto 2022 白帽駭客競賽期間，透過研究過去少有人注意到的攻擊面，在 MikroTik 旗下路由器產品所使用的 RouterOS 作業系統中，發現了存在九年之久的 WAN 端弱點，透過串連該弱點與另一個同樣由 DEVCORE 發現的 Canon printer 弱點，DEVCORE 成為史上第一個在 Pwn2Own 賽事中成功挑戰 SOHO Smashup 項目的隊伍；最終 DEVCORE 在 Pwn2Own Toronto 2022 奪下冠軍，並獲頒破解大師（Master of Pwn）的稱號。&lt;/p&gt;
+
+&lt;p&gt;該 WAN 端弱點發生在 RouterOS 中的 radvd 程式，由於該程式在處理 IPv6 SLAAC 的 ICMPv6 封包時，未對 RDNSS 欄位的長度進行檢查，導致攻擊者可透過發送兩次 Router Advertisement 封包觸發緩衝區溢位攻擊，使得攻擊者可在不需登入且無需使用者互動的情況下控制路由器底層的 Linux 系統進行高權限操作，取得路由器的完整控制權；此弱點被登記為 CVE-2023-32154，其 CVSS 分數為 7.5。&lt;/p&gt;
+
+&lt;p&gt;針對上述弱點， DEVCORE 已於 2022/12/29 經由 &lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-23-710/&quot;&gt;ZDI&lt;/a&gt; 回報 MikroTik 處理，並在 2023/05/19 完成修補，以下 RouterOS 版本已經對此弱點進行修補：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Long-term Release 6.48.7&lt;/li&gt;
+  &lt;li&gt;Stable Release 6.49.8&lt;/li&gt;
+  &lt;li&gt;Stable Release 7.10&lt;/li&gt;
+  &lt;li&gt;Testing Release 7.10rc6&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;pwn2own-與-soho-smashup-簡介&quot;&gt;Pwn2Own 與 SOHO Smashup 簡介&lt;/h2&gt;
+
+&lt;p&gt;Pwn2Own 是一系列由趨勢科技的 Zero Day Initiative（ZDI）主辦的比賽，每場賽事都會針對該次主題挑選一些熱門的產品作為目標，例如：作業系統、瀏覽器、電動車、工控系統、路由器、印表機、智慧音箱、手機、NAS、網路攝影機……等等。只要參賽隊伍可以在無需使用者互動、設備處於預設狀態、軟體更新至最新版本的條件下，演示攻擊並成功獲得設備的主控權，就可以獲得相應的 Master of Pwn 點數和獎金。賽末結算時，Master of Pwn 點數最高的隊伍就是冠軍，也被稱為破解大師（Master of Pwn）。&lt;/p&gt;
+
+&lt;p&gt;前幾年由於疫情的關係，Work From Home 或是 SOHO（即小型辦公／家庭辦公）變得非常普遍，因此 2022 的 Pwn2Own  Toronto 也新增了一個稱作 SOHO Smashup 的特別項目，參賽者需要從 WAN 端入侵路由器後，再將路由器作為跳板攻擊居家常見的設備，例如：智慧音響、印表機等設備。&lt;/p&gt;
+
+&lt;p&gt;這個特別的新項目，除了獎金是所有項目中第二高的 $100,000（USD）之外，得分也是最高的十分，因此如果目標是奪冠，奪下這個項目絕對是如虎添翼！DEVCORE 在本次賽事中也特別挑選較少人研究的 MikroTik 作為目標，避免與他人找到重複的漏洞（與其他人撞洞時，獎金與得分皆減半），最大化奪冠的機率。&lt;/p&gt;
+
+&lt;h2 id=&quot;routeros-簡介&quot;&gt;RouterOS 簡介&lt;/h2&gt;
+
+&lt;p&gt;MikroTik 開發的 RouterOS 是一套基於 Linux 核心的作業系統，也是 MikroTik 旗下產品 「RouterBoard」上預設安裝的作業系統，RouterOS 亦可被安裝在個人電腦上，用來將電腦作為路由器使用。&lt;/p&gt;
+
+&lt;p&gt;雖然基於 Linux 核心開發的 RouterOS 確實有使用 GPL 授權的開源軟體，但如果想要得到相關的程式碼，根據官方網站 &lt;a href=&quot;https://web.archive.org/web/20220603140018/https://mikrotik.com/downloadterms.html&quot;&gt;downloadterms&lt;/a&gt; 的說明，需要匯 45 塊美金給 MikroTik ，他們才會寄給你一張燒好 GPL source 的光碟，非常有趣的想法！幸好已經有人將 MikroTik 的 &lt;a href=&quot;https://github.com/robimarko/routeros-GPL&quot;&gt;GPL source&lt;/a&gt;上傳到 Github，但在檢視過後，我們認為裡面的程式碼對於後續分析沒有太大的幫助。&lt;/p&gt;
+
+&lt;h3 id=&quot;routeros-v7-與-routeros-v6&quot;&gt;RouterOS v7 與 RouterOS v6&lt;/h3&gt;
+
+&lt;p&gt;在 MikroTik 官網的下載頁面上同時存在 RouterOS v7 以及 RouterOS v6 兩個版本，兩者之間的關係比較像是 RouterOS 的不同 branch，在設計上大同小異。因為我們的目標設備 RouterBoard RB2011UiAS-IN 預設安裝的是 RouterOS v6，所以我們先以 RouterOS v6 作為研究對象。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;RouterOS 並沒有正式提供一個方法讓使用者直接管理底層的 Linux 系統，使用者被關在一個功能受限的 console 裡面，只能使用 RouterOS 提供的有限指令去管理這台路由器。因此過去有不少研究是關於如何 jailbreak RouterOS。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;RouterOS 上的 binary 之間使用一種 MikroTik 自製的 IPC 進行溝通，此 IPC 利用稱為 nova message 的資料結構在各程式間交換資訊，因此我們將這類 binary 統一稱作 nova binary。&lt;/p&gt;
+
+&lt;p&gt;另外，RouterOS 還存在一個比較特別的攻擊面。在日常應用中，使用者可以透過 WinBox 這套 GUI 管理工具在 Windows 電腦上對 RouterOS 進行遠端管理，其原理是透過 TCP 向路由器傳送 nova message。因此若 RouterOS 沒有針對 nova message 做好權限驗證時，攻擊者就有機會自遠端發送一個夾帶惡意 nova message 的 TCP 封包入侵路由器；不過 WinBox 預設僅能從 LAN 端使用，對我們來說不是優先事項，因為這次的目標是從 WAN 端進行攻擊！&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;cve-回顧&quot;&gt;CVE 回顧&lt;/h2&gt;
+
+&lt;p&gt;首先，為了熟悉 RouterOS 的攻擊面，我們全面審視了過去的 CVE。當時與 RouterOS 有關的 CVE 總共有 80 個，而當中可被用來在 pre-auth 情境下進行攻擊，且目標是路由器本身的共有 28 個 。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;28 個 CVE 當中有 4 個 CVE 的使用情境是較符合 Pwn2Own 規則所描述的情境，這些 CVE 可以讓攻擊者在不需使用者互動的情況下在路由器上喚起一個 shell 或登入為 admin。這 4 個漏洞當中，有 3 個是在 2017 年至 2019 年這段時間被發現的，而且當中 3 個是「in the wild」而不是第一時間經由白帽駭客主動通報，這四個漏洞分別是：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;CVE-2017-20149：又稱 Chimay-Red，是 2017 年從 CIA 外洩的武器庫「Vault 7」中，針對 RouterOS 進行攻擊的漏洞之一。漏洞發生在 RouterOS 解析 HTTP 請求時，若 HTTP headers 中的 Content-Length 是負值，會造成 Integer Underflow，搭配 Stack Clash 的攻擊手法就能控制程式流程達成 RCE。&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://medium.com/@maxi./finding-and-exploiting-cve-2018-7445-f3103f163cc1&quot;&gt;CVE-2018-7445&lt;/a&gt;：是一個存在於 RouterOS 自己實做的 SMB 中的 buffer overflow。這是透過黑箱模糊測試找到的漏洞，也是四個漏洞中唯一一個由發現者自行回報的漏洞，一樣能夠控制程式執行流程最後達成 RCE，但 SMB 不是預設開啟的服務。&lt;/li&gt;
+  &lt;li&gt;CVE-2018-14847：也是「Vault 7」中針對 RouterOS 進行攻擊的漏洞之一。這個漏洞使攻擊者可以不需登入就讀取任意檔案，乍聽之下好像不是大問題，但由於在 RouterOS 的早期版本中，使用者的密碼是以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;password xor md5(username + &quot;283i4jfkai3389&quot;)&lt;/code&gt; 的方式儲存在檔案中，所以只要能夠讀取這個檔案，攻擊者就可以逆算得到 admin 的密碼。&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://teamt5.org/en/posts/vulnerability-mikrotik-cve-2021-41987/&quot;&gt;CVE-2021-41987&lt;/a&gt;：在 SCEP 服務的 base64 解碼過程中，因為長度計算錯誤導致的 heap buffer overflow 漏洞，這是資安研究員分析了 APT 在其 C2 server 上的 exploit 後反推出來的漏洞。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;可以發現，這些漏洞大多是「in the wild」，我們無從得知當初發現漏洞的人是如何進行分析及思考。因此關於分析 RouterOS 的思路或是技巧，透過這些漏洞能學習到的十分有限。&lt;/p&gt;
+
+&lt;h2 id=&quot;相關研究回顧&quot;&gt;相關研究回顧&lt;/h2&gt;
+
+&lt;p&gt;我們繼續研讀公開的研究資料，在比賽的當下我們有這些文章以及演講可以參考：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;2017
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;https://kirils.org/slides/2017-08-06_prez_SHA_MT_pub.pdf&quot;&gt;Kirils. Rooting the MikroTik routers&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;主要關於 jailbreak&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://kirils.org/slides/2017-09-15_prez_15_MT_Balccon_pub.pdf&quot;&gt;Kirils. A deeper journey into MikroTik routers&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;主要關於 jailbreak&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://kirils.org/slides/2017-10-21_MT_Hacktivity_pub.pdf&quot;&gt;Kirils. Tools for effortless reverse engineering of MikroTik routers&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;主要關於 jailbreak&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;2018
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;https://github.com/tenable/routeros&quot;&gt;Jacob Baines. Bug Hunting in RouterOS&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;探討 IPC 中的 nova message 的運作&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;2019
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;https://medium.com/tenable-techblog/make-it-rain-with-mikrotik-c90705459bc6&quot;&gt;Jacob Baines. Make It Rain with MikroTik&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;與 2018 的演講內容相同&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://medium.com/tenable-techblog/mikrotik-firewall-nat-bypass-b8d46398bf24&quot;&gt;Jacob Baines. MikroTik Firewall &amp;amp; NAT Bypass&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;當時的 WinBox 存在一個弱點：當暴露在外網時，可以被用來對內網進行掃描&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://medium.com/@maxi./finding-and-exploiting-cve-2018-7445-f3103f163cc1&quot;&gt;Maximiliano Vidal, Juan Caillava. Finding and exploiting CVE-2018–7445&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;透過黑箱模糊測試找到 SMB 中的 Buffer Overflow 以及完整 exploit 方法&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://mum.mikrotik.com/presentations/ID18/presentation_6149_1540240927.pdf&quot;&gt;Tomas Kirnak. Deep-dive: MikroTik exploits - a security analysis&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;討論 CIA 武器庫「Vault 7」外洩後所造成的大規模利用事件&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://media.defcon.org/DEF%20CON%2027/DEF%20CON%2027%20presentations/DEFCON-27-Jacob-Baines-Help-Me-Vulnerabilities.-Youre-My-Only-Hope.pdf&quot;&gt;Jacob Baines. Help Me Vulnerabilities You’re My Only Hope&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;釋出一套協助使用者 jailbreak RouterOS 的工具，讓使用者有能力檢查自己的機器是否在大規模利用事件中被入侵&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://medium.com/tenable-techblog/routeros-chain-to-root-f4e0b07c0b21&quot;&gt;Jacob Baines. RouterOS: Chain to Root&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;如何透過串連 DNS poisoning 弱點及降版弱點拿到 shell&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;2022
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;https://teamt5.org/en/posts/vulnerability-mikrotik-cve-2021-41987/&quot;&gt;D39. Vulnerability Exposure &amp;amp; Notification on Mikrotik (CVE-2021-41987)&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;在 APT 的 C2 server 上發現一個利用 RouterOS 0-day 的武器，透過分析找到漏洞的成因&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://margin.re/2022/06/pulling-mikrotik-into-the-limelight/&quot;&gt;Ian Dupont, Harrison Green. Pulling MikroTik into the Limelight&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;更詳細地闡述了 RouterOS 的 IPC 機制，並且釋出一套稱作 FOISted 的 jailbreak 工具協助研究員在 amd64 版本的 RouterOS 上進行近一步的研究&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://powerofcommunity.net/poc2022/QianChen.pdf&quot;&gt;Qian Chen. MikroTik RouterOS Security: The Forgotten IPC Message&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;透過模糊測試在 IPC 中挖掘漏洞&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;ipc-與-nova-message-回顧&quot;&gt;IPC 與 Nova Message 回顧&lt;/h2&gt;
+
+&lt;p&gt;可以發現上述的研究大部分都離不開 RouterOS 的自製 IPC，所以我們也簡單的對其機制進行了回顧。 這裡使用一個簡單的例子對 IPC 進行說明。&lt;/p&gt;
+
+&lt;p&gt;日常使用場景中，使用者可以透過 telnet 登入至 RouterOS，並使用 conolse 對路由器進行管理。
+&lt;img src=&quot;/assets/img/blog/20240524/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;讓我們拆解整個流程中 IPC 參與的部分：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;當使用者欲透過 telnet 存取 RouterOS 的 console 時，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;telnet&lt;/code&gt; process 會使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;execl&lt;/code&gt; 去執行 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;login&lt;/code&gt; 這個程式，並向使用者索取帳號及密碼。
+&lt;img src=&quot;/assets/img/blog/20240524/6.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
+  &lt;li&gt;當使用者送出帳號密碼之後，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;login&lt;/code&gt; process 會將帳號密碼放進 nova message 中，發送至 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;user&lt;/code&gt; process 請求驗證
+&lt;img src=&quot;/assets/img/blog/20240524/7.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;user&lt;/code&gt; process 完成驗證後，透過 nova message 通知驗證的結果
+&lt;img src=&quot;/assets/img/blog/20240524/8.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
+  &lt;li&gt;如果登入成功就會喚起 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;console&lt;/code&gt; process，接下來使用者與 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;console&lt;/code&gt; 互動的過程都是透過 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;login&lt;/code&gt; process 轉發&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;ipc-簡介&quot;&gt;IPC 簡介&lt;/h3&gt;
+
+&lt;p&gt;上面的例子簡單地描述了 IPC 的基本概念，但兩個 process 間的溝通實際上更加複雜。首先，每個送往其他程式的 nova message 都會先透過 socket 被送往 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;loader&lt;/code&gt;，接著 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;loader&lt;/code&gt; 才根據 message 內容把 message 分派給對應的 nova binary。&lt;/p&gt;
+
+&lt;p&gt;讓我們舉一個簡單的例子來說明：假設 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;login&lt;/code&gt; process 的 id 是 1039；&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;user&lt;/code&gt; process 的 id 是 13，且 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;user&lt;/code&gt; process 中負責驗證帳號密碼的是 id 為 4 的 handler。 則在登入驗證流程中，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;login&lt;/code&gt; process 首先會送一個包含帳號密碼的請求給 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;user&lt;/code&gt; process，這時的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; 是一個包含兩個元素的陣列：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[13, 4]&lt;/code&gt; ，表示要把 message 送給 binary id 為 13 的 process 中 id 為 4 的 handler。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;當 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;loader&lt;/code&gt; 收到 message 後，它會先移除 message 內 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; 中代表目標 binary id 的 13，並在 SYS_FROM 中增加來源 binary 的 id，也就是 1039，之後把 message 傳送給 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;user&lt;/code&gt; process。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;user&lt;/code&gt; process 收到 message 後也會做類似的事情，將&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; 中代表目標 handler id 的 4 移除後，接著把 nova message 送至 handler 4 進行處理，最終由 handler 4 執行驗證的邏輯。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;nova-message-簡介&quot;&gt;Nova Message 簡介&lt;/h3&gt;
+
+&lt;p&gt;而上述 IPC 中使用的 nova message 是由 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nv::message&lt;/code&gt; 及相關的 function 進行初始化與設定。Nova message 實際上是由具有型別的 key-value pair 構成，且 key 只能是整數，所以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; 及 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_FROM&lt;/code&gt; 等 key 只是單純的 macro 罷了。而 nova message 中可以使用的型別包括 u32, u64, bool, string, bytes, IP 及 nova message （也就是可以建立巢狀的 nova message）。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;因為 RouterOS 已不用 JSON 來傳遞 nova message，所以我們只針對 binary 格式進行說明。在 IPC 溝通過程中，收方的 socket 首先會收到一個表達當前 nova message 長度的整數，之後接著 binary 格式的 nova message。
+&lt;img src=&quot;/assets/img/blog/20240524/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Nova message 的開頭是兩個 magic bytes：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;M2&lt;/code&gt;。接下來，每個 key 都使用 4 bytes 來描述；其中，前 3 bytes 用來表達 key 的 id，最後一個 byte 是 key 的型別。根據型別，會以不同解析方式將緊接在後的 bytes 取出作為 data，取完 data 之後，後面緊接著的便是下一個 key，如此循環下去。當中比較特別的是 bool 型別，因為 bool 可以僅用一個 bit 表示，nova message 便直接使用 type 的最低一位 bit 來表示 True/False，更詳細的格式可以參考 &lt;a href=&quot;https://margin.re/2022/06/pulling-mikrotik-into-the-limelight/&quot;&gt;Ian Dupont, Harrison Green. Pulling MikroTik into the Limelight&lt;/a&gt;：
+&lt;img src=&quot;/assets/img/blog/20240524/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;x3-format&quot;&gt;x3 format&lt;/h3&gt;
+
+&lt;p&gt;為了瞭解 nova message 中 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; 及 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_FROM&lt;/code&gt; 的 id 具體是指哪一個 nova binary，我們需要解析一種副檔名為 x3 的檔案，它是 binary 格式的 xml。在撰寫工具解析  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/nova/etc/loader/system.x3&lt;/code&gt; 後，我們便可得知每個 id 所對應的是哪個 nova binary，例如在下圖中，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/nova/bin/log&lt;/code&gt; 的 id 就是 3。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但有些 binary 的 id 並不在這個檔案當中，是因為該 binary 可能是透過安裝 MikroTik 官方提供的 package 之後才有的功能，此時 binary 的 id 就會存在於 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/ram/pckg/&amp;lt;package_name&amp;gt;/nova/etc/loader/&amp;lt;package_name&amp;gt;.x3&lt;/code&gt; 當中，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 就是一例。
+&lt;img src=&quot;/assets/img/blog/20240524/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;儘管如此，依舊有些 binary id 是無法在任何 .x3 檔案中找到的，因為這類型的 process 並不是持久存在，例如：只有使用者嘗試登入時才會被喚起的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;login&lt;/code&gt; process，這類 process 就以流水號作為 id。&lt;/p&gt;
+
+&lt;p&gt;另外，.x3 檔案也被用來記錄 nova binary 的相關設定，例如 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;www&lt;/code&gt; 就在 .x3 中指定每個 URI 應該使用哪一個 servlet 來進行處理。
+&lt;img src=&quot;/assets/img/blog/20240524/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;小結&quot;&gt;小結&lt;/h2&gt;
+
+&lt;p&gt;經由回顧了過去的研究及 CVE，可以發現大多我們感興趣的漏洞都集中在過去的一段時間內，近期似乎很難在 RouterOS 的 WAN 端找到 pre-auth 的漏洞。 且雖然這期間持續有漏洞被揭露，但可以發現 MikroTik 變得越來越安全。MikroTik 上真的已經不存在 pre-auth 的漏洞了嗎？或許單純只是所有人都把什麼東西漏看了？&lt;/p&gt;
+
+&lt;p&gt;前面提及的公開研究，可以簡單分成下面三類：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;越獄（Jailbreaking）&lt;/li&gt;
+  &lt;li&gt;分析在野的 exploit&lt;/li&gt;
+  &lt;li&gt;研究 IPC 中的 nova message&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;然而在逆向 RouterOS 上的 binary 一段時間之後，我們發現整個系統的複雜度不僅於此，但卻沒什麼人提及相關細節。因此有了以下的感想：「沒有任何理智正常的人想要花時間逆向 nova binary」。&lt;/p&gt;
+
+&lt;p&gt;除了從 CIA 及 APT 取得的 exploit 之外，大部分在 RouterOS 上尋找漏洞的研究不外乎是 Fuzzing 網路協議、玩弄 nova message 或是針對 nova message 進行模糊測試。從成果來看，攻擊者對於 RouterOS 的理解似乎高過我們很多，我們需要探索更多關於 nova binary 的細節來彌補差距，才有機會找到我們想要找的漏洞。雖然我們並不反對 fuzzing 這個手法，但若要在這場比賽中取得優勢，我們就必須確定所有細節都被親眼看過。&lt;/p&gt;
+
+&lt;h2 id=&quot;從何開始&quot;&gt;從何開始&lt;/h2&gt;
+
+&lt;p&gt;我們不認為 RouterOS 已經完美無暇，而且不難發現研究員與攻擊者對於 RouterOS 的理解存在著差距。所以，要在 RouterOS 上找到 pre-auth RCE 我們還缺少什麼？&lt;/p&gt;
+
+&lt;p&gt;首先我們想到的第一個問題是：IPC 的入口點在哪裡，它又通往哪裡？大部分透過 IPC 觸發的功能都需要進行登入，所以可以預期到：拘泥於 IPC，只會找到更多 post-auth 的弱點。且 IPC 不過只是 RouterOS 上用來實作主要功能的其中一個環節，我們更想直接、謹慎的觀察每個功能的核心程式碼。&lt;/p&gt;
+
+&lt;p&gt;舉例來說：負責處理 DHCP 的 process 是如何從一個 DHCP 封包中擷取需要的資訊？這些資訊可能直接被存在該 process 中，或可能需要透過 IPC 送給其他 process 做進一步處理。
+&lt;img src=&quot;/assets/img/blog/20240524/18.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;nova-binary-的架構&quot;&gt;Nova Binary 的架構&lt;/h3&gt;
+
+&lt;p&gt;因此我們必須先認識 nova binary 的架構，每個 nova binary 中都有一個 Looper（或其衍生類別：MultifiberLooper），Looper 是負責執行 event loop 邏輯的一個類別，每次迭代都會呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;runTimer&lt;/code&gt; 來執行時間到了的 timer ，以及呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poll&lt;/code&gt; 去檢查 socket 的狀態並做相對應的處理。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/19.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Looper 也負責自己所在的 nova binary 與 loader 之間的溝通，Looper 首先會先會針對當前 binary 與 loader 之間的 unix socket 註冊一個特別的 callback function：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;onMsgSock&lt;/code&gt;，這個函式負責把從 socket 收到的 nova message 分配給 nova binary 中對應的 handler。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/20.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;handler-類別與其衍生類&quot;&gt;Handler 類別與其衍生類&lt;/h3&gt;
+
+&lt;p&gt;當 Looper 收到一個 nova message 時，它會將之分派給對應的 handler。例如，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; 為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[14, 0]&lt;/code&gt; 的訊息會被 loader 分配給 binary id 為 14 的 nova binary，而 binary id 為 14 的 binary 中的 looper 收到時，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; 已經剩下 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[0]&lt;/code&gt;，因此 looper 會將其分配給 handler 0 進行處理。如果一開始的 nova message 中 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; 為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[14]&lt;/code&gt;，則 looper 收到時 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; 為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[]&lt;/code&gt;，這種情境將由 Looper 自行處理。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/21.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;現在讓我們假設，Looper 收到了一個由 handler 1 負責的 nova message，並分配給 handler 1，在收到 message 後，handler 1 會去呼叫 Handler 類別中的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nv::Handler::handleCmd&lt;/code&gt;，這個函式會根據 nova message 中的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_CMD&lt;/code&gt; 在 vtable 中尋找對應的 function 執行。&lt;/p&gt;
+
+&lt;p&gt;除了常規的功能之外，vtable 中的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cmdUnknown&lt;/code&gt; 常被開發者 override 用以擴充功能，但有時開發者反而是 override &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;handleCmd&lt;/code&gt;，看起來是全依 MikroTik 開發者的心情而定。而 Handler 類別因為是基礎類別，所以 object 相關的指令並沒有被實作。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/22.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;衍生類別&quot;&gt;衍生類別&lt;/h3&gt;
+
+&lt;p&gt;然而 nova binary 中使用最多的並不是基本的 Handler 類別，而是其衍生類別。 衍生類別可以用來儲存多個單一型別物件，類似 C++ 的 STL 容器。&lt;/p&gt;
+
+&lt;p&gt;舉例來說，當使用者透過 web panel 的管理介面建立一個 DHCP server 的時候，會送出一個指令為「add object」的 nova message 到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;dhcp&lt;/code&gt; process 的 handler 0，接下來 handler 0 會產生一個 dhcp server 物件記錄相關設定，並且該物件會被保存在 handler 0 內部的一個 tree 當中。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/23.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這裡的 handler 0 就是一個 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AMap&lt;/code&gt; 的 instance，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AMap&lt;/code&gt; 即是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Handler&lt;/code&gt; 的一個衍生類別。 且由於指令是「add object」，所以觸發了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AMap::cmdAddObj&lt;/code&gt; 這個成員函式，這個成員函式會去呼叫 handler 0 的 vtable 中位於 offset 0x7c 位置所指向的一個 function，這個 function 實際上就是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AMap&lt;/code&gt; 中包含的物件的建構式，例如，若開發者在宣告 handler 0 時，其類型為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AMap&amp;lt;string&amp;gt;&lt;/code&gt; ，則 offset 0x7c 的位置所指向的 function 就是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;string&lt;/code&gt; 的建構式。&lt;/p&gt;
+
+&lt;p&gt;每個衍生類別儲存內部物件建構式的 function 在 vtable 上的 offset 都不相同，想要找到衍生類別中物件的建構子，可以透過逆向它們個別的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cmdAddObj&lt;/code&gt; 來找到。&lt;/p&gt;
+
+&lt;h3 id=&quot;ipc和-ipc-以外的&quot;&gt;IPC，和 IPC 以外的&lt;/h3&gt;
+
+&lt;p&gt;儘管 IPC 似乎無處不在，但其實 RouterOS 中有許多功能並不以 IPC 實現。以實作在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;discover&lt;/code&gt; 程式中的兩個 layer 2 的發現協議：CDP、LLDP 為例：&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;在開啟這兩個服務時，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;discover&lt;/code&gt; 中的 handler 0 會負責去呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nv::createPacketReceiver&lt;/code&gt; 來開啟 CDP 及 LLDP 使用的 socket 並且註冊分別對應的 callback function&lt;/li&gt;
+  &lt;li&gt;在 Looper 的每次迭代中，程式會透過 poll 來檢查 CDP 及 LLDP socket 是否有收到封包&lt;/li&gt;
+  &lt;li&gt;如果發現有收到封包就會呼叫對應的 callback function 去進行處理&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/24.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;CDP 的 callback 做的事情也非常簡單：確定收到封包的 interface 是允許存取的，如果正確，就解析封包並直接把資訊直接存入 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nv::ASecMap&lt;/code&gt; 接著就直接結束，過程中並不使用 nova message。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/25.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在此類情境中，IPC 除了用來開啟 CDP 或 LLDP 服務之外（預設開啟），完全無法觸發 CDP 或是 LLDP 的任何功能，因此以往專注於 IPC 的研究就很有可能沒有檢測到這種實作方式的程式邏輯。&lt;/p&gt;
+
+&lt;h2 id=&quot;pre-auth-rce-的故事&quot;&gt;Pre-Auth RCE 的故事&lt;/h2&gt;
+
+&lt;p&gt;對於 RouterOS 的理解，也伴隨著一次驚喜的意外帶領我們找到深藏已久的漏洞。&lt;/p&gt;
+
+&lt;p&gt;賽前某一天，我們照常為了在 RouterOS 上進行逆向及除錯而插拔網路線時，發現 log file 紀錄到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 這隻程式已經 crash 了好幾次！所以我們嘗試插拔網路線來手動復現 crash 的發生，搭配 debugger 使用就能定位到出問題的地方，但經過了上千次的插拔，我們還是無法確定 crash 產生的條件，只能任憑 crash 隨機的發生。&lt;/p&gt;
+
+&lt;p&gt;經過一段時間的掙扎後，我們停止透過這種盲目的嘗試來定位漏洞，轉而利用靜態逆向分析 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 來尋找 crash 產生的位置，雖然最後依舊沒找到造成 crash 的根因，但受益於我們對於 nova binary 的理解，我們在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 中找到了另外一個可以利用的漏洞。&lt;/p&gt;
+
+&lt;p&gt;在介紹這個漏洞之前，必須得先介紹一下 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt;  process 究竟是負責什麼功能的程式。&lt;/p&gt;
+
+&lt;h3 id=&quot;slaac-stateless-address-auto-configuration-&quot;&gt;SLAAC (Stateless Address Auto-Configuration )&lt;/h3&gt;
+
+&lt;p&gt;一言以蔽之，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 是一個負責處理 IPv6 的 SLAAC 的服務。&lt;/p&gt;
+
+&lt;p&gt;在 SLAAC 環境中，假設一台電腦想要取得一個 IPv6 的地址上網，他首先會向所有 router 廣播一個 RS（Router Solicitation）的請求。 在 Router 收到 RS 之後，就會透過 RA（Router Advertisement）將 network prefix 廣播出去；收到 RA 的電腦便可以拿 network prefix 以及 EUI-64 來自行決定自己用來連網的 IPv6 為何。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/26.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;若 ISP 或是網管，想把一個網段分配給用戶，讓用戶可自行分配地址給用戶管理的機器，在只使用 SLAAC 而不輔以 DHCP 時，如何分配一個網段給使用者？因為 SLAAC 並沒有辦法直接委派，所以通常會是這麼運作的：&lt;/p&gt;
+
+&lt;p&gt;假設有一個 upstream router：Router A，它屬於 ISP 或網管、還有一台用戶自行管理的 Router B、一台用戶管理的電腦。ISP 或網管會預先透過 email 通知用戶一個分配給用戶使用的 /48 network preifx，這裡假設是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;2001:db8::/48&lt;/code&gt;。用戶可以將之設定在 Router B 上，則當電腦向 Router B 發送 RS 時，Router B 就會把這個 prefix 放入 RA 中回傳，而這個 prefix 稱作 routed prefix。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/27.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;同時為了讓使用者的 Router B 有辦法與 Router A 溝通，它也需要一個自己的 IPv6 地址，這時 Router B 從 Router A 拿到的 network prefix 就稱作 link prefix。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/28.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;radvd-的執行流程&quot;&gt;radvd 的執行流程&lt;/h3&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; process 被啟動時，會透過 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nv::ThinRunner::addSocket&lt;/code&gt; 來開啟 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 使用的 socket 並且註冊對應的 callback function
+&lt;img src=&quot;/assets/img/blog/20240524/29.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Looper&lt;/code&gt; 的每次迭代中會透過 poll 檢查 socket 是否有收到封包
+&lt;img src=&quot;/assets/img/blog/20240524/30.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;如果發現有收到封包就會呼叫對應的 callback function 去進行處理
+&lt;img src=&quot;/assets/img/blog/20240524/31.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 的 callback 中，它首先檢查封包是否是合法的 RA 或 RS，是 RA 就把資訊存起來；是 RS 就開始往 LAN 廣播 RA。&lt;/p&gt;
+
+&lt;p&gt;而總共有三種情況 RouterOS 會往 LAN 廣播 prefix：&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;從 LAN 收到 RS 封包&lt;/li&gt;
+  &lt;li&gt;從 WAN 收到 RA 封包&lt;/li&gt;
+  &lt;li&gt;定時在 LAN 廣播 RA 封包（預設隨機在 200~600 秒之後廣播一次）&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;不過在 callback 中我們沒有馬上透過靜態分析找到 case 2 發送 RA 的地方，當時我們還不確定具體原因。後來發現這部分的行為與 RouterOS IPC 中的訂閱機制有關，我們將會在後面的章節進行解釋，這同時也與我們發現的 race condition 相關。不過另外兩個情況我們到是可以直接透過靜態分析找到。&lt;/p&gt;
+
+&lt;p&gt;在 case 1 中，當從 LAN 收到 RS 時，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 會呼叫 sendRA 來廣播 RA 封包：
+&lt;img src=&quot;/assets/img/blog/20240524/32.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 case 2 中，handler 1 在初始化後便會去註冊一個 timer，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RAroutine&lt;/code&gt;：
+&lt;img src=&quot;/assets/img/blog/20240524/33.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RAroutine&lt;/code&gt; 被用來在每隔一段時間去呼叫 sendRA 來廣播封包：
+&lt;img src=&quot;/assets/img/blog/20240524/34.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;cve-2023-32154&quot;&gt;CVE-2023-32154&lt;/h2&gt;
+
+&lt;p&gt;可以發現共同的函式就是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sendRA&lt;/code&gt;，在深入分析 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sendRA&lt;/code&gt; 之後，我們發現 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 在處理 DNS advisory 的地方存在弱點。&lt;/p&gt;
+
+&lt;p&gt;首先，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 會將 upstream 收到的 RA 中的 DNS advisory 儲存起來（使用 tree 作為資料結構），當 router 要往 LAN 廣播 RA 時，這些 DNS 也會被包進 RA 中一起被廣播給 LAN 的機器。在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 中，是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addDNS&lt;/code&gt; 這個 function 將樹狀結構的 DNS 展開後放進 ICMPv6 的封包當中。用來傳遞給 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addDNS&lt;/code&gt; 的第一個參數 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RA_raw&lt;/code&gt; 是一個 4096 bytes 的 buffer，也就是最終被送出的 ICMPv6。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/35.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;跟進 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addDNS&lt;/code&gt; 後我們馬上可以發現這裡可能存在一個 stack buffer overflow 的弱點，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addDNS&lt;/code&gt; 透過 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;memcpy&lt;/code&gt; 把 DNS 放進 ICMPv6 封包中而且沒有任何 boundary check，只要 DNS advisory 給的夠多就可以觸發 stack buffer overflow。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/36.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這裡使用的 DNS 來自於 RA 封包中的 RDNSS 欄位，但根據 RFC 可以發現，用來描述 RDNSS 長度的欄位只有 8-bit，所以最多僅能覆蓋 255*16 bytes，這個長度並無法使我們覆寫到 return address。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/37.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但如果這不是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 第一次收到 RA，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 就需要在接下來的封包中將舊的 DNS 標為 expired，所以實際上我們可以覆蓋兩倍的長度，也就是 255*16*2 bytes，這就足以讓我們覆蓋到 return address 了。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/38.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;攻擊流程&quot;&gt;攻擊流程&lt;/h2&gt;
+
+&lt;p&gt;有了上述的弱點，我們只要透過往目標 RouterOS 送兩個 RDNSS 欄位長度為 255 的惡意 RA 封包，就可以利用 RDNSS 中的 IPv6 地址來控制 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 程式的執行流程。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/39.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;保護&quot;&gt;保護&lt;/h3&gt;
+
+&lt;p&gt;由於 RouterOS 使用 MIPS 的架構，所以 CPU 並不支援 NX ，但除此之外的保護也沒有被開啟。
+所以只要找到好用的 ROP gadget 讓執行流程最終 jump 到我們放在 stack 上的 shellcode 就行了，聽起來極度簡單。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/40.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;shellcode-限制&quot;&gt;shellcode 限制&lt;/h3&gt;
+
+&lt;p&gt;但是在構造 exploit 的過程中其實存在不少限制，例如，因為 IPv6 地址被儲存在 tree 結構中，所以會在排序後才放上 stack，因此我們必須保證我們建構的 payload 在經過排序之後還會是我們一開始構造的 shellcode。&lt;/p&gt;
+
+&lt;p&gt;最簡單的方法是把 IPv6 的 prefix 當作流水號，這樣可以保證我們構造的內容照順序排列，接者只要透過 ROP gadget 跳到後半段的 shellcode 上面就算完成了。而在撰寫 shellcode 時，我們只要把每個地址的 suffix 都構造成 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jump&lt;/code&gt; ，用來跳過無法執行的流水號即可。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/41.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但由於 MIPS 存在 delay slot 機制的關係，CPU 實際上會先去執行 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jump&lt;/code&gt; 指令的後一條指令。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/42.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;所以我們必須把 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jump&lt;/code&gt; 往前移動才行，但緊接著的問題便是：在 delay slot 中不能使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;syscall&lt;/code&gt; 這個指令。這種情境下，payload 構造起來相當麻煩之外，還可能會超過我們可以使用的長度，因此這從一開始就是個壞主意。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/43.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;然而眼尖的朋友肯定已經發現了，這其實是 CTF 中常見的初學等級題目，只要讓 prefix 是一個合法且不影響執行結果的指令就好了，我們把 prefix 改成 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addi s8, s0, 1&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addi s8, s0, 2&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addi s8, s0, 3&lt;/code&gt;……，以此類推。除了 payload 會照排序排好之外，也節省了本來用來放 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jump&lt;/code&gt; 指令的空間。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/44.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但我們還需要稍微修改一下 payload 才行，因為我們沒有 leak stack 位址的漏洞，加上我們找不到任何可用的 gadget 來把 stack 位址從 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;$sp&lt;/code&gt; 暫存器搬到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;$t9&lt;/code&gt; 暫存器，所以我們這裡做的事情是：首先，透過 ROP gadget 把 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jalr $sp&lt;/code&gt; 指令寫到一塊記憶體上，之後再用一個 ROP gadget 跳上去執行它，這樣就可以將執行流程導向我們構造的 shellcode，聽起來是一片光明的未來：
+&lt;img src=&quot;/assets/img/blog/20240524/45.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但光是這樣是無法順利執行 shellcode 的，因為 MIPS 針對記憶體的存取方式有兩個不同的 cache。&lt;/p&gt;
+
+&lt;h3 id=&quot;cache&quot;&gt;cache&lt;/h3&gt;
+
+&lt;p&gt;MIPS 上存在兩個 cache：I-cache（instruction cache）、D-cache（data cache）。&lt;/p&gt;
+
+&lt;p&gt;當我們把 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jslr $sp&lt;/code&gt; 指令寫上記憶體時，實際上是寫到 D-cache 中。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/46.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而當我們接著把執行流程控制到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jslr $sp&lt;/code&gt; 的地址時，處理器會先去檢查這個地址的指令有沒有在 I-cache 當中，因為該位址位於 data section，在正常執行流程中肯定沒有被執行過，所以 cache 永遠都會 miss，因此處理器會接著將 memory 的內容載入 I-cache 當中。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/47.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;此時因為 D-cache 的內容還沒有被更新到 memory 上，I-cache 只會抓到一堆 null bytes，也就是 MIPS 上的 nop，所以程式只會執行一堆毫無意義的 nop 直到 crash 為止。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/48.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在這裡我們需要使處理器將 D-cache 的內容寫回 memory，有兩個方法可以做到這件事情：context switch 或是用盡 D-cache 所有空間（32 KB）。觸發 context switch 是比較簡單的做法，但在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 中並沒有任何 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sleep&lt;/code&gt; 讓我們用來觸發 context switch，其他 function 雖然也會陷進 kernel，但 context switch 發生的機率並不高，為了角逐 Pwn2Own 冠軍，讓攻擊達到趨近 100% 成功的穩定度是必須的，因此我們轉而尋找耗盡 D-cache 的 32kb 容量的方法。&lt;/p&gt;
+
+&lt;p&gt;首先，透過簡單的檢查可以發現 RouterOS 的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radomize_va_space&lt;/code&gt; 變數是 1，表示 heap 的記憶體位址不是隨機的，因此不需要 leak 就可以知道 heap 所在位址，所以我們只要接著想辦法讓 heap 分配足夠大的空間，然後寫一些無關緊要的東西上去就可以耗盡 32kb 的 D-cache 了！不過 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 中並沒有太多好用的 ROP gadget，所以要構造這樣的 payload 需要串連更多 ROP gadget 才能達到同樣的目的，最終 payload 長度可能會超過我們可以覆蓋的長度。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/49.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;幸運的是如同前面所說，DNS 被存放在 tree 結構中，所以儲存時就已經在 heap 中佔據一大塊記憶體，透過 gdb 逐步執行，我們可以確定在處理 DNS 時，heap 的空間已經比 32kb 還要大！因此我們只要接著透過 GOT hijack 呼叫 memcpy 往 heap 寫 32kb 的垃圾就可以了！&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/50.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;最後我們的 exploit 就完成了：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/51.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;結合我們另外一個為了 Pwn2Own 找的 Canon printer 弱點，攻擊流程會是&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;攻擊者作為 router 的壞鄰居，對它發送惡意的 ICMPv6 封包&lt;/li&gt;
+  &lt;li&gt;在成功控制 router 後，我們進行 port forwarding，把 payload 導向在 LAN 的 Canon 印表機。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/52.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 Pwn2Own 的比賽環境中，網路環境可以被簡化得更簡單一點，如下：
+&lt;img src=&quot;/assets/img/blog/20240524/53.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;exploit-除錯過程&quot;&gt;Exploit 除錯過程&lt;/h2&gt;
+
+&lt;p&gt;就在我們覺得 $100,000 的獎金已經到手的時候，不可思議的事情發生了，那就是我們的攻擊只要在 Ubuntu 上執行就會失敗，不管這個 Ubuntu 系統是在 MacOS 內的一台虛擬機器又或者是一台 Ubuntu 實機；而 Pwn2Own 官方，基本上是使用 Ubuntu 來執行我們的 exploit，所以我們必須要解決這個問題。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/54.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們嘗試在 MacOS 上執行 exploit 並且紀錄網路封包，然後在 Ubuntu 上重放流量，可以觀察到重放會失敗：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/55.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們也嘗試在 Ubuntu 上執行 exploit 並且記錄網路封包，當然在 Ubuntu 上是失敗的，但當我們在 MacOS 重放失敗的流量時，他竟然成功了：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/56.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;到這裡我們猜測可能是其中一個 OS 在送出封包之前會對封包進行重新排序，而重新排序的這個行為或許在 wireshark 擷取到封包之後，所以才沒被 wireshark 紀錄到。因此我們直接寫了一個 sniffer 放在 router 上面來監控流量，且因為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AF_PACKET&lt;/code&gt; 類型的 socket 不會被防火牆規則影響，結果應該要非常可靠：
+&lt;img src=&quot;/assets/img/blog/20240524/57.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;然而，從兩邊錄到的封包根本&lt;strong&gt;一模一樣&lt;/strong&gt;……&lt;/p&gt;
+
+&lt;p&gt;所以，exploit 目前只在我的 MacOS 上成功過，如果狀況不解決，唯一的方法就是我帶著我的 Mac 筆電飛去多倫多，在現場用我自己的筆電進行攻擊。但我們不可能放著這個成因不明的問題不管，誰知道會不會在比賽中也發生在我的筆電上，如果真的發生那就虧大了。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/58.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在經過幾次謹慎的復盤之後我們終於知道問題的成因了——速度。因為兩個 RA 封包送出時間間隔並不大，所以很難在 wireshark 的時間軸上直接看出來，但如果計算一下會發現，兩個所花費的時間其實&lt;strong&gt;相差了 390 倍&lt;/strong&gt;。所以問題也不是出在 Ubuntu 上，而是因為 Mac 送兩個封包送的太快，不小心觸發了存在在 radvd 中的 race condition（加上極度懶惰的我沒有好好計算蓋到 return address 要花多少 bytes，直接在上面寫滿垃圾然後做 pattern match 而已，所以這個 offset 只在 race 的情況下才正確）。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/59.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;解決方法就是在送出兩個 RA 封包之間 sleep 一下，並把 payload 中的 offset 修復成沒有 race 的情況下觀察到的 offset，就可以穩定我們的攻擊腳本，把成功機率提升到 100%。&lt;/p&gt;
+
+&lt;h3 id=&quot;fix&quot;&gt;Fix&lt;/h3&gt;
+
+&lt;p&gt;這個漏洞在以下版本中已經被修復：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Long-term Release 6.48.7&lt;/li&gt;
+  &lt;li&gt;Stable Release 6.49.8, 7.10&lt;/li&gt;
+  &lt;li&gt;Testing Release 7.10rc6&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;同時我們也發現這個漏洞從 RouterOS v6.0 就已經存在了，從官網可以發現 6.0 的發布日期是 2013-05-20，也就是說這個漏洞已經存在在那裡&lt;strong&gt;九年之久&lt;/strong&gt;，卻沒有人發現他。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/60.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;呼應到我們一開始的想法：「沒有任何理智正常的人想要花時間逆向 nova binary」，得證。&lt;/p&gt;
+
+&lt;h2 id=&quot;the-race-condition&quot;&gt;The race condition&lt;/h2&gt;
+
+&lt;p&gt;然而這個妨礙我們輕鬆賺取 $100,000 的 race condition 是怎麼發生的？如前面所述，nova binary 中有一個 Looper 循環檢查當前有什麼事件發生，也就是説這是一個 single thread 的程式，那 race condition 是怎麼回事？（有些 nova binary 是 multi-fiber，但 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 並不是）&lt;/p&gt;
+
+&lt;p&gt;這就要提到一個剛才沒有提到的細節，當 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 在解析從 WAN 收到的 RA 封包時，DNS 是被存入一個 「vector」 當中，然而在準備 LAN 廣播用的 RA 封包時，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addDNS&lt;/code&gt; 卻是把一個儲存了 DNS 的 「tree」給展開，所以這個 vector 跟 tree 之間是什麼關係？又是怎麼轉換過去的？&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/61.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這也是為什麼我們沒有第一時間就在 callback 裡面找到「從 WAN 收到 RA 就會往 LAN 廣播 RA 封包」的邏輯，因為這是由兩個 process 在一陣複雜的互動之後所產生的結果。&lt;/p&gt;
+
+&lt;p&gt;我們仔細看一下 callback 具體上做了什麼，可以看到有一個 array 負責用來存放一種叫做「 remote object」的物件，這段程式碼看起來很直觀，就是迭代存有 DNS 的 vector，然後為每個 DNS 地址都呼叫一次 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nv::roDNS&lt;/code&gt;，並把函式的執行結果保存在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DNS_remoteObject&lt;/code&gt; vector 當中。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/62.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;remote-object&quot;&gt;remote object&lt;/h3&gt;
+
+&lt;p&gt;所以什麼是 remote object？remote object 是 RouterOS 中用來跨 process 分享資源的一個機制：一個 process 負責保存共用資源，然後另外一個 prcoess 可以通過 id 向負責保存的 process 發送請求來進行增刪查改。 例如 DNS remote object 實際上放在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; process 中的 handler 2，而 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 的 handler 1 只是單純保有這些物件對應的 id 而已。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/63.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;subscription-and-notification&quot;&gt;subscription and notification&lt;/h3&gt;
+
+&lt;p&gt;當一個 remote object 被更新時，有些 process 可能會想要做出對應的行為，所以 nova binary 可以透過 IPC 事先訂閱其他 nova binary 中的 remote object。以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;dhcp&lt;/code&gt; 及 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ippool6&lt;/code&gt; 為例，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ippool6&lt;/code&gt; 中的 handler 1  負責管理 ipv6 address pool，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;dchp&lt;/code&gt; process 會去訂閱 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ippool6&lt;/code&gt; 的 handler 1，所以當 ipv6 address pool 有異動時，dhcp 可以檢查需不需要針對這些異動進行進一步的處理，例如關閉某個 dhcp server。&lt;/p&gt;
+
+&lt;p&gt;訂閱的這個行為是透過發送一個指令為 subscribe 的 nova message 給想要訂閱的 binary，當中的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_NOTIFYCMD&lt;/code&gt; 包含了具體想要被通知的狀況是什麼。
+&lt;img src=&quot;/assets/img/blog/20240524/64.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;所以在上述情況中，當有另外一個 process 往 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ippool6&lt;/code&gt; 中增加 object 時，handler 1 的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cmdAddObj&lt;/code&gt; 函式會被執行。
+&lt;img src=&quot;/assets/img/blog/20240524/65.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在大部分情況裡，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AddObj&lt;/code&gt; 固定會去呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sendNotifies&lt;/code&gt; 來通知那些有訂閱 0xfe000b 事件的 subscribers，告訴他們訂閱的物件已被改動，所以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ippool6&lt;/code&gt; 這裡會送一個 nova message 給 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;dhcp&lt;/code&gt; process，告知物件被改動後的結果。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/66.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在理解了訂閱機制之後，我們可以更全面的理解 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 與 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; 之間的互動如下：&lt;/p&gt;
+
+&lt;p&gt;當 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 從 WAN 收到 RA 封包後，它會對每個 IPv6 地址呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;roDNS&lt;/code&gt; 來請 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; 建立相關的 remote object。而 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; 中的 handler 4 會負責處理這個請求，並在 handler 2 中建立對應的 ipv6 object，接著因為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 的 handler 1 訂閱了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resovler&lt;/code&gt; 的 handler 2，所以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; 的 handler 2 把目前擁有的所有 DNS address 推播給 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 的 handler 1，接著 handler 1 就依照他收到的 DNS address 構造 RA 封包，之後在 LAN 廣播該封包。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/67.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;race-condition-成因&quot;&gt;Race Condition 成因&lt;/h3&gt;
+
+&lt;p&gt;Race condition 的問題實際上出在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;roDNS&lt;/code&gt; 的實作，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;roDNS&lt;/code&gt; 中使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;postMessage&lt;/code&gt; 來發送 nova message，而這個方法是 non-blocking 的，表示 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 中的 remote object 並不會馬上知道它在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; 中對應的 id 是什麼。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/68.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;因此若第二個封包太快到達，以至於 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 還無從得知 remote object 的 id 是什麼的時候，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 就沒有辦法第一時間確實的刪除這些物件，只能先將它們標記成 destroyed 進行軟刪除，這就造成了 race condition 的產生。
+&lt;img src=&quot;/assets/img/blog/20240524/69.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們一步一步的分解整個流程：&lt;/p&gt;
+
+&lt;p&gt;首先，因為兩個 process 都是 single thread，我們可以假設 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; 兩個 process 現在正在執行他們的第一個 loop。&lt;/p&gt;
+
+&lt;p&gt;當 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 從 WAN 收到一個只有一個 DNS address 的 RA 時，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 會向 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; 發送一個創建 remote object 的請求。
+&lt;img src=&quot;/assets/img/blog/20240524/70.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; 在收到第一個請求的同時會設定一個 timer，因爲在 IPC 的機制中，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; 無法知道多少個 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AddObj&lt;/code&gt; 請求屬於同一批，所以它非常簡單的設了一個一次性的 timer，時間到了才送出一次 notification。除此之外，每次 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; 處理完單個創建的請求後應該要回傳一個 nova message 作為 response，通知 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 剛剛被新增的 remote object 的 id 是多少，而 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 會透過方才送出請求時一併註冊的一次性 ResponseHandler 來處理這個回應。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/71.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但如果第二個 RA 封包太快被送到，以至於 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; 都還沒有把 id 透過 response 送回來時，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 只能先把舊的 DNS remote object 標記成 destroyed 進行軟刪除。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/72.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;接著 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 繼續為收到的第二個 RA 封包中的 RDNSS 欄位建立新的 DNS remote object，但由於 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; 還沒有結束第一個迭代，所以這個新的請求會停留在 socket 裡面等待下一個迭代才處理。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/73.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;接下來回到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt;，第一個迭代以回傳 id 給 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 做收尾，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 的 ResponseHandler 會根據拿到的 id 去更新 remote object，但由於對應的 remote object 已經被標記成刪除，所以 ResponseHandler 不會去更新 object id，而是直接刪除該 object。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/74.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;ResponseHandler 在刪除完 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; 中保存的 remote object 之後，會發送一個 delete object 的 message 給 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt;，告知它對應的 remote object 已經不再使用所以要進行刪除，但一樣會先卡在 socket 裡面等待處理&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/75.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;接著 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; 進入了第二次迭代，它會先拿到 socket 中為了第二個 RA 創建 remote object 的請求，為第二個 RA 的 DNS 創建對應的 remote object：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/76.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但在接著處理 delete 請求之前，先前設定的 timer 時間到了，所以&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; 會呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nv::Handler::sendChanges&lt;/code&gt; 來通知所有的訂閱者現在 resolver 知道的 DNS 有哪些，因為 object 1 還沒有被刪除，因此 resolver 會把兩次的請求創建的 DNS 通通都推播出去。&lt;/p&gt;
+
+&lt;p&gt;radvd 在收到這樣的資訊之後就會馬上構造用來在 LAN 廣播的 RA 封包，此時兩次的請求結果被混在一起了，這也就是為什麼一開始我們的攻擊只會在 MacOS 上成功的原因。雖然這個 race condition 聽起來很難觸發（刪除請求比 timer 先進行處理的話就不會觸發），但這是因為方便解釋，所以整個流程被我們大幅簡化了，實際上只要兩個封包到達的時間間隔夠短這個 race 就一定會成功。
+&lt;img src=&quot;/assets/img/blog/20240524/77.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;小結-1&quot;&gt;小結&lt;/h3&gt;
+
+&lt;p&gt;透過上面的分析，我們在 RouterOS 的 remote object 機制中找到了一個 race condition 的 pattern：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;在新增/刪除 remote object 時，使用了 non-blocking 的方法&lt;/li&gt;
+  &lt;li&gt;有訂閱 remote object&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;透過這類型的漏洞，攻擊者可以將兩次請求的結果混合成一個回傳，或許可以作為一個用來繞過某些安全性檢查的手法。如果順利找到可利用的漏洞，我們還可以用來參加 Pwn2Own 當中的 router  類別中的 LAN 項目。&lt;/p&gt;
+
+&lt;p&gt;然而最後時間緊迫，我們並沒有透過 race condition 找到可以利用的漏洞。而且禍不單行，在報名準備截止時，我們才發現這幾個月來被我們測試了上百次的 exploit 存在一些問題，就在報名截止的三個小時前像鬼打牆一樣，怎麼打怎麼失敗，簡直就是數位世代的逢魔時刻，我們一直更新 exploit 並且不斷更新準備上交的漏洞白皮書，一直到報名前止的半小時前（凌晨四點截止）才順利完成。&lt;/p&gt;
+
+&lt;p&gt;但是非常幸運的，我們在賽中僅嘗試一次就順利的完成了攻擊，成為 Pwn2Own 歷史上第一組完成 SOHO SMASHUP 這個新類別的隊伍：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/78.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們在這個項目中獲得了 10 點 Master of Pwn 點數還有 $100,000 美金的獎金，最終在比賽結算時，DEVCORE 以 18.5 個 Master of Pwn 點數奪下冠軍。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/79.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;冠軍除了獲得 Master of Pwn 的頭銜、獎杯、外套之外，照慣例，主辦方還會各寄一台我們打下的設備過來。&lt;/p&gt;
+
+&lt;p&gt;（我們沒辦法把所有東西都塞進相框裡）
+&lt;img src=&quot;/assets/img/blog/20240524/80.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;結論&quot;&gt;結論&lt;/h2&gt;
+
+&lt;p&gt;在本次研究中，我們對 RouterOS 進行了深入探討，進而揭露了一個潛藏在 RouterOS 內長達九年的安全漏洞，並成功利用該漏洞在 Pwn2Own Toronto 2022 的賽事中奪下 SOHO SMASHUP 的項目。此外，我們還在 IPC 中發現了一種導致 race condition 的行為模式。最後，我們也將賽事中使用的工具開源於 https://github.com/terrynini/routeros-tools ，供大家參考。&lt;/p&gt;
+
+&lt;p&gt;通過本次研究及分享，DEVCORE 希望分享我們的發現和經驗，從而協助白帽駭客深入了解 RouterOS，使之變得更加透明易懂。&lt;/p&gt;
+</content>
+ </entry>
+ 
+ <entry>
+   <title>Pwn2Own Toronto 2022 : A 9-year-old bug in MikroTik RouterOS</title>
+   <link href="https://devco.re/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros-en/"/>
+   <updated>2024-05-24T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros-en</id>
+   <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros-en/&quot;&gt;English Version&lt;/a&gt;, &lt;a href=&quot;/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;tldr&quot;&gt;TL;DR&lt;/h2&gt;
+
+&lt;p&gt;DEVCORE research team found a 9-year-old WAN bug on RouterOS, the product of MikroTik. Combined with another bug of the Canon printer, DEVCORE becomes the first team ever to successfully complete an attack chain in the brand new SOHO Smashup category of Pwn2Own. And DEVCORE also won the title of Master of Pwn in Pwn2Own Toronto 2022.&lt;/p&gt;
+
+&lt;p&gt;The vulnerability occurs in the radvd of RouterOS, which does not check the length of the RDNSS field when processing ICMPv6 packets for IPv6 SLAAC. As a result, an attacker can trigger the buffer overflow by sending two crafted Router Advertisement packets, that allows an attacker to gain full control over the underlying Linux system of the router without logging in and without user interaction. This vulnerability was assigned as CVE-2023-32154 with a CVSS score of 7.5.&lt;/p&gt;
+
+&lt;p&gt;The vulnerability was reported to MikroTik by &lt;a href=&quot;https://www.zerodayinitiative.com/advisories/ZDI-23-710/&quot;&gt;ZDI&lt;/a&gt; on 2022/12/29 and patched on 2023/05/19. It has been patched in the following RouterOS releases:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Long-term Release 6.48.7&lt;/li&gt;
+  &lt;li&gt;Stable Release 6.49.8&lt;/li&gt;
+  &lt;li&gt;Stable Release 7.10&lt;/li&gt;
+  &lt;li&gt;Testing Release 7.10rc6&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;pwn2own-soho-smashup&quot;&gt;Pwn2Own SOHO Smashup&lt;/h2&gt;
+
+&lt;p&gt;Pwn2Own is a series of contests organized by The Trend Micro Zero Day Initiative (ZDI). They pick popular products as targets for different categories, such as: operating systems, browsers, electric cars, industrial control systems, routers, printers, smart speakers, smartphones, NAS, webcams, etc.&lt;/p&gt;
+
+&lt;p&gt;As long as the participants can exploit a target without user interaction while the device is in its default state and the software is updated to the latest version, the team will receive the corresponding Master of Pwn points and bounty. And the team which has the highest Master of Pwn points will be the winner, who is also known as the “Master of Pwn.”&lt;/p&gt;
+
+&lt;p&gt;Due to the epidemic, Work From Home or SOHO (Small Office/Home Office) has become very common. Consider that, the Pwn2Own Toronto 2022 has  a special category called SOHO Smashup, in which participants need to hack routers from the WAN side, and then use the router as a trampoline to attack common household devices in LAN, such as smart speakers, printers, etc.&lt;/p&gt;
+
+&lt;p&gt;In addition to the second highest prize of $100,000 (USD), the SOHO Smashup also has the highest score of 10, so if you’re aiming to win, you’ll want to complete this category! We’ve also chosen the lesser-explored MikroTik’s RouterBoard as the target to avoid bug collisions with others (both the bounty and score are halved when you have a collision with someone else).&lt;/p&gt;
+
+&lt;h2 id=&quot;routeros&quot;&gt;RouterOS&lt;/h2&gt;
+
+&lt;p&gt;The RouterOS is based on the Linux kernel and it’s also the default operating system of MikroTik’s RouterBoard. It can also be installed on a PC to turn it into a router.&lt;/p&gt;
+
+&lt;p&gt;Though the RouterOS do use some GPL-License software, according to the &lt;a href=&quot;https://web.archive.org/web/20220603140018/https://mikrotik.com/downloadterms.html&quot;&gt;downloadterms&lt;/a&gt; page from MikroTik’s website, you have to pay $45 to MikroTik for sending a CD with GPL source, very interesting.&lt;/p&gt;
+
+&lt;p&gt;Glad that there is already a nice guy who uploaded the &lt;a href=&quot;https://github.com/robimarko/routeros-GPL&quot;&gt;GPL source on the Github&lt;/a&gt;, though they didn’t help much on reversing the RouterOS.&lt;/p&gt;
+
+&lt;h3 id=&quot;routeros-v7-and-routeros-v6&quot;&gt;RouterOS v7 and RouterOS v6&lt;/h3&gt;
+
+&lt;p&gt;There are two versions of RouterOS on the download page of MikroTik’s website: RouterOS v7 and RouterOS v6. They are more like two branches of the RouterOS and share a similar design pattern. Because the default installed version of our target, RB2011UiAS-IN, is RouterOS v6, we focus on that version.
+&lt;img src=&quot;/assets/img/blog/20240524/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;RouterOS does not provide a formal way for users to manipulate the underlying Linux system, and users are trapped in a restricted console with a limited number of commands to manage the router, so there has been a lot of research on how to jailbreak RouterOS.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The binary on the RouterOS uses a customized IPC to communicate with each other, and the IPC uses the “nova message” format to pack messages. So we call such kinds of binary “nova binary” afterward.&lt;/p&gt;
+
+&lt;p&gt;Besides, the RouterOS has a special attack surface. The user can manage a RouterOS device remotely from a Windows computer with a GUI tool, WinBox, by sending a nova message through the TCP. So, if the RouterOS fails to validate the privilege of a nova message, the attacker can possibly invade the router by sending a crafted nova message from remote, but it’s not a top priority  because the WinBox is unavailable from WAN by default.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;review-of-related-cves&quot;&gt;Review of Related CVEs&lt;/h2&gt;
+
+&lt;p&gt;We started by reviewing the CVEs in the past few years. There were 80 CVEs related to RouterOS at that time, of which 28 targeted the router itself in pre-auth scenarios.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;4 out of the 28 CVEs are in scenarios that are more in line with the Pwn2Own rules, which means these vulnerabilities could allow an attacker to spawn a shell on the router or log in as admin without user interaction. Three of the vulnerabilities were discovered between 2017 and 2019, and three of these were discovered “in the wild.” These four vulnerabilities are:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;CVE-2017-20149: Also known as Chimay-Red, this is one of the leaked vulnerabilities from the CIA’s “Vault 7” in 2017. The vulnerability occurs when RouterOS parses HTTP requests, and if the Content-Length in the HTTP headers is negative, it will cause Integer Underflow, which together with the Stack Clash attack technique can control the program flow to achieve RCE.&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://medium.com/@maxi./finding-and-exploiting-cve-2018-7445-f3103f163cc1&quot;&gt;CVE-2018-7445&lt;/a&gt;: A buffer overflow in the SMB service of RouterOS, which found by black-box fuzzing and is the only one of the four vulnerabilities that was reported by the discoverer. Though the SMB is not  enabled defaultly.&lt;/li&gt;
+  &lt;li&gt;CVE-2018-14847: Also the one of the leaked vulnerabilities from the “Vault 7”, which could allow an attacker to achieve arbitrary file read. Which doesn’t sound like a big problem, but because in the earlier version of RouterOS, the user’s password was stored in a file as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;password xor md5(username + &quot;283i4jfkai3389&quot;)&lt;/code&gt;, the attacker can calculate the password of admin as long as the attacker can read the file.&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://teamt5.org/en/posts/vulnerability-mikrotik-cve-2021-41987/&quot;&gt;CVE-2021-41987&lt;/a&gt;：A heap buffer overflow vulnerability in the base64 decoding process of the SCEP service due to a length miscalculation. The vulnerability was discovered after security researchers analyzed an APT’s exploit on its C2 server.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;As we can see, most of these vulnerabilities are “in the wild.” We can only learn limited knowledge about analyzing and reversing the RouterOS.&lt;/p&gt;
+
+&lt;h2 id=&quot;review-of-related-research&quot;&gt;Review of Related Research&lt;/h2&gt;
+
+&lt;p&gt;We continue to seek out publicly available research materials, and we have these articles and presentations available at the time of the competition:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;2017
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;https://kirils.org/slides/2017-08-06_prez_SHA_MT_pub.pdf&quot;&gt;Kirils. Rooting the MikroTik routers&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Mainly about jailbreak&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://kirils.org/slides/2017-09-15_prez_15_MT_Balccon_pub.pdf&quot;&gt;Kirils. A deeper journey into MikroTik routers&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Mainly about jailbreak&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://kirils.org/slides/2017-10-21_MT_Hacktivity_pub.pdf&quot;&gt;Kirils. Tools for effortless reverse engineering of MikroTik routers&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Mainly about jailbreak&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;2018
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;https://github.com/tenable/routeros&quot;&gt;Jacob Baines. Bug Hunting in RouterOS&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Explaining how nova message works in IPC&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;2019
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;https://medium.com/tenable-techblog/make-it-rain-with-mikrotik-c90705459bc6&quot;&gt;Jacob Baines. Make It Rain with MikroTik&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Identical to the talk in 2018&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://medium.com/tenable-techblog/mikrotik-firewall-nat-bypass-b8d46398bf24&quot;&gt;Jacob Baines. MikroTik Firewall &amp;amp; NAT Bypass&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;A vulnerability in WinBox: it can be used to scan the intranet once it’s exposed to the WAN&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://medium.com/@maxi./finding-and-exploiting-cve-2018-7445-f3103f163cc1&quot;&gt;Maximiliano Vidal, Juan Caillava. Finding and exploiting CVE-2018–7445&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Found buffer overflow in SMB by black-box fuzzing and how to exploit the vulnerability to get shell&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://mum.mikrotik.com/presentations/ID18/presentation_6149_1540240927.pdf&quot;&gt;Tomas Kirnak. Deep-dive: MikroTik exploits - a security analysis&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Discussing the mass exploit event after the leakage of CIA’s “Vault7” arsenal&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://media.defcon.org/DEF%20CON%2027/DEF%20CON%2027%20presentations/DEFCON-27-Jacob-Baines-Help-Me-Vulnerabilities.-Youre-My-Only-Hope.pdf&quot;&gt;Jacob Baines. Help Me Vulnerabilities You’re My Only Hope&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Release a tool for jailbreaking RouterOS to help user to check if their router has been compromised in the mass exploit event&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://medium.com/tenable-techblog/routeros-chain-to-root-f4e0b07c0b21&quot;&gt;Jacob Baines. RouterOS: Chain to Root&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Get shell by chaining DNS poisoning and downgrade vulnerabilities&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;2022
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;https://teamt5.org/en/posts/vulnerability-mikrotik-cve-2021-41987/&quot;&gt;D39. Vulnerability Exposure &amp;amp; Notification on Mikrotik (CVE-2021-41987)&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Found an exploit contains 0-day that targets RouterOS on an APT’s C2 server&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://margin.re/2022/06/pulling-mikrotik-into-the-limelight/&quot;&gt;Ian Dupont, Harrison Green. Pulling MikroTik into the Limelight&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Detail the IPC mechanism of the RouterOS and release a jailbreak tool “FOISted” to help researchers do further research on the amd64 version of RouterOS.&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;https://powerofcommunity.net/poc2022/QianChen.pdf&quot;&gt;Qian Chen. MikroTik RouterOS Security: The Forgotten IPC Message&lt;/a&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Found several vulnerabilities in IPC by fuzzing&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;review-of-the-ipc-and-the-nova-message&quot;&gt;Review of the IPC and the Nova Message&lt;/h2&gt;
+
+&lt;p&gt;Most of the research centers around RouterOS’s homebrew IPC, so we also took some time to review it. Here is a simple example to explain the main idea of the IPC.&lt;/p&gt;
+
+&lt;p&gt;Normally, a user can log in to the RouterOS through telnet, and manage the router by console.
+&lt;img src=&quot;/assets/img/blog/20240524/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Let’s follow the procedure step by step:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;When the user tries to access the console of RouterOS through the telnet. The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;telnet&lt;/code&gt; process will spawn the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;login&lt;/code&gt; process by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;execl&lt;/code&gt;, which asks the user for account and password.
+&lt;img src=&quot;/assets/img/blog/20240524/6.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
+  &lt;li&gt;After getting the account and password, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;login&lt;/code&gt; would pack that info into a nova message, and send it to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;user&lt;/code&gt; process for authentication.
+&lt;img src=&quot;/assets/img/blog/20240524/7.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
+  &lt;li&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;user&lt;/code&gt; process returns the result by sending back a nova message
+&lt;img src=&quot;/assets/img/blog/20240524/8.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
+  &lt;li&gt;If the login succeeds, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;console&lt;/code&gt; process is spawned, and the user interaction with the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;console&lt;/code&gt; is actually proxied through the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;login&lt;/code&gt; process.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;ipc&quot;&gt;IPC&lt;/h3&gt;
+
+&lt;p&gt;The above example simply describes the basic concept of IPC, but the communication between the two processes is actually more complex.&lt;/p&gt;
+
+&lt;p&gt;Every nova message would be sent to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;loader&lt;/code&gt; process through the socket first, then the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;loader&lt;/code&gt; dispatches each nova message to the corresponding nova binary.&lt;/p&gt;
+
+&lt;p&gt;Suppose the id of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;login&lt;/code&gt; process is 1039, the id of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;user&lt;/code&gt; process is 13, and the handler with id 4 in the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;user&lt;/code&gt; process is responsible for verifying the account and password.&lt;/p&gt;
+
+&lt;p&gt;Firstly, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;login&lt;/code&gt; process sends a request with an account and password to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;user&lt;/code&gt; process, so the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; in nova message is an array with two elements &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;13, 4&lt;/code&gt;, which means that the message should be sent to the handler with id 4 in the process with binary id 13.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;loader&lt;/code&gt; receives the message, it will remove the 13 in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; of the message which represents the target binary id, and add the source binary id in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_FROM&lt;/code&gt;, which is 1039, and then send the message to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;user&lt;/code&gt; process.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;user&lt;/code&gt; process does a similar thing when it receives a message: removing the 4 from &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; that represents the target handler id and sending the nova message to handler 4 for processing.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;nova-message&quot;&gt;Nova Message&lt;/h3&gt;
+
+&lt;p&gt;The nova message used in IPC is initialized and set by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nv::message&lt;/code&gt; and related functions. Nova message is composed of typed key-value pairs, and the key can only be an integer, so keys such as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_FROM&lt;/code&gt; are just simple macros.&lt;/p&gt;
+
+&lt;p&gt;The types that can be used in a nova message include u32, u64, bool, string, bytes, IP and nova message (i.e. you can create a nested nova message).&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Because the RouterOS doesn’t use nova messages in JSON anymore, we only focus on the binary format of it.&lt;/p&gt;
+
+&lt;p&gt;During IPC communication, the receiver’s socket receives an integer that expresses the length of the current nova message, followed by the nova message in binary format.
+&lt;img src=&quot;/assets/img/blog/20240524/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The nova message starts with two magic bytes: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;M2&lt;/code&gt;. Next, each key is described by 4 bytes; the first 3 bytes are used to express the id of the key, and the last byte is the type of the key. Depending on the type, the next bytes will be parsed differently as data, and the next key will come after data, and so on. A special feature is that a bool can be represented by only one bit, so the lowest bit of the type is used to represent True/False. For a more detailed format, see &lt;a href=&quot;https://margin.re/2022/06/pulling-mikrotik-into-the-limelight/&quot;&gt;Ian Dupont, Harrison Green. Pulling MikroTik into the Limelight&lt;/a&gt;：
+&lt;img src=&quot;/assets/img/blog/20240524/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;the-x3-format&quot;&gt;The x3 format&lt;/h3&gt;
+
+&lt;p&gt;In order to understand which nova binary the ids in the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; and the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_FROM&lt;/code&gt; in the nova message refer to, we need to parse a file with the extension x3, which is an xml in binary format. By parsing the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/nova/etc/loader/system.x3&lt;/code&gt; with the tool, we can map which nova binary each id corresponds to.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The id of some binaries are absent in this file, because some of them have been made available by installing an official RouterOS package. In which case the binary’s id will exist in the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/ram/pckg/&amp;lt;package_name&amp;gt;/nova/etc/loader/&amp;lt;package_name&amp;gt;.x3&lt;/code&gt;. The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; is an example.
+&lt;img src=&quot;/assets/img/blog/20240524/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, there are still some id of binaries that cannot be found in any .x3 files because these types of processes are not persistent, e.g., the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;login&lt;/code&gt; process, which is only spawned when the user tries to log in and uses a serial number as its id.&lt;/p&gt;
+
+&lt;p&gt;The .x3 file is also used to record nova binary related settings, e.g. &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;www&lt;/code&gt; specifies in .x3 which servlet should be used for each URI.
+&lt;img src=&quot;/assets/img/blog/20240524/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;summary&quot;&gt;Summary&lt;/h2&gt;
+
+&lt;p&gt;After reviewing the research and CVEs from the past, we can see that most vulnerabilities we are interested in have been concentrated in the past, and it seems to be difficult to find  pre-auth vulnerabilities on the WAN side of RouterOS nowadays.&lt;/p&gt;
+
+&lt;p&gt;While vulnerabilities continue to be revealed, the RouterOS is becoming more and more secure. Is it true that there are no more pre-auth vulnerabilities on the RouterOS? Or maybe it’s just that everyone is missing something?&lt;/p&gt;
+
+&lt;p&gt;Most of the public research mentioned earlier falls into the following three categories:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Jailbreaking&lt;/li&gt;
+  &lt;li&gt;The analysis of the exploits in the wild&lt;/li&gt;
+  &lt;li&gt;The nova message in the IPC&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;However, after reversing the binary on RouterOS for a while, we realized that the complexity of the whole system was more than that, but no one mentioned the details. This led to the following thought: “No one with sanity would like to dive into the details of nova binary”.&lt;/p&gt;
+
+&lt;p&gt;Aside from the exploits leaked from the CIA and APT, most of the research about finding vulnerabilities in RouterOS are: fuzzing network protocols, playing with nova messages, or performing fuzzing tests on nova messages.&lt;/p&gt;
+
+&lt;p&gt;By the outcome, it seems that attackers understand the RouterOS much better than we do, and we need to explore more details about the nova binary to fill in the gaps and increase the possibility to find the vulnerabilities we are looking for. Don’t get me wrong. I don’t against fuzzing. But we must ensure we check everything essential to take advantage of the contest.&lt;/p&gt;
+
+&lt;h2 id=&quot;where-to-begin&quot;&gt;Where to begin&lt;/h2&gt;
+
+&lt;p&gt;We don’t think the RouterOS is flawless, there is a gap between researchers’ and attackers’ understanding of RouterOS. So, what are we missing to find pre-auth RCE on RouterOS?&lt;/p&gt;
+
+&lt;p&gt;The first question that comes to mind is “where is the entry point of IPC and where does it lead?” Because most of the functionality triggered by IPC requires login, it is to be expected that sticking to IPC will only lead to more findings in post-auth. IPC is just one part of the main functionality implemented on RouterOS, and we would like to look at the core code of each functionality directly and carefully.&lt;/p&gt;
+
+&lt;p&gt;For example, how do the process that deal with DHCP extract the info needed in a DHCP packet? This information may be stored directly in the process, or may need to be sent to other processes via IPC for further processing.
+&lt;img src=&quot;/assets/img/blog/20240524/18.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;the-architecture-of-nova-binary&quot;&gt;The Architecture of Nova Binary&lt;/h3&gt;
+
+&lt;p&gt;Hence, we must first understand the architecture of the nova binary. Each nova binary has an instance of the Looper class (or a derivative of it: MultifiberLooper), which is a class for event loop logic. In each iteration, it calls &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;runTimer&lt;/code&gt; to execute the timer that is expired, and use &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poll&lt;/code&gt; to check the status of the sockets then process them accordingly.
+&lt;img src=&quot;/assets/img/blog/20240524/19.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Looper is responsible for the communication between its nova binary and the loader. Looper first registers a special callback function: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;onMsgSock&lt;/code&gt;, which is responsible for dispatching the nova message received from the socket to the corresponding handler in the nova binary.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/20.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;the-handler-class-and-its-derivatives&quot;&gt;The Handler class and its derivatives&lt;/h3&gt;
+
+&lt;p&gt;When a looper receives a nova message, it will dispatch it to the corresponding handler, e.g., a message with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[14, 0]&lt;/code&gt; will be dispatched by the loader to a nova binary with a binary id of 14. By the time the looper in the binary with a binary id of 14 receives it, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; has &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[0]&lt;/code&gt; left, so the looper will dispatch it to handler 0 for processing. If the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; in the initial nova message is &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[14]&lt;/code&gt;, then the looper receives it with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_TO&lt;/code&gt; as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[]&lt;/code&gt;, and the looper handles this message on its own.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/21.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Now let’s assume that the Looper receives a nova message that should be handled by handler 1 and dispatches it to handler 1. At this point, handler 1 calls the methods &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nv::Handler::handleCmd&lt;/code&gt; in the vtable of the handler class, which looks for the corresponding function to execute in the vtable based on the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_CMD&lt;/code&gt; specified in the nova message.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/22.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cmdUnknown&lt;/code&gt; in the vtable is often overridden to extend the functionality, but sometimes the developer overrides &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;handleCmd&lt;/code&gt; instead, depending on the developer’s mood. The handler class is a base class, so  commands related to objects are not implemented.&lt;/p&gt;
+
+&lt;h3 id=&quot;derived-class&quot;&gt;Derived class&lt;/h3&gt;
+
+&lt;p&gt;However, the basic handler class is not the most used one in nova binaries, but rather a derivative of it. Derived classes can be used to store multiple objects of a single type, similar to C++ STL containers.&lt;/p&gt;
+
+&lt;p&gt;For example, when a user creates a DHCP server through the web panel, a nova message with the command “add object” is sent to handler 0 of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;dhcp&lt;/code&gt; process, which then creates a dhcp server object. And the object will be stored in a tree of handler 0.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/23.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The handler 0 here is an instance of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AMap&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AMap&lt;/code&gt; is a derived class of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Handler&lt;/code&gt;. Since the command is “add object”, it triggers the member function &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AMap::cmdAddObj&lt;/code&gt;, which calls a function at offset 0x7c in handler 0’s vtable. And that function is actually the constructor of the object contained in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AMap&lt;/code&gt;. For example, if the developer defines handler 0 to be of type &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AMap&amp;lt;string&amp;gt;&lt;/code&gt;, then the function at offset 0x7c is the constructor of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;string&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;The offset of the constructor of the inner object in the vtable is different for each derived class, and locating the constructor to determine what type of objects are contained in the derived class can be done by reversing their individual &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cmdAddObj&lt;/code&gt; function.&lt;/p&gt;
+
+&lt;h3 id=&quot;ipc-and-something-other-than-ipc&quot;&gt;IPC, and something other than IPC&lt;/h3&gt;
+
+&lt;p&gt;Some of the functions in RouterOS are not driven by IPC. Take the two layer 2 discovery protocols, CDP and LLDP, implemented in the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;discover&lt;/code&gt; program as an example.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;When starting the two services, handler 0 will be responsible for calling &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nv::createPacketReceiver&lt;/code&gt; to open the sockets and register the callback functions for CDP and LLDP.&lt;/li&gt;
+  &lt;li&gt;In each iteration of the Looper, call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poll&lt;/code&gt; to check if the sockets of CDP and LLDP have received any packets.&lt;/li&gt;
+  &lt;li&gt;If packets are received, the corresponding callback function will be called to handle the packets.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/24.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;What CDP’s callback does is very simple: it makes sure that the interface that received the packet is allowed, and if it is, it parses the packet and stores the information directly into the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nv::ASecMap&lt;/code&gt; instead of using a nova message, and then returns.
+&lt;img src=&quot;/assets/img/blog/20240524/25.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It follows that IPC has no ability to trigger any function of CDP or LLDP other than to turn on CDP or LLDP services (which are turned on by default), so it is likely that previous research focused on IPC has not tested the program logic of such implementation.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-story-of-pre-auth-rce&quot;&gt;The Story of Pre-Auth RCE&lt;/h2&gt;
+
+&lt;p&gt;With the knowledge of RouterOS, a surprising accident led us to a long hidden vulnerability.&lt;/p&gt;
+
+&lt;p&gt;One day, when we plugged and unplugged the network cable as usual for reversing and debugging on RouterOS, we found that the log file recorded that the program &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; had crashed several times! So we tried plugging and unplugging the cable to manually reproduce the crash so that we could use the debugger to locate the problem, but after thousands of plugs and unplugs, we still couldn’t determine the conditions under which the crash was occurring, and it appeared to be just a random crash.&lt;/p&gt;
+
+&lt;p&gt;After a period of trial and error, we tried to find out where the crash occurred by static reversing the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; rather than blindly trying. Though we still couldn’t find the root cause of the crash in the end, we found another vulnerability in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; after reviewing the core logic in binary with the benefit of our understanding of the nova binary.&lt;/p&gt;
+
+&lt;p&gt;Before describing this vulnerability, let’s first explain what the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; process does.&lt;/p&gt;
+
+&lt;h3 id=&quot;slaac-stateless-address-auto-configuration-&quot;&gt;SLAAC (Stateless Address Auto-Configuration )&lt;/h3&gt;
+
+&lt;p&gt;In short, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; is a service that handles SLAAC for IPv6.&lt;/p&gt;
+
+&lt;p&gt;In a SLAAC environment, suppose a computer wants to get an IPv6 address to access the Internet, it will first broadcast an RS (Router Solicitation) request to all routers. After the router receives the RS, it will broadcast the network prefix through RA (Router Advertisement); computers receiving the RA can take the network prefix then combine it with the EUI-64 to decide what IPv6 address they’re going to use for connecting to the Internet.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/26.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;If an ISP or network administrator wants to assign a network segment to a user, so that the user can assign the address to the user-managed machines. How to assign a segment to the user when only using SLAAC without DHCP? Because SLAAC does not have a way to delegate directly, this is how it usually works:&lt;/p&gt;
+
+&lt;p&gt;Suppose there is an upstream router: Router A, which belongs to an ISP or a network administrator, a user-managed Router B, and a user-managed computer. The ISP or the network administrator will notify the user via email in advance about a /48 network prefix assigned to the user, which is &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;2001:db8::/48&lt;/code&gt; in this case. Users can set it on Router B, then when the computer sends RS to Router B, Router B will put this prefix into RA for return, this prefix is called routed prefix.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/27.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In order to make Router B be able to communicate with Router A, it also needs to get network prefix from Router A for an IPv6 address of its own. And the network prefix that Router B gets from Router A is called a link prefix.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/28.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;the-execution-flow-of-the-radvd&quot;&gt;The execution flow of the radvd&lt;/h3&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;When the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; process is started, the socket used by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; is opened by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nv::ThinRunner::addSocket&lt;/code&gt; and the corresponding callback function is registered.
+&lt;img src=&quot;/assets/img/blog/20240524/29.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;In each iteration of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Looper&lt;/code&gt; in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radavd&lt;/code&gt;, the socket is checked by calling the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poll&lt;/code&gt; to see if it has received any packets.
+&lt;img src=&quot;/assets/img/blog/20240524/30.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;If any packets are received, the corresponding callback function will be called to process the packets.
+&lt;img src=&quot;/assets/img/blog/20240524/31.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;In the callback function of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rardvd&lt;/code&gt;, it will first check if the packet is a legitimate RA or RS, if it’s RA, store the information, if it’s RS, start broadcasting RA in LAN.&lt;/p&gt;
+
+&lt;p&gt;There are total three cases in which the RouterOS broadcasts the network prefix:&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;Received RS from LAN&lt;/li&gt;
+  &lt;li&gt;Received RA from WAN&lt;/li&gt;
+  &lt;li&gt;Timed broadcast of RA packets on LAN (default random broadcast after 200~600 seconds)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;But we didn’t find the code that’s responsible for case 2 in the callback function by statically reversing. At that time we were not sure why, it is actually related to the subscription mechanism in the RouterOS IPC, which we will explain in a later chapter. However, there are two other cases that we can find out directly through static analysis.&lt;/p&gt;
+
+&lt;p&gt;In case 1, when an RS is received from the LAN, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; will call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sendRA&lt;/code&gt; to broadcast the RA packet:
+&lt;img src=&quot;/assets/img/blog/20240524/32.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In case 2, handler 1 will register a timer, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RAroutine&lt;/code&gt;, after initialization:
+&lt;img src=&quot;/assets/img/blog/20240524/33.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RAroutine&lt;/code&gt; is used to call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sendRA&lt;/code&gt; at regular intervals to broadcast packets:
+&lt;img src=&quot;/assets/img/blog/20240524/34.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;cve-2023-32154&quot;&gt;CVE-2023-32154&lt;/h2&gt;
+
+&lt;p&gt;After digging deeper into &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sendRA&lt;/code&gt;, we found that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; has a vulnerability in handling DNS advisory. First, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; will store the DNS advisory from the RA received from the upstream router (the data structure is a tree), and when it wants to broadcast the RA to the LAN, these DNS will also be wrapped in the RA and broadcast to the LAN.&lt;/p&gt;
+
+&lt;p&gt;In &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt;, it is the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addDNS&lt;/code&gt; function that expands the tree and puts it into the ICMPv6 packet. In the following figure, the first parameter of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addDNS&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RA_raw&lt;/code&gt;, is a buffer of 4096 bytes, which is the final ICMPv6 packet.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/35.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Stepping into the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addDNS&lt;/code&gt;, we can immediately see that there may be a stack buffer overflow here. The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addDNS&lt;/code&gt; puts DNS into ICMPv6 packets via &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;memcpy&lt;/code&gt; without any boundary check, and as long as the DNS advisory is big enough, it can trigger a stack buffer overflow.
+&lt;img src=&quot;/assets/img/blog/20240524/36.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The DNS records used here come from the RDNSS field in the RA packet, but according to the RFC, we can find that the field used to describe the length of RDNSS is only 8-bit. It can cover only 255*16 bytes at most, and this length is insufficient for us to overwrite the return address.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/37.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;But if this is not the first time the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; received RA, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; needs to mark the old DNS as expired in the next packet, so we can actually cover twice the length, which is 255*16*2 bytes. That is enough for us to overwrite the return address.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/38.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;attacking&quot;&gt;Attacking&lt;/h2&gt;
+
+&lt;p&gt;Now, the attacker only needs to send two crafted RA packets with RDNSS field length of 255 to the target RouterOS, and the attacker can control the execution flow of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; program through the IPv6 address in the RDNSS.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/39.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;the-protection-of-binaries&quot;&gt;The Protection of Binaries&lt;/h3&gt;
+
+&lt;p&gt;Since the architecture of target RouterOS is MIPS architecture, the CPU doesn’t support NX, but other protections are also not enabled.&lt;/p&gt;
+
+&lt;p&gt;So it’s just a matter of finding a good ROP gadget and letting the execution flow eventually jump to the shellcode we place on the stack, easy peasy lemon squeezy.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/40.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;the-constraint-of-shellcode&quot;&gt;The Constraint of Shellcode&lt;/h3&gt;
+
+&lt;p&gt;However, there are actually quite a number of limitations in the process of constructing an exploit, for example, since IPv6 addresses are stored in a tree structure, they are sorted before being placed on the stack, so we need to make sure that the payload we build remains the same after sorting.&lt;/p&gt;
+
+&lt;p&gt;The simplest way to do this is to make the IPv6 prefix to be a serial number, which ensures that the contents of our payload are in order, and that we can accurately jump to the shellcode through the ROP gadget. When writing the shellcode, we just need to construct the suffix of each address as a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jump&lt;/code&gt;, so that we can skip the non-executable  serial number.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/41.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, due to the delay slot in MIPS, the CPU will actually execute the next instruction of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jump&lt;/code&gt; instruction first.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/42.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;So we have to move the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jump&lt;/code&gt; forward, but since we can’t use the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;syscall&lt;/code&gt; command in the delay slot, the payload will be a pain to construct, and may exceed the length we can use, which is basically a bad idea.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/43.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In fact, this is a common beginner level problem in CTF. All we need is to make the prefix of IPv6 address a legal instruction that does not affect the execution result. We change the prefix to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addi s8, s0, 1&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addi s8, s0, 2&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addi s8, s0, 3&lt;/code&gt;…… and so on. In addition to the payloads being sorted, it also saves the space that would otherwise be used for &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jump&lt;/code&gt; instructions.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/44.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;But since we didn’t leak the stack address, and since we can’t find any gadgets available to move the stack address from the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;$sp&lt;/code&gt; register to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;$t9&lt;/code&gt; register, what we’ve done here is to first write the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jalr $sp&lt;/code&gt; instruction to memory via a ROP gadget, and then jump to it and execute it with a ROP gadget, which then directs the flow to the shellcode that we’ve constructed, and that sounds pretty good:
+&lt;img src=&quot;/assets/img/blog/20240524/45.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;But this is not enough to run shellcode, because MIPS has two different cache for memory access.&lt;/p&gt;
+
+&lt;h3 id=&quot;cache&quot;&gt;Cache&lt;/h3&gt;
+
+&lt;p&gt;MIPS has two caches: I-cache (instruction cache) and D-cache (data cache).&lt;/p&gt;
+
+&lt;p&gt;When we write the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jslr $sp&lt;/code&gt; instruction to the memory, it’s actually written to D-cache.
+&lt;img src=&quot;/assets/img/blog/20240524/46.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When we control the execution flow to jump on the address of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jslr $sp&lt;/code&gt;, the processor will first check whether the instruction at this address is in the I-cache or not, and since we jump to a data section, the cache will always miss it. And so, the contents of the memory will be loaded into the I-cache.
+&lt;img src=&quot;/assets/img/blog/20240524/47.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, since the contents of the D-cache have not been written back to memory, I-cache will only copy a bunch of null bytes from memory, which is nop in MIPS, so the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; only runs a bunch of nop until it crashes.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/48.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Here we need to make the processor write the contents of the D-cache back to memory, and there are two ways to do this: a context switch or exhausting the D-cache space (32 KB).&lt;/p&gt;
+
+&lt;p&gt;Triggering a context switch is easier, but there is no &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sleep&lt;/code&gt; in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; that we can use to trigger a context switch, and while other functions can trap into the kernel, the chances of a context switch occurring are not very high. In order to compete for the Pwn2Own, it is necessary to have a consistent attack that is close to 100% successful. Therefore, we turned to find a way to exhaust the 32kb D-cache.&lt;/p&gt;
+
+&lt;p&gt;First , a simple check shows that the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radomize_va_space&lt;/code&gt; variable of RouterOS is 1, which means that the memory address of the heap is not random, so we don’t need a leak to know where the heap is. We just need to find a way to make the heap allocate enough space, and then write some gibberish on it to deplete the 32kb D-cache.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/49.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, since there are no good ROP gadgets, such a payload will need too many ROP gadgets, and eventually the payload length may exceed the length we can cover.&lt;/p&gt;
+
+&lt;p&gt;Luckily, as mentioned earlier, DNS itself is stored in a tree structure, so it already occupies a large chunk of memory in the heap. Through the step-by-step execution of gdb, we can make sure that by the time DNS is being processed, the heap is already bigger than 32kb, so we just need to call memcpy to write 32kb of gibberish to the heap through the GOT hijack and that’s it!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/50.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Finally, our exploit is complete:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/51.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Combined with another Canon printer vulnerability we found for Pwn2Own, the attack flow would be:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;The attacker, as a bad neighbor of the router, sends crafted ICMPv6 packets to it&lt;/li&gt;
+  &lt;li&gt;After successfully controlling the router, we perform port forwarding to direct the payload to the Canon printer on the LAN.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/52.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In a Pwn2Own environment, the network environment can be simplified a bit as follows:
+&lt;img src=&quot;/assets/img/blog/20240524/53.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;debugging-for-exploit&quot;&gt;Debugging for Exploit&lt;/h2&gt;
+
+&lt;p&gt;Just when we thought we had the $100,000 prize in the pocket, something unexpected happened: our exploit failed on Ubuntu, whether it was a virtual machine in MacOS or an Ubuntu machine; and Pwn2Own officials, who basically used Ubuntu to execute our exploit, so we had to solve this problem.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/54.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We tried running the exploit on MacOS and recording the network traffic, then replaying the traffic on Ubuntu, and we can observe that the replay fails:
+&lt;img src=&quot;/assets/img/blog/20240524/55.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We also tried running the exploit on Ubuntu and recording the network traffic, of course it failed on Ubuntu. But when we replayed the failed traffic on MacOS, it succeeded:
+&lt;img src=&quot;/assets/img/blog/20240524/56.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Up to this point, we guessed that one of the OSes reordered the packets before sending them out, and that might have been done after Wireshark captured the packets. So we wrote a sniffer and put it on the router to monitor the traffic, and the result should be very reliable since &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AF_PACKET&lt;/code&gt; type of sockets are not affected by the firewall rules:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/57.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, the packets recorded from both sides are &lt;strong&gt;exactly the same&lt;/strong&gt; ……&lt;/p&gt;
+
+&lt;p&gt;So, apparently I’m the bus factor now. Exploit has only worked on my macOS so far, and if the situation remains, the last resort would be to fly myself to Toronto with my Mac laptop and do the attack on site with my own laptop. But there’s no way we’re going to leave this problem of unknown cause unattended, who knows if it might happen to my laptop during the Pwn2Own as well, and that would be a real loss.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/58.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After a few careful reviews, we finally know the cause of the problem: speed. Since the time window between the two RA packets is not that big, it’s hard to tell from the Wireshark timeline, but if you do some math, you’ll see that the difference in time between the two packets &lt;strong&gt;is 390 times&lt;/strong&gt;. So the problem is not with Ubuntu, it’s because the Mac sent the two packets too fast, and accidentally triggered the race condition in radvd (plus I didn’t properly calculate how many bytes it takes to overwrite the return address, I just wrote all the gibberish on it and did a pattern match. So the offset is only correct under the race condition).&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/59.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The solution is to sleep for a while between sending two RA packets and fix the offset in the payload, which will stabilize our attack with a 100% chance of success.&lt;/p&gt;
+
+&lt;h3 id=&quot;fix&quot;&gt;Fix&lt;/h3&gt;
+
+&lt;p&gt;This vulnerability has been fixed in the following releases:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Long-term Release 6.48.7&lt;/li&gt;
+  &lt;li&gt;Stable Release 6.49.8, 7.10&lt;/li&gt;
+  &lt;li&gt;Testing Release 7.10rc6&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;At the same time, we also found that this vulnerability has existed since RouterOS v6.0. From the official website can be found 6.0 release date is 2013-05-20, that is to say, this vulnerability has existed there &lt;strong&gt;nine years&lt;/strong&gt;, but no one has found him.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/60.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Echoing our initial thought, “No one with sanity would like to dive into the details of nova binary”, Q.E.D.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-race-condition&quot;&gt;The Race Condition&lt;/h2&gt;
+
+&lt;p&gt;But how did this race condition that prevents us from easily earning $100,000 happen? As mentioned above, nova binary has a Looper that loops for dealing with events, i.e. it’s a single thread program, so what’s the race condition all about? (Some nova binary is multi-fiber, but &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; isn’t.)&lt;/p&gt;
+
+&lt;p&gt;I didn’t mention that when &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; parse the RA packets received from WAN, the DNS is stored in a “vector”, but when preparing the RA packets for broadcasting on LAN, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addDNS&lt;/code&gt; expands a “tree” with DNS stored in it, so what is the relationship between this vector and the tree?&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/61.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;That’s why we didn’t find the logic “broadcasts RA packets to the LAN when it receives RA from the WAN” in the callback, because it’s the result of the interaction between the two processes.&lt;/p&gt;
+
+&lt;p&gt;If we take a closer look at what the callback does, we can see that there is an array that holds an object called the “remote object”. The code looks intuitive, it iterates over a vector of DNS addresses, calls &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nv::roDNS&lt;/code&gt; once for each DNS address, and saves the result of the function execution in the and saves the result of the function execution in the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DNS_remoteObject&lt;/code&gt; vector.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/62.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;remote-object&quot;&gt;Remote Object&lt;/h3&gt;
+
+&lt;p&gt;So what is a remote object? Remote object is a mechanism used in RouterOS to share resources across processes, one process is responsible for storing this shared resource, then another process can send requests to the process responsible for storing it to make additions, deletions, and modifications by specifying the ids. For example, the DNS remote object is actually placed in handler 2 of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; process, while handler 1 of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; simply keeps the ids of these objects.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/63.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;subscription-and-notification&quot;&gt;Subscription and Notification&lt;/h3&gt;
+
+&lt;p&gt;When a remote object is updated, some process may want to respond, so the nova binary can subscribe to other nova binary in advance. Take &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;dhcp&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ippool6&lt;/code&gt; for example, handler 1 in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ippool6&lt;/code&gt; is responsible for managing the ipv6 address pool, the dhcp process subscribes to handler 1 in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ippool6&lt;/code&gt;, so when there are changes in the ipv6 address pool, dhcp can check whether they need to be processed further, such as shutting down a dhcp server.&lt;/p&gt;
+
+&lt;p&gt;The subscription behavior is achieved by sending a nova message to the binary that wants to subscribe, with a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYS_NOTIFYCMD&lt;/code&gt; that contains the specific conditions that it wants to be notified about.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/64.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When another process adds an object to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ippool6&lt;/code&gt;, handler 1’s &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cmdAddObj&lt;/code&gt; function will be executed.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/65.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In most cases, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AddObj&lt;/code&gt; will call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sendNotifies&lt;/code&gt; to notify subscribers who have subscribed to the 0xfe000b event that their subscribed objects have been altered, so &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ippool6&lt;/code&gt; here sends a nova message to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;dhcp&lt;/code&gt; process informing it of the result of the object being altered.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/66.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After understanding the subscription mechanism, we can more fully understand the interaction between radvd and the resolver as follows:&lt;/p&gt;
+
+&lt;p&gt;When &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; receives the RA packet from the WAN, it will call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;roDNS&lt;/code&gt; for each IPv6 address. Handler 4 in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; handles this request and creates the corresponding ipv6 object in handler 2. Then, because handler 1 in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; subscribes to handler 2 in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt;, handler 2 in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; pushes all the DNS addresses that it has to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt;, then handler 1 constructs a RA packet based on the DNS address he received, and then broadcasts the packet on the LAN.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/67.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;the-root-cause-of-race-condition&quot;&gt;The Root Cause of Race Condition&lt;/h3&gt;
+
+&lt;p&gt;The problem is actually in the implementation of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;roDNS&lt;/code&gt;, where &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;roDNS&lt;/code&gt; uses &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;postMessage&lt;/code&gt; to send a nova message. &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;postMessage&lt;/code&gt; is non-blocking, meaning that the remote object in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; doesn’t immediately know what id of a remote object corresponds to in the resolver.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/68.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;If our second packet arrives too soon, so that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; doesn’t know what the remote object’s id is, then &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; can’t delete these objects in the first place, it can only mark them as destroyed for soft deletion, which results in a race condition.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/69.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Let’s try to understand the whole process step by step:&lt;/p&gt;
+
+&lt;p&gt;First, since both processes are single thread, we can assume that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; are in their first loop. The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; receives an RA from the WAN with only one DNS address, and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; sends a request for creating a remote object to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/70.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;At the same time, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; will set a timer when it receives the first request, because in the IPC mechanism, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; has no way of knowing how many &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AddObj&lt;/code&gt; requests belong to the same group, so it simply sets a timer , and sends out a notification when the time is up. The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; should reply with a nova message as a response, informing &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; of the id of the remote object that has just been added, and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; will register a corresponding &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ResponseHandler&lt;/code&gt; to handle this request.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/71.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, if the second RA packet is delivered so fast that the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; hasn’t sent the response back yet, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; can only mark the old DNS remote object as destroyed for soft deletion first.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/72.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Then &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; proceeds to create a new DNS remote object for the RDNSS field in the second RA packet received, but since the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; hasn’t finished the first iteration yet, this new request stays in the socket until the next iteration.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/73.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Going back to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt;, the first iteration ends by passing back an id to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt;. &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt;’s &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ResponseHandler&lt;/code&gt; will update the remote object based on the id it gets. But since the corresponding remote object has been marked for deletion, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ResponseHandler&lt;/code&gt; will delete the object instead of updating the object id.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/74.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ResponseHandler&lt;/code&gt; deletes the remote object saved in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt;, it will send a delete object message to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt;, informing it that the corresponding remote object is no longer in use and has to be deleted, but the request will still be stuck in the socket waiting to be processed.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/75.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;resolver&lt;/code&gt; then proceeds to the second iteration, where it gets a request from the socket to create a remote object for the second RA.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/76.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;At this point, the previously set timer expires and the resolver calls &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nv::Handler::sendChanges&lt;/code&gt; to notify all subscribers what DNSs the resolver now knows about, since object 1 has not been deleted yet, so the resolver pushes the DNS that was created by the two requests. The DNS created by the two requests will be pushed out.&lt;/p&gt;
+
+&lt;p&gt;When &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;radvd&lt;/code&gt; receives this information, it immediately constructs a RA packet to broadcast over the LAN, and the results of the two requests are mixed together, which is why our attack only succeeds on MacOS in the first place.&lt;/p&gt;
+
+&lt;p&gt;The race condition itself sounds hard to be triggered (it won’t be triggered if the delete request is processed before the timer), but this is because the whole process has been greatly simplified for ease of explanation, and in fact, as long as the time between the arrival of the two packets is short enough, the race will be successful.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/77.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;summary-1&quot;&gt;Summary&lt;/h3&gt;
+
+&lt;p&gt;Through the above analysis, we found a pattern of race conditions in the remote object mechanism of RouterOS:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Use non-blocking methods to create/delete the remote object&lt;/li&gt;
+  &lt;li&gt;Subscribe to the remote object&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Because it is possible to mix the results of two requests into a single response, this could possibly be used to bypass some security checks. If we can find such a vulnerability, it could be used to participate in the router category.&lt;/p&gt;
+
+&lt;p&gt;In the end, we were pressed for time and we didn’t find any exploitable vulnerabilities through the race condition.&lt;/p&gt;
+
+&lt;p&gt;And not only that, we realized that the exploit that we had tested hundreds of times over the past few months still had some issues, and we still couldn’t get it to work three hours before the registration deadline. We kept updating the exploit and the white paper we were going to submit, and it was done until half an hour before the deadline (4:00 AM deadline).&lt;/p&gt;
+
+&lt;p&gt;But luckily, we were able to complete the attack with only one attempt at Pwn2Own, becoming the first team in history to complete the new category of SOHO SMASHUP:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240524/78.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We earned 10 Master of Pwn points and $100,000 by this category, and at the end of the tournament, DEVCORE was crowned the winner with 18.5 Master of Pwn points.
+&lt;img src=&quot;/assets/img/blog/20240524/79.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In addition to receiving the Master of Pwn title, trophy, and jacket, the organizers will also send us one of each of the devices we hacked.&lt;/p&gt;
+
+&lt;p&gt;(We can’t fit all of them into a picture)
+&lt;img src=&quot;/assets/img/blog/20240524/80.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;In this study, we have explored RouterOS in depth and revealed a security vulnerability that has been hidden in RouterOS for nine years. In addition, we found a design pattern in IPC that leads to a race condition. Meanwhile, we also open-source the tools used in the research at https://github.com/terrynini/routeros-tools for your reference.&lt;/p&gt;
+
+&lt;p&gt;Through this paper, DEVCORE hopes to share our discoveries and experiences to help white hat hackers gain a deeper understanding of RouterOS and make it more understandable.&lt;/p&gt;
+</content>
+ </entry>
  
  <entry>
    <title>DEVCORE 2024 第五屆實習生計畫</title>

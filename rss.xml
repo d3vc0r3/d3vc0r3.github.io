@@ -4,11 +4,247 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 紅隊演練服務、滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Fri, 24 May 2024 17:28:29 +0800</lastBuildDate>
-        <pubDate>Fri, 24 May 2024 17:28:29 +0800</pubDate>
+        <lastBuildDate>Thu, 06 Jun 2024 23:17:39 +0800</lastBuildDate>
+        <pubDate>Thu, 06 Jun 2024 23:17:39 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>資安通報：PHP 遠端程式碼執行 (CVE-2024-4577) - PHP CGI 參數注入弱點</title>
+                <description>&lt;p&gt;&lt;a href=&quot;/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability-en/&quot;&gt;English Version&lt;/a&gt;, &lt;a href=&quot;/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;戴夫寇爾研究團隊在進行&lt;a href=&quot;https://devco.re/research/overview/&quot;&gt;前瞻攻擊研究&lt;/a&gt;期間，發現 PHP 程式語言存在遠端程式碼執行弱點，基於 PHP 在網站生態使用的廣泛性以及此弱點之易重現性，研究團隊將此弱點標記為嚴重、並在第一時間回報給 PHP 官方。官方已在 2024/06/06 發佈修復版本，詳細時程可參閱&lt;a href=&quot;#漏洞回報時間軸&quot;&gt;漏洞回報時間軸&lt;/a&gt;。&lt;/p&gt;
+
+&lt;h2 id=&quot;漏洞描述&quot;&gt;漏洞描述&lt;/h2&gt;
+
+&lt;p&gt;PHP 程式語言在設計時忽略 Windows 作業系統內部對字元編碼轉換的 &lt;a href=&quot;https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-ucoderef/d1980631-6401-428e-a49d-d71394be7da8&quot;&gt;Best-Fit&lt;/a&gt; 特性，導致未認證的攻擊者可透過特定的字元序列繞過舊有 &lt;a href=&quot;https://www.kb.cert.org/vuls/id/520827&quot;&gt;CVE-2012-1823&lt;/a&gt; 的保護；透過參數注入等攻擊在遠端 PHP 伺服器上執行任意程式碼。&lt;/p&gt;
+
+&lt;h2 id=&quot;影響範圍&quot;&gt;影響範圍&lt;/h2&gt;
+
+&lt;p&gt;此弱點&lt;strong&gt;影響安裝於 Windows 作業系統上所有的 PHP 版本&lt;/strong&gt;，詳情可參照下表:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;PHP 8.3 &amp;lt; 8.3.8&lt;/li&gt;
+  &lt;li&gt;PHP 8.2 &amp;lt; 8.2.20&lt;/li&gt;
+  &lt;li&gt;PHP 8.1 &amp;lt; 8.1.29&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;由於 PHP 8.0 分支、PHP 7 以及 PHP 5 官方已&lt;a href=&quot;https://www.php.net/eol.php&quot;&gt;不再維護&lt;/a&gt;，網站管理員可參考&lt;a href=&quot;#如何確認自己易遭受攻擊&quot;&gt;如何確認自己易遭受攻擊&lt;/a&gt;章節，並於&lt;a href=&quot;#修補建議&quot;&gt;修補建議&lt;/a&gt;找到暫時緩解措施。&lt;/p&gt;
+
+&lt;h2 id=&quot;如何確認自己易遭受攻擊&quot;&gt;如何確認自己易遭受攻擊?&lt;/h2&gt;
+
+&lt;p&gt;對於常見之 Apache HTTP Server 加上 PHP 組合，網站管理員可透過此文章列出之兩個方式確認伺服器是否易被攻擊。其中，情境二也是 &lt;a href=&quot;https://www.apachefriends.org/&quot;&gt;XAMPP for Windows&lt;/a&gt; 安裝時的預設設定，因此&lt;strong&gt;所有版本的 XAMPP for Windows 安裝也預設受此弱點影響。&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;在本文撰寫當下已驗證當 Windows 作業系統執行於下列語系時，&lt;strong&gt;未授權的攻擊者可直接在遠端伺服器上執行任意程式碼&lt;/strong&gt;:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;繁體中文 (字碼頁 950)&lt;/li&gt;
+  &lt;li&gt;簡體中文 (字碼頁 936)&lt;/li&gt;
+  &lt;li&gt;日文 (字碼頁 932)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;對於其它執行在英文、韓文、西歐語系之 Windows 作業系統，由於 PHP 使用情境廣泛、暫無法完全列舉並排除其利用情境，因此還是建議使用者全面盤點資產、確認使用情境並更新 PHP 至最新版本確保萬無一失！&lt;/p&gt;
+
+&lt;h3 id=&quot;情境一-將-php-設定於-cgi-模式下執行&quot;&gt;情境一: 將 PHP 設定於 CGI 模式下執行&lt;/h3&gt;
+
+&lt;p&gt;在 Apache Httpd 設定檔中透過 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Action&lt;/code&gt; 語法將對應的 HTTP 請求交給 PHP-CGI 執行檔處理時，受此弱點影響，常見設定包含但不限於:&lt;/p&gt;
+
+&lt;div class=&quot;language-apache highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;AddHandler&lt;/span&gt; cgi-script .php
+&lt;span class=&quot;nc&quot;&gt;Action&lt;/span&gt; cgi-script &quot;/cgi-bin/php-cgi.exe&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;或&lt;/p&gt;
+
+&lt;div class=&quot;language-apache highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;FilesMatch&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt; &quot;\.php$&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;
+&lt;/span&gt;    &lt;span class=&quot;nc&quot;&gt;SetHandler&lt;/span&gt; application/x-httpd-php-cgi
+&lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;FilesMatch&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;
+&lt;/span&gt;
+&lt;span class=&quot;nc&quot;&gt;Action&lt;/span&gt; application/x-httpd-php-cgi &quot;/php-cgi/php-cgi.exe&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;情境二-將-php-執行檔暴露在外-xampp-預設安裝設定&quot;&gt;情境二: 將 PHP 執行檔暴露在外 (XAMPP 預設安裝設定)&lt;/h3&gt;
+
+&lt;p&gt;即使未設定 PHP 於 CGI 模式下執行，僅將 PHP 執行檔暴露在 CGI 目錄下也受此弱點影響，常見情況包含但不限於:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;將 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;php.exe&lt;/code&gt; 或 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;php-cgi.exe&lt;/code&gt; 複製到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/cgi-bin/&lt;/code&gt; 目錄中&lt;/li&gt;
+  &lt;li&gt;將 PHP 安裝目錄透過 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ScriptAlias&lt;/code&gt; 暴露到外，如:
+    &lt;pre&gt;&lt;code class=&quot;language-apache2=&quot;&gt; ScriptAlias /php-cgi/ &quot;C:/xampp/php/&quot;
+&lt;/code&gt;&lt;/pre&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;修補建議&quot;&gt;修補建議&lt;/h2&gt;
+
+&lt;p&gt;強烈建議所有使用者升級至 PHP 官方最新版本 &lt;a href=&quot;https://www.php.net/downloads&quot;&gt;8.3.8&lt;/a&gt;、&lt;a href=&quot;https://www.php.net/downloads&quot;&gt;8.2.20&lt;/a&gt; 與 &lt;a href=&quot;https://www.php.net/downloads&quot;&gt;8.1.29&lt;/a&gt;，對於無法升級的系統可透過下列方式暫時緩解弱點。&lt;/p&gt;
+
+&lt;p&gt;除此之外，由於 PHP CGI 已是一種過時且易於出現問題的架構，也建議評估遷移至較為安全的 Mod-PHP、FastCGI 或是 PHP-FPM 等架構可能性。&lt;/p&gt;
+
+&lt;h3 id=&quot;1-對無法更新-php-的使用者&quot;&gt;1. 對無法更新 PHP 的使用者&lt;/h3&gt;
+
+&lt;p&gt;可透過下列 Rewrite 規則阻擋攻擊，請注意&lt;strong&gt;此份規則只作為繁體中文、簡體中文及日文語系中的暫時性緩解機制&lt;/strong&gt;，實務上仍建議更新到已修復版本或更改架構。&lt;/p&gt;
+
+&lt;div class=&quot;language-apache highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;RewriteEngine&lt;/span&gt; &lt;span class=&quot;ss&quot;&gt;On&lt;/span&gt;
+&lt;span class=&quot;nc&quot;&gt;RewriteCond&lt;/span&gt; %{QUERY_STRING} ^%ad [NC]
+&lt;span class=&quot;nc&quot;&gt;RewriteRule&lt;/span&gt; .? - [F,L]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;2-對-xampp-for-windows-使用者&quot;&gt;2. 對 XAMPP for Windows 使用者&lt;/h3&gt;
+
+&lt;p&gt;在撰寫本文的當下，XAMPP 尚未針對此漏洞釋出相對應的更新安裝檔，如確認自身的 XAMPP 並無使用到 PHP CGI 之功能，可透過修改下列 Apache Httpd 設定檔以避免暴露在弱點中:&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;C:/xampp/apache/conf/extra/httpd-xampp.conf&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;找到相對應的設定行數:&lt;/p&gt;
+&lt;div class=&quot;language-apache highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;ScriptAlias&lt;/span&gt; /php-cgi/ &quot;C:/xampp/php/&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;並將其註解:&lt;/p&gt;
+&lt;div class=&quot;language-apache highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# ScriptAlias /php-cgi/ &quot;C:/xampp/php/&quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;漏洞回報時間軸&quot;&gt;漏洞回報時間軸&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;2024/05/07 - DEVCORE 透過 PHP 官方弱點通報頁面回報此問題。&lt;/li&gt;
+  &lt;li&gt;2024/05/07 - PHP 開發者確認弱點並強調要盡快修復。&lt;/li&gt;
+  &lt;li&gt;2024/05/16 - PHP 開發者釋出第一版修復並尋求建議。&lt;/li&gt;
+  &lt;li&gt;2024/05/18 - PHP 開發者釋出第二版修復並尋求建議。&lt;/li&gt;
+  &lt;li&gt;2024/05/20 - PHP 進入新版本發布準備。&lt;/li&gt;
+  &lt;li&gt;2024/06/06 - PHP 發布新版本 &lt;a href=&quot;https://www.php.net/downloads&quot;&gt;8.3.8&lt;/a&gt;、&lt;a href=&quot;https://www.php.net/downloads&quot;&gt;8.2.20&lt;/a&gt; 與 &lt;a href=&quot;https://www.php.net/downloads&quot;&gt;8.1.29&lt;/a&gt;。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;參考資料&quot;&gt;參考資料&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/php/php-src/security/advisories/GHSA-3qgc-jrrr-25jv&quot;&gt;PHP Security Advisory - PHP RCE: A Bypass of CVE-2012-1823, Argument Injection in PHP-CGI&lt;/a&gt; (to be announced)&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-ucoderef/d1980631-6401-428e-a49d-d71394be7da8&quot;&gt;MS-UCODEREF - Windows Protocols Unicode Reference&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.kb.cert.org/vuls/id/520827&quot;&gt;CERT/CC VU#520827 - PHP-CGI query string parameter vulnerability&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+                <link>https://devco.re/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability/</link>
+                <guid>https://devco.re/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability</guid>
+                <pubDate>Thu, 06 Jun 2024 00:00:00 +0800</pubDate>
+        </item>
+
+        <item>
+                <title>Security Alert: CVE-2024-4577 - PHP CGI Argument Injection Vulnerability</title>
+                <description>&lt;p&gt;&lt;a href=&quot;/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability-en/&quot;&gt;English Version&lt;/a&gt;, &lt;a href=&quot;/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;During DEVCORE’s &lt;a href=&quot;https://devco.re/en/research/overview/&quot;&gt;continuous offensive research&lt;/a&gt;, our team discovered a remote code execution vulnerability in PHP. Due to the widespread use of the programming language in the web ecosystem and the ease of exploitability, DEVCORE classified its severity as critical, and promptly reported it to the PHP official team. The official team released a patch on 2024/06/06. Please refer to the &lt;a href=&quot;#Timeline&quot;&gt;timeline&lt;/a&gt; for disclosure details.&lt;/p&gt;
+
+&lt;h2 id=&quot;description&quot;&gt;Description&lt;/h2&gt;
+
+&lt;p&gt;While implementing PHP, the team did not notice the &lt;a href=&quot;https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-ucoderef/d1980631-6401-428e-a49d-d71394be7da8&quot;&gt;Best-Fit&lt;/a&gt; feature of encoding conversion within the Windows operating system. This oversight allows unauthenticated attackers to bypass the previous protection of &lt;a href=&quot;https://www.kb.cert.org/vuls/id/520827&quot;&gt;CVE-2012-1823&lt;/a&gt; by specific character sequences. Arbitrary code can be executed on remote PHP servers through the argument injection attack.&lt;/p&gt;
+
+&lt;h2 id=&quot;impact&quot;&gt;Impact&lt;/h2&gt;
+
+&lt;p&gt;This vulnerability &lt;strong&gt;affects all versions of PHP installed on the Windows operating system&lt;/strong&gt;. Please refer to the table below for details:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;PHP 8.3 &amp;lt; 8.3.8&lt;/li&gt;
+  &lt;li&gt;PHP 8.2 &amp;lt; 8.2.20&lt;/li&gt;
+  &lt;li&gt;PHP 8.1 &amp;lt; 8.1.29&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Since the branch of PHP 8.0, PHP 7, and PHP 5 are &lt;a href=&quot;https://www.php.net/eol.php&quot;&gt;End-of-Life&lt;/a&gt;, and are no longer maintained anymore, server admins can refer to the &lt;a href=&quot;#am-i-vulnerable&quot;&gt;Am I Vulnerable&lt;/a&gt; section to find temporary patch recommendations in the &lt;a href=&quot;#mitigation-measure&quot;&gt;Mitigation Measure&lt;/a&gt; section.&lt;/p&gt;
+
+&lt;h2 id=&quot;am-i-vulnerable&quot;&gt;Am I Vulnerable?&lt;/h2&gt;
+
+&lt;p&gt;For the usual case of combinations like Apache HTTP Server and PHP, server administrators can use the two methods listed in this article to determine whether their servers are vulnerable or not. It’s notable to address that Scenario-2 is also the default configuration for &lt;a href=&quot;https://www.apachefriends.org/&quot;&gt;XAMPP for Windows&lt;/a&gt;, so &lt;strong&gt;all versions of XAMPP installations on Windows are vulnerable by default&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;As of this writing, it has been verified that when the Windows is running in the following locales, &lt;strong&gt;an unauthorized attacker can directly execute arbitrary code on the remote server&lt;/strong&gt;:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Traditional Chinese (Code Page 950)&lt;/li&gt;
+  &lt;li&gt;Simplified Chinese (Code Page 936)&lt;/li&gt;
+  &lt;li&gt;Japanese (Code Page 932)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;For Windows running in other locales such as English, Korean, and Western European, due to the wide range of PHP usage scenarios, it is currently not possible to completely enumerate and eliminate all potential exploitation scenarios. Therefore, it is recommended that users conduct a comprehensive asset assessment, verify their usage scenarios, and update PHP to the latest version to ensure security.&lt;/p&gt;
+
+&lt;h3 id=&quot;scenario-1-running-php-under-cgi-mode&quot;&gt;&lt;strong&gt;Scenario 1&lt;/strong&gt;: Running PHP under CGI mode&lt;/h3&gt;
+
+&lt;p&gt;When configuring the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Action&lt;/code&gt; directive to map corresponding HTTP requests to a PHP-CGI executable binary in Apache HTTP Server, this vulnerability can be exploited directly. Common configurations affected include, but are not limited to:&lt;/p&gt;
+
+&lt;div class=&quot;language-apache highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;AddHandler&lt;/span&gt; cgi-script .php
+&lt;span class=&quot;nc&quot;&gt;Action&lt;/span&gt; cgi-script &quot;/cgi-bin/php-cgi.exe&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Or&lt;/p&gt;
+
+&lt;div class=&quot;language-apache highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;FilesMatch&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt; &quot;\.php$&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;
+&lt;/span&gt;    &lt;span class=&quot;nc&quot;&gt;SetHandler&lt;/span&gt; application/x-httpd-php-cgi
+&lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;FilesMatch&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;
+&lt;/span&gt;
+&lt;span class=&quot;nc&quot;&gt;Action&lt;/span&gt; application/x-httpd-php-cgi &quot;/php-cgi/php-cgi.exe&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;scenario-2-exposing-the-php-binary-also-the-default-xampp-configuration&quot;&gt;&lt;strong&gt;Scenario 2&lt;/strong&gt;: Exposing the PHP binary (also the default XAMPP configuration)&lt;/h3&gt;
+
+&lt;p&gt;Even if PHP is not configured under the CGI mode, merely exposing the PHP executable binary in the CGI directory is affected by this vulnerability, too. Common scenarios include, but are not limited to:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Copying &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;php.exe&lt;/code&gt; or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;php-cgi.exe&lt;/code&gt; to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/cgi-bin/&lt;/code&gt; directory.&lt;/li&gt;
+  &lt;li&gt;Exposing the PHP directory via &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ScriptAlias&lt;/code&gt; directive, such as:
+    &lt;div class=&quot;language-apache highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; &lt;span class=&quot;nc&quot;&gt;ScriptAlias&lt;/span&gt; /php-cgi/ &quot;C:/xampp/php/&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;mitigation-measure&quot;&gt;Mitigation Measure&lt;/h2&gt;
+
+&lt;p&gt;It is strongly recommended that all users upgrade to the latest PHP versions of &lt;a href=&quot;https://www.php.net/downloads&quot;&gt;8.3.8&lt;/a&gt;, &lt;a href=&quot;https://www.php.net/downloads&quot;&gt;8.2.20&lt;/a&gt;, and &lt;a href=&quot;https://www.php.net/downloads&quot;&gt;8.1.29&lt;/a&gt;. For systems that cannot be upgraded, the following instructions can be used to temporarily mitigate the vulnerability.&lt;/p&gt;
+
+&lt;p&gt;However, since PHP CGI is an outdated and problematic architecture, it’s still recommended to evaluate the possibility of migrating to a more secure architecture such as Mod-PHP, FastCGI, or PHP-FPM.&lt;/p&gt;
+
+&lt;h3 id=&quot;1-for-users-who-cannot-upgrade-php&quot;&gt;1. For users who cannot upgrade PHP:&lt;/h3&gt;
+
+&lt;p&gt;The following Rewrite Rules can be used to block attacks. Please note that &lt;strong&gt;these rules are only a temporary mitigation for Traditional Chinese, Simplified Chinese, and Japanese locales&lt;/strong&gt;. It is still recommended to update to a patched version or migrate the architecture in practice.&lt;/p&gt;
+
+&lt;div class=&quot;language-apache highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;RewriteEngine&lt;/span&gt; &lt;span class=&quot;ss&quot;&gt;On&lt;/span&gt;
+&lt;span class=&quot;nc&quot;&gt;RewriteCond&lt;/span&gt; %{QUERY_STRING} ^%ad [NC]
+&lt;span class=&quot;nc&quot;&gt;RewriteRule&lt;/span&gt; .? - [F,L]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;2-for-users-who-use-xampp-for-windows&quot;&gt;2. For users who use XAMPP for Windows:&lt;/h3&gt;
+
+&lt;p&gt;XAMPP has not yet released corresponding update files for this vulnerability at the time of writing this article. If you confirm that you do not need the PHP CGI feature, you can avoid exposure to the vulnerability by modifying the following Apache HTTP Server configuration:&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;C:/xampp/apache/conf/extra/httpd-xampp.conf&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Locating the corresponding lines:&lt;/p&gt;
+
+&lt;div class=&quot;language-apache highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;ScriptAlias&lt;/span&gt; /php-cgi/ &quot;C:/xampp/php/&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;And comment it out:&lt;/p&gt;
+
+&lt;div class=&quot;language-apache highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# ScriptAlias /php-cgi/ &quot;C:/xampp/php/&quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;timeline&quot;&gt;Timeline&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;2024/05/07 - DEVCORE reported this issue through the official PHP vulnerability disclosure page.&lt;/li&gt;
+  &lt;li&gt;2024/05/07 - PHP developers confirmed the vulnerability and emphasized the need for a prompt fix.&lt;/li&gt;
+  &lt;li&gt;2024/05/16 - PHP developers released the first version of the fix and asked for feedback.&lt;/li&gt;
+  &lt;li&gt;2024/05/18 - PHP developers released the second version of the fix and asked for feedback.&lt;/li&gt;
+  &lt;li&gt;2024/05/20 - PHP entered the preparation phase for the new version release.&lt;/li&gt;
+  &lt;li&gt;2024/06/06 - PHP released new versions &lt;a href=&quot;https://www.php.net/downloads&quot;&gt;8.3.8&lt;/a&gt;, &lt;a href=&quot;https://www.php.net/downloads&quot;&gt;8.2.20&lt;/a&gt;, and &lt;a href=&quot;https://www.php.net/downloads&quot;&gt;8.1.29&lt;/a&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;reference&quot;&gt;Reference&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/php/php-src/security/advisories/GHSA-3qgc-jrrr-25jv&quot;&gt;PHP Security Advisory - PHP RCE: A Bypass of CVE-2012-1823, Argument Injection in PHP-CGI&lt;/a&gt; (to be announced)&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-ucoderef/d1980631-6401-428e-a49d-d71394be7da8&quot;&gt;MS-UCODEREF - Windows Protocols Unicode Reference&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.kb.cert.org/vuls/id/520827&quot;&gt;CERT/CC VU#520827 - PHP-CGI query string parameter vulnerability&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+                <link>https://devco.re/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability-en/</link>
+                <guid>https://devco.re/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability-en</guid>
+                <pubDate>Thu, 06 Jun 2024 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>Pwn2Own Toronto 2022 : A 9-year-old bug in MikroTik RouterOS</title>

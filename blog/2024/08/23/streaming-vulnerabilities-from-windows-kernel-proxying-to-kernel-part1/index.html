@@ -1,0 +1,1224 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I | DEVCORE 戴夫寇爾</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="在這篇研究將講述一個長期被忽視的攻擊面，讓我們在兩個月內就找出了超過 10 個漏洞。此外，也將深入探討了一種 Proxy-Based 的邏輯漏洞類型，使我們可以忽略掉大多數的檢查，最終成功在 Pwn2Own Vancouver 2024 中，攻下 Windows 11 的項目。" />
+    <meta name="keywords" content="MSKSSRV (Microsoft Kernel Streaming Service), Pwn2Own Vancouver 2024, CVE-2023-29360, CVE-2023-36802, CVE-2024-30089, Kernel Streaming" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20240823/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="在這篇研究將講述一個長期被忽視的攻擊面，讓我們在兩個月內就找出了超過 10 個漏洞。此外，也將深入探討了一種 Proxy-Based 的邏輯漏洞類型，使我們可以忽略掉大多數的檢查，最終成功在 Pwn2Own Vancouver 2024 中，攻下 Windows 11 的項目。">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20240823/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body>
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>服務<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    紅隊演練
+                                </h2>
+                                <p class="two-line">
+                                    在不影響企業營運前提下，無所不用其極，從各種進入點執行模擬入侵攻擊，達成企業指定的演練情境。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    滲透測試
+                                </h2>
+                                <p class="two-line">
+                                    以駭客思維及手法嘗試入侵企業指定系統，找出潛在漏洞，驗證企業資料與設備是否可被竊取或破壞。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    資安顧問服務
+                                </h2>
+                                <p class="two-line">
+                                    以紅隊演練為基礎，提供攻擊者視角與可能入侵路徑，協助企業評估資安資源優先順序，並擬定長期防禦策略。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    資安教育訓練
+                                </h2>
+                                <p class="two-line">
+                                    從攻擊思維出發，協助企業有效預防資安事故並防禦；以及事件發生時，如何快速判定攻擊目的、手法、漏洞與及應變方式。
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>研究<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    總覽概要
+                                </h2>
+                                <p class="two-line">
+                                    持續精研資安最新技術及漏洞研究趨勢，全方位檢測企業產品安全性、吸取經驗並轉化為紅隊演練工具與手法。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    競賽與獎項
+                                </h2>
+                                <p class="two-line">
+                                    國際級資訊安全競賽獎項肯定。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    企業漏洞回報
+                                </h2>
+                                <p class="two-line">
+                                    研究企業系統中的資安風險及各種可能的突破口，並通報企業修補。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    國際研討會
+                                </h2>
+                                <p class="two-line">
+                                    參與全球資安盛會，發表、交流漏洞的知識與資訊。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE 漏洞列表
+                                </h2>
+                                <p class="two-line">
+                                    挖掘並回報國際知名產品與服務的重大漏洞。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>公司<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                公司簡介
+                            </h2>
+                            <p>
+                                DEVCORE 戴夫寇爾由世界級白帽駭客團隊創立，提供紅隊演練、滲透測試、資安顧問服務、資安教育訓練等服務。
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    團隊成員
+                                </h2>
+                                <p class="two-line">
+                                    由熱衷挑戰、具備駭客思維的資安專家組成，專注於創新攻擊手法研究，並以「高道德、高自律、高嚴謹」為最高指導原則。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    成就與沿革
+                                </h2>
+                                <p class="two-line">
+                                    長期聚焦於攻擊研究，屢屢獲邀參與全球知名資安研討會，已揭露數百個重要產品漏洞、協助企業提升防禦能量。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    企業社會責任
+                                </h2>
+                                <p class="two-line">
+                                    提供多元實習管道和研習計畫，提升新世代人才資安能量，推廣資訊安全意識。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    工作機會
+                                </h2>
+                                <p class="two-line">
+                                    加入 DEVCORE，共同改善資安產業結構，與我們一起打造更安全的世界。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>新聞<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    DEVCORE 最新消息。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    媒體素材下載
+                                </h2>
+                                <p>
+                                    使用 DEVCORE 商標須遵循的使用規範。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/search/">搜尋</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/contact/">聯絡我們</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>服務</span>
+                <div class="menuItem">
+                    <a href="/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                紅隊演練
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                滲透測試
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                顧問服務
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                教育訓練
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>資安研究</span>
+                <div class="menuItem">
+                    <a href="/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>總覽概要</h2>
+                        </div>
+                    </a>
+                    <a href="/research/awards/">
+                        <div class="item">
+                            <h2>競賽與獎項</h2>
+                        </div>
+                    </a>
+                    <a href="/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Bug Bounty</h2>
+                        </div>
+                    </a>
+                    <a href="/research/talks/">
+                        <div class="item">
+                            <h2>國際研討會</h2>
+                        </div>
+                    </a>
+                    <a href="/research/cve/">
+                        <div class="item">
+                            <h2>CVE 漏洞列表</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>公司</span>
+                <div class="menuItem">
+                    <a href="/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>公司簡介</h2>
+                        </div>
+                    </a>
+                    <a href="/company/our-team/">
+                        <div class="item">
+                            <h2>團隊成員</h2>
+                        </div>
+                    </a>
+                    <a href="/company/history/">
+                        <div class="item">
+                            <h2>成就與沿革</h2>
+                        </div>
+                    </a>
+                    <a href="/company/csr/">
+                        <div class="item">
+                            <h2>企業社會責任</h2>
+                        </div>
+                    </a>
+                    <a href="/company/jobs/">
+                        <div class="item">
+                            <h2>工作機會</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>新聞</span>
+                <div class="menuItem">
+                    <!-- <a href="/blog/">
+                    <div class="item">
+                        <h2>所有文章</h2>
+                    </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>案例剖析</h2>
+                        </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>科普文章</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>技術專欄</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>資安新聞</h2>
+                        </div>
+                    </a> -->
+                    <a href="/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/media-kit/">
+                        <div class="item">
+                            <h2>媒體素材下載</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                搜尋
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                聯絡我們
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/blog/">所有文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/最新消息/">最新消息</a>
+                </li>
+                <li>
+                    <a href="/blog/category/技術專欄/">技術專欄</a>
+                </li>
+                <li>
+                    <a href="/blog/category/科普文章/">科普文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/資安新聞/">資安新聞</a>
+                </li>
+                <li>
+                    <a href="/media-kit/">媒體素材下載</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                    <span class="tag">
+
+                      <a href="/blog/tag/CVE/">#CVE</a> <a href="/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/blog/tag/Windows/">#Windows</a> <a href="/blog/tag/Kernel/">#Kernel</a> <a href="/blog/tag/Advisory/">#Advisory</a> 
+                    </span>
+                    <h1>
+                        Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/blog/author/angelboy">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/angelboy.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/blog/author/angelboy">Angelboy</a></span>
+                        <span class="date">2024-08-23</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20240823/cover.png"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p>在過去的幾十年中 Windows Kernel 的漏洞層出不窮，熱門的攻擊面逐漸從 Win32k 慢慢轉移到 CLFS (Common Log File System) 上。微軟也持續且積極地修補這些漏洞，使得這些元件越來越安全。而下一個熱門的目標會是哪個元件呢？去年開始，MSKSSRV (Microsoft Kernel Streaming Service) 成為駭客喜愛的目標之一。這個驅動程式小到可以在幾天內完成分析。這是否意味著可能不太會有新的漏洞了？</p>
+
+<p>在這篇研究將講述一個長期被忽視的攻擊面，讓我們在兩個月內就找出了超過 10 個漏洞。此外，也將深入探討了一種 Proxy-Based 的邏輯漏洞類型，使我們可以忽略掉大多數的檢查，最終成功在 Pwn2Own Vancouver 2024 中，攻下 Windows 11 的項目。</p>
+
+<p>這份研究將分成數個部分來撰寫，分別講述不同的漏洞類型及漏洞型態，亦發表於 <a href="https://hitcon.org/2024/CMT/agenda/">HITCON CMT 2024</a> 中。</p>
+
+<h2 id="start-from-mskssrv">Start from MSKSSRV</h2>
+<blockquote>
+  <p>對於一項漏洞研究來說，從歷史的漏洞看起，是不可或缺的。</p>
+</blockquote>
+
+<p>起初，我們為了挑戰 Pwn2Own Vancouver 2024 中 Windows 11 的項目，開始從過去的 Pwn2Own 以及近期 in-the-wild 的漏洞中開始審視，尋找可能的攻擊面。沿著歷史軌跡可以得知，過去主要負責 GDI 相關操作的 Win32K 一直是個很熱門的目標，從 2018 年以來，CLFS (Common Log File System) 也漸漸成為了熱門目標之一。這兩個元件都非常複雜，並且直到現在仍然有不少新漏洞出現，但要熟悉這兩個元件需要花不少時間，同時也有許多研究員在看這兩個元件，所以最終我們沒有先選擇分析他們。</p>
+
+<p>去年 <a href="https://www.synacktiv.com/en">Synacktiv</a> 在 Pwn2Own 2023 中，使用 MSKSSRV 的<a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2023-29360">漏洞</a>成功攻下 Windows 11 後，便有不少人往這個元件開始看起，短時間內就又出現了<a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2023-36802">第二個漏洞 CVE-2023-36802</a>，這時 <a href="https://x.com/chompie1337">chompie</a> 也發表了一篇<a href="https://securityintelligence.com/x-force/critically-close-to-zero-day-exploiting-microsoft-kernel-streaming-service/">非常詳細的文章</a>，講述這個漏洞成因及其利用細節。由於這個元件非常的小，只看檔案大小約略只有 72 KB，可能認真看個幾天就可以全部看完，因此我們便挑了 MSKSSRV 來做歷史漏洞分析，看看是否有機會抓出其他漏洞。</p>
+
+<p>接下來我們會提一下這兩個漏洞，但不會著墨過多。</p>
+
+<h3 id="cve-2023-29360---logical-vulnerability">CVE-2023-29360 - logical vulnerability</h3>
+<p>第一個是 Synacktiv 在 Pwn2Own 2023 中所使用的漏洞 :</p>
+
+<p><img src="/assets/img/blog/20240823/1.png" alt="" /></p>
+
+<p>這是一個邏輯上的漏洞。當 MSKSSRV 使用 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-mmprobeandlockpages">MmProbeAndLockPages</a> 鎖定使用者給的記憶體位置作為 FrameBuffer 時，並沒有設置正確的 AccessMode，導致沒有檢查使用者指定的位置是否屬於 User space。如果使用者給的是 Kernel space 中的位置，它就會把指定的 Kernel 位置映射到 User space 給使用者用，最終導致使用者可以對 Kernel 中的任意位置寫入，利用上簡單且非常穩定，成為了受歡迎的<a href="https://www.cisa.gov/news-events/alerts/2024/02/29/cisa-adds-one-known-exploited-vulnerability-catalog">漏洞之一</a>。</p>
+
+<p>更多細節可以參考 Synacktiv 在 HITB 2023 HKT 的<a href="https://conference.hitb.org/hitbsecconf2023hkt/materials/D2T1%20-%20Windows%20Kernel%20Security%20-%20A%20Deep%20Dive%20into%20Two%20Exploits%20Demonstrated%20at%20Pwn2Own%20-%20Thomas%20Imbert.pdf">演講</a>及 <a href="https://x.com/Big5_sec">Nicolas Zilio(@Big5_sec)</a> 的<a href="https://big5-sec.github.io/posts/CVE-2023-29360-analysis/">部落格文章</a></p>
+
+<h3 id="cve-2023-36802---type-confusion">CVE-2023-36802 - type confusion</h3>
+<p>這個漏洞則是在 CVE-2023-29360 出來後沒多就被許多人發現，並且在微軟發佈更新時，就已經偵測到利用，是個非常容易被發現的漏洞。MSKSSRV 會先將內部使用的物件（FSContextReg、FSStreamReg）存放在 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_object">FILE_OBJECT</a> 的 FsContext2 中，然而後續使用時並沒有對 FsContext2 的<strong>型態</strong>做檢查，導致 type confusion，詳細內容可參考 <a href="https://securityintelligence.com/x-force/critically-close-to-zero-day-exploiting-microsoft-kernel-streaming-service/">IBM X-Force 的部落格</a>。</p>
+
+<p>至此之後，就很少有關於 MSKSSRV 的相關漏洞了。</p>
+
+<h3 id="but-is-that-the-end-of-it-">But is that the end of it ?</h3>
+<p>然而是否這樣就沒洞了呢？</p>
+
+<p><strong>而我要更準確地回答，No!</strong></p>
+
+<p>實際上整個 Kernel Streaming 就像下面這張圖這樣 :</p>
+
+<p><img src="/assets/img/blog/20240823/2.png" alt="" /></p>
+
+<p>MSKSSRV 只是冰山一角而已，實際上還有不少潛在的元件，上圖中所寫的都是屬於 Kernel Streaming 的一部分。實際往這方向挖掘之後，最終也在這個攻擊面上取得不少漏洞，就如同流水般的流出漏洞來。
+<img src="/assets/img/blog/20240823/cover.png" alt="" /></p>
+
+<p>順帶一提，我在寫這篇部落格時，chompie 也發表了有關於他在今年 Pwn2Own Vancouver 2024 中所使用的漏洞 <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-30089">CVE-2024-30089</a>。這個漏洞也在 MSKSSRV 中，該漏洞發生在 Reference Count 的處理，其成因也很有趣，不過這邊就不多談，詳細內容可參考她<a href="https://securityintelligence.com/x-force/little-bug-that-could/">發表的文章</a>。</p>
+
+<h2 id="brief-overview-of-kernel-streaming">Brief overview of Kernel Streaming</h2>
+<p>那麼，什麼是 Kernel Streaming 呢？ 事實上，我們正常使用電腦情況下就會用到 :</p>
+
+<p><img src="/assets/img/blog/20240823/4.png" alt="" /></p>
+
+<p>在 Windows 系統上，當我們打開鏡頭、開啟音效以及麥克風等音訊設備時，系統需要從這些設備讀取你的聲音、影像等相關資料到 RAM 中。為了更高效地完成這些資料的傳輸，微軟提供了一個名為 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/kernel-streaming">Kernel Streaming</a> 的框架，用來處理這些資料。<strong>這個框架主要在 Kernel mode 下運行</strong>，具有低延遲、良好的擴充性和統一介面等特性，使你能更方便、更高效地處理串流（Stream）資料。</p>
+
+<p>Kernel Streaming 中，提供了三種多媒體驅動模型：port class、AVStream 和 stream class。這裡將主要介紹 port class 和 AVStream，而 stream class 因為較為罕見且過時，不會多加討論。</p>
+
+<h3 id="port-class"><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/introduction-to-port-class">Port Class</a></h3>
+<p>大多數用於 PCI 和 DMA 型音效裝置的硬體驅動程式，它處理與音訊相關的數據傳輸，例如音量控制、麥克風輸入等等，主要會使用到的元件函式庫會是 portcls.sys。</p>
+
+<p><img src="/assets/img/blog/20240823/5.png" alt="" /></p>
+
+<h3 id="avstream"><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/avstream-overview">AVStream</a></h3>
+<p>AVStream 則是由微軟提供的多媒體類驅動程式，主要支援僅限影片的串流和整合音訊/影片串流，目前跟影像有關的處理多數都跟這類別有關，例如你的視訊鏡頭、擷取卡等等。</p>
+
+<p><img src="/assets/img/blog/20240823/6.png" alt="" /></p>
+
+<p>實際上 Kernel Streaming 的使用很複雜，因此這裡只會簡單的敘述一下，更多詳細內容可以參考<a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/">微軟官方文件</a>。</p>
+
+<h2 id="interact-with-device">Interact with device</h2>
+<p>在我們想要與音訊設備或是視訊鏡頭等設備互動時該怎麼做呢？其實就跟一般設備互動一樣，可以透過 CreateFile 函數來開啟一個設備。那麼這類型的設備，名稱又會是甚麼呢？其實這邊不太會像是 <code class="language-plaintext highlighter-rouge">\Devcie\NamedPipe</code> 這類型的名稱，而是會像下面這樣的路徑 :</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>\\?\hdaudio#subfunc_01&amp;ven_8086&amp;dev_2812&amp;nid_0001&amp;subsys_00000000&amp;rev_1000#6&amp;2f1f346a&amp;0&amp;0002&amp;0000001d#{6994ad04-93ef-11d0-a3cc-00a0c9223196}\ehdmiouttopo
+</code></pre></div></div>
+
+<h3 id="enumerate-device">Enumerate device</h3>
+<p>每台電腦都可能不一樣，必須使用 <a href="https://learn.microsoft.com/zh-tw/windows/win32/api/setupapi/nf-setupapi-setupdigetclassdevsw">SetupDiGetClassDevs</a> 等 API 去列舉設備，一般來說 KS 系列的設備都會註冊在 <code class="language-plaintext highlighter-rouge">KSCATEGORY*</code> 底下，像是音訊設備就會註冊在 <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/install/kscategory-audio">KSCATEGORY_AUDIO</a> 中。</p>
+
+<p>你也可以使用 KS 所提供的 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ksproxy/nf-ksproxy-ksopendefaultdevice">KsOpenDefaultDevice</a> 獲得該類別中第一個符合的 PnP 裝置的 Handle，實際上來說也只是 SetupDiGetClassDevs 和 CreateFile 的封裝而已。</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">hr</span> <span class="o">=</span> <span class="n">KsOpenDefaultDevice</span><span class="p">(</span><span class="n">KSCATEGORY_VIDEO_CAMERA</span><span class="p">,</span><span class="n">GENERIC_READ</span><span class="o">|</span><span class="n">GENERIC_WRITE</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">g_hDevice</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="kernel-streaming-object">Kernel Streaming object</h3>
+<p>我們在開啟這些設備之後，Kernel Streaming 會在 Kernel 中建立一些相關的 Instance，其中最為重要的就是 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ks-filters">KS Filters</a> 及 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ks-pins">KS Pins</a>。在 Kernel Streaming 的使用過程中，這些 Instance 會被頻繁使用，它們主要用來封裝設備的硬體功能，方便開發者透過統一的介面進行串流的處理。</p>
+
+<p>這邊先以 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/audio-filters">Audio Filters</a> 作為例子，其他多數大同小異，我們也只會簡單介紹，其他細節請自行參考微軟官方文件。</p>
+
+<h4 id="ks-filters">KS filters</h4>
+<p>每個 KS Filter 通常代表一個設備或設備的特定功能，在我們打開一個音訊設備後，大部分情況下會對應到一個 Kernel Filter，當我們從音訊設備讀取資料時，這些資料就會先通過這個 KS Filter 進行處理。</p>
+
+<p>概念上如下圖所示，中間的大框表示一個代表音訊設備的 KS filter。而我們想要從音訊設備中讀取資料時，會從左邊讀入 Filter，經過幾個節點進行處理後，從右邊輸出。</p>
+
+<p><img src="/assets/img/blog/20240823/7.png" alt="" />
+ (From: https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/audio-filters)</p>
+
+<h4 id="ks-pins">KS pins</h4>
+<p>上圖中，讀取及輸出資料的點稱為 Pin，Kernel 也有相對應的 KS Pin Object，用於描述這些 Pin 的行為，例如 Pin 是輸入端還是輸出端、支援的格式有哪些等。我們使用時必須在 Filters 上，<a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/nf-ks-kscreatepin">開啟一個 Pin</a> 來建立 Instance，才能從設備讀取或輸出資料。</p>
+
+<h3 id="ks-property">KS Property</h3>
+<p>這些 KS Object 都會有自己的 Property，每個 Property 都會有相對應的功能，前面所提到的 Pin 中的資料格式、音量大小及設備的狀態等等，這些都是一個 Property，通常會對應到一組 GUID，我們可以透過 <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_property">IOCTL_KS_PROPERTY</a> 來讀取或設定這些 Property。</p>
+
+<p>這大大簡化了多媒體驅動程式的開發，並且確保了不同設備之間的一致性和可擴展性。</p>
+
+<h3 id="read-streams-from-webcam">Read streams from webcam</h3>
+<p>這邊就用個簡單的範例來介紹一下 Application 如何從視訊鏡頭讀取資料</p>
+
+<p>其最簡單的流程大概如這張圖所示 :</p>
+
+<p><img src="/assets/img/blog/20240823/8.png" alt="" /></p>
+
+<ol>
+  <li>開啟設備後獲得設備 Handle</li>
+  <li>使用這個 Handle 在這個 Filter 上建立 Pin 的 Instance 並獲得 Pin handle</li>
+  <li>使用 IOCTL_KS_PROPERTY 設置 Pin 的狀態到 RUN</li>
+  <li>最後就可以使用 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_read_stream">IOCTL_KS_READ_STREAM</a> 從這個 Pin 中讀資料進來</li>
+</ol>
+
+<h2 id="kernel-streaming-architecture">Kernel Streaming architecture</h2>
+<blockquote>
+  <p>對漏洞研究而言，我們必須先了解其架構，思考有哪些可能的攻擊面</p>
+</blockquote>
+
+<p>在初步了解 Kernel Streaming 有哪些功能和操作後，為了找尋漏洞必須先了解一下架構，了解 Windows 是怎麼實作這些功能、分別有哪些元件等等，才知道應該要分析哪些 sys，從哪邊下手會比較好。</p>
+
+<p>經過我們分析後，整個架構約略會像這張圖所示 :</p>
+
+<p><img src="/assets/img/blog/20240823/9.png" alt="" /></p>
+
+<p>在 Kernel Stearming 元件中，最為核心的就是 ksthunk.sys 及 ks.sys，幾乎所有功能都會與它們有關。</p>
+
+<h3 id="ksthunk-kernel-streaming-wow-thunk-service-driver">ksthunk (Kernel Streaming WOW Thunk Service Driver)</h3>
+<p>Application 呼叫 DeviceIoControl 後，在 Kernel Streaming 中的<strong>入口點</strong>，但它功能很簡單，負責將 WoW64 process 中 32-bit 的 requests 轉換成 64-bit 的 requests，使得下層的 driver 就可以不必為 32 位元的結構另外處理。</p>
+
+<h3 id="ks-kernel-connection-and-streaming-architecture-library">ks (Kernel Connection and Streaming Architecture Library)</h3>
+<p>Kernel Streaming 的<strong>核心元件</strong>之一，它是 Kernel Streaming 的函示庫，負責及轉發 IOCTL_KS_PROPERTY 等 requests 到對應設備的 driver 中，同時也會負責處理 AVStream 的相關功能。</p>
+
+<h3 id="the-work-flow-of-ioctl_ks_">The work flow of IOCTL_KS_*</h3>
+<p>而在呼叫 DeviceIoControl 時，就會像下圖一樣，將使用者的 requests 依序給相對應的 driver 來處理</p>
+
+<p><img src="/assets/img/blog/20240823/10.png" alt="" /></p>
+
+<p>而到第 6 步時 ks.sys 就會根據你 requests 的 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ksproperty-structure">Property</a> 來決定要交給哪個 driver 及 handler 來處理你的 request。</p>
+
+<p><img src="/assets/img/blog/20240823/11.png" alt="" /></p>
+
+<p>最終再轉發給相對應的 Driver，如上圖中最後轉發給 portcls 中的 handler 來操作音訊設備。</p>
+
+<p>到這邊應該對 Kernel Streaming 的架構及流程有初步概念了，接下來就是找洞的時刻。依照現有的元素來看，哪些是值得一看的攻擊面呢？</p>
+
+<h3 id="from-attackers-view">From attacker’s view</h3>
+<blockquote>
+  <p>在挖掘漏洞前，如果能仔細思考怎樣的情況下容易有洞，可以達到事半功倍的效果</p>
+</blockquote>
+
+<p>從一個漏洞研究員的角度來說，大概會有下列這幾個點</p>
+
+<ol>
+  <li>
+    <p>每個設備中的 Property handler
+每個設備中的 KS Object 都有各自的 Property，而且每個 Property 都有各自的實作，有些 Property 處理起來容易出問題。</p>
+  </li>
+  <li>
+    <p>ks 及 ksthunk 
+ks 及 ksthunk 已經有很長一段時間沒有漏洞，但卻是個最容易接觸到的入口點，也許是一個好目標，上一次出現的漏洞是在 2020 年 <a href="https://x.com/nghiadt1098">@nghiadt1098</a> 所找到的兩個漏洞 <a href="https://msrc.microsoft.com/update-guide/en-us/vulnerability/CVE-2020-16889">CVE-2020-16889</a> 及 <a href="https://msrc.microsoft.com/update-guide/en-US/vulnerability/CVE-2020-17045">CVE-2020-17045</a></p>
+  </li>
+  <li>
+    <p>每個 driver 都各自處理一部分的內容
+在 Kernel Streaming 的部分功能中，有些 driver 會各自先處理部分的內容，可能會造成一些不一致性的問題。</p>
+  </li>
+</ol>
+
+<p>我們針對上面幾個角度去對整個 Kernel Streaming 做 Code Review 後，很快的就發現了幾個比較容易發現的漏洞</p>
+
+<ul>
+  <li>portcls.sys
+    <ul>
+      <li>CVE-2024-38055 (out-of-bounds read when set dataformat for Pin)</li>
+      <li>CVE-2024-38056</li>
+    </ul>
+  </li>
+  <li>ksthunk
+    <ul>
+      <li>CVE-2024-38054 (out-of-bounds write)</li>
+      <li>CVE-2024-38057</li>
+    </ul>
+  </li>
+</ul>
+
+<p>不過我們這一篇不會一一講解這些漏洞，這幾個多數都是沒有檢查長度或是 index 之類的越界存取等等明顯的洞，也許會在後續的部分慢慢來講解，<a href="https://x.com/Fr0st1706">@Fr0st1706</a> 也在前陣子寫出了 CVE-2024-38054 的<a href="https://github.com/Black-Frost/windows-learning/tree/main/CVE-2024-38054">利用</a>，這邊就暫時留給讀者研究了。</p>
+
+<p>這篇要提的是，我們在 Review 過程中發現了一些有趣的事情。</p>
+
+<p>你覺得下面這段程式碼是否安全呢？</p>
+
+<pre><code class="language-cpp=">__int64 __fastcall CKSThunkDevice::CheckIrpForStackAdjustmentNative(__int64 a1, struct _IRP *irp, __int64 a3, int *a4)
+{
+
+    if ( irp-&gt;RequestorMode )
+    {
+        v14 = 0xC0000010;
+    }
+    else
+    {
+        UserBuffer = (unsigned int *)irp-&gt;UserBuffer;
+        ...
+        v14 = (*(__int64 (__fastcall **)(_QWORD, _QWORD, __int64 *))    (Type3InputBuffer + 0x38))(// call Type3InputBuffer+0x38
+                *UserBuffer,
+                0LL,
+               v19);
+    }
+}
+</code></pre>
+
+<p>看到這段程式碼讓我想起了 <a href="https://decoded.avast.io/janvojtesek/lazarus-and-the-fudmodule-rootkit-beyond-byovd-with-an-admin-to-kernel-zero-day/">CVE-2024-21338</a>，該漏洞原先並沒有任何檢查，而在修補後則是新增了 <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-exgetpreviousmode">ExGetPreviousMode</a>，但這邊檢查則是使用了 <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/ns-wdm-_irp">IRP</a> 中的 RequestorMode 來做檢查，不過一般情況下從使用者呼叫的 IOCTL 的 RequestorMode 都會是 UserMode(1) 是不會有問題的。</p>
+
+<p>此時我又想起來 <a href="https://x.com/tiraniddo">James Forshaw</a> 的 <a href="https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html">Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager</a> 這篇文章。</p>
+
+<h2 id="the-overlooked-bug-class">The overlooked bug class</h2>
+
+<p>這邊我們必須先來提一下幾個名詞跟概念，不過如果你對 PreviousMode 及 RequestorMode 很熟悉，可以跳至 <a href="#A-logical-bug-class">A logical bug class</a></p>
+
+<h3 id="previousmode">PreviousMode</h3>
+<p>第一個是 PreviousMode，在 Application 中如果使用者透過 Nt* 等 System Service Call 來對設備或檔案中操作時，進入 Kernel 後就會在 <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/kernel/eprocess#ethread">_ETHREAD</a> 中的 PreviousMode 標註 UserMode(1) 表示這個 System Service Call 是來自 User mode 的 Application。如果你是從 Kernel mode 中，例如設備 driver 呼叫 Zw* System Service Call 的 API 就會標記成 KernelMode(0)。</p>
+
+<p><img src="/assets/img/blog/20240823/12.png" alt="" /></p>
+
+<h3 id="requestormode">RequestorMode</h3>
+<p>另外一個類似的則是 IRP 中的 RequestorMode 這邊就是記錄你原始的 requests 是來自 UserMode 還是 KernelMode，在 Kernel driver 中的程式碼是非常常用到的欄位，通常會來自 PreviousMode。</p>
+
+<p>很常被用來決定是否要對來自使用者的 requests 做額外檢查，像是 Memory Access Check 或是 Security Access Check，例如下面這個例子中，如果 requests 來自 UserMode 就會檢查使用者提供的位置，如果是從 Kernel 來的，就不做額外檢查增加效率。</p>
+
+<p><img src="/assets/img/blog/20240823/13.png" alt="" /></p>
+
+<p>但實際上這也出現了一些問題…</p>
+
+<h3 id="a-logical-bug-class">A logical bug class</h3>
+<p>在 <a href="https://x.com/tiraniddo">James Forshaw</a> 的 <a href="https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html">Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager</a> 中，就提到了一種 Bug Class</p>
+
+<p>這邊可以先想想看，使用者呼叫 NtDeviceIoControlFile 之類的 System Service Call 之後，如果處理的 driver 又去用使用者可控的資料來作為 ZwOpenFile 的參數，會發生什麼事</p>
+
+<p><img src="/assets/img/blog/20240823/14.png" alt="" /></p>
+
+<p>在 driver 呼叫 ZwOpenFile 之後， PreviousMode 會轉換成為 <code class="language-plaintext highlighter-rouge">KernelMode</code>，並且在 NtOpenFile 處理時，就會因為 PreviousMode 是 <code class="language-plaintext highlighter-rouge">KernelMode</code> 的關係少掉大部分的檢查，而後續的 <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code> 也會因此變成 <code class="language-plaintext highlighter-rouge">KernelMode</code> ，從而繞過 Security Access Check 及 Memory Access Check。不過這邊很看後續處理的 driver 怎麼去實作這些檢查，如果只依賴 RequestorMode 來決定要不要檢查，就可能會有問題。這邊省略了一些細節，實際上的狀況會稍微再複雜一點點，也會跟 CreateFile 的 flag 有關，細節可參考下列幾篇文章 :</p>
+
+<ul>
+  <li><a href="https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html">Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager</a></li>
+  <li><a href="https://googleprojectzero.blogspot.com/2021/01/hunting-for-bugs-in-windows-mini-filter.html">Hunting for Bugs in Windows Mini-Filter Drivers</a></li>
+  <li><a href="https://msrc.microsoft.com/blog/2019/03/local-privilege-escalation-via-the-windows-i-o-manager-a-variant-finding-collaboration/">Local privilege escalation via the Windows I/O Manager: a variant finding collaboration</a></li>
+</ul>
+
+<p>這邊有這樣的概念就好，原先這些研究主要是在 Zw* 系列的 System Service Call 上面，大家可以思考一下，有沒有其他類似的情況，也可能造成這種邏輯漏洞呢?</p>
+
+<h4 id="the-new-bug-pattern">The new bug pattern</h4>
+<p>事實上來說是有的，使用 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iobuilddeviceiocontrolrequest">IoBuildDeviceIoControlRequest</a> 這個方法去創建一個 DeviceIoControl 的 IRP 時，萬一沒注意到也很容易有這樣的問題。這個 API 主要是 Kernel driver 用來呼叫 IOCTL 的其中一種方法，它會幫你建好 IRP，而後續在去呼叫 <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-iofcalldriver">IofCallDriver</a>，就可以在 Kernel driver 中呼叫 IOCTL。在 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iobuilddeviceiocontrolrequest">Microsoft Learn</a> 中，有一段話特別值得注意 :</p>
+
+<p><img src="/assets/img/blog/20240823/15.png" alt="" /></p>
+
+<p>也就是預設情況下，如果你沒有特別去設置 RequestorMode 就會直接以 KernelMode 形式去呼叫 IOCTL。</p>
+
+<p><img src="/assets/img/blog/20240823/16.png" alt="" /></p>
+
+<p>按照這個思路，我們重新回頭審視一下我們的目標 Kernel Streaming，我們發現了一個吸引我們的地方。</p>
+
+<p><img src="/assets/img/blog/20240823/17.png" alt="" /></p>
+
+<p>在 Kernel Streaming 中使用這個 IoBuildDeviceIoControlRequest 地方是在 <code class="language-plaintext highlighter-rouge">ks!KsSynchronousIoControlDevice</code> ，而主要內容明顯就是在用剛剛提到的方法，在 Kernel 中呼叫 DeviceIoControl，不過這邊看似有好好的設置 <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code>，且會根據 KsSynchronousIoControlDevice 參數不同而去設置不同的數值，對於開發者來說會是一個方便的函式庫。</p>
+
+<p>然而…</p>
+
+<p>ks!CKsPin::GetState
+<img src="/assets/img/blog/20240823/18.png" alt="" /></p>
+
+<p>ks!SerializePropertySet
+<img src="/assets/img/blog/20240823/19.png" alt="" /></p>
+
+<p>ks!UnserializePropertySet
+<img src="/assets/img/blog/20240823/20.png" alt="" /></p>
+
+<p>我們發現到在 Kernel Streaming 中，全部有使用到 <code class="language-plaintext highlighter-rouge">KsSynchronousIoControlDevice</code> 的地方都是固定的使用 KernelMode(0)，到這邊就可以仔細的檢查看看，有用到的地方是否有安全上的問題了。因此我們將 Kernel Streaming 中的 bug pattern 轉換成下列幾點:</p>
+
+<ol>
+  <li>有使用 KsSynchronousIoControlDevice</li>
+  <li>有可控的
+    <ul>
+      <li>InputBuffer</li>
+      <li>OutputBuffer</li>
+    </ul>
+  </li>
+  <li>第二次處理 IOCTL 的地方有依賴 RequestorMode 做安全檢查，並且有可以作為提權利用的地方。
+<img src="/assets/img/blog/20240823/21.png" alt="" /></li>
+</ol>
+
+<p>按照這個 Pattern 我們很快地就找到了第一個洞</p>
+
+<h2 id="the-vulnerability--exploitation">The vulnerability &amp; exploitation</h2>
+
+<h3 id="cve-2024-35250">CVE-2024-35250</h3>
+<p>這個漏洞也是我們今年在 <a href="https://x.com/thezdi/status/1770517322203070674">Pwn2Own Vancouver 2024 中所使用的漏洞</a>。在 Kernel Streaming 的 IOCTL_KS_PROPERTY 功能中，為了讓效率增加，提供了 <code class="language-plaintext highlighter-rouge">KSPROPERTY_TYPE_SERIALIZESET</code> 和 <code class="language-plaintext highlighter-rouge">KSPROPERTY_TYPE_UNSERIALIZESET</code> 功能允許使用者透過<strong>單一呼叫</strong>與多個 Property 進行操作。當我們用這功能時，這些 requests 將被 KsPropertyHandler 函數分解成多個呼叫，詳情可參考<a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ksproperty-structure#remarks">這篇</a>。</p>
+
+<p>該功能實作在 ks.sys 中</p>
+
+<p><img src="/assets/img/blog/20240823/22.png" alt="" /></p>
+
+<p>上圖中可以看到，在 ks 處理 Property 時，如果有給上述的 flag 就會由 UnserializePropertySet 來處理你的 request</p>
+
+<p>我們這邊就先來看一下 UnserializePropertySet</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">unsigned</span> <span class="n">__int64</span> <span class="kr">__fastcall</span> <span class="nf">UnserializePropertySet</span><span class="p">(</span>
+    <span class="n">PIRP</span> <span class="n">irp</span><span class="p">,</span>
+    <span class="n">KSIDENTIFIER</span><span class="o">*</span> <span class="n">UserProvideProperty</span><span class="p">,</span>
+    <span class="n">KSPROPERTY_SET</span><span class="o">*</span> <span class="n">propertyset_</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="p">...</span>
+    <span class="n">New_KsProperty_req</span> <span class="o">=</span> <span class="n">ExAllocatePoolWithTag</span><span class="p">(</span><span class="n">NonPagedPoolNx</span><span class="p">,</span> <span class="n">InSize</span><span class="p">,</span> <span class="mh">0x7070534Bu</span><span class="p">);</span>
+    <span class="p">...</span>
+    <span class="n">memmove</span><span class="p">(</span><span class="n">New_KsProperty_req</span><span class="p">,</span> <span class="n">CurrentStackLocation</span><span class="o">-&gt;</span><span class="n">Parameters</span><span class="p">.</span><span class="n">DeviceIoControl</span><span class="p">.</span><span class="n">Type3InputBuffer</span><span class="p">,</span> <span class="n">InSize</span><span class="p">);</span> <span class="c1">//------[1] </span>
+    <span class="p">...</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">KsSynchronousIoControlDevice</span><span class="p">(</span>
+            <span class="n">CurrentStackLocation</span><span class="o">-&gt;</span><span class="n">FileObject</span><span class="p">,</span>
+            <span class="mi">0</span><span class="p">,</span>
+            <span class="n">CurrentStackLocation</span><span class="o">-&gt;</span><span class="n">Parameters</span><span class="p">.</span><span class="n">DeviceIoControl</span><span class="p">.</span><span class="n">IoControlCode</span><span class="p">,</span>
+            <span class="n">New_KsProperty_req</span><span class="p">,</span>
+            <span class="n">InSize</span><span class="p">,</span>
+            <span class="n">OutBuffer</span><span class="p">,</span>
+            <span class="n">OutSize</span><span class="p">,</span>
+            <span class="o">&amp;</span><span class="n">BytesReturned</span><span class="p">);</span> <span class="c1">//-----------[2]</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>可看到在處理過程中會先將原始的 request，複製到新分配出來的 Buffer 中 [1]，而後續就會使用這個 Buffer 來使用 KsSynchronousIoControlDevice 呼叫新的 IOCTL [2]。其中 <code class="language-plaintext highlighter-rouge">New_KsProperty_req</code> 及 <code class="language-plaintext highlighter-rouge">OutBuffer</code> 都是使用者所傳入的內容。</p>
+
+<p>而呼叫 UnserializePropertySet 時的流程，大概如下圖所示 :</p>
+
+<p><img src="/assets/img/blog/20240823/23.png" alt="" /></p>
+
+<p>這邊呼叫 IOCTL 時可以看到圖中第 2 步 I/O Manager 會將 <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code> 設成 UserMode(1)，直到第 6 步時，ks 會去判斷使用者 requests 的 Property 是否存在於該 KS Object 中，如果該 KS Object 的 Property <strong>存在</strong>，並且有設置 <code class="language-plaintext highlighter-rouge">KSPROPERTY_TYPE_UNSERIALIZESET</code> 就會用 <code class="language-plaintext highlighter-rouge">UnserializePropertySet</code> 來處理指定的 Property</p>
+
+<p><img src="/assets/img/blog/20240823/24.png" alt="" /></p>
+
+<p>而接下來第 7 步就會呼叫 KsSynchronousIoControlDevice 重新做一次  IOCTL，而此時新的 <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code> 就變成了 KernelMode(0) 了，而後續的處理就如一般的 IOCTL_KS_PROPERTY 相同，就不另外詳述了，總之我們到這裡已經有個可以任意做 IOCTL_KS_PROPERTY 的 primitive 了，接下來我們必須尋找看看是否有可以 EoP 的地方。</p>
+
+<h3 id="the-eop">The EoP</h3>
+<p>最先看到的想必就是入口點 ksthunk，我們這邊可以直接來看 <code class="language-plaintext highlighter-rouge">ksthunk!CKSThunkDevice::DispatchIoctl</code></p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="n">__int64</span> <span class="kr">__fastcall</span> <span class="n">CKSThunkDevice</span><span class="o">::</span><span class="n">DispatchIoctl</span><span class="p">(</span><span class="n">CKernelFilterDevice</span> <span class="o">*</span><span class="n">a1</span><span class="p">,</span> <span class="n">IRP</span> <span class="o">*</span><span class="n">irp</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">a3</span><span class="p">,</span> <span class="n">NTSTATUS</span> <span class="o">*</span><span class="n">a4</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="p">...</span>
+  <span class="k">if</span> <span class="p">(</span> <span class="n">IoIs32bitProcess</span><span class="p">(</span><span class="n">irp</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">irp</span><span class="o">-&gt;</span><span class="n">RequestorMode</span> <span class="p">)</span> <span class="c1">//------[3]</span>
+  <span class="p">{</span>
+   <span class="c1">//Convert 32-bit requests to 64-bit requests</span>
+  <span class="p">}</span>
+  <span class="k">else</span> <span class="k">if</span> <span class="p">(</span> <span class="n">CurrentStackLocation</span><span class="o">-&gt;</span><span class="n">Parameters</span><span class="p">.</span><span class="n">DeviceIoControl</span><span class="p">.</span><span class="n">IoControlCode</span> <span class="o">==</span> <span class="n">IOCTL_KS_PROPERTY</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">CKSThunkDevice</span><span class="o">::</span><span class="n">CheckIrpForStackAdjustmentNative</span><span class="p">((</span><span class="n">__int64</span><span class="p">)</span><span class="n">a1</span><span class="p">,</span> <span class="n">irp</span><span class="p">,</span> <span class="n">v11</span><span class="p">,</span> <span class="n">a4</span><span class="p">)</span> <span class="c1">//-----[4];</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+
+</code></pre></div></div>
+<p>ksthunk 會先判斷是否是 WoW64 的 Process 的 request，如果是就會將原本 32-bit 的 requests  轉換成 64-bit 的 [3]，如果原本就是 64-bit 則會呼叫 <code class="language-plaintext highlighter-rouge">CKSThunkDevice::CheckIrpForStackAdjustmentNative</code> [4] 往下傳遞</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">__int64</span> <span class="kr">__fastcall</span> <span class="n">CKSThunkDevice</span><span class="o">::</span><span class="n">CheckIrpForStackAdjustmentNative</span><span class="p">(</span><span class="n">__int64</span> <span class="n">a1</span><span class="p">,</span> <span class="k">struct</span> <span class="nc">_IRP</span> <span class="o">*</span><span class="n">irp</span><span class="p">,</span> <span class="n">__int64</span> <span class="n">a3</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">a4</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="p">...</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="o">*</span><span class="p">(</span><span class="n">_OWORD</span> <span class="o">*</span><span class="p">)</span><span class="o">&amp;</span><span class="n">Type3InputBuffer</span><span class="o">-&gt;</span><span class="n">Set</span> <span class="o">==</span> <span class="o">*</span><span class="p">(</span><span class="n">_OWORD</span> <span class="o">*</span><span class="p">)</span><span class="o">&amp;</span><span class="n">KSPROPSETID_DrmAudioStream</span>
+        <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">type3inputbuf</span><span class="p">.</span><span class="n">Id</span>
+        <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">type3inputbuf</span><span class="p">.</span><span class="n">Flags</span> <span class="o">&amp;</span> <span class="mi">2</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span> <span class="p">)</span>   <span class="c1">//-----[5]   </span>
+    <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">irp</span><span class="o">-&gt;</span><span class="n">RequestorMode</span> <span class="p">)</span> <span class="c1">//-------[6]</span>
+        <span class="p">{</span>
+        <span class="n">v14</span> <span class="o">=</span> <span class="mh">0xC0000010</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">else</span>
+        <span class="p">{</span>
+        <span class="n">UserBuffer</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="o">*</span><span class="p">)</span><span class="n">irp</span><span class="o">-&gt;</span><span class="n">UserBuffer</span><span class="p">;</span>
+        <span class="p">...</span>
+        <span class="n">v14</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">__int64</span> <span class="p">(</span><span class="kr">__fastcall</span> <span class="o">**</span><span class="p">)(</span><span class="n">_QWORD</span><span class="p">,</span> <span class="n">_QWORD</span><span class="p">,</span> <span class="n">__int64</span> <span class="o">*</span><span class="p">))(</span><span class="n">Type3InputBuffer</span> <span class="o">+</span> <span class="mh">0x38</span><span class="p">))(</span><span class="c1">// call Type3InputBuffer+0x38</span>
+                <span class="o">*</span><span class="n">UserBuffer</span><span class="p">,</span>
+                <span class="mi">0LL</span><span class="p">,</span>
+                <span class="n">v19</span><span class="p">);</span> <span class="c1">//------------[7]</span>
+        <span class="p">}</span>
+    <span class="p">}</span> 
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>我們在 [5] 看到，如果我們給定的 Property Set 是 <a href="https://learn.microsoft.com/mt-mt/windows-hardware/drivers/audio/kspropsetid-drmaudiostream">KSPROPSETID_DrmAudioStream</a> ，就有特別的處理。而在 [6] 時，會先去判斷 Irp-&gt;RequestorMode 是否為 KernelMode(0)，如果從 UserMode(1) 呼叫的 IOCTL 就會直接返回錯誤，但如果我們使用前面所說的 <code class="language-plaintext highlighter-rouge">KSPROPERTY_TYPE_UNSERIALIZESET</code> 來呼叫 IOCTL，並指定 <code class="language-plaintext highlighter-rouge">KSPROPSETID_DrmAudioStream</code> 這個 Property，那麼這裡 [6] 就會是 KerenlMode(0)。接下來就會在 [7] 直接使用使用者所傳入的內容做為 function 呼叫，甚至第一個參數是可控的，實際寫 PoC 後，驗證了我們的結果。</p>
+
+<p><img src="/assets/img/blog/20240823/25.png" alt="" /></p>
+
+<p>這邊可能會有人有疑惑，什麼設備或是情況下會有 <code class="language-plaintext highlighter-rouge">KSPROPSETID_DrmAudioStream</code> ？實際上來說音訊設備大多情況下都會有，主要是用來設置 DRM 相關內容用的。</p>
+
+<h3 id="exploitation">Exploitation</h3>
+<p>在有了任意呼叫之後，要達成 EoP 就不是太大的問題，雖然會遇到 kCFG、kASLR、SMEP 等等保護，但在 Medium IL 下唯一比較需要處理的就只有 kCFG。</p>
+
+<ul>
+  <li><strong>kCFG</strong></li>
+  <li>kASLR
+    <ul>
+      <li>NtQuerySystemInformation</li>
+    </ul>
+  </li>
+  <li>SMEP
+    <ul>
+      <li>Reuse Kernel Code</li>
+    </ul>
+  </li>
+  <li>…</li>
+</ul>
+
+<h4 id="bypass-kcfg">Bypass kCFG</h4>
+<p>那我們目標很簡單，就是從合法的 function 做出任意寫的 primitive，而之後就可以利用常見的方法<a href="https://www.ired.team/miscellaneous-reversing-forensics/windows-kernel-internals/how-kernel-exploits-abuse-tokens-for-privilege-escalation#id-1.-replacing-tokens-for-privilege-escalation">用 System token 取代當前的 Process token</a> 或是 <a href="https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf">Abuse token privilege</a> 去做到 EoP。</p>
+
+<p>直覺地會直接去找看看，kCFG 中合法的 function 名稱有 set 的 function，比較可能是可以寫入的。我們這裡是直接拿 ntoskrnl.exe 中 export fucntion 去尋找看看是否有合法的 function，這些大多情況下都是合法的。</p>
+
+<p><img src="/assets/img/blog/20240823/26.png" alt="" /></p>
+
+<p>而很快的我們就找到了 <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlsetallbits">RtlSetAllBits</a></p>
+
+<p><img src="/assets/img/blog/20240823/27.png" alt="" /></p>
+
+<p>它是個非常好用的 gadget 而且是 kCFG 中合法的 function，另外也只要控制一個參數 <code class="language-plaintext highlighter-rouge">_RTL_BITMAP</code></p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="nc">_RTL_BITMAP</span>
+<span class="p">{</span>
+    <span class="n">ULONG</span> <span class="n">SizeOfBitMap</span><span class="p">;</span>                                               
+    <span class="n">ULONG</span><span class="o">*</span> <span class="n">Buffer</span><span class="p">;</span>                                                   
+<span class="p">};</span> 
+
+</code></pre></div></div>
+
+<p>我們可將 Buffer 指定到任意位置並指定大小，就可以將一段範圍的 bits 全部設置起來，到這邊就差不多結束了，只要    將 <code class="language-plaintext highlighter-rouge">Token-&gt;Privilege</code> 全部設置起來，就可以利用 Abuse Privilege 方法來做到 EoP 了。</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/j1wzwXLxdVs?si=aKURBnYWXvbAaXin" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+
+<p>然而…在 Pwn2Own 比賽前，我們在 Hyper-V 上安裝一個全新 Windows 11 23H2 VM 測試 Exploit，結果失敗了。 而且是在開啟設備階段就失敗。</p>
+
+<p><img src="/assets/img/blog/20240823/28.png" alt="" /></p>
+
+<p>經過調查後發現到 Hyper-V 在預設情況下並不會有音訊設備，造成 exploit 會失敗。</p>
+
+<p><img src="/assets/img/blog/20240823/29.png" alt="" /></p>
+
+<p>在 Hyper-V 中，預設情況下只會有 MSKSSRV，然而 MSKSSRV 也沒有 KSPROPSETID_DrmAudioStream 這個 Property，使得我們無法成功利用這個漏洞達成 EoP，因此我們必須找其他方式觸發或者找新的漏洞，此時我們決定重新 Review 一遍整個流程，看看是否還有其他可能利用的地方。</p>
+
+<h3 id="cve-2024-30084">CVE-2024-30084</h3>
+<p>重新審視後，發現到 IOCTL_KS_PROPERTY 是使用 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-neither-buffered-nor-direct-i-o">Neither I/O</a> 來傳遞資料的，也就是說會直接拿使用者的 Input buffer 來做資料上的處理，一般來說不太建議使用這個方法，很常出現 Double Fetch 的問題。</p>
+
+<p><img src="/assets/img/blog/20240823/30.png" alt="" /></p>
+
+<p>我們可從上圖中 KspPropertyHandler 看到，在使用者呼叫 IOCTL 之後，會直接將 Type3InputBuffer 複製到新分配出來的 Buffer 中，其中會存有 <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/stream/ksproperty-structure">KSPROPERTY</a> 結構，接下來會用這結構中的 GUID 來查詢 Property 是否有在該設備所支援的 Property 中，若存在才會繼續往下呼叫 <code class="language-plaintext highlighter-rouge">UnserializePropertySet</code>。</p>
+
+<p>這邊我們再回頭看一眼 <code class="language-plaintext highlighter-rouge">UnserializePropertySet</code>。</p>
+
+<p><img src="/assets/img/blog/20240823/31.png" alt="" /></p>
+
+<p>我們可以發現到，<strong>它又再次從 Type3InputBuffer 複製使用者所提供的資料</strong>做為新的 IOCTL 的輸入，很明顯的這邊就存在了一個 Double Fetch 的漏洞，因此我們將整個利用流程改成下圖的樣子</p>
+
+<p><img src="/assets/img/blog/20240823/32.png" alt="" /></p>
+
+<p>我們一開始發送 IOCTL_KS_PROPERTY 時，就會先以 MSKSSRV 既有的 Property <code class="language-plaintext highlighter-rouge">KSPROPSETID_Service</code> 來做後續操作，而在圖中第 6 步時，會先複製一份 Property 的 GUID 到 Kernel 中，而後再用這個 Property GUID 去查詢是否有在該 KS Object 的支援清單中，而這邊因為 MSKSSRV 有支援，就會往下呼叫 <code class="language-plaintext highlighter-rouge">UnserializePropertySet</code>。</p>
+
+<p><img src="/assets/img/blog/20240823/33.png" alt="" /></p>
+
+<p>在呼叫 UnserializePropertySet 後，因為有 Double Fetch 的漏洞，讓我們可以在檢查後到使用之間，將 <code class="language-plaintext highlighter-rouge">KSPROPSETID_Service</code> 換成 <code class="language-plaintext highlighter-rouge">KSPROPSETID_DrmAudioStream</code> ，而接下來就可以讓 ks 使用 <code class="language-plaintext highlighter-rouge">KSPROPSETID_DrmAudioStream</code> 作為 requests 來發送 IOCTL，從而觸發前述了 CVE-2024-35250 邏輯漏洞，使這個漏洞不論在甚麼環境下都可以使用。</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/xNUj_XZ9LhQ?si=ONmvl9_8BV-z0idL" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+
+<p>最終我們成功在 Pwn2Own Vancouver 2024 中，成功攻下 Micorsoft Windows 11。</p>
+
+<p><img src="/assets/img/blog/20240823/34.png" alt="" /></p>
+
+<p>在 Pwn2Own 結束後，經過我們調查，發現到這個漏洞從 Windows 7 就存在了，至少存在將近 20 年，而且利用上非常穩定，有著百分之百的成功率，強烈建議大家盡速更新至最新版本 。</p>
+
+<h2 id="to-be-continued">To be continued</h2>
+<p>這篇主要著重在我們如何找到今年在 Pwn2Own 中所使用的漏洞及 Kernel Streaming 的攻擊面分析。在找到這個洞之後，我們後續也持續朝這個方向繼續研究，也發現了另外一個也是 Exploitable 的漏洞以及其他更多有趣的漏洞，我們預計在今年十月發表，敬請期待 Part II。</p>
+
+<h2 id="reference">Reference</h2>
+
+<ul>
+  <li><a href="https://securityintelligence.com/x-force/critically-close-to-zero-day-exploiting-microsoft-kernel-streaming-service/">Critically Close to Zero-Day: Exploiting Microsoft Kernel Streaming Service</a></li>
+  <li><a href="https://conference.hitb.org/hitbsecconf2023hkt/materials/D2T1%20-%20Windows%20Kernel%20Security%20-%20A%20Deep%20Dive%20into%20Two%20Exploits%20Demonstrated%20at%20Pwn2Own%20-%20Thomas%20Imbert.pdf">Windows Kernel Security - A Deep Dive into Two Exploits Demonstrated at Pwn2Own</a></li>
+  <li><a href="https://big5-sec.github.io/posts/CVE-2023-29360-analysis/">CVE-2023-29360 Analysis</a></li>
+  <li><a href="https://securityintelligence.com/x-force/little-bug-that-could/">Racing Round and Round: The Little Bug That Could</a></li>
+  <li><a href="https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html">Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager</a></li>
+  <li><a href="https://googleprojectzero.blogspot.com/2021/01/hunting-for-bugs-in-windows-mini-filter.html">Hunting for Bugs in Windows Mini-Filter Drivers</a></li>
+  <li><a href="https://msrc.microsoft.com/blog/2019/03/local-privilege-escalation-via-the-windows-i-o-manager-a-variant-finding-collaboration/">Local Privilege Escalation via the Windows I/O Manager: A Variant Finding &amp; Collaboration</a></li>
+</ul>
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/blog/author/angelboy">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/angelboy.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>Angelboy</h3>
+                        </a>
+                        <span>Senior Security Researcher</span>
+                        <p>
+                            I am 👼 :)
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+        <!-- 相關文章 -->
+        <section class="recommand articles-list">
+            <div class="container">
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/CVE/">#CVE</a> <a href="/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/blog/tag/Windows/">#Windows</a> <a href="/blog/tag/Kernel/">#Kernel</a> <a href="/blog/tag/Advisory/">#Advisory</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/">Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>angelboy</h3>
+                        </a>
+                    
+                        <span class="date">2024-08-23</span>
+                        <p class="line-litmit-3">在這篇研究將講述一個長期被忽視的攻擊面，讓我們在兩個月內就找出了超過 10 個漏洞。此外，也將深入探討了一種 Proxy-Based 的邏輯漏洞類型，使我們可以忽略掉大多數的檢查，最終成功在 Pwn2Own Vancouver 2024 中，攻下 Windows 11 的項目。
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/CVE/">#CVE</a> <a href="/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/blog/tag/RCE/">#RCE</a> <a href="/blog/tag/Advisory/">#Advisory</a> <a href="/blog/tag/Apache/">#Apache</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2024/08/09/confusion-attacks-exploiting-hidden-semantic-ambiguity-in-apache-http-server/">Confusion Attacks: Exploiting Hidden Semantic Ambiguity in Apache HTTP Server!</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>orange</h3>
+                        </a>
+                    
+                        <span class="date">2024-08-09</span>
+                        <p class="line-litmit-3">這篇文章探索了 Apache HTTP Server 中存在的架構問題，介紹了數個 Httpd 的架構債，包含 3 種不同的 Confusion Attacks、9 個新漏洞、20 種攻擊手法以及超過 30 種案例分析。 包括但不限於：  1. 怎麼使用一個 ? 繞過 Httpd 內建的存取控制以及認證。 2. 不安全的 RewriteRule 怎麼跳脫 Web Root 並存取整個檔案系統。 3. 如何利用一段從 1996 遺留至今的程式碼把一個 XSS 轉化成 RCE。
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/最新消息">最新消息</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> <a href="/blog/tag/Research/">#Research</a> <a href="/blog/tag/Windows/">#Windows</a> <a href="/blog/tag/MSRC/">#MSRC</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2024/08/08/msrc-2024-most-valuable-security-researchers-angelboy/">Angelboy 入列微軟 MSRC 2024 前百大最有價值資安研究員！</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2024-08-08</span>
+                        <p class="line-litmit-3">恭喜 DEVCORE 資深資安研究員 Angelboy 榮獲 Microsoft 的 MSRC 2024 Most Valuable Security Researchers 的殊榮！除了在不分項 TOP 100 名單中榮獲 #33 名，在 Angelboy 長年研究的 Windows 領域中，他更以 #9 的名次擠入前十大行列。
+                        </p>
+                    </div>
+                </article>
+              
+
+            </div>
+        </section>
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">服務</h6>
+        <ul>
+            <li><a href="/services/red-team/">紅隊演練</a></li>
+            <li><a href="/services/penetration-test/">滲透測試</a></li>
+            <li><a href="/services/security-consulting/">資安顧問服務</a></li>
+            <li><a href="/services/security-training/">資安教育訓練</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">研究</h6>
+        <ul>
+            <li><a href="/research/overview/">總覽概要</a></li>
+            <li><a href="/research/awards/">競賽與獎項</a></li>
+            <li><a href="/research/bug-bounty/">企業漏洞回報</a></li>
+            <li><a href="/research/talks/">國際研討會</a></li>
+            <li><a href="/research/cve/">CVE 漏洞列表</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">公司</h6>
+        <ul>
+            <li><a href="/company/about/">公司簡介</a></li>
+            <li><a href="/company/our-team/">團隊成員</a></li>
+            <li><a href="/company/history/">成就與沿革</a></li>
+            <li><a href="/company/csr/">企業社會責任</a></li>
+            <li><a href="/company/jobs/">工作機會</a></li>
+            <li><a href="/contact/">聯絡我們</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">新聞</h6>
+        <ul>
+            <li><a href="/blog/">BLOG</a></li>
+            <li><a href="/media-kit/">媒體素材下載</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2024 DEVCORE 戴夫寇爾股份有限公司. <b class="line-block">All rights reserved.</b></span>
+            <span><a href="/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+

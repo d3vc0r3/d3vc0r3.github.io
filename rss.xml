@@ -4,11 +4,1007 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 紅隊演練服務、滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Fri, 09 Aug 2024 07:58:59 -0700</lastBuildDate>
-        <pubDate>Fri, 09 Aug 2024 07:58:59 -0700</pubDate>
+        <lastBuildDate>Fri, 23 Aug 2024 21:48:23 +0800</lastBuildDate>
+        <pubDate>Fri, 23 Aug 2024 21:48:23 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I</title>
+                <description>&lt;p&gt;在過去的幾十年中 Windows Kernel 的漏洞層出不窮，熱門的攻擊面逐漸從 Win32k 慢慢轉移到 CLFS (Common Log File System) 上。微軟也持續且積極地修補這些漏洞，使得這些元件越來越安全。而下一個熱門的目標會是哪個元件呢？去年開始，MSKSSRV (Microsoft Kernel Streaming Service) 成為駭客喜愛的目標之一。這個驅動程式小到可以在幾天內完成分析。這是否意味著可能不太會有新的漏洞了？&lt;/p&gt;
+
+&lt;p&gt;在這篇研究將講述一個長期被忽視的攻擊面，讓我們在兩個月內就找出了超過 10 個漏洞。此外，也將深入探討了一種 Proxy-Based 的邏輯漏洞類型，使我們可以忽略掉大多數的檢查，最終成功在 Pwn2Own Vancouver 2024 中，攻下 Windows 11 的項目。&lt;/p&gt;
+
+&lt;p&gt;這份研究將分成數個部分來撰寫，分別講述不同的漏洞類型及漏洞型態，亦發表於 &lt;a href=&quot;https://hitcon.org/2024/CMT/agenda/&quot;&gt;HITCON CMT 2024&lt;/a&gt; 中。&lt;/p&gt;
+
+&lt;h2 id=&quot;start-from-mskssrv&quot;&gt;Start from MSKSSRV&lt;/h2&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;對於一項漏洞研究來說，從歷史的漏洞看起，是不可或缺的。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;起初，我們為了挑戰 Pwn2Own Vancouver 2024 中 Windows 11 的項目，開始從過去的 Pwn2Own 以及近期 in-the-wild 的漏洞中開始審視，尋找可能的攻擊面。沿著歷史軌跡可以得知，過去主要負責 GDI 相關操作的 Win32K 一直是個很熱門的目標，從 2018 年以來，CLFS (Common Log File System) 也漸漸成為了熱門目標之一。這兩個元件都非常複雜，並且直到現在仍然有不少新漏洞出現，但要熟悉這兩個元件需要花不少時間，同時也有許多研究員在看這兩個元件，所以最終我們沒有先選擇分析他們。&lt;/p&gt;
+
+&lt;p&gt;去年 &lt;a href=&quot;https://www.synacktiv.com/en&quot;&gt;Synacktiv&lt;/a&gt; 在 Pwn2Own 2023 中，使用 MSKSSRV 的&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2023-29360&quot;&gt;漏洞&lt;/a&gt;成功攻下 Windows 11 後，便有不少人往這個元件開始看起，短時間內就又出現了&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2023-36802&quot;&gt;第二個漏洞 CVE-2023-36802&lt;/a&gt;，這時 &lt;a href=&quot;https://x.com/chompie1337&quot;&gt;chompie&lt;/a&gt; 也發表了一篇&lt;a href=&quot;https://securityintelligence.com/x-force/critically-close-to-zero-day-exploiting-microsoft-kernel-streaming-service/&quot;&gt;非常詳細的文章&lt;/a&gt;，講述這個漏洞成因及其利用細節。由於這個元件非常的小，只看檔案大小約略只有 72 KB，可能認真看個幾天就可以全部看完，因此我們便挑了 MSKSSRV 來做歷史漏洞分析，看看是否有機會抓出其他漏洞。&lt;/p&gt;
+
+&lt;p&gt;接下來我們會提一下這兩個漏洞，但不會著墨過多。&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2023-29360---logical-vulnerability&quot;&gt;CVE-2023-29360 - logical vulnerability&lt;/h3&gt;
+&lt;p&gt;第一個是 Synacktiv 在 Pwn2Own 2023 中所使用的漏洞 :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這是一個邏輯上的漏洞。當 MSKSSRV 使用 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-mmprobeandlockpages&quot;&gt;MmProbeAndLockPages&lt;/a&gt; 鎖定使用者給的記憶體位置作為 FrameBuffer 時，並沒有設置正確的 AccessMode，導致沒有檢查使用者指定的位置是否屬於 User space。如果使用者給的是 Kernel space 中的位置，它就會把指定的 Kernel 位置映射到 User space 給使用者用，最終導致使用者可以對 Kernel 中的任意位置寫入，利用上簡單且非常穩定，成為了受歡迎的&lt;a href=&quot;https://www.cisa.gov/news-events/alerts/2024/02/29/cisa-adds-one-known-exploited-vulnerability-catalog&quot;&gt;漏洞之一&lt;/a&gt;。&lt;/p&gt;
+
+&lt;p&gt;更多細節可以參考 Synacktiv 在 HITB 2023 HKT 的&lt;a href=&quot;https://conference.hitb.org/hitbsecconf2023hkt/materials/D2T1%20-%20Windows%20Kernel%20Security%20-%20A%20Deep%20Dive%20into%20Two%20Exploits%20Demonstrated%20at%20Pwn2Own%20-%20Thomas%20Imbert.pdf&quot;&gt;演講&lt;/a&gt;及 &lt;a href=&quot;https://x.com/Big5_sec&quot;&gt;Nicolas Zilio(@Big5_sec)&lt;/a&gt; 的&lt;a href=&quot;https://big5-sec.github.io/posts/CVE-2023-29360-analysis/&quot;&gt;部落格文章&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2023-36802---type-confusion&quot;&gt;CVE-2023-36802 - type confusion&lt;/h3&gt;
+&lt;p&gt;這個漏洞則是在 CVE-2023-29360 出來後沒多就被許多人發現，並且在微軟發佈更新時，就已經偵測到利用，是個非常容易被發現的漏洞。MSKSSRV 會先將內部使用的物件（FSContextReg、FSStreamReg）存放在 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_object&quot;&gt;FILE_OBJECT&lt;/a&gt; 的 FsContext2 中，然而後續使用時並沒有對 FsContext2 的&lt;strong&gt;型態&lt;/strong&gt;做檢查，導致 type confusion，詳細內容可參考 &lt;a href=&quot;https://securityintelligence.com/x-force/critically-close-to-zero-day-exploiting-microsoft-kernel-streaming-service/&quot;&gt;IBM X-Force 的部落格&lt;/a&gt;。&lt;/p&gt;
+
+&lt;p&gt;至此之後，就很少有關於 MSKSSRV 的相關漏洞了。&lt;/p&gt;
+
+&lt;h3 id=&quot;but-is-that-the-end-of-it-&quot;&gt;But is that the end of it ?&lt;/h3&gt;
+&lt;p&gt;然而是否這樣就沒洞了呢？&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;而我要更準確地回答，No!&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;實際上整個 Kernel Streaming 就像下面這張圖這樣 :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;MSKSSRV 只是冰山一角而已，實際上還有不少潛在的元件，上圖中所寫的都是屬於 Kernel Streaming 的一部分。實際往這方向挖掘之後，最終也在這個攻擊面上取得不少漏洞，就如同流水般的流出漏洞來。
+&lt;img src=&quot;/assets/img/blog/20240823/cover.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;順帶一提，我在寫這篇部落格時，chompie 也發表了有關於他在今年 Pwn2Own Vancouver 2024 中所使用的漏洞 &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-30089&quot;&gt;CVE-2024-30089&lt;/a&gt;。這個漏洞也在 MSKSSRV 中，該漏洞發生在 Reference Count 的處理，其成因也很有趣，不過這邊就不多談，詳細內容可參考她&lt;a href=&quot;https://securityintelligence.com/x-force/little-bug-that-could/&quot;&gt;發表的文章&lt;/a&gt;。&lt;/p&gt;
+
+&lt;h2 id=&quot;brief-overview-of-kernel-streaming&quot;&gt;Brief overview of Kernel Streaming&lt;/h2&gt;
+&lt;p&gt;那麼，什麼是 Kernel Streaming 呢？ 事實上，我們正常使用電腦情況下就會用到 :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 Windows 系統上，當我們打開鏡頭、開啟音效以及麥克風等音訊設備時，系統需要從這些設備讀取你的聲音、影像等相關資料到 RAM 中。為了更高效地完成這些資料的傳輸，微軟提供了一個名為 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/kernel-streaming&quot;&gt;Kernel Streaming&lt;/a&gt; 的框架，用來處理這些資料。&lt;strong&gt;這個框架主要在 Kernel mode 下運行&lt;/strong&gt;，具有低延遲、良好的擴充性和統一介面等特性，使你能更方便、更高效地處理串流（Stream）資料。&lt;/p&gt;
+
+&lt;p&gt;Kernel Streaming 中，提供了三種多媒體驅動模型：port class、AVStream 和 stream class。這裡將主要介紹 port class 和 AVStream，而 stream class 因為較為罕見且過時，不會多加討論。&lt;/p&gt;
+
+&lt;h3 id=&quot;port-class&quot;&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/introduction-to-port-class&quot;&gt;Port Class&lt;/a&gt;&lt;/h3&gt;
+&lt;p&gt;大多數用於 PCI 和 DMA 型音效裝置的硬體驅動程式，它處理與音訊相關的數據傳輸，例如音量控制、麥克風輸入等等，主要會使用到的元件函式庫會是 portcls.sys。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;avstream&quot;&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/avstream-overview&quot;&gt;AVStream&lt;/a&gt;&lt;/h3&gt;
+&lt;p&gt;AVStream 則是由微軟提供的多媒體類驅動程式，主要支援僅限影片的串流和整合音訊/影片串流，目前跟影像有關的處理多數都跟這類別有關，例如你的視訊鏡頭、擷取卡等等。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;實際上 Kernel Streaming 的使用很複雜，因此這裡只會簡單的敘述一下，更多詳細內容可以參考&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/&quot;&gt;微軟官方文件&lt;/a&gt;。&lt;/p&gt;
+
+&lt;h2 id=&quot;interact-with-device&quot;&gt;Interact with device&lt;/h2&gt;
+&lt;p&gt;在我們想要與音訊設備或是視訊鏡頭等設備互動時該怎麼做呢？其實就跟一般設備互動一樣，可以透過 CreateFile 函數來開啟一個設備。那麼這類型的設備，名稱又會是甚麼呢？其實這邊不太會像是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\Devcie\NamedPipe&lt;/code&gt; 這類型的名稱，而是會像下面這樣的路徑 :&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;\\?\hdaudio#subfunc_01&amp;amp;ven_8086&amp;amp;dev_2812&amp;amp;nid_0001&amp;amp;subsys_00000000&amp;amp;rev_1000#6&amp;amp;2f1f346a&amp;amp;0&amp;amp;0002&amp;amp;0000001d#{6994ad04-93ef-11d0-a3cc-00a0c9223196}\ehdmiouttopo
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;enumerate-device&quot;&gt;Enumerate device&lt;/h3&gt;
+&lt;p&gt;每台電腦都可能不一樣，必須使用 &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows/win32/api/setupapi/nf-setupapi-setupdigetclassdevsw&quot;&gt;SetupDiGetClassDevs&lt;/a&gt; 等 API 去列舉設備，一般來說 KS 系列的設備都會註冊在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSCATEGORY*&lt;/code&gt; 底下，像是音訊設備就會註冊在 &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/install/kscategory-audio&quot;&gt;KSCATEGORY_AUDIO&lt;/a&gt; 中。&lt;/p&gt;
+
+&lt;p&gt;你也可以使用 KS 所提供的 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ksproxy/nf-ksproxy-ksopendefaultdevice&quot;&gt;KsOpenDefaultDevice&lt;/a&gt; 獲得該類別中第一個符合的 PnP 裝置的 Handle，實際上來說也只是 SetupDiGetClassDevs 和 CreateFile 的封裝而已。&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;hr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;KsOpenDefaultDevice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;KSCATEGORY_VIDEO_CAMERA&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;GENERIC_READ&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;GENERIC_WRITE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;g_hDevice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;kernel-streaming-object&quot;&gt;Kernel Streaming object&lt;/h3&gt;
+&lt;p&gt;我們在開啟這些設備之後，Kernel Streaming 會在 Kernel 中建立一些相關的 Instance，其中最為重要的就是 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ks-filters&quot;&gt;KS Filters&lt;/a&gt; 及 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ks-pins&quot;&gt;KS Pins&lt;/a&gt;。在 Kernel Streaming 的使用過程中，這些 Instance 會被頻繁使用，它們主要用來封裝設備的硬體功能，方便開發者透過統一的介面進行串流的處理。&lt;/p&gt;
+
+&lt;p&gt;這邊先以 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/audio-filters&quot;&gt;Audio Filters&lt;/a&gt; 作為例子，其他多數大同小異，我們也只會簡單介紹，其他細節請自行參考微軟官方文件。&lt;/p&gt;
+
+&lt;h4 id=&quot;ks-filters&quot;&gt;KS filters&lt;/h4&gt;
+&lt;p&gt;每個 KS Filter 通常代表一個設備或設備的特定功能，在我們打開一個音訊設備後，大部分情況下會對應到一個 Kernel Filter，當我們從音訊設備讀取資料時，這些資料就會先通過這個 KS Filter 進行處理。&lt;/p&gt;
+
+&lt;p&gt;概念上如下圖所示，中間的大框表示一個代表音訊設備的 KS filter。而我們想要從音訊設備中讀取資料時，會從左邊讀入 Filter，經過幾個節點進行處理後，從右邊輸出。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/7.png&quot; alt=&quot;&quot; /&gt;
+ (From: https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/audio-filters)&lt;/p&gt;
+
+&lt;h4 id=&quot;ks-pins&quot;&gt;KS pins&lt;/h4&gt;
+&lt;p&gt;上圖中，讀取及輸出資料的點稱為 Pin，Kernel 也有相對應的 KS Pin Object，用於描述這些 Pin 的行為，例如 Pin 是輸入端還是輸出端、支援的格式有哪些等。我們使用時必須在 Filters 上，&lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/nf-ks-kscreatepin&quot;&gt;開啟一個 Pin&lt;/a&gt; 來建立 Instance，才能從設備讀取或輸出資料。&lt;/p&gt;
+
+&lt;h3 id=&quot;ks-property&quot;&gt;KS Property&lt;/h3&gt;
+&lt;p&gt;這些 KS Object 都會有自己的 Property，每個 Property 都會有相對應的功能，前面所提到的 Pin 中的資料格式、音量大小及設備的狀態等等，這些都是一個 Property，通常會對應到一組 GUID，我們可以透過 &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_property&quot;&gt;IOCTL_KS_PROPERTY&lt;/a&gt; 來讀取或設定這些 Property。&lt;/p&gt;
+
+&lt;p&gt;這大大簡化了多媒體驅動程式的開發，並且確保了不同設備之間的一致性和可擴展性。&lt;/p&gt;
+
+&lt;h3 id=&quot;read-streams-from-webcam&quot;&gt;Read streams from webcam&lt;/h3&gt;
+&lt;p&gt;這邊就用個簡單的範例來介紹一下 Application 如何從視訊鏡頭讀取資料&lt;/p&gt;
+
+&lt;p&gt;其最簡單的流程大概如這張圖所示 :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/8.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;開啟設備後獲得設備 Handle&lt;/li&gt;
+  &lt;li&gt;使用這個 Handle 在這個 Filter 上建立 Pin 的 Instance 並獲得 Pin handle&lt;/li&gt;
+  &lt;li&gt;使用 IOCTL_KS_PROPERTY 設置 Pin 的狀態到 RUN&lt;/li&gt;
+  &lt;li&gt;最後就可以使用 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_read_stream&quot;&gt;IOCTL_KS_READ_STREAM&lt;/a&gt; 從這個 Pin 中讀資料進來&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;kernel-streaming-architecture&quot;&gt;Kernel Streaming architecture&lt;/h2&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;對漏洞研究而言，我們必須先了解其架構，思考有哪些可能的攻擊面&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;在初步了解 Kernel Streaming 有哪些功能和操作後，為了找尋漏洞必須先了解一下架構，了解 Windows 是怎麼實作這些功能、分別有哪些元件等等，才知道應該要分析哪些 sys，從哪邊下手會比較好。&lt;/p&gt;
+
+&lt;p&gt;經過我們分析後，整個架構約略會像這張圖所示 :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 Kernel Stearming 元件中，最為核心的就是 ksthunk.sys 及 ks.sys，幾乎所有功能都會與它們有關。&lt;/p&gt;
+
+&lt;h3 id=&quot;ksthunk-kernel-streaming-wow-thunk-service-driver&quot;&gt;ksthunk (Kernel Streaming WOW Thunk Service Driver)&lt;/h3&gt;
+&lt;p&gt;Application 呼叫 DeviceIoControl 後，在 Kernel Streaming 中的&lt;strong&gt;入口點&lt;/strong&gt;，但它功能很簡單，負責將 WoW64 process 中 32-bit 的 requests 轉換成 64-bit 的 requests，使得下層的 driver 就可以不必為 32 位元的結構另外處理。&lt;/p&gt;
+
+&lt;h3 id=&quot;ks-kernel-connection-and-streaming-architecture-library&quot;&gt;ks (Kernel Connection and Streaming Architecture Library)&lt;/h3&gt;
+&lt;p&gt;Kernel Streaming 的&lt;strong&gt;核心元件&lt;/strong&gt;之一，它是 Kernel Streaming 的函示庫，負責及轉發 IOCTL_KS_PROPERTY 等 requests 到對應設備的 driver 中，同時也會負責處理 AVStream 的相關功能。&lt;/p&gt;
+
+&lt;h3 id=&quot;the-work-flow-of-ioctl_ks_&quot;&gt;The work flow of IOCTL_KS_*&lt;/h3&gt;
+&lt;p&gt;而在呼叫 DeviceIoControl 時，就會像下圖一樣，將使用者的 requests 依序給相對應的 driver 來處理&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而到第 6 步時 ks.sys 就會根據你 requests 的 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ksproperty-structure&quot;&gt;Property&lt;/a&gt; 來決定要交給哪個 driver 及 handler 來處理你的 request。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;最終再轉發給相對應的 Driver，如上圖中最後轉發給 portcls 中的 handler 來操作音訊設備。&lt;/p&gt;
+
+&lt;p&gt;到這邊應該對 Kernel Streaming 的架構及流程有初步概念了，接下來就是找洞的時刻。依照現有的元素來看，哪些是值得一看的攻擊面呢？&lt;/p&gt;
+
+&lt;h3 id=&quot;from-attackers-view&quot;&gt;From attacker’s view&lt;/h3&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;在挖掘漏洞前，如果能仔細思考怎樣的情況下容易有洞，可以達到事半功倍的效果&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;從一個漏洞研究員的角度來說，大概會有下列這幾個點&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;每個設備中的 Property handler
+每個設備中的 KS Object 都有各自的 Property，而且每個 Property 都有各自的實作，有些 Property 處理起來容易出問題。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;ks 及 ksthunk 
+ks 及 ksthunk 已經有很長一段時間沒有漏洞，但卻是個最容易接觸到的入口點，也許是一個好目標，上一次出現的漏洞是在 2020 年 &lt;a href=&quot;https://x.com/nghiadt1098&quot;&gt;@nghiadt1098&lt;/a&gt; 所找到的兩個漏洞 &lt;a href=&quot;https://msrc.microsoft.com/update-guide/en-us/vulnerability/CVE-2020-16889&quot;&gt;CVE-2020-16889&lt;/a&gt; 及 &lt;a href=&quot;https://msrc.microsoft.com/update-guide/en-US/vulnerability/CVE-2020-17045&quot;&gt;CVE-2020-17045&lt;/a&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;每個 driver 都各自處理一部分的內容
+在 Kernel Streaming 的部分功能中，有些 driver 會各自先處理部分的內容，可能會造成一些不一致性的問題。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;我們針對上面幾個角度去對整個 Kernel Streaming 做 Code Review 後，很快的就發現了幾個比較容易發現的漏洞&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;portcls.sys
+    &lt;ul&gt;
+      &lt;li&gt;CVE-2024-38055 (out-of-bounds read when set dataformat for Pin)&lt;/li&gt;
+      &lt;li&gt;CVE-2024-38056&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;ksthunk
+    &lt;ul&gt;
+      &lt;li&gt;CVE-2024-38054 (out-of-bounds write)&lt;/li&gt;
+      &lt;li&gt;CVE-2024-38057&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;不過我們這一篇不會一一講解這些漏洞，這幾個多數都是沒有檢查長度或是 index 之類的越界存取等等明顯的洞，也許會在後續的部分慢慢來講解，&lt;a href=&quot;https://x.com/Fr0st1706&quot;&gt;@Fr0st1706&lt;/a&gt; 也在前陣子寫出了 CVE-2024-38054 的&lt;a href=&quot;https://github.com/Black-Frost/windows-learning/tree/main/CVE-2024-38054&quot;&gt;利用&lt;/a&gt;，這邊就暫時留給讀者研究了。&lt;/p&gt;
+
+&lt;p&gt;這篇要提的是，我們在 Review 過程中發現了一些有趣的事情。&lt;/p&gt;
+
+&lt;p&gt;你覺得下面這段程式碼是否安全呢？&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;__int64 __fastcall CKSThunkDevice::CheckIrpForStackAdjustmentNative(__int64 a1, struct _IRP *irp, __int64 a3, int *a4)
+{
+
+    if ( irp-&amp;gt;RequestorMode )
+    {
+        v14 = 0xC0000010;
+    }
+    else
+    {
+        UserBuffer = (unsigned int *)irp-&amp;gt;UserBuffer;
+        ...
+        v14 = (*(__int64 (__fastcall **)(_QWORD, _QWORD, __int64 *))    (Type3InputBuffer + 0x38))(// call Type3InputBuffer+0x38
+                *UserBuffer,
+                0LL,
+               v19);
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;看到這段程式碼讓我想起了 &lt;a href=&quot;https://decoded.avast.io/janvojtesek/lazarus-and-the-fudmodule-rootkit-beyond-byovd-with-an-admin-to-kernel-zero-day/&quot;&gt;CVE-2024-21338&lt;/a&gt;，該漏洞原先並沒有任何檢查，而在修補後則是新增了 &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-exgetpreviousmode&quot;&gt;ExGetPreviousMode&lt;/a&gt;，但這邊檢查則是使用了 &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/ns-wdm-_irp&quot;&gt;IRP&lt;/a&gt; 中的 RequestorMode 來做檢查，不過一般情況下從使用者呼叫的 IOCTL 的 RequestorMode 都會是 UserMode(1) 是不會有問題的。&lt;/p&gt;
+
+&lt;p&gt;此時我又想起來 &lt;a href=&quot;https://x.com/tiraniddo&quot;&gt;James Forshaw&lt;/a&gt; 的 &lt;a href=&quot;https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html&quot;&gt;Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager&lt;/a&gt; 這篇文章。&lt;/p&gt;
+
+&lt;h2 id=&quot;the-overlooked-bug-class&quot;&gt;The overlooked bug class&lt;/h2&gt;
+
+&lt;p&gt;這邊我們必須先來提一下幾個名詞跟概念，不過如果你對 PreviousMode 及 RequestorMode 很熟悉，可以跳至 &lt;a href=&quot;#A-logical-bug-class&quot;&gt;A logical bug class&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;previousmode&quot;&gt;PreviousMode&lt;/h3&gt;
+&lt;p&gt;第一個是 PreviousMode，在 Application 中如果使用者透過 Nt* 等 System Service Call 來對設備或檔案中操作時，進入 Kernel 後就會在 &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/kernel/eprocess#ethread&quot;&gt;_ETHREAD&lt;/a&gt; 中的 PreviousMode 標註 UserMode(1) 表示這個 System Service Call 是來自 User mode 的 Application。如果你是從 Kernel mode 中，例如設備 driver 呼叫 Zw* System Service Call 的 API 就會標記成 KernelMode(0)。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;requestormode&quot;&gt;RequestorMode&lt;/h3&gt;
+&lt;p&gt;另外一個類似的則是 IRP 中的 RequestorMode 這邊就是記錄你原始的 requests 是來自 UserMode 還是 KernelMode，在 Kernel driver 中的程式碼是非常常用到的欄位，通常會來自 PreviousMode。&lt;/p&gt;
+
+&lt;p&gt;很常被用來決定是否要對來自使用者的 requests 做額外檢查，像是 Memory Access Check 或是 Security Access Check，例如下面這個例子中，如果 requests 來自 UserMode 就會檢查使用者提供的位置，如果是從 Kernel 來的，就不做額外檢查增加效率。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但實際上這也出現了一些問題…&lt;/p&gt;
+
+&lt;h3 id=&quot;a-logical-bug-class&quot;&gt;A logical bug class&lt;/h3&gt;
+&lt;p&gt;在 &lt;a href=&quot;https://x.com/tiraniddo&quot;&gt;James Forshaw&lt;/a&gt; 的 &lt;a href=&quot;https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html&quot;&gt;Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager&lt;/a&gt; 中，就提到了一種 Bug Class&lt;/p&gt;
+
+&lt;p&gt;這邊可以先想想看，使用者呼叫 NtDeviceIoControlFile 之類的 System Service Call 之後，如果處理的 driver 又去用使用者可控的資料來作為 ZwOpenFile 的參數，會發生什麼事&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 driver 呼叫 ZwOpenFile 之後， PreviousMode 會轉換成為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode&lt;/code&gt;，並且在 NtOpenFile 處理時，就會因為 PreviousMode 是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode&lt;/code&gt; 的關係少掉大部分的檢查，而後續的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt; 也會因此變成 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode&lt;/code&gt; ，從而繞過 Security Access Check 及 Memory Access Check。不過這邊很看後續處理的 driver 怎麼去實作這些檢查，如果只依賴 RequestorMode 來決定要不要檢查，就可能會有問題。這邊省略了一些細節，實際上的狀況會稍微再複雜一點點，也會跟 CreateFile 的 flag 有關，細節可參考下列幾篇文章 :&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html&quot;&gt;Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://googleprojectzero.blogspot.com/2021/01/hunting-for-bugs-in-windows-mini-filter.html&quot;&gt;Hunting for Bugs in Windows Mini-Filter Drivers&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://msrc.microsoft.com/blog/2019/03/local-privilege-escalation-via-the-windows-i-o-manager-a-variant-finding-collaboration/&quot;&gt;Local privilege escalation via the Windows I/O Manager: a variant finding collaboration&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;這邊有這樣的概念就好，原先這些研究主要是在 Zw* 系列的 System Service Call 上面，大家可以思考一下，有沒有其他類似的情況，也可能造成這種邏輯漏洞呢?&lt;/p&gt;
+
+&lt;h4 id=&quot;the-new-bug-pattern&quot;&gt;The new bug pattern&lt;/h4&gt;
+&lt;p&gt;事實上來說是有的，使用 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iobuilddeviceiocontrolrequest&quot;&gt;IoBuildDeviceIoControlRequest&lt;/a&gt; 這個方法去創建一個 DeviceIoControl 的 IRP 時，萬一沒注意到也很容易有這樣的問題。這個 API 主要是 Kernel driver 用來呼叫 IOCTL 的其中一種方法，它會幫你建好 IRP，而後續在去呼叫 &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-iofcalldriver&quot;&gt;IofCallDriver&lt;/a&gt;，就可以在 Kernel driver 中呼叫 IOCTL。在 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iobuilddeviceiocontrolrequest&quot;&gt;Microsoft Learn&lt;/a&gt; 中，有一段話特別值得注意 :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;也就是預設情況下，如果你沒有特別去設置 RequestorMode 就會直接以 KernelMode 形式去呼叫 IOCTL。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;按照這個思路，我們重新回頭審視一下我們的目標 Kernel Streaming，我們發現了一個吸引我們的地方。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 Kernel Streaming 中使用這個 IoBuildDeviceIoControlRequest 地方是在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks!KsSynchronousIoControlDevice&lt;/code&gt; ，而主要內容明顯就是在用剛剛提到的方法，在 Kernel 中呼叫 DeviceIoControl，不過這邊看似有好好的設置 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt;，且會根據 KsSynchronousIoControlDevice 參數不同而去設置不同的數值，對於開發者來說會是一個方便的函式庫。&lt;/p&gt;
+
+&lt;p&gt;然而…&lt;/p&gt;
+
+&lt;p&gt;ks!CKsPin::GetState
+&lt;img src=&quot;/assets/img/blog/20240823/18.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;ks!SerializePropertySet
+&lt;img src=&quot;/assets/img/blog/20240823/19.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;ks!UnserializePropertySet
+&lt;img src=&quot;/assets/img/blog/20240823/20.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們發現到在 Kernel Streaming 中，全部有使用到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsSynchronousIoControlDevice&lt;/code&gt; 的地方都是固定的使用 KernelMode(0)，到這邊就可以仔細的檢查看看，有用到的地方是否有安全上的問題了。因此我們將 Kernel Streaming 中的 bug pattern 轉換成下列幾點:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;有使用 KsSynchronousIoControlDevice&lt;/li&gt;
+  &lt;li&gt;有可控的
+    &lt;ul&gt;
+      &lt;li&gt;InputBuffer&lt;/li&gt;
+      &lt;li&gt;OutputBuffer&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;第二次處理 IOCTL 的地方有依賴 RequestorMode 做安全檢查，並且有可以作為提權利用的地方。
+&lt;img src=&quot;/assets/img/blog/20240823/21.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;按照這個 Pattern 我們很快地就找到了第一個洞&lt;/p&gt;
+
+&lt;h2 id=&quot;the-vulnerability--exploitation&quot;&gt;The vulnerability &amp;amp; exploitation&lt;/h2&gt;
+
+&lt;h3 id=&quot;cve-2024-35250&quot;&gt;CVE-2024-35250&lt;/h3&gt;
+&lt;p&gt;這個漏洞也是我們今年在 &lt;a href=&quot;https://x.com/thezdi/status/1770517322203070674&quot;&gt;Pwn2Own Vancouver 2024 中所使用的漏洞&lt;/a&gt;。在 Kernel Streaming 的 IOCTL_KS_PROPERTY 功能中，為了讓效率增加，提供了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPERTY_TYPE_SERIALIZESET&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPERTY_TYPE_UNSERIALIZESET&lt;/code&gt; 功能允許使用者透過&lt;strong&gt;單一呼叫&lt;/strong&gt;與多個 Property 進行操作。當我們用這功能時，這些 requests 將被 KsPropertyHandler 函數分解成多個呼叫，詳情可參考&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ksproperty-structure#remarks&quot;&gt;這篇&lt;/a&gt;。&lt;/p&gt;
+
+&lt;p&gt;該功能實作在 ks.sys 中&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/22.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;上圖中可以看到，在 ks 處理 Property 時，如果有給上述的 flag 就會由 UnserializePropertySet 來處理你的 request&lt;/p&gt;
+
+&lt;p&gt;我們這邊就先來看一下 UnserializePropertySet&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__fastcall&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;UnserializePropertySet&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;PIRP&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;KSIDENTIFIER&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;UserProvideProperty&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;KSPROPERTY_SET&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;propertyset_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;New_KsProperty_req&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ExAllocatePoolWithTag&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NonPagedPoolNx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;InSize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x7070534Bu&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;memmove&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;New_KsProperty_req&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CurrentStackLocation&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Parameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DeviceIoControl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Type3InputBuffer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;InSize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//------[1] &lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;status&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;KsSynchronousIoControlDevice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;CurrentStackLocation&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FileObject&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;CurrentStackLocation&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Parameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DeviceIoControl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;IoControlCode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;New_KsProperty_req&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;InSize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;OutBuffer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;OutSize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;BytesReturned&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//-----------[2]&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;可看到在處理過程中會先將原始的 request，複製到新分配出來的 Buffer 中 [1]，而後續就會使用這個 Buffer 來使用 KsSynchronousIoControlDevice 呼叫新的 IOCTL [2]。其中 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;New_KsProperty_req&lt;/code&gt; 及 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;OutBuffer&lt;/code&gt; 都是使用者所傳入的內容。&lt;/p&gt;
+
+&lt;p&gt;而呼叫 UnserializePropertySet 時的流程，大概如下圖所示 :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/23.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這邊呼叫 IOCTL 時可以看到圖中第 2 步 I/O Manager 會將 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt; 設成 UserMode(1)，直到第 6 步時，ks 會去判斷使用者 requests 的 Property 是否存在於該 KS Object 中，如果該 KS Object 的 Property &lt;strong&gt;存在&lt;/strong&gt;，並且有設置 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPERTY_TYPE_UNSERIALIZESET&lt;/code&gt; 就會用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UnserializePropertySet&lt;/code&gt; 來處理指定的 Property&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/24.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而接下來第 7 步就會呼叫 KsSynchronousIoControlDevice 重新做一次  IOCTL，而此時新的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt; 就變成了 KernelMode(0) 了，而後續的處理就如一般的 IOCTL_KS_PROPERTY 相同，就不另外詳述了，總之我們到這裡已經有個可以任意做 IOCTL_KS_PROPERTY 的 primitive 了，接下來我們必須尋找看看是否有可以 EoP 的地方。&lt;/p&gt;
+
+&lt;h3 id=&quot;the-eop&quot;&gt;The EoP&lt;/h3&gt;
+&lt;p&gt;最先看到的想必就是入口點 ksthunk，我們這邊可以直接來看 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk!CKSThunkDevice::DispatchIoctl&lt;/code&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;
+&lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__fastcall&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CKSThunkDevice&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DispatchIoctl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;CKernelFilterDevice&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;IRP&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;a3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;NTSTATUS&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;IoIs32bitProcess&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;RequestorMode&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//------[3]&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+   &lt;span class=&quot;c1&quot;&gt;//Convert 32-bit requests to 64-bit requests&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CurrentStackLocation&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Parameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DeviceIoControl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;IoControlCode&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;IOCTL_KS_PROPERTY&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CKSThunkDevice&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;CheckIrpForStackAdjustmentNative&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v11&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;a4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//-----[4];&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;ksthunk 會先判斷是否是 WoW64 的 Process 的 request，如果是就會將原本 32-bit 的 requests  轉換成 64-bit 的 [3]，如果原本就是 64-bit 則會呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CKSThunkDevice::CheckIrpForStackAdjustmentNative&lt;/code&gt; [4] 往下傳遞&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__fastcall&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CKSThunkDevice&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;CheckIrpForStackAdjustmentNative&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;a1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;_IRP&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;a3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_OWORD&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Type3InputBuffer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Set&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_OWORD&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;KSPROPSETID_DrmAudioStream&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;type3inputbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Id&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;type3inputbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Flags&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;   &lt;span class=&quot;c1&quot;&gt;//-----[5]   &lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;RequestorMode&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//-------[6]&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v14&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0xC0000010&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;UserBuffer&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UserBuffer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v14&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kr&quot;&gt;__fastcall&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;**&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_QWORD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_QWORD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Type3InputBuffer&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x38&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))(&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;// call Type3InputBuffer+0x38&lt;/span&gt;
+                &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UserBuffer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                &lt;span class=&quot;mi&quot;&gt;0LL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;v19&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//------------[7]&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; 
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;我們在 [5] 看到，如果我們給定的 Property Set 是 &lt;a href=&quot;https://learn.microsoft.com/mt-mt/windows-hardware/drivers/audio/kspropsetid-drmaudiostream&quot;&gt;KSPROPSETID_DrmAudioStream&lt;/a&gt; ，就有特別的處理。而在 [6] 時，會先去判斷 Irp-&amp;gt;RequestorMode 是否為 KernelMode(0)，如果從 UserMode(1) 呼叫的 IOCTL 就會直接返回錯誤，但如果我們使用前面所說的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPERTY_TYPE_UNSERIALIZESET&lt;/code&gt; 來呼叫 IOCTL，並指定 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPSETID_DrmAudioStream&lt;/code&gt; 這個 Property，那麼這裡 [6] 就會是 KerenlMode(0)。接下來就會在 [7] 直接使用使用者所傳入的內容做為 function 呼叫，甚至第一個參數是可控的，實際寫 PoC 後，驗證了我們的結果。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/25.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這邊可能會有人有疑惑，什麼設備或是情況下會有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPSETID_DrmAudioStream&lt;/code&gt; ？實際上來說音訊設備大多情況下都會有，主要是用來設置 DRM 相關內容用的。&lt;/p&gt;
+
+&lt;h3 id=&quot;exploitation&quot;&gt;Exploitation&lt;/h3&gt;
+&lt;p&gt;在有了任意呼叫之後，要達成 EoP 就不是太大的問題，雖然會遇到 kCFG、kASLR、SMEP 等等保護，但在 Medium IL 下唯一比較需要處理的就只有 kCFG。&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;kCFG&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;kASLR
+    &lt;ul&gt;
+      &lt;li&gt;NtQuerySystemInformation&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;SMEP
+    &lt;ul&gt;
+      &lt;li&gt;Reuse Kernel Code&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;…&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&quot;bypass-kcfg&quot;&gt;Bypass kCFG&lt;/h4&gt;
+&lt;p&gt;那我們目標很簡單，就是從合法的 function 做出任意寫的 primitive，而之後就可以利用常見的方法&lt;a href=&quot;https://www.ired.team/miscellaneous-reversing-forensics/windows-kernel-internals/how-kernel-exploits-abuse-tokens-for-privilege-escalation#id-1.-replacing-tokens-for-privilege-escalation&quot;&gt;用 System token 取代當前的 Process token&lt;/a&gt; 或是 &lt;a href=&quot;https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf&quot;&gt;Abuse token privilege&lt;/a&gt; 去做到 EoP。&lt;/p&gt;
+
+&lt;p&gt;直覺地會直接去找看看，kCFG 中合法的 function 名稱有 set 的 function，比較可能是可以寫入的。我們這裡是直接拿 ntoskrnl.exe 中 export fucntion 去尋找看看是否有合法的 function，這些大多情況下都是合法的。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/26.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而很快的我們就找到了 &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlsetallbits&quot;&gt;RtlSetAllBits&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/27.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;它是個非常好用的 gadget 而且是 kCFG 中合法的 function，另外也只要控制一個參數 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;_RTL_BITMAP&lt;/code&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;_RTL_BITMAP&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;ULONG&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;SizeOfBitMap&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;                                               
+    &lt;span class=&quot;n&quot;&gt;ULONG&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Buffer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;                                                   
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt; 
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;我們可將 Buffer 指定到任意位置並指定大小，就可以將一段範圍的 bits 全部設置起來，到這邊就差不多結束了，只要    將 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Token-&amp;gt;Privilege&lt;/code&gt; 全部設置起來，就可以利用 Abuse Privilege 方法來做到 EoP 了。&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/j1wzwXLxdVs?si=aKURBnYWXvbAaXin&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;p&gt;然而…在 Pwn2Own 比賽前，我們在 Hyper-V 上安裝一個全新 Windows 11 23H2 VM 測試 Exploit，結果失敗了。 而且是在開啟設備階段就失敗。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/28.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;經過調查後發現到 Hyper-V 在預設情況下並不會有音訊設備，造成 exploit 會失敗。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/29.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 Hyper-V 中，預設情況下只會有 MSKSSRV，然而 MSKSSRV 也沒有 KSPROPSETID_DrmAudioStream 這個 Property，使得我們無法成功利用這個漏洞達成 EoP，因此我們必須找其他方式觸發或者找新的漏洞，此時我們決定重新 Review 一遍整個流程，看看是否還有其他可能利用的地方。&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2024-30084&quot;&gt;CVE-2024-30084&lt;/h3&gt;
+&lt;p&gt;重新審視後，發現到 IOCTL_KS_PROPERTY 是使用 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-neither-buffered-nor-direct-i-o&quot;&gt;Neither I/O&lt;/a&gt; 來傳遞資料的，也就是說會直接拿使用者的 Input buffer 來做資料上的處理，一般來說不太建議使用這個方法，很常出現 Double Fetch 的問題。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/30.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們可從上圖中 KspPropertyHandler 看到，在使用者呼叫 IOCTL 之後，會直接將 Type3InputBuffer 複製到新分配出來的 Buffer 中，其中會存有 &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/stream/ksproperty-structure&quot;&gt;KSPROPERTY&lt;/a&gt; 結構，接下來會用這結構中的 GUID 來查詢 Property 是否有在該設備所支援的 Property 中，若存在才會繼續往下呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UnserializePropertySet&lt;/code&gt;。&lt;/p&gt;
+
+&lt;p&gt;這邊我們再回頭看一眼 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UnserializePropertySet&lt;/code&gt;。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/31.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們可以發現到，&lt;strong&gt;它又再次從 Type3InputBuffer 複製使用者所提供的資料&lt;/strong&gt;做為新的 IOCTL 的輸入，很明顯的這邊就存在了一個 Double Fetch 的漏洞，因此我們將整個利用流程改成下圖的樣子&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/32.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們一開始發送 IOCTL_KS_PROPERTY 時，就會先以 MSKSSRV 既有的 Property &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPSETID_Service&lt;/code&gt; 來做後續操作，而在圖中第 6 步時，會先複製一份 Property 的 GUID 到 Kernel 中，而後再用這個 Property GUID 去查詢是否有在該 KS Object 的支援清單中，而這邊因為 MSKSSRV 有支援，就會往下呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UnserializePropertySet&lt;/code&gt;。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/33.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在呼叫 UnserializePropertySet 後，因為有 Double Fetch 的漏洞，讓我們可以在檢查後到使用之間，將 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPSETID_Service&lt;/code&gt; 換成 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPSETID_DrmAudioStream&lt;/code&gt; ，而接下來就可以讓 ks 使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPSETID_DrmAudioStream&lt;/code&gt; 作為 requests 來發送 IOCTL，從而觸發前述了 CVE-2024-35250 邏輯漏洞，使這個漏洞不論在甚麼環境下都可以使用。&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/xNUj_XZ9LhQ?si=ONmvl9_8BV-z0idL&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;p&gt;最終我們成功在 Pwn2Own Vancouver 2024 中，成功攻下 Micorsoft Windows 11。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/34.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 Pwn2Own 結束後，經過我們調查，發現到這個漏洞從 Windows 7 就存在了，至少存在將近 20 年，而且利用上非常穩定，有著百分之百的成功率，強烈建議大家盡速更新至最新版本 。&lt;/p&gt;
+
+&lt;h2 id=&quot;to-be-continued&quot;&gt;To be continued&lt;/h2&gt;
+&lt;p&gt;這篇主要著重在我們如何找到今年在 Pwn2Own 中所使用的漏洞及 Kernel Streaming 的攻擊面分析。在找到這個洞之後，我們後續也持續朝這個方向繼續研究，也發現了另外一個也是 Exploitable 的漏洞以及其他更多有趣的漏洞，我們預計在今年十月發表，敬請期待 Part II。&lt;/p&gt;
+
+&lt;h2 id=&quot;reference&quot;&gt;Reference&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://securityintelligence.com/x-force/critically-close-to-zero-day-exploiting-microsoft-kernel-streaming-service/&quot;&gt;Critically Close to Zero-Day: Exploiting Microsoft Kernel Streaming Service&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://conference.hitb.org/hitbsecconf2023hkt/materials/D2T1%20-%20Windows%20Kernel%20Security%20-%20A%20Deep%20Dive%20into%20Two%20Exploits%20Demonstrated%20at%20Pwn2Own%20-%20Thomas%20Imbert.pdf&quot;&gt;Windows Kernel Security - A Deep Dive into Two Exploits Demonstrated at Pwn2Own&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://big5-sec.github.io/posts/CVE-2023-29360-analysis/&quot;&gt;CVE-2023-29360 Analysis&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://securityintelligence.com/x-force/little-bug-that-could/&quot;&gt;Racing Round and Round: The Little Bug That Could&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html&quot;&gt;Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://googleprojectzero.blogspot.com/2021/01/hunting-for-bugs-in-windows-mini-filter.html&quot;&gt;Hunting for Bugs in Windows Mini-Filter Drivers&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://msrc.microsoft.com/blog/2019/03/local-privilege-escalation-via-the-windows-i-o-manager-a-variant-finding-collaboration/&quot;&gt;Local Privilege Escalation via the Windows I/O Manager: A Variant Finding &amp;amp; Collaboration&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+                <link>https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/</link>
+                <guid>https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1</guid>
+                <pubDate>Fri, 23 Aug 2024 00:00:00 +0800</pubDate>
+        </item>
+
+        <item>
+                <title>Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I</title>
+                <description>&lt;p&gt;Over the past few decades, vulnerabilities in the Windows Kernel have emerged frequently. The popular attack surface has gradually shifted from Win32k to CLFS (Common Log File System). Microsoft has continuously patched these vulnerabilities, making these targets increasingly secure. However, which component might become the next attack target? Last year, MSKSSRV (Microsoft Kernel Streaming Service) became a popular target for hackers. However, this driver is tiny and can be analyzed in just a few days. Does this mean there might not be new vulnerabilities?&lt;/p&gt;
+
+&lt;p&gt;This research will discuss an overlooked attack surface that allowed us to find more than ten vulnerabilities within two months. Additionally, we will delve into a proxy-based logical vulnerability type that allows us to bypass most validations, enabling us to successfully exploit Windows 11 in Pwn2Own Vancouver 2024.&lt;/p&gt;
+
+&lt;p&gt;(This research will be divided into several parts, each discussing different bug classes and vulnerabilities. This research was also presented at &lt;a href=&quot;https://hitcon.org/2024/CMT/agenda/d6903413-cfba-4b80-a758-af9a257063d0/&quot;&gt;HITCON CMT 2024&lt;/a&gt;.)&lt;/p&gt;
+
+&lt;h2 id=&quot;start-from-mskssrv&quot;&gt;Start from MSKSSRV&lt;/h2&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;For vulnerability research, looking at historical vulnerabilities is indispensable.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Initially, we aimed to challenge Windows 11 in Pwn2Own Vancouver 2024. Therefore, we began by reviewing past Pwn2Own events and recent in-the-wild Windows vulnerabilities, searching for potential attack surfaces. Historical trends show that Win32K, primarily responsible for handling GDI-related operations, has always been a popular target, with numerous vulnerabilities still emerging. Since 2018, CLFS (Common Log File System) has also gradually become a popular target. Both components are extremely complex, suggesting that there are likely still many vulnerabilities.  However, becoming familiar with these components requires significant time, and many researchers are already examining them. Therefore, we did not choose to analyze them first.&lt;/p&gt;
+
+&lt;p&gt;Last year, after &lt;a href=&quot;https://www.synacktiv.com/en&quot;&gt;Synacktiv&lt;/a&gt; successfully exploited a &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2023-29360&quot;&gt;vulnerability&lt;/a&gt; in MSKSSRV to compromise Windows 11 during Pwn2Own 2023, many researchers began to focus on this component. Shortly thereafter, a second vulnerability ,&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2023-36802&quot;&gt;CVE-2023-36802&lt;/a&gt;, was discovered. At this time, &lt;a href=&quot;https://x.com/chompie1337&quot;&gt;chompie&lt;/a&gt; also published an &lt;a href=&quot;https://securityintelligence.com/x-force/critically-close-to-zero-day-exploiting-microsoft-kernel-streaming-service/&quot;&gt;excellent blog post&lt;/a&gt; detailing this vulnerability and its exploitation techniques. Given that this component is very small, with a file size of approximately 72 KB, it might only take a few days of careful examination to fully understand it. Therefore, we chose MSKSSRV for historical vulnerability analysis, with the hopeful prospect of identifying other vulnerabilities.&lt;/p&gt;
+
+&lt;p&gt;We will briefly discuss these two vulnerabilities but not go into much detail.&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2023-29360---logical-vulnerability&quot;&gt;CVE-2023-29360 - logical vulnerability&lt;/h3&gt;
+&lt;p&gt;The first one is the vulnerability used by Synacktiv in Pwn2Own Vancouver 2023.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;This is a logical vulnerability in the MSKSSRV driver. When MSKSSRV uses &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-mmprobeandlockpages&quot;&gt;MmProbeAndLockPages&lt;/a&gt; to lock user-specified memory address as framebuffer, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AccessMode&lt;/code&gt; was not set correctly. This leads to a failure to check whether the user-specified address belongs to the user space. If the user provides a kernel address, it will map the specified kernel address to user space for the user to use. Ultimately, this allows the user to write data to any address in the kernel. The exploitation is simple and very stable, making it become &lt;a href=&quot;https://www.cisa.gov/news-events/alerts/2024/02/29/cisa-adds-one-known-exploited-vulnerability-catalog&quot;&gt;one of the most popular vulnerabilities&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;For more details, please refer to &lt;a href=&quot;https://conference.hitb.org/hitbsecconf2023hkt/materials/D2T1%20-%20Windows%20Kernel%20Security%20-%20A%20Deep%20Dive%20into%20Two%20Exploits%20Demonstrated%20at%20Pwn2Own%20-%20Thomas%20Imbert.pdf&quot;&gt;Synacktiv’s presentation at HITB 2023 HKT&lt;/a&gt; and &lt;a href=&quot;https://x.com/Big5_sec&quot;&gt;Nicolas Zilio(@Big5_sec)&lt;/a&gt; ‘s blog &lt;a href=&quot;https://big5-sec.github.io/posts/CVE-2023-29360-analysis/&quot;&gt;post&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2023-36802---type-confusion&quot;&gt;CVE-2023-36802 - type confusion&lt;/h3&gt;
+&lt;p&gt;This vulnerability was discovered shortly after CVE-2023-29360 was released. It was already being exploited when Microsoft released their patches. This is a very easily discovered vulnerability. It uses the objects (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;FSContextReg&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;FSStreamReg&lt;/code&gt;) stored in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;FILE_OBJECT-&amp;gt;FsContext2&lt;/code&gt; for subsequent processing. However, there is no check on the type of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;FsContext2&lt;/code&gt;, leading to type confusion. For detailed information, you can refer to the &lt;a href=&quot;https://securityintelligence.com/x-force/critically-close-to-zero-day-exploiting-microsoft-kernel-streaming-service/&quot;&gt;IBM X-Force blog&lt;/a&gt;, which provides a very thorough explanation.&lt;/p&gt;
+
+&lt;p&gt;Since then, there have been very few vulnerabilities related to MSKSSRV. Due to its relatively small size, MSKSSRV is quickly reviewed, and gradually, fewer and fewer people pay attention to it.&lt;/p&gt;
+
+&lt;h3 id=&quot;but-is-that-the-end-of-it-&quot;&gt;But is that the end of it ?&lt;/h3&gt;
+&lt;p&gt;However, does this mean there are no more vulnerabilities?&lt;/p&gt;
+
+&lt;p&gt;In fact, the entire Kernel Streaming looks like the diagram below:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;MSKSSRV is just the tip of the iceberg. In fact, there are many other potential components, and those listed in the diagram above are all part of Kernel Streaming. After delving into this attack surface, numerous vulnerabilities were eventually discovered, flowing like a stream.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/cover.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;By the way, while I was writing this blog, chompie also &lt;a href=&quot;https://securityintelligence.com/x-force/little-bug-that-could&quot;&gt;published&lt;/a&gt; about the vulnerability she used in this year’s Pwn2Own Vancouver 2024, &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-30089&quot;&gt;CVE-2024-30089&lt;/a&gt;, which is also a vulnerability in MSKSSRV. The vulnerability lies in handling the reference count, requiring a lot of attention and thought to discover. It is also quite interesting, but I won’t discuss it here. I highly recommend reading &lt;a href=&quot;https://securityintelligence.com/x-force/little-bug-that-could&quot;&gt;this one&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;brief-overview-of-kernel-streaming&quot;&gt;Brief overview of Kernel Streaming&lt;/h2&gt;
+&lt;p&gt;So, what is Kernel Streaming? In fact, we use it very frequently.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;On Windows systems, when we open the webcam, enable sound, and activate audio devices such as microphones, the system needs to write or read related data such as your voice and captured images from your devices into RAM. It is essential to read data into your computer more efficiently during this process. Microsoft provides a framework called &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/kernel-streaming&quot;&gt;Kernel Streaming&lt;/a&gt; to handle these data, which &lt;strong&gt;primarily operates in kernel mode&lt;/strong&gt;. It features low latency, excellent scalability, and a unified interface, making handling streaming data more convenient and efficient.&lt;/p&gt;
+
+&lt;p&gt;In Microsoft’s Kernel Streaming, three multimedia class driver models are provided: port class, AVStream, and stream class. We will briefly introduce port class and AVStream, as stream class is less common and more outdated and will not be discussed here.&lt;/p&gt;
+
+&lt;h3 id=&quot;port-class&quot;&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/introduction-to-port-class&quot;&gt;Port class&lt;/a&gt;&lt;/h3&gt;
+
+&lt;p&gt;This type of driver is mostly used for PCI and DMA-based audio device hardware drivers. Currently, most audio-related processing, such as volume control or microphone-related processing, falls into this category. The main component library used would be &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;portcls.sys&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;avstream&quot;&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/avstream-overview&quot;&gt;AVStream&lt;/a&gt;&lt;/h3&gt;
+
+&lt;p&gt;AVStream is a multimedia driver provided by Microsoft that primarily supports video-only and integrated audio/video streaming. Currently, most video-related processing, such as your webcam, capture card, etc., is associated with this category.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In fact, the use of Kernel Streaming is also very complex. We will only provide a brief description. For more detailed information, please refer to &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/&quot;&gt;Microsoft Learn&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;interact-with-device&quot;&gt;Interact with device&lt;/h2&gt;
+
+&lt;p&gt;When we want to interact with audio devices or webcams, we need to open the device just like with any other device. Essentially, it interacts with the device driver in the same way. So, what would the names of these types of devices be? These names are not typically like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\Device\NamedPipe&lt;/code&gt;, but rather something like the following:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;\\?\hdaudio#subfunc_01&amp;amp;ven_8086&amp;amp;dev_2812&amp;amp;nid_0001&amp;amp;subsys_00000000&amp;amp;rev_1000#6&amp;amp;2f1f346a&amp;amp;0&amp;amp;0002&amp;amp;0000001d#{6994ad04-93ef-11d0-a3cc-00a0c9223196}\ehdmiouttopo
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;enumerate-device&quot;&gt;Enumerate device&lt;/h3&gt;
+&lt;p&gt;Here you can use APIs such as &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows/win32/api/setupapi/nf-setupapi-setupdigetclassdevsw&quot;&gt;SetupDiGetClassDevs&lt;/a&gt; to enumerate devices. Generally, KS series devices are registered under &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSCATEGORY*&lt;/code&gt;, such as audio devices which are registered under &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/install/kscategory-audio&quot;&gt;KSCATEGORY_AUDIO&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Additionally, you can use the APIs provided by KS, such as &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ksproxy/nf-ksproxy-ksopendefaultdevice&quot;&gt;KsOpenDefaultDevice&lt;/a&gt;, to obtain the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;handle&lt;/code&gt; of the first matching PnP device in that category. Actually, it is just a wrapper around &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SetupDiGetClassDevs&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CreateFile&lt;/code&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;hr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;KsOpenDefaultDevice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;KSCATEGORY_VIDEO_CAMERA&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;GENERIC_READ&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;|&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;GENERIC_WRITE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;g_hDevice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;kernel-streaming-object&quot;&gt;Kernel Streaming object&lt;/h3&gt;
+
+&lt;p&gt;After we open these devices, Kernel Streaming will create some Kernel Streaming related instances, the most important of which are &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ks-filters&quot;&gt;KS Filters&lt;/a&gt; and &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ks-pins&quot;&gt;KS Pins&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;These will be used during the Kernel Streaming process. We will only provide a brief introduction here. We will use &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/audio-filters&quot;&gt;audio filters&lt;/a&gt; as an example, as most others are quite similar.&lt;/p&gt;
+
+&lt;h4 id=&quot;ks-filters&quot;&gt;KS filters&lt;/h4&gt;
+&lt;p&gt;Each KS Filter typically represents a device or a specific function of a device. When we open an audio device, it usually corresponds to a KS filter object. When we read data from the audio device, this data is first processed through this KS Filter.&lt;/p&gt;
+
+&lt;p&gt;Conceptually, as shown in the diagram below, the large box in the middle represents a KS filter for the audio device. When we want to read data from the audio device, it is read into the filter from the left, processed through several nodes, and then output from the right.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/7.png&quot; alt=&quot;&quot; /&gt;
+ (From: https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/audio-filters)&lt;/p&gt;
+
+&lt;h4 id=&quot;ks-pins&quot;&gt;KS pins&lt;/h4&gt;
+&lt;p&gt;In the figure above, the points for reading and outputting data are called pins. The kernel also has corresponding KS pin Objects to describe the Pins, recording whether the Pin is a sink or a source, the data format for input and output, and so on. When we use it, we must &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/nf-ks-kscreatepin&quot;&gt;open a pin&lt;/a&gt; on the filters to create an instance to read from or write to the device.&lt;/p&gt;
+
+&lt;h3 id=&quot;ks-property&quot;&gt;KS property&lt;/h3&gt;
+
+&lt;p&gt;Each of these KS objects will have its own property, and each property corresponds to a specific feature. For instance, the data format mentioned earlier in the Pin, the volume level, and the status of the device are all properties. These properties typically correspond to a set of GUIDs. We can set these properties through &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_property&quot;&gt;IOCTL_KS_PROPERTY&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;This greatly simplifies the development of multimedia drivers and ensures consistency and scalability across different devices.&lt;/p&gt;
+
+&lt;h3 id=&quot;read-streams-from-webcam&quot;&gt;Read streams from webcam&lt;/h3&gt;
+&lt;p&gt;Here is a simple example illustrating how an application can read data from a webcam.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/8.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The most basic flow is roughly shown in this diagram:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Open the device to obtain the device handle.&lt;/li&gt;
+  &lt;li&gt;Use this device handle to create an instance of the Pin on this filter and obtain the Pin handle.&lt;/li&gt;
+  &lt;li&gt;Use &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_PROPERTY&lt;/code&gt; to set the device state of the Pin to RUN.&lt;/li&gt;
+  &lt;li&gt;Finally, you can use &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_read_stream&quot;&gt;IOCTL_KS_READ_STREAM&lt;/a&gt; to read data from this Pin.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;kernel-streaming-architecture&quot;&gt;Kernel Streaming architecture&lt;/h2&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;For vulnerability research, we must first understand its architecture and consider the potential attack surfaces.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;After gaining a preliminary understanding of the functionalities and operations of Kernel Streaming, we need to understand the architecture to find vulnerabilities. It’s crucial to know how Windows implements these functions and what components are involved. This way, we can identify which sys files to analyze and where to start.&lt;/p&gt;
+
+&lt;p&gt;After our analysis, the overall architecture looks approximately like this diagram:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In the Kernel Streaming components, the most important ones are &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt;. Almost all functionalities are related to them.&lt;/p&gt;
+
+&lt;h3 id=&quot;ksthunk-kernel-streaming-wow-thunk-service-driver&quot;&gt;ksthunk (Kernel Streaming WOW Thunk Service Driver)&lt;/h3&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt; is the entry point in Kernel Streaming. Its function is quite simple: it converts 32-bit requests from the WoW64 process into 64-bit requests, allowing the underlying driver to handle the requests without additional processing for 32-bit structures.&lt;/p&gt;
+
+&lt;h3 id=&quot;ks-kernel-connection-and-streaming-architecture-library&quot;&gt;ks (Kernel Connection and Streaming Architecture Library)&lt;/h3&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; is one of the &lt;strong&gt;core components of Kernel Streaming&lt;/strong&gt;. It is the library of Kernel Streaming responsible for forwarding requests such as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_PROPERTY&lt;/code&gt; to the corresponding device driver, and it also handles functions related to AVStream.&lt;/p&gt;
+
+&lt;h3 id=&quot;the-work-flow-of-ioctl_ks_&quot;&gt;The work flow of IOCTL_KS_*&lt;/h3&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_PROPERTY&lt;/code&gt; will be used as an example here. When calling &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DeviceIoControl&lt;/code&gt;, as shown in the figure below, the user’s request will be sequentially passed to the corresponding driver for processing.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;At step 6, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; will determine which driver and handler to hand over your request based on the &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ksproperty-structure&quot;&gt;KSPROPERTY&lt;/a&gt; you requested.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Finally, forward it to the corresponding driver, as shown in the figure above, where it is ultimately forwarded to the handler in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;portcls&lt;/code&gt; to operate the audio device.&lt;/p&gt;
+
+&lt;p&gt;You should now have a preliminary understanding of the architecture and process of Kernel Streaming. Next, it’s time to look for vulnerabilities.&lt;/p&gt;
+
+&lt;p&gt;Based on the existing elements, which attack surfaces are worth examining?&lt;/p&gt;
+
+&lt;h3 id=&quot;from-attackers-view&quot;&gt;From attacker’s view&lt;/h3&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;　Before digging for vulnerabilities, if you can carefully consider under what circumstances they are likely to occur, you can achieve twice the result with half the effort.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;From a vulnerability researcher’s perspective, there are a few key points to consider:&lt;/p&gt;
+
+&lt;h4 id=&quot;1-property-handler-in-each-device&quot;&gt;1. Property handler in each device&lt;/h4&gt;
+&lt;p&gt;KS object for each device has its own properties, and each property has its own handler. Some properties are prone to issues during handling.&lt;/p&gt;
+
+&lt;h4 id=&quot;2-ks-and-ksthunk&quot;&gt;2. ks and ksthunk&lt;/h4&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk&lt;/code&gt; have not had vulnerabilities for a long time, but they are the most accessible entry points and might be good targets. The last vulnerabilities(&lt;a href=&quot;https://msrc.microsoft.com/update-guide/en-us/vulnerability/CVE-2020-16889&quot;&gt;CVE-2020-16889&lt;/a&gt; and &lt;a href=&quot;https://msrc.microsoft.com/update-guide/en-US/vulnerability/CVE-2020-17045&quot;&gt;CVE-2020-17045&lt;/a&gt;) were found in 2020 by &lt;a href=&quot;https://x.com/nghiadt1098&quot;&gt;@nghiadt1098&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h4 id=&quot;3-each-driver-handles-a-part-of-the-content&quot;&gt;3. Each driver handles a part of the content&lt;/h4&gt;
+&lt;p&gt;In some functionalities of Kernel Streaming, certain drivers handle parts of the input individually, which may lead to inconsistencies.&lt;/p&gt;
+
+&lt;p&gt;After reviewing Kernel Streaming from the above perspectives, we quickly identified several relatively easy-to-discover vulnerabilities.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;portcls.sys
+    &lt;ul&gt;
+      &lt;li&gt;CVE-2024-38055 (out-of-bounds read when set dataformat for Pin)&lt;/li&gt;
+      &lt;li&gt;CVE-2024-38056&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;ksthunk
+    &lt;ul&gt;
+      &lt;li&gt;CVE-2024-38054 (out-of-bounds write)&lt;/li&gt;
+      &lt;li&gt;CVE-2024-38057&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;However, we will not be explaining these vulnerabilities one by one. Most of these are obvious issues such as unchecked length or index leading to out-of-bounds access.  &lt;a href=&quot;https://x.com/Fr0st1706&quot;&gt;@Fr0st1706&lt;/a&gt; also wrote an &lt;a href=&quot;https://github.com/Black-Frost/windows-learning/tree/main/CVE-2024-38054&quot;&gt;exploit for CVE-2024-38054&lt;/a&gt; recently. We might slowly explain these in subsequent parts in the future. We will leave this for the readers to study for now.&lt;/p&gt;
+
+&lt;p&gt;During the review process, we discovered some interesting things. Do you think the following code snippet is really fine?&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;__int64 __fastcall CKSThunkDevice::CheckIrpForStackAdjustmentNative(__int64 a1, struct _IRP *irp, __int64 a3, int *a4)
+{
+
+    if ( irp-&amp;gt;RequestorMode )
+    {
+        v14 = 0xC0000010;
+    }
+    else
+    {
+        UserBuffer = (unsigned int *)irp-&amp;gt;UserBuffer;
+        ...
+        v14 = (*(__int64 (__fastcall **)(_QWORD, _QWORD, __int64 *))    (Type3InputBuffer + 0x38))(// call Type3InputBuffer+0x38
+                *UserBuffer,
+                0LL,
+               v19);
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Seeing this code reminds me of &lt;a href=&quot;https://decoded.avast.io/janvojtesek/lazarus-and-the-fudmodule-rootkit-beyond-byovd-with-an-admin-to-kernel-zero-day/&quot;&gt;CVE-2024-21338&lt;/a&gt;. Initially, the vulnerability had no checks, but after patching, &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-exgetpreviousmode&quot;&gt;ExGetPreviousMode&lt;/a&gt; was added. However, the check here uses the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RequestorMode&lt;/code&gt; in &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/ns-wdm-_irp&quot;&gt;IRP&lt;/a&gt; for validation. Generally, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RequestorMode&lt;/code&gt; from a user-called IOCTL will be &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UserMode(1)&lt;/code&gt;, so there shouldn’t be any issues.&lt;/p&gt;
+
+&lt;p&gt;At this point, I also recall &lt;a href=&quot;https://x.com/tiraniddo&quot;&gt;James Forshaw&lt;/a&gt;’s article &lt;a href=&quot;https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html&quot;&gt;Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-overlooked-bug-class&quot;&gt;The overlooked bug class&lt;/h2&gt;
+&lt;p&gt;First, we need to mention a few terms and concepts. If you are already familiar with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Previous Mode&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RequestorMode&lt;/code&gt;, you can skip to &lt;a href=&quot;#A-logical-bug-class&quot;&gt;A logical bug class&lt;/a&gt; section.&lt;/p&gt;
+
+&lt;h3 id=&quot;previousmode&quot;&gt;PreviousMode&lt;/h3&gt;
+&lt;p&gt;The first one is &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PreviousMode&lt;/code&gt;. In an Application, if a user operates on a device or file through &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Nt*&lt;/code&gt; System Service Call, upon entering the kernel, it will be marked as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UserMode(1)&lt;/code&gt; in &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/kernel/eprocess#ethread&quot;&gt;_ETHREAD&lt;/a&gt;’s &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PreviousMode&lt;/code&gt;, indicating that this System Service Call is from the user. Conversely, if it is called from kernel mode, such as a device driver invoking the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Zw*&lt;/code&gt; System Service Call, it will be marked as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode(2)&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;requestormode&quot;&gt;RequestorMode&lt;/h3&gt;
+&lt;p&gt;Another similar field is the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RequestorMode&lt;/code&gt; in the IRP. This field records whether your original request came from &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UserMode&lt;/code&gt; or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode&lt;/code&gt;. In kernel driver code, this is a very commonly used field, typically derived from &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PreviousMode&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;It is often used to decide whether to perform additional checks on user requests, such as Memory Access Check or Security Access Check. In the example below, if the request comes from &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UserMode&lt;/code&gt;, it will check the user-provided address. If it comes from the Kernel, no additional checks are performed to increase efficiency.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;But in reality, this has also led to some issues.&lt;/p&gt;
+
+&lt;h3 id=&quot;a-logical-bug-class&quot;&gt;A logical bug class&lt;/h3&gt;
+&lt;p&gt;&lt;a href=&quot;https://x.com/tiraniddo&quot;&gt;James Forshaw&lt;/a&gt;’s &lt;a href=&quot;https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html&quot;&gt;Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager&lt;/a&gt; mentions a type of Bug Class.&lt;/p&gt;
+
+&lt;p&gt;What would happen if a user calls a System Service Call like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;NtDeviceIoControlFile&lt;/code&gt;, and then the driver handling it uses user-controllable data as parameters for &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ZwOpenFile&lt;/code&gt;?&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After the driver calls &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ZwOpenFile&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PreviousMode&lt;/code&gt; will switch to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode&lt;/code&gt;, and when it uses &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;NtOpenFile&lt;/code&gt; processing, most checks will be skipped due to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PreviousMode&lt;/code&gt; being &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode&lt;/code&gt;. Subsequently, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt; will become &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode&lt;/code&gt;,  bypassing the Security Access Check and Memory Access Check. However, this largely depends on how the subsequent driver implements these checks. There might be issues if it relies solely on &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RequestorMode&lt;/code&gt; to decide whether to perform checks The actual situation is slightly more complex and related to the flags of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CreateFile&lt;/code&gt;. For details, refer to the following articles:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html&quot;&gt;Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://googleprojectzero.blogspot.com/2021/01/hunting-for-bugs-in-windows-mini-filter.html&quot;&gt;Hunting for Bugs in Windows Mini-Filter Drivers&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://msrc.microsoft.com/blog/2019/03/local-privilege-escalation-via-the-windows-i-o-manager-a-variant-finding-collaboration/&quot;&gt;Local privilege escalation via the Windows I/O Manager: a variant finding collaboration&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;These studies mainly focused on the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Zw*&lt;/code&gt; series of System Service Call. Are there other similar situations that could also cause this kind of logical vulnerability?&lt;/p&gt;
+
+&lt;h4 id=&quot;the-new-bug-pattern&quot;&gt;The new bug pattern&lt;/h4&gt;
+&lt;p&gt;Actually, it is possible. When the device driver uses &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iobuilddeviceiocontrolrequest&quot;&gt;IoBuildDeviceIoControlRequest&lt;/a&gt; to create a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DeviceIoControl&lt;/code&gt; IRP, it is easy to encounter such issues if not careful. This API is primarily used by kernel drivers to call IOCTL, and it helps you build the IRP. Subsequently, calling &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IofCallDriver&lt;/code&gt; allows you to call IOCTL within the kernel driver. On &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iobuilddeviceiocontrolrequest#remarks&quot;&gt;Microsoft Learn&lt;/a&gt;, there is a particular passage worth noting.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;By default, if you do not explicitly set the &lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RequestorMode&lt;/code&gt;&lt;/strong&gt;, it will directly call IOCTL with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Following this approach, we revisited Kernel Streaming and discovered an intriguing aspect.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The function where &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IoBuildDeviceIoControlRequest&lt;/code&gt; is used in Kernel Streaming is in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks!KsSynchronousIoControlDevice&lt;/code&gt; and it obviously involves calling IOCTL in the kernel using the aforementioned method. However, it appears that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt; is properly set here, and different values are assigned based on the parameters of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsSynchronousIoControlDevice&lt;/code&gt;. This will be a convenient library for kernel streaming driver developers.&lt;/p&gt;
+
+&lt;p&gt;However…&lt;/p&gt;
+
+&lt;p&gt;ks!CKsPin::GetState
+&lt;img src=&quot;/assets/img/blog/20240823/18.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;ks!SerializePropertySet
+&lt;img src=&quot;/assets/img/blog/20240823/19.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;ks!UnserializePropertySet
+&lt;img src=&quot;/assets/img/blog/20240823/20.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We found that in Kernel Streaming, all functions using &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsSynchronousIoControlDevice&lt;/code&gt; consistently use &lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode(0)&lt;/code&gt;&lt;/strong&gt;. At this point, we can carefully inspect whether the places it is used have any security issues. Therefore, we convert the bug pattern in Kernel Streaming into the following points:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Utilized &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsSynchronousIoControlDevice&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;Controllable InputBuffer &amp;amp; OutputBuffer&lt;/li&gt;
+  &lt;li&gt;The second processing of IOCTL relies on &lt;strong&gt;RequestorMode&lt;/strong&gt; for security checks
+ &lt;img src=&quot;/assets/img/blog/20240823/21.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Following this pattern, we quickly found the first vulnerability.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-vulnerability--exploitation&quot;&gt;The vulnerability &amp;amp; exploitation&lt;/h2&gt;
+
+&lt;h3 id=&quot;cve-2024-35250&quot;&gt;CVE-2024-35250&lt;/h3&gt;
+
+&lt;p&gt;This vulnerability is also the one we used in &lt;a href=&quot;https://x.com/thezdi/status/1770517322203070674&quot;&gt;Pwn2Own Vancouver 2024&lt;/a&gt;. In the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_PROPERTY&lt;/code&gt; of Kernel Streaming, to increase efficiency, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPERTY_TYPE_SERIALIZESET&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPERTY_TYPE_UNSERIALIZESET&lt;/code&gt; requests are provided to allow users to operate on multiple properties through a single call.  These types of requests will be broken down into multiple calls by the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsPropertyHandler&lt;/code&gt;. For more details, refer to &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ksproperty-structure#remarks&quot;&gt;this one&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;It is implemented in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/22.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When handling property in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt;, if the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPERTY_TYPE_UNSERIALIZESET&lt;/code&gt; flag is provided, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks!UnserializePropertySet&lt;/code&gt; will handle your request.&lt;/p&gt;
+
+&lt;p&gt;Let’s take a look at &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UnserializePropertySet&lt;/code&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__fastcall&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;UnserializePropertySet&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;PIRP&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;KSIDENTIFIER&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;UserProvideProperty&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;KSPROPERTY_SET&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;propertyset_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;New_KsProperty_req&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ExAllocatePoolWithTag&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NonPagedPoolNx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;InSize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x7070534Bu&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;memmove&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;New_KsProperty_req&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CurrentStackLocation&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Parameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DeviceIoControl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Type3InputBuffer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;InSize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//------[1] &lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;status&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;KsSynchronousIoControlDevice&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;CurrentStackLocation&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FileObject&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;CurrentStackLocation&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Parameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DeviceIoControl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;IoControlCode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;New_KsProperty_req&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;InSize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;OutBuffer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;OutSize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;BytesReturned&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//-----------[2]&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;You can see that during the processing, the original request is first copied into a newly allocated buffer at [1]. Subsequently, this buffer is used to call the new IOCTL using &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsSynchronousIoControlDevice&lt;/code&gt; at [2]. Both &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;New_KsProperty_req&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;OutBuffer&lt;/code&gt; are contents provided by the user.&lt;/p&gt;
+
+&lt;p&gt;The flow when calling &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UnserializePropertySet&lt;/code&gt; is roughly as illustrated below:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/23.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When calling IOCTL, as shown in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;step 2&lt;/code&gt; of the diagram, the I/O Manager will set &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt; to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UserMode(1)&lt;/code&gt;. Until step 6, it will check if the requested property by the user exists in the KS object. If the property exists in the KS object and is set with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPERTY_TYPE_UNSERIALIZESET&lt;/code&gt;,  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UnserializePropertySet&lt;/code&gt; will be used to handle the specified property.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/24.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Next, in step 7, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsSynchronousIoControlDevice&lt;/code&gt; will be used to perform the IOCTL again. At this point, the new &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt; will become &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode(0)&lt;/code&gt;, and the subsequent processing will be the same as a typical &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_PROPERTY&lt;/code&gt;. This part will not be elaborated further.&lt;/p&gt;
+
+&lt;p&gt;As a result, we now have a primitive that allows us to perform arbitrary &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_PROPERTY&lt;/code&gt; operations. Next, we need to look for places where it might be possible to achieve EoP (Elevation of Privilege).&lt;/p&gt;
+
+&lt;h3 id=&quot;the-eop&quot;&gt;The EoP&lt;/h3&gt;
+&lt;p&gt;The first thing you will likely notice is the entry point &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Let’s take a look at &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk!CKSThunkDevice::DispatchIoctl&lt;/code&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;
+&lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__fastcall&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CKSThunkDevice&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DispatchIoctl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;CKernelFilterDevice&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;IRP&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;a3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;NTSTATUS&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;IoIs32bitProcess&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;RequestorMode&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//------[3]&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+   &lt;span class=&quot;c1&quot;&gt;//Convert 32-bit requests to 64-bit requests&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CurrentStackLocation&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Parameters&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DeviceIoControl&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;IoControlCode&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;IOCTL_KS_PROPERTY&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CKSThunkDevice&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;CheckIrpForStackAdjustmentNative&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v11&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;a4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//-----[4];&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;You can see that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk&lt;/code&gt; will first determine whether the request is from a WoW64 Process. If it is, it will convert the original 32-bit Requests into 64-bit at [3]. If the original request is already 64-bit, it will call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CKSThunkDevice::CheckIrpForStackAdjustmentNative&lt;/code&gt; at [4] to pass it down.&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;__fastcall&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CKSThunkDevice&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;CheckIrpForStackAdjustmentNative&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;a1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;_IRP&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;a3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a4&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_OWORD&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Type3InputBuffer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Set&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_OWORD&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;KSPROPSETID_DrmAudioStream&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;type3inputbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Id&lt;/span&gt;
+        &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;type3inputbuf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Flags&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;   &lt;span class=&quot;c1&quot;&gt;//-----[5]   &lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;RequestorMode&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//-------[6]&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v14&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0xC0000010&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;UserBuffer&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;unsigned&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;irp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UserBuffer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;v14&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kr&quot;&gt;__fastcall&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;**&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_QWORD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_QWORD&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__int64&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Type3InputBuffer&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x38&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))(&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;// call Type3InputBuffer+0x38&lt;/span&gt;
+                &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UserBuffer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                &lt;span class=&quot;mi&quot;&gt;0LL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;v19&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//------------[7]&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; 
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;We can notice that if we give the property set as &lt;a href=&quot;https://learn.microsoft.com/mt-mt/windows-hardware/drivers/audio/kspropsetid-drmaudiostream&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPSETID_DrmAudioStream&lt;/code&gt;&lt;/a&gt;, there is additional processing at [5]. At [6], we can see that it first checks whether &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt; is &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode(0)&lt;/code&gt;. If it is called from user, it will directly return an error.&lt;/p&gt;
+
+&lt;p&gt;It should be pretty obvious here that if we call IOCTL with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPERTY_TYPE_UNSERIALIZESET&lt;/code&gt; and specify the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPSETID_DrmAudioStream&lt;/code&gt; property, it will be &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode(0)&lt;/code&gt; here. Additionally, it will directly use the input provided by the user as a function call at [7]. Even the first parameter is controllable.&lt;/p&gt;
+
+&lt;p&gt;After writing the PoC, we confirmed our results.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/25.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Some people might wonder, under what device or situation would have &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPSETID_DrmAudioStream&lt;/code&gt;? Actually, most audio devices will have it, primarily used for setting DRM-related content.&lt;/p&gt;
+
+&lt;h3 id=&quot;exploitation&quot;&gt;Exploitation&lt;/h3&gt;
+&lt;p&gt;Once arbitrary calls are achieved, accomplishing EoP is not too difficult. Although protections such as kCFG, kASLR, and SMEP will be encountered, the only protection that needs to be dealt with under Medium IL is kCFG.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;kCFG&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;kASLR
+    &lt;ul&gt;
+      &lt;li&gt;NtQuerySystemInformation&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;SMEP
+    &lt;ul&gt;
+      &lt;li&gt;Reuse Kernel Code&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;…&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4 id=&quot;bypass-kcfg&quot;&gt;Bypass kCFG&lt;/h4&gt;
+&lt;p&gt;Our goal here is straightforward: to create an arbitrary write primitive from a legitimate function, which can then be used to achieve EoP through typical methods like &lt;a href=&quot;https://www.ired.team/miscellaneous-reversing-forensics/windows-kernel-internals/how-kernel-exploits-abuse-tokens-for-privilege-escalation#id-1.-replacing-tokens-for-privilege-escalation&quot;&gt;replacing the current process token with system token&lt;/a&gt; or &lt;a href=&quot;https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf&quot;&gt;abusing the token privilege&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;It is intuitive to look directly for legitimate functions with names containing &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;set&lt;/code&gt;, as they are more likely to do arbitrary writing.  We directly take the export functions from &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ntoskrnl.exe&lt;/code&gt; to see if there are any good gadgets, as these functions are generally legitimate.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/26.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We quickly found &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlsetallbits&quot;&gt;RtlSetAllBits&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/27.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It is a very useful gadget and a legitimate function in kCFG. Additionally, it only requires controlling the first parameter &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;_RTL_BITMAP&lt;/code&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;_RTL_BITMAP&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;ULONG&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;SizeOfBitMap&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;                                               
+    &lt;span class=&quot;n&quot;&gt;ULONG&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Buffer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;                                                   
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt; 
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;We can assign the buffer to any address and specify the size, allowing us to set up a range of bits entirely. At this point, we are almost done. As long as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Token-&amp;gt;Privilege&lt;/code&gt; is fully set up, we can use the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Abuse Privilege&lt;/code&gt; method to achieve EoP.&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/j1wzwXLxdVs?si=aKURBnYWXvbAaXin&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;p&gt;However, before the Pwn2Own event, we created a new Windows 11 23H2 VM on Hyper-V and ran the exploit. The result was a failure. It failed at the open device stage.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/28.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After investigation, we discovered that Hyper-V does not have an audio device by default, causing the exploit to fail.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/29.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In Hyper-V, only MSKSSRV is present by default. However, MSKSSRV does not have the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPSETID_DrmAudioStream&lt;/code&gt; property, which prevents us from successfully exploiting this EoP vulnerability. Therefore, we must find other ways to trigger it or discover new vulnerabilities. We decided to review the entire process again to see if there were any other exploitable vulnerabilities.&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2024-30084&quot;&gt;CVE-2024-30084&lt;/h3&gt;
+&lt;p&gt;After re-examining, it was found that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_PROPERTY&lt;/code&gt; uses &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-neither-buffered-nor-direct-i-o&quot;&gt;Neither I/O&lt;/a&gt; to transmit data, which means it uses the input buffer for data processing directly. Generally speaking, this method is not recommended as it often leads to &lt;strong&gt;double fetch&lt;/strong&gt; issues.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/30.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;From the above figure of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KspPropertyHandler&lt;/code&gt;, we can see that after the user calls IOCTL, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Type3InputBuffer&lt;/code&gt; is directly copied into a newly allocated buffer, containing the &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/stream/ksproperty-structure&quot;&gt;KSPROPERTY&lt;/a&gt; structure. This GUID in the structure is then used to check if the property set exists in the device. If it does, it will proceed to call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UnserializePropertySet&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Let’s take another look at &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UnserializePropertySet&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/31.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It &lt;strong&gt;once again copies the user-provided data from &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Type3InputBuffer&lt;/code&gt;&lt;/strong&gt; as the input for the new IOCTL. Clearly, there exists a &lt;strong&gt;double fetch&lt;/strong&gt; vulnerability here, so we have modified the entire process, as shown in the following diagram.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/32.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When we initially send &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_PROPERTY&lt;/code&gt;, we use the existing property  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPSETID_Service&lt;/code&gt; of MSKSSRV for subsequent operations. As shown in step 6 of the diagram, a copy of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPERTY&lt;/code&gt; is first made into the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SystemBuffer&lt;/code&gt;, and then this property is used to check whether it is in the support list of the KS object. Since MSKSSRV supports it, it will then call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UnserializePropertySet&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/33.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After calling &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;UnserializePropertySet&lt;/code&gt;, due to the double fetch vulnerability, we can change &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPSETID_Service&lt;/code&gt; with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPSETID_DrmAudioStream&lt;/code&gt; between the check and use phases. Subsequently, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSPROPSETID_DrmAudioStream&lt;/code&gt; will be used as the request to send IOCTL, thereby triggering the CVE-2024-35250 mentioned above logic flaw. This makes the vulnerability exploitable in any environment.&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/xNUj_XZ9LhQ?si=ONmvl9_8BV-z0idL&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;p&gt;Finally, we successfully compromised Microsoft Windows 11 during Pwn2Own Vancouver 2024.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240823/34.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After the Pwn2Own event, our investigation revealed that this vulnerability has existed since Windows 7 for nearly 20 years. Moreover, it is highly reliable and has a 100% success rate in exploitation. We strongly recommend that everyone update to the latest version as soon as possible.&lt;/p&gt;
+
+&lt;h2 id=&quot;to-be-continued&quot;&gt;To be continued&lt;/h2&gt;
+&lt;p&gt;This article focuses on how we identified the vulnerabilities used in this year’s Pwn2Own and the attack surface analysis of Kernel Streaming. After discovering this vulnerability, we continued our research on this attack surface and found another exploitable vulnerability along with other interesting findings.&lt;/p&gt;
+
+&lt;p&gt;Stay tuned for Part II, expected to be published in October of this year.&lt;/p&gt;
+
+&lt;h2 id=&quot;reference&quot;&gt;Reference&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://securityintelligence.com/x-force/critically-close-to-zero-day-exploiting-microsoft-kernel-streaming-service/&quot;&gt;Critically Close to Zero-Day: Exploiting Microsoft Kernel Streaming Service&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://conference.hitb.org/hitbsecconf2023hkt/materials/D2T1%20-%20Windows%20Kernel%20Security%20-%20A%20Deep%20Dive%20into%20Two%20Exploits%20Demonstrated%20at%20Pwn2Own%20-%20Thomas%20Imbert.pdf&quot;&gt;Windows Kernel Security - A Deep Dive into Two Exploits Demonstrated at Pwn2Own&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://big5-sec.github.io/posts/CVE-2023-29360-analysis/&quot;&gt;CVE-2023-29360 Analysis&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://securityintelligence.com/x-force/little-bug-that-could/&quot;&gt;Racing Round and Round: The Little Bug That Could&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html&quot;&gt;Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://googleprojectzero.blogspot.com/2021/01/hunting-for-bugs-in-windows-mini-filter.html&quot;&gt;Hunting for Bugs in Windows Mini-Filter Drivers&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://msrc.microsoft.com/blog/2019/03/local-privilege-escalation-via-the-windows-i-o-manager-a-variant-finding-collaboration/&quot;&gt;Local Privilege Escalation via the Windows I/O Manager: A Variant Finding &amp;amp; Collaboration&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+                <link>https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en/</link>
+                <guid>https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en</guid>
+                <pubDate>Fri, 23 Aug 2024 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>Confusion Attacks: Exploiting Hidden Semantic Ambiguity in Apache HTTP Server!</title>
@@ -585,7 +1581,7 @@
     &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;p&gt;因此就算目標沒有部屬任何網頁應用，我們也可以利用一個不安全的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RewriteRule&lt;/code&gt; 透過作業系統自帶的檔案來創造出 XSS。&lt;/p&gt;
+&lt;p&gt;因此就算目標沒有部署任何網頁應用，我們也可以利用一個不安全的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RewriteRule&lt;/code&gt; 透過作業系統自帶的檔案來創造出 XSS。&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20240809/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 
@@ -1039,7 +2035,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/08/09/confusion-attacks-exploiting-hidden-semantic-ambiguity-in-apache-http-server/</link>
                 <guid>https://devco.re/blog/2024/08/09/confusion-attacks-exploiting-hidden-semantic-ambiguity-in-apache-http-server</guid>
-                <pubDate>Fri, 09 Aug 2024 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 09 Aug 2024 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -2073,7 +3069,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/08/09/confusion-attacks-exploiting-hidden-semantic-ambiguity-in-apache-http-server-en/</link>
                 <guid>https://devco.re/blog/2024/08/09/confusion-attacks-exploiting-hidden-semantic-ambiguity-in-apache-http-server-en</guid>
-                <pubDate>Fri, 09 Aug 2024 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 09 Aug 2024 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -2096,7 +3092,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/08/08/msrc-2024-most-valuable-security-researchers-angelboy/</link>
                 <guid>https://devco.re/blog/2024/08/08/msrc-2024-most-valuable-security-researchers-angelboy</guid>
-                <pubDate>Thu, 08 Aug 2024 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 08 Aug 2024 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -2118,7 +3114,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/08/08/msrc-2024-most-valuable-security-researchers-angelboy-en/</link>
                 <guid>https://devco.re/blog/2024/08/08/msrc-2024-most-valuable-security-researchers-angelboy-en</guid>
-                <pubDate>Thu, 08 Aug 2024 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 08 Aug 2024 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -2332,7 +3328,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/07/18/6th-internship-program-recruit/</link>
                 <guid>https://devco.re/blog/2024/07/18/6th-internship-program-recruit</guid>
-                <pubDate>Thu, 18 Jul 2024 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 18 Jul 2024 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -2521,7 +3517,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/07/09/guide-to-applying-for-red-team-specialist/</link>
                 <guid>https://devco.re/blog/2024/07/09/guide-to-applying-for-red-team-specialist</guid>
-                <pubDate>Tue, 09 Jul 2024 00:00:00 -0700</pubDate>
+                <pubDate>Tue, 09 Jul 2024 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -2638,7 +3634,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability/</link>
                 <guid>https://devco.re/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability</guid>
-                <pubDate>Thu, 06 Jun 2024 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 06 Jun 2024 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -2757,7 +3753,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability-en/</link>
                 <guid>https://devco.re/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability-en</guid>
-                <pubDate>Thu, 06 Jun 2024 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 06 Jun 2024 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -3372,7 +4368,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros/</link>
                 <guid>https://devco.re/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros</guid>
-                <pubDate>Fri, 24 May 2024 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 24 May 2024 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -4009,7 +5005,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros-en/</link>
                 <guid>https://devco.re/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros-en</guid>
-                <pubDate>Fri, 24 May 2024 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 24 May 2024 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -4248,7 +5244,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/01/05/5nd-internship-program-recruit/</link>
                 <guid>https://devco.re/blog/2024/01/05/5nd-internship-program-recruit</guid>
-                <pubDate>Fri, 05 Jan 2024 00:00:00 -0800</pubDate>
+                <pubDate>Fri, 05 Jan 2024 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -4992,7 +5988,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2023/11/06/your-printer-is-not-your-printer-hacking-printers-pwn2own-part2/</link>
                 <guid>https://devco.re/blog/2023/11/06/your-printer-is-not-your-printer-hacking-printers-pwn2own-part2</guid>
-                <pubDate>Mon, 06 Nov 2023 00:00:00 -0800</pubDate>
+                <pubDate>Mon, 06 Nov 2023 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -5851,7 +6847,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2023/11/06/your-printer-is-not-your-printer-hacking-printers-pwn2own-part2-en/</link>
                 <guid>https://devco.re/blog/2023/11/06/your-printer-is-not-your-printer-hacking-printers-pwn2own-part2-en</guid>
-                <pubDate>Mon, 06 Nov 2023 00:00:00 -0800</pubDate>
+                <pubDate>Mon, 06 Nov 2023 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -6482,7 +7478,7 @@ HP 則是在開機就會啟用，並將每個 region 定義好權限，因此無
 </description>
                 <link>https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1/</link>
                 <guid>https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1</guid>
-                <pubDate>Thu, 05 Oct 2023 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 05 Oct 2023 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -7120,7 +8116,7 @@ just open the service you want to use.&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1-en/</link>
                 <guid>https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1-en</guid>
-                <pubDate>Thu, 05 Oct 2023 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 05 Oct 2023 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -7264,7 +8260,7 @@ cmd=whoami
 </description>
                 <link>https://devco.re/blog/2023/09/18/hitcon-2023-devcore-wargame-my-todolist-writeup/</link>
                 <guid>https://devco.re/blog/2023/09/18/hitcon-2023-devcore-wargame-my-todolist-writeup</guid>
-                <pubDate>Mon, 18 Sep 2023 00:00:00 -0700</pubDate>
+                <pubDate>Mon, 18 Sep 2023 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -7342,7 +8338,7 @@ cmd=whoami
 </description>
                 <link>https://devco.re/blog/2023/08/30/2023-devcore-cybersecurity-scholarship-application-opens/</link>
                 <guid>https://devco.re/blog/2023/08/30/2023-devcore-cybersecurity-scholarship-application-opens</guid>
-                <pubDate>Wed, 30 Aug 2023 00:00:00 -0700</pubDate>
+                <pubDate>Wed, 30 Aug 2023 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -7565,7 +8561,7 @@ cmd=whoami
 </description>
                 <link>https://devco.re/blog/2023/07/18/4nd-internship-program-recruit/</link>
                 <guid>https://devco.re/blog/2023/07/18/4nd-internship-program-recruit</guid>
-                <pubDate>Tue, 18 Jul 2023 00:00:00 -0700</pubDate>
+                <pubDate>Tue, 18 Jul 2023 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -8519,7 +9515,7 @@ Linux Kernel 的 seccomp 都是 GSA 中有使用的技術，而本次研究中�
 </description>
                 <link>https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance/</link>
                 <guid>https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance</guid>
-                <pubDate>Fri, 07 Jul 2023 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 07 Jul 2023 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -9498,7 +10494,7 @@ and this research has also left some goals for further study:&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance-en/</link>
                 <guid>https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance-en</guid>
-                <pubDate>Fri, 07 Jul 2023 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 07 Jul 2023 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -9561,7 +10557,7 @@ and this research has also left some goals for further study:&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2023/05/26/from-cybersecurity-muggle-to-red-team-specialist-vtim/</link>
                 <guid>https://devco.re/blog/2023/05/26/from-cybersecurity-muggle-to-red-team-specialist-vtim</guid>
-                <pubDate>Fri, 26 May 2023 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 26 May 2023 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -9817,7 +10813,7 @@ and this research has also left some goals for further study:&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2023/01/14/3rd-internship-program-recruit/</link>
                 <guid>https://devco.re/blog/2023/01/14/3rd-internship-program-recruit</guid>
-                <pubDate>Sat, 14 Jan 2023 00:00:00 -0800</pubDate>
+                <pubDate>Sat, 14 Jan 2023 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -10065,7 +11061,7 @@ DEVCORE 自 2020 年開始參與白帽駭客最高殿堂競賽 Pwn2Own，迄今�
 </description>
                 <link>https://devco.re/blog/2023/01/12/DEVCORE-conference-registration-open-now/</link>
                 <guid>https://devco.re/blog/2023/01/12/DEVCORE-conference-registration-open-now</guid>
-                <pubDate>Thu, 12 Jan 2023 00:00:00 -0800</pubDate>
+                <pubDate>Thu, 12 Jan 2023 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -10086,7 +11082,7 @@ DEVCORE 自 2020 年開始參與白帽駭客最高殿堂競賽 Pwn2Own，迄今�
 </description>
                 <link>https://devco.re/blog/2022/12/23/2022-devcore-national-cyber-security-scholarship-results-announcement/</link>
                 <guid>https://devco.re/blog/2022/12/23/2022-devcore-national-cyber-security-scholarship-results-announcement</guid>
-                <pubDate>Fri, 23 Dec 2022 00:00:00 -0800</pubDate>
+                <pubDate>Fri, 23 Dec 2022 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -10284,7 +11280,7 @@ DEVCORE 自 2020 年開始參與白帽駭客最高殿堂競賽 Pwn2Own，迄今�
 </description>
                 <link>https://devco.re/blog/2022/10/19/a-new-attack-surface-on-MS-exchange-part-4-ProxyRelay/</link>
                 <guid>https://devco.re/blog/2022/10/19/a-new-attack-surface-on-MS-exchange-part-4-ProxyRelay</guid>
-                <pubDate>Wed, 19 Oct 2022 00:00:00 -0700</pubDate>
+                <pubDate>Wed, 19 Oct 2022 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -10369,7 +11365,7 @@ DEVCORE 自 2020 年開始參與白帽駭客最高殿堂競賽 Pwn2Own，迄今�
 </description>
                 <link>https://devco.re/blog/2022/09/21/202209-security-researcher-recruitment/</link>
                 <guid>https://devco.re/blog/2022/09/21/202209-security-researcher-recruitment</guid>
-                <pubDate>Wed, 21 Sep 2022 00:00:00 -0700</pubDate>
+                <pubDate>Wed, 21 Sep 2022 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -10451,7 +11447,7 @@ DEVCORE 自 2020 年開始參與白帽駭客最高殿堂競賽 Pwn2Own，迄今�
 </description>
                 <link>https://devco.re/blog/2022/08/26/2022-devcore-national-cyber-security-scholarship/</link>
                 <guid>https://devco.re/blog/2022/08/26/2022-devcore-national-cyber-security-scholarship</guid>
-                <pubDate>Fri, 26 Aug 2022 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 26 Aug 2022 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -10582,7 +11578,7 @@ HTTP/1.1 200 OK
 </description>
                 <link>https://devco.re/blog/2022/08/18/lets-dance-in-the-cache-destabilizing-hash-table-on-microsoft-iis/</link>
                 <guid>https://devco.re/blog/2022/08/18/lets-dance-in-the-cache-destabilizing-hash-table-on-microsoft-iis</guid>
-                <pubDate>Thu, 18 Aug 2022 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 18 Aug 2022 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -10827,7 +11823,7 @@ HTTP/1.1 200 OK
 </description>
                 <link>https://devco.re/blog/2022/07/25/2nd-internship-program-recruit/</link>
                 <guid>https://devco.re/blog/2022/07/25/2nd-internship-program-recruit</guid>
-                <pubDate>Mon, 25 Jul 2022 00:00:00 -0700</pubDate>
+                <pubDate>Mon, 25 Jul 2022 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -11189,7 +12185,7 @@ HTTP/1.1 200 OK
 </description>
                 <link>https://devco.re/blog/2022/03/28/your-NAS-is-not-your-NAS/</link>
                 <guid>https://devco.re/blog/2022/03/28/your-NAS-is-not-your-NAS</guid>
-                <pubDate>Mon, 28 Mar 2022 00:00:00 -0700</pubDate>
+                <pubDate>Mon, 28 Mar 2022 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -11582,7 +12578,7 @@ Next, we need to forge the structure &lt;code class=&quot;language-plaintext hig
 </description>
                 <link>https://devco.re/blog/2022/03/28/your-NAS-is-not-your-NAS-en/</link>
                 <guid>https://devco.re/blog/2022/03/28/your-NAS-is-not-your-NAS-en</guid>
-                <pubDate>Mon, 28 Mar 2022 00:00:00 -0700</pubDate>
+                <pubDate>Mon, 28 Mar 2022 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -11809,7 +12805,7 @@ Next, we need to forge the structure &lt;code class=&quot;language-plaintext hig
 </description>
                 <link>https://devco.re/blog/2022/01/27/intern-recruit/</link>
                 <guid>https://devco.re/blog/2022/01/27/intern-recruit</guid>
-                <pubDate>Thu, 27 Jan 2022 00:00:00 -0800</pubDate>
+                <pubDate>Thu, 27 Jan 2022 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -11835,7 +12831,7 @@ Next, we need to forge the structure &lt;code class=&quot;language-plaintext hig
 </description>
                 <link>https://devco.re/blog/2021/08/22/a-new-attack-surface-on-MS-exchange-part-3-ProxyShell/</link>
                 <guid>https://devco.re/blog/2021/08/22/a-new-attack-surface-on-MS-exchange-part-3-ProxyShell</guid>
-                <pubDate>Sun, 22 Aug 2021 00:00:00 -0700</pubDate>
+                <pubDate>Sun, 22 Aug 2021 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -11996,7 +12992,7 @@ Next, we need to forge the structure &lt;code class=&quot;language-plaintext hig
 </description>
                 <link>https://devco.re/blog/2021/08/07/a-new-attack-surface-on-MS-exchange/</link>
                 <guid>https://devco.re/blog/2021/08/07/a-new-attack-surface-on-MS-exchange</guid>
-                <pubDate>Sat, 07 Aug 2021 00:00:00 -0700</pubDate>
+                <pubDate>Sat, 07 Aug 2021 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -12198,7 +13194,7 @@ Next, we need to forge the structure &lt;code class=&quot;language-plaintext hig
 </description>
                 <link>https://devco.re/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-2-ProxyOracle/</link>
                 <guid>https://devco.re/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-2-ProxyOracle</guid>
-                <pubDate>Fri, 06 Aug 2021 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 06 Aug 2021 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -12685,7 +13681,7 @@ Next, we need to forge the structure &lt;code class=&quot;language-plaintext hig
 </description>
                 <link>https://devco.re/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-1-ProxyLogon/</link>
                 <guid>https://devco.re/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-1-ProxyLogon</guid>
-                <pubDate>Fri, 06 Aug 2021 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 06 Aug 2021 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -12858,7 +13854,7 @@ Next, we need to forge the structure &lt;code class=&quot;language-plaintext hig
 </description>
                 <link>https://devco.re/blog/2021/06/22/devcore-202106-recruit/</link>
                 <guid>https://devco.re/blog/2021/06/22/devcore-202106-recruit</guid>
-                <pubDate>Tue, 22 Jun 2021 00:00:00 -0700</pubDate>
+                <pubDate>Tue, 22 Jun 2021 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -13272,7 +14268,7 @@ Balsn CTF 2020 on CTFtime: https://ctftime.org/event/1122/&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2020/10/30/devcore-wargame-at-hitcon-2020/</link>
                 <guid>https://devco.re/blog/2020/10/30/devcore-wargame-at-hitcon-2020</guid>
-                <pubDate>Fri, 30 Oct 2020 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 30 Oct 2020 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -13382,7 +14378,7 @@ Balsn CTF 2020 on CTFtime: https://ctftime.org/event/1122/&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2020/10/13/mitigate-real-threats-by-framework-and-standards/</link>
                 <guid>https://devco.re/blog/2020/10/13/mitigate-real-threats-by-framework-and-standards</guid>
-                <pubDate>Tue, 13 Oct 2020 00:00:00 -0700</pubDate>
+                <pubDate>Tue, 13 Oct 2020 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -13664,7 +14660,7 @@ s
 </description>
                 <link>https://devco.re/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM/</link>
                 <guid>https://devco.re/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM</guid>
-                <pubDate>Sat, 12 Sep 2020 00:00:00 -0700</pubDate>
+                <pubDate>Sat, 12 Sep 2020 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -13936,7 +14932,7 @@ s
 </description>
                 <link>https://devco.re/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM-en/</link>
                 <guid>https://devco.re/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM-en</guid>
-                <pubDate>Sat, 12 Sep 2020 00:00:00 -0700</pubDate>
+                <pubDate>Sat, 12 Sep 2020 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -13987,7 +14983,7 @@ s
 </description>
                 <link>https://devco.re/blog/2020/08/21/the-enemy-is-not-ransomware-its-nation-state-hackers/</link>
                 <guid>https://devco.re/blog/2020/08/21/the-enemy-is-not-ransomware-its-nation-state-hackers</guid>
-                <pubDate>Fri, 21 Aug 2020 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 21 Aug 2020 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -14267,7 +15263,7 @@ aspnet_regsql.exe &lt;span class=&quot;nt&quot;&gt;-S&lt;/span&gt; 127.0.0.1 &lt
 </description>
                 <link>https://devco.re/blog/2020/04/21/from-sql-to-rce-exploit-aspnet-app-with-sessionstate/</link>
                 <guid>https://devco.re/blog/2020/04/21/from-sql-to-rce-exploit-aspnet-app-with-sessionstate</guid>
-                <pubDate>Tue, 21 Apr 2020 00:00:00 -0700</pubDate>
+                <pubDate>Tue, 21 Apr 2020 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -14378,7 +15374,7 @@ aspnet_regsql.exe &lt;span class=&quot;nt&quot;&gt;-S&lt;/span&gt; 127.0.0.1 &lt
 </description>
                 <link>https://devco.re/blog/2020/03/11/play-with-dotnet-viewstate-exploit-and-create-fileless-webshell/</link>
                 <guid>https://devco.re/blog/2020/03/11/play-with-dotnet-viewstate-exploit-and-create-fileless-webshell</guid>
-                <pubDate>Wed, 11 Mar 2020 00:00:00 -0700</pubDate>
+                <pubDate>Wed, 11 Mar 2020 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -14522,7 +15518,7 @@ aspnet_regsql.exe &lt;span class=&quot;nt&quot;&gt;-S&lt;/span&gt; 127.0.0.1 &lt
 </description>
                 <link>https://devco.re/blog/2020/03/04/telework-security/</link>
                 <guid>https://devco.re/blog/2020/03/04/telework-security</guid>
-                <pubDate>Wed, 04 Mar 2020 00:00:00 -0800</pubDate>
+                <pubDate>Wed, 04 Mar 2020 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -14753,7 +15749,7 @@ ASLR 在大部分的環境中都是預設開啟的，因此在撰寫 exploit 時
 </description>
                 <link>https://devco.re/blog/2019/12/23/how-binary-dog-survives-in-web-world/</link>
                 <guid>https://devco.re/blog/2019/12/23/how-binary-dog-survives-in-web-world</guid>
-                <pubDate>Mon, 23 Dec 2019 00:00:00 -0800</pubDate>
+                <pubDate>Mon, 23 Dec 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -14969,7 +15965,7 @@ ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
 </description>
                 <link>https://devco.re/blog/2019/11/11/HiNet-GPON-Modem-RCE/</link>
                 <guid>https://devco.re/blog/2019/11/11/HiNet-GPON-Modem-RCE</guid>
-                <pubDate>Mon, 11 Nov 2019 00:00:00 -0800</pubDate>
+                <pubDate>Mon, 11 Nov 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -15104,7 +16100,7 @@ ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
 </description>
                 <link>https://devco.re/blog/2019/10/24/evolution-of-DEVCORE-red-team-and-the-next/</link>
                 <guid>https://devco.re/blog/2019/10/24/evolution-of-DEVCORE-red-team-and-the-next</guid>
-                <pubDate>Thu, 24 Oct 2019 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 24 Oct 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -15466,7 +16462,7 @@ ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
 </description>
                 <link>https://devco.re/blog/2019/10/09/def-strategy/</link>
                 <guid>https://devco.re/blog/2019/10/09/def-strategy</guid>
-                <pubDate>Wed, 09 Oct 2019 00:00:00 -0700</pubDate>
+                <pubDate>Wed, 09 Oct 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -15772,7 +16768,7 @@ ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
 </description>
                 <link>https://devco.re/blog/2019/09/02/attacking-ssl-vpn-part-3-the-golden-Pulse-Secure-ssl-vpn-rce-chain-with-Twitter-as-case-study/</link>
                 <guid>https://devco.re/blog/2019/09/02/attacking-ssl-vpn-part-3-the-golden-Pulse-Secure-ssl-vpn-rce-chain-with-Twitter-as-case-study</guid>
-                <pubDate>Mon, 02 Sep 2019 00:00:00 -0700</pubDate>
+                <pubDate>Mon, 02 Sep 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -15818,7 +16814,7 @@ ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
 </description>
                 <link>https://devco.re/blog/2019/08/28/Pulse-Secure-SSL-VPN-advisory/</link>
                 <guid>https://devco.re/blog/2019/08/28/Pulse-Secure-SSL-VPN-advisory</guid>
-                <pubDate>Wed, 28 Aug 2019 00:00:00 -0700</pubDate>
+                <pubDate>Wed, 28 Aug 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -16095,7 +17091,7 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
 </description>
                 <link>https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn/</link>
                 <guid>https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn</guid>
-                <pubDate>Fri, 09 Aug 2019 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 09 Aug 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -16129,7 +17125,7 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
 </description>
                 <link>https://devco.re/blog/2019/08/09/Fortigate-SSL-VPN-advisory/</link>
                 <guid>https://devco.re/blog/2019/08/09/Fortigate-SSL-VPN-advisory</guid>
-                <pubDate>Fri, 09 Aug 2019 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 09 Aug 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -16304,7 +17300,7 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
 </description>
                 <link>https://devco.re/blog/2019/07/23/devcore-201907-recruit/</link>
                 <guid>https://devco.re/blog/2019/07/23/devcore-201907-recruit</guid>
-                <pubDate>Tue, 23 Jul 2019 00:00:00 -0700</pubDate>
+                <pubDate>Tue, 23 Jul 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -16481,7 +17477,7 @@ Last-Modified: Sun, 10 Sep 2017 16:48:23 GMT
 </description>
                 <link>https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study/</link>
                 <guid>https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study</guid>
-                <pubDate>Wed, 17 Jul 2019 00:00:00 -0700</pubDate>
+                <pubDate>Wed, 17 Jul 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -16511,7 +17507,7 @@ Last-Modified: Sun, 10 Sep 2017 16:48:23 GMT
 </description>
                 <link>https://devco.re/blog/2019/07/17/Palo-Alto-GlobalProtect-advisory/</link>
                 <guid>https://devco.re/blog/2019/07/17/Palo-Alto-GlobalProtect-advisory</guid>
-                <pubDate>Wed, 17 Jul 2019 00:00:00 -0700</pubDate>
+                <pubDate>Wed, 17 Jul 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -16652,7 +17648,7 @@ ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz23456789
 </description>
                 <link>https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way/</link>
                 <guid>https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way</guid>
-                <pubDate>Fri, 21 Jun 2019 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 21 Jun 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -16792,7 +17788,7 @@ ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz23456789
 </description>
                 <link>https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en/</link>
                 <guid>https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en</guid>
-                <pubDate>Fri, 21 Jun 2019 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 21 Jun 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -17111,7 +18107,7 @@ import Orange;
 </description>
                 <link>https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE/</link>
                 <guid>https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE</guid>
-                <pubDate>Tue, 19 Feb 2019 00:00:00 -0800</pubDate>
+                <pubDate>Tue, 19 Feb 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -17422,7 +18418,7 @@ import Orange;
 </description>
                 <link>https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en/</link>
                 <guid>https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en</guid>
-                <pubDate>Tue, 19 Feb 2019 00:00:00 -0800</pubDate>
+                <pubDate>Tue, 19 Feb 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -17680,7 +18676,7 @@ import Orange;
 </description>
                 <link>https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/</link>
                 <guid>https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing</guid>
-                <pubDate>Wed, 16 Jan 2019 00:00:00 -0800</pubDate>
+                <pubDate>Wed, 16 Jan 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -17934,7 +18930,7 @@ Due to the lack of permission check on search functionality. By modifying the &l
 </description>
                 <link>https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en/</link>
                 <guid>https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en</guid>
-                <pubDate>Wed, 16 Jan 2019 00:00:00 -0800</pubDate>
+                <pubDate>Wed, 16 Jan 2019 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -17953,7 +18949,7 @@ Due to the lack of permission check on search functionality. By modifying the &l
 </description>
                 <link>https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789/</link>
                 <guid>https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789</guid>
-                <pubDate>Tue, 06 Mar 2018 00:00:00 -0800</pubDate>
+                <pubDate>Tue, 06 Mar 2018 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -18187,7 +19183,7 @@ http://www.openwall.com/lists/oss-security/2018/02/07/2&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789-en/</link>
                 <guid>https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789-en</guid>
-                <pubDate>Tue, 06 Mar 2018 00:00:00 -0800</pubDate>
+                <pubDate>Tue, 06 Mar 2018 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -18314,7 +19310,7 @@ http://www.openwall.com/lists/oss-security/2018/02/07/2&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200/</link>
                 <guid>https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200</guid>
-                <pubDate>Fri, 26 Jan 2018 00:00:00 -0800</pubDate>
+                <pubDate>Fri, 26 Jan 2018 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -18442,7 +19438,7 @@ On Sandstorm, owners of each Grain (Sandstorm container, in short, an app sandbo
 </description>
                 <link>https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200-en/</link>
                 <guid>https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200-en</guid>
-                <pubDate>Fri, 26 Jan 2018 00:00:00 -0800</pubDate>
+                <pubDate>Fri, 26 Jan 2018 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -18460,7 +19456,7 @@ On Sandstorm, owners of each Grain (Sandstorm container, in short, an app sandbo
 </description>
                 <link>https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943/</link>
                 <guid>https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943</guid>
-                <pubDate>Mon, 11 Dec 2017 00:00:00 -0800</pubDate>
+                <pubDate>Mon, 11 Dec 2017 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -18754,7 +19750,7 @@ https://lists.exim.org/lurker/message/20171125.034842.d1d75cac.en.html&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943-en/</link>
                 <guid>https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943-en</guid>
-                <pubDate>Mon, 11 Dec 2017 00:00:00 -0800</pubDate>
+                <pubDate>Mon, 11 Dec 2017 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -18942,7 +19938,7 @@ https://lists.exim.org/lurker/message/20171125.034842.d1d75cac.en.html&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957/</link>
                 <guid>https://devco.re/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957</guid>
-                <pubDate>Tue, 03 Jan 2017 00:00:00 -0800</pubDate>
+                <pubDate>Tue, 03 Jan 2017 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -18977,7 +19973,7 @@ https://lists.exim.org/lurker/message/20171125.034842.d1d75cac.en.html&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2016/12/26/a-look-into-the-growth-of-IoT-DDoS-attacks/</link>
                 <guid>https://devco.re/blog/2016/12/26/a-look-into-the-growth-of-IoT-DDoS-attacks</guid>
-                <pubDate>Mon, 26 Dec 2016 00:00:00 -0800</pubDate>
+                <pubDate>Mon, 26 Dec 2016 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -19344,7 +20340,7 @@ uid=0(root) gid=0(root) groups=0(root),1(bin),2(daemon),3(sys),4(adm),6(disk),10
 </description>
                 <link>https://devco.re/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability/</link>
                 <guid>https://devco.re/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability</guid>
-                <pubDate>Thu, 22 Sep 2016 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 22 Sep 2016 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -19716,7 +20712,7 @@ Upon discovering the FTA vulnerability in early February, I notified Facebook an
 </description>
                 <link>https://devco.re/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability-eng-ver/</link>
                 <guid>https://devco.re/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability-eng-ver</guid>
-                <pubDate>Thu, 22 Sep 2016 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 22 Sep 2016 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -19799,7 +20795,7 @@ Upon discovering the FTA vulnerability in early February, I notified Facebook an
 </description>
                 <link>https://devco.re/blog/2016/07/29/the_security_dilemma_of_e-commerce/</link>
                 <guid>https://devco.re/blog/2016/07/29/the_security_dilemma_of_e-commerce</guid>
-                <pubDate>Fri, 29 Jul 2016 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 29 Jul 2016 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -20164,7 +21160,7 @@ base64: invalid input&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 </description>
                 <link>https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/</link>
                 <guid>https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script</guid>
-                <pubDate>Thu, 21 Apr 2016 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 21 Apr 2016 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -20524,7 +21520,7 @@ Thanks to this event, it inspired me to write some articles about penetration :P
 </description>
                 <link>https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/</link>
                 <guid>https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver</guid>
-                <pubDate>Thu, 21 Apr 2016 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 21 Apr 2016 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -20624,7 +21620,7 @@ Thanks to this event, it inspired me to write some articles about penetration :P
 </description>
                 <link>https://devco.re/blog/2015/08/19/devcore-2015-recruit/</link>
                 <guid>https://devco.re/blog/2015/08/19/devcore-2015-recruit</guid>
-                <pubDate>Wed, 19 Aug 2015 00:00:00 -0700</pubDate>
+                <pubDate>Wed, 19 Aug 2015 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -20764,7 +21760,7 @@ This is DEMO page.&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 </description>
                 <link>https://devco.re/blog/2015/07/24/the-vulnerability-of-dynamic-render-paths-in-rails/</link>
                 <guid>https://devco.re/blog/2015/07/24/the-vulnerability-of-dynamic-render-paths-in-rails</guid>
-                <pubDate>Fri, 24 Jul 2015 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 24 Jul 2015 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -20862,7 +21858,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2015/01/30/cookie-security-insight-acer/</link>
                 <guid>https://devco.re/blog/2015/01/30/cookie-security-insight-acer</guid>
-                <pubDate>Fri, 30 Jan 2015 00:00:00 -0800</pubDate>
+                <pubDate>Fri, 30 Jan 2015 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -20949,7 +21945,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2015/01/09/information-security-insight-kham/</link>
                 <guid>https://devco.re/blog/2015/01/09/information-security-insight-kham</guid>
-                <pubDate>Fri, 09 Jan 2015 00:00:00 -0800</pubDate>
+                <pubDate>Fri, 09 Jan 2015 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -21106,7 +22102,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/10/13/android-webview-left-shortcuts-for-hacker/</link>
                 <guid>https://devco.re/blog/2014/10/13/android-webview-left-shortcuts-for-hacker</guid>
-                <pubDate>Mon, 13 Oct 2014 00:00:00 -0700</pubDate>
+                <pubDate>Mon, 13 Oct 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -21387,7 +22383,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/09/30/shellshock-CVE-2014-6271/</link>
                 <guid>https://devco.re/blog/2014/09/30/shellshock-CVE-2014-6271</guid>
-                <pubDate>Tue, 30 Sep 2014 00:00:00 -0700</pubDate>
+                <pubDate>Tue, 30 Sep 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -21498,7 +22494,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/09/24/security-of-ip-camera-and-nvr/</link>
                 <guid>https://devco.re/blog/2014/09/24/security-of-ip-camera-and-nvr</guid>
-                <pubDate>Wed, 24 Sep 2014 00:00:00 -0700</pubDate>
+                <pubDate>Wed, 24 Sep 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -21565,7 +22561,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/08/26/information-leakage-in-taiwan-HITCON2014/</link>
                 <guid>https://devco.re/blog/2014/08/26/information-leakage-in-taiwan-HITCON2014</guid>
-                <pubDate>Tue, 26 Aug 2014 00:00:00 -0700</pubDate>
+                <pubDate>Tue, 26 Aug 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -21990,7 +22986,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/08/15/ssl-mishandling-on-mobile-app-development/</link>
                 <guid>https://devco.re/blog/2014/08/15/ssl-mishandling-on-mobile-app-development</guid>
-                <pubDate>Fri, 15 Aug 2014 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 15 Aug 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -22048,7 +23044,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/07/18/waf-configuration-security-issue/</link>
                 <guid>https://devco.re/blog/2014/07/18/waf-configuration-security-issue</guid>
-                <pubDate>Fri, 18 Jul 2014 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 18 Jul 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -22176,7 +23172,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/07/03/apple-id-phishing-scam/</link>
                 <guid>https://devco.re/blog/2014/07/03/apple-id-phishing-scam</guid>
-                <pubDate>Thu, 03 Jul 2014 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 03 Jul 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -22304,7 +23300,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/06/19/client-ip-detection/</link>
                 <guid>https://devco.re/blog/2014/06/19/client-ip-detection</guid>
-                <pubDate>Thu, 19 Jun 2014 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 19 Jun 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -22520,7 +23516,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/06/13/zone-transfer-statistics-of-alexa-top-1m/</link>
                 <guid>https://devco.re/blog/2014/06/13/zone-transfer-statistics-of-alexa-top-1m</guid>
-                <pubDate>Fri, 13 Jun 2014 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 13 Jun 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -22617,7 +23613,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3/</link>
                 <guid>https://devco.re/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3</guid>
-                <pubDate>Wed, 11 Jun 2014 00:00:00 -0700</pubDate>
+                <pubDate>Wed, 11 Jun 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -22696,7 +23692,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/06/09/openssl-CVE-2014-0224-ccs-injection/</link>
                 <guid>https://devco.re/blog/2014/06/09/openssl-CVE-2014-0224-ccs-injection</guid>
-                <pubDate>Mon, 09 Jun 2014 00:00:00 -0700</pubDate>
+                <pubDate>Mon, 09 Jun 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -22845,7 +23841,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/06/03/http-session-protection/</link>
                 <guid>https://devco.re/blog/2014/06/03/http-session-protection</guid>
-                <pubDate>Tue, 03 Jun 2014 00:00:00 -0700</pubDate>
+                <pubDate>Tue, 03 Jun 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -22885,7 +23881,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/05/12/line-phishing/</link>
                 <guid>https://devco.re/blog/2014/05/12/line-phishing</guid>
-                <pubDate>Mon, 12 May 2014 00:00:00 -0700</pubDate>
+                <pubDate>Mon, 12 May 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -22947,7 +23943,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/05/07/vote.tw.am-potential-phishing-site/</link>
                 <guid>https://devco.re/blog/2014/05/07/vote.tw.am-potential-phishing-site</guid>
-                <pubDate>Wed, 07 May 2014 00:00:00 -0700</pubDate>
+                <pubDate>Wed, 07 May 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -23117,7 +24113,7 @@ server ns12.zoneedit.com
 </description>
                 <link>https://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/</link>
                 <guid>https://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue</guid>
-                <pubDate>Mon, 05 May 2014 00:00:00 -0700</pubDate>
+                <pubDate>Mon, 05 May 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -23153,7 +24149,7 @@ server ns12.zoneedit.com
 </description>
                 <link>https://devco.re/blog/2014/04/24/php.net-insecure-direct-object-reference/</link>
                 <guid>https://devco.re/blog/2014/04/24/php.net-insecure-direct-object-reference</guid>
-                <pubDate>Thu, 24 Apr 2014 00:00:00 -0700</pubDate>
+                <pubDate>Thu, 24 Apr 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -23263,7 +24259,7 @@ hmac 值用來驗證 cookie 是否合法。&lt;br /&gt;
 </description>
                 <link>https://devco.re/blog/2014/04/16/cve-2014-0166-wordpress-forged-cookie-vulnerabilities/</link>
                 <guid>https://devco.re/blog/2014/04/16/cve-2014-0166-wordpress-forged-cookie-vulnerabilities</guid>
-                <pubDate>Wed, 16 Apr 2014 00:00:00 -0700</pubDate>
+                <pubDate>Wed, 16 Apr 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -23566,7 +24562,7 @@ sudo service apache2 restart    # Debian
 </description>
                 <link>https://devco.re/blog/2014/04/11/openssl-heartbleed-how-to-hack-how-to-protect/</link>
                 <guid>https://devco.re/blog/2014/04/11/openssl-heartbleed-how-to-hack-how-to-protect</guid>
-                <pubDate>Fri, 11 Apr 2014 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 11 Apr 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -23840,7 +24836,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 </description>
                 <link>https://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/</link>
                 <guid>https://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160</guid>
-                <pubDate>Wed, 09 Apr 2014 00:00:00 -0700</pubDate>
+                <pubDate>Wed, 09 Apr 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -24017,7 +25013,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 </description>
                 <link>https://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/</link>
                 <guid>https://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy</guid>
-                <pubDate>Tue, 08 Apr 2014 00:00:00 -0700</pubDate>
+                <pubDate>Tue, 08 Apr 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -24086,7 +25082,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 </description>
                 <link>https://devco.re/blog/2014/03/31/Google-Account-Phishing-Scam/</link>
                 <guid>https://devco.re/blog/2014/03/31/Google-Account-Phishing-Scam</guid>
-                <pubDate>Mon, 31 Mar 2014 00:00:00 -0700</pubDate>
+                <pubDate>Mon, 31 Mar 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -24273,7 +25269,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 </description>
                 <link>https://devco.re/blog/2014/03/14/3rd-party-software-security-issues/</link>
                 <guid>https://devco.re/blog/2014/03/14/3rd-party-software-security-issues</guid>
-                <pubDate>Fri, 14 Mar 2014 00:00:00 -0700</pubDate>
+                <pubDate>Fri, 14 Mar 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -24392,7 +25388,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 </description>
                 <link>https://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/</link>
                 <guid>https://devco.re/blog/2014/03/10/security-issues-of-http-headers-1</guid>
-                <pubDate>Mon, 10 Mar 2014 00:00:00 -0700</pubDate>
+                <pubDate>Mon, 10 Mar 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -24470,7 +25466,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 </description>
                 <link>https://devco.re/blog/2014/03/06/qiyou-ads-hijacking/</link>
                 <guid>https://devco.re/blog/2014/03/06/qiyou-ads-hijacking</guid>
-                <pubDate>Thu, 06 Mar 2014 00:00:00 -0800</pubDate>
+                <pubDate>Thu, 06 Mar 2014 00:00:00 +0800</pubDate>
         </item>
 
         <item>
@@ -24492,7 +25488,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 </description>
                 <link>https://devco.re/blog/2014/02/27/devcore-new-website/</link>
                 <guid>https://devco.re/blog/2014/02/27/devcore-new-website</guid>
-                <pubDate>Thu, 27 Feb 2014 00:00:00 -0800</pubDate>
+                <pubDate>Thu, 27 Feb 2014 00:00:00 +0800</pubDate>
         </item>
 
 

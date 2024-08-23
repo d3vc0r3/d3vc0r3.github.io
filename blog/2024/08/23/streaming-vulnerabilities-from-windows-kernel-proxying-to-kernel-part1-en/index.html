@@ -1,0 +1,1129 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="This research will discuss an overlooked attack surface that allowed us to find more than ten vulnerabilities within two months. Additionally, we will delve into a proxy-based logical vulnerability type that allows us to bypass most validations, enabling us to successfully exploit Windows 11 in Pwn2Own Vancouver 2024." />
+    <meta name="keywords" content="MSKSSRV (Microsoft Kernel Streaming Service), Pwn2Own Vancouver 2024, CVE-2023-29360, CVE-2023-36802, CVE-2024-30089, Kernel Streaming" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20240823/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="This research will discuss an overlooked attack surface that allowed us to find more than ten vulnerabilities within two months. Additionally, we will delve into a proxy-based logical vulnerability type that allows us to bypass most validations, enabling us to successfully exploit Windows 11 in Pwn2Own Vancouver 2024.">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20240823/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Simulation of real-world attacks to identify vulnerabilities and achieve objectives without disrupting business operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltration of designated enterprise systems to uncover potential vulnerabilities and assess the risks or damages.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Consultation of resource distribution and long-term defensive strategies from the attacker’s perspective.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Instruction on defending and preventing incidents with the hacker mindset, also the response procedures and analysis of attacks when incidents happen.
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research of updated cybersecurity techniques and trends, assess the security of products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research of the risk of enterprise systems, identification of potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Sharing vulnerability research and security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Discovery of critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                Founded by a world-class white hat hacker team, providing cybersecurity services including Red Team Assessment,  Penetration Testing, Security Consulting, and Security Training.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    Composed of cybersecurity experts with the hacker mindset, exploring innovative exploitation techniques with high morality and extreme caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    DEVCORE has been invited to leading cybersecurity conferences, has uncovered hundreds of critical product vulnerabilities, and helped enterprises improve their defensive capabilities.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    We provide diverse internship channels and programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Media Kit, Logo and Usage Guideline
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Tech Editorials">Tech Editorials</a>
+                    <span class="tag">
+
+                      <a href="/en/blog/tag/CVE/">#CVE</a> <a href="/en/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/en/blog/tag/Windows/">#Windows</a> <a href="/en/blog/tag/Kernel/">#Kernel</a> <a href="/en/blog/tag/Advisory/">#Advisory</a> 
+                    </span>
+                    <h1>
+                        Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/en/blog/author/angelboy">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/angelboy.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/en/blog/author/angelboy">Angelboy</a></span>
+                        <span class="date">2024-08-23</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20240823/cover.png"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p>Over the past few decades, vulnerabilities in the Windows Kernel have emerged frequently. The popular attack surface has gradually shifted from Win32k to CLFS (Common Log File System). Microsoft has continuously patched these vulnerabilities, making these targets increasingly secure. However, which component might become the next attack target? Last year, MSKSSRV (Microsoft Kernel Streaming Service) became a popular target for hackers. However, this driver is tiny and can be analyzed in just a few days. Does this mean there might not be new vulnerabilities?</p>
+
+<p>This research will discuss an overlooked attack surface that allowed us to find more than ten vulnerabilities within two months. Additionally, we will delve into a proxy-based logical vulnerability type that allows us to bypass most validations, enabling us to successfully exploit Windows 11 in Pwn2Own Vancouver 2024.</p>
+
+<p>(This research will be divided into several parts, each discussing different bug classes and vulnerabilities. This research was also presented at <a href="https://hitcon.org/2024/CMT/agenda/d6903413-cfba-4b80-a758-af9a257063d0/">HITCON CMT 2024</a>.)</p>
+
+<h2 id="start-from-mskssrv">Start from MSKSSRV</h2>
+<blockquote>
+  <p>For vulnerability research, looking at historical vulnerabilities is indispensable.</p>
+</blockquote>
+
+<p>Initially, we aimed to challenge Windows 11 in Pwn2Own Vancouver 2024. Therefore, we began by reviewing past Pwn2Own events and recent in-the-wild Windows vulnerabilities, searching for potential attack surfaces. Historical trends show that Win32K, primarily responsible for handling GDI-related operations, has always been a popular target, with numerous vulnerabilities still emerging. Since 2018, CLFS (Common Log File System) has also gradually become a popular target. Both components are extremely complex, suggesting that there are likely still many vulnerabilities.  However, becoming familiar with these components requires significant time, and many researchers are already examining them. Therefore, we did not choose to analyze them first.</p>
+
+<p>Last year, after <a href="https://www.synacktiv.com/en">Synacktiv</a> successfully exploited a <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2023-29360">vulnerability</a> in MSKSSRV to compromise Windows 11 during Pwn2Own 2023, many researchers began to focus on this component. Shortly thereafter, a second vulnerability ,<a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2023-36802">CVE-2023-36802</a>, was discovered. At this time, <a href="https://x.com/chompie1337">chompie</a> also published an <a href="https://securityintelligence.com/x-force/critically-close-to-zero-day-exploiting-microsoft-kernel-streaming-service/">excellent blog post</a> detailing this vulnerability and its exploitation techniques. Given that this component is very small, with a file size of approximately 72 KB, it might only take a few days of careful examination to fully understand it. Therefore, we chose MSKSSRV for historical vulnerability analysis, with the hopeful prospect of identifying other vulnerabilities.</p>
+
+<p>We will briefly discuss these two vulnerabilities but not go into much detail.</p>
+
+<h3 id="cve-2023-29360---logical-vulnerability">CVE-2023-29360 - logical vulnerability</h3>
+<p>The first one is the vulnerability used by Synacktiv in Pwn2Own Vancouver 2023.</p>
+
+<p><img src="/assets/img/blog/20240823/1.png" alt="" /></p>
+
+<p>This is a logical vulnerability in the MSKSSRV driver. When MSKSSRV uses <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-mmprobeandlockpages">MmProbeAndLockPages</a> to lock user-specified memory address as framebuffer, the <code class="language-plaintext highlighter-rouge">AccessMode</code> was not set correctly. This leads to a failure to check whether the user-specified address belongs to the user space. If the user provides a kernel address, it will map the specified kernel address to user space for the user to use. Ultimately, this allows the user to write data to any address in the kernel. The exploitation is simple and very stable, making it become <a href="https://www.cisa.gov/news-events/alerts/2024/02/29/cisa-adds-one-known-exploited-vulnerability-catalog">one of the most popular vulnerabilities</a>.</p>
+
+<p>For more details, please refer to <a href="https://conference.hitb.org/hitbsecconf2023hkt/materials/D2T1%20-%20Windows%20Kernel%20Security%20-%20A%20Deep%20Dive%20into%20Two%20Exploits%20Demonstrated%20at%20Pwn2Own%20-%20Thomas%20Imbert.pdf">Synacktiv’s presentation at HITB 2023 HKT</a> and <a href="https://x.com/Big5_sec">Nicolas Zilio(@Big5_sec)</a> ‘s blog <a href="https://big5-sec.github.io/posts/CVE-2023-29360-analysis/">post</a>.</p>
+
+<h3 id="cve-2023-36802---type-confusion">CVE-2023-36802 - type confusion</h3>
+<p>This vulnerability was discovered shortly after CVE-2023-29360 was released. It was already being exploited when Microsoft released their patches. This is a very easily discovered vulnerability. It uses the objects (<code class="language-plaintext highlighter-rouge">FSContextReg</code>, <code class="language-plaintext highlighter-rouge">FSStreamReg</code>) stored in <code class="language-plaintext highlighter-rouge">FILE_OBJECT-&gt;FsContext2</code> for subsequent processing. However, there is no check on the type of <code class="language-plaintext highlighter-rouge">FsContext2</code>, leading to type confusion. For detailed information, you can refer to the <a href="https://securityintelligence.com/x-force/critically-close-to-zero-day-exploiting-microsoft-kernel-streaming-service/">IBM X-Force blog</a>, which provides a very thorough explanation.</p>
+
+<p>Since then, there have been very few vulnerabilities related to MSKSSRV. Due to its relatively small size, MSKSSRV is quickly reviewed, and gradually, fewer and fewer people pay attention to it.</p>
+
+<h3 id="but-is-that-the-end-of-it-">But is that the end of it ?</h3>
+<p>However, does this mean there are no more vulnerabilities?</p>
+
+<p>In fact, the entire Kernel Streaming looks like the diagram below:</p>
+
+<p><img src="/assets/img/blog/20240823/2.png" alt="" /></p>
+
+<p>MSKSSRV is just the tip of the iceberg. In fact, there are many other potential components, and those listed in the diagram above are all part of Kernel Streaming. After delving into this attack surface, numerous vulnerabilities were eventually discovered, flowing like a stream.</p>
+
+<p><img src="/assets/img/blog/20240823/cover.png" alt="" /></p>
+
+<p>By the way, while I was writing this blog, chompie also <a href="https://securityintelligence.com/x-force/little-bug-that-could">published</a> about the vulnerability she used in this year’s Pwn2Own Vancouver 2024, <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-30089">CVE-2024-30089</a>, which is also a vulnerability in MSKSSRV. The vulnerability lies in handling the reference count, requiring a lot of attention and thought to discover. It is also quite interesting, but I won’t discuss it here. I highly recommend reading <a href="https://securityintelligence.com/x-force/little-bug-that-could">this one</a>.</p>
+
+<h2 id="brief-overview-of-kernel-streaming">Brief overview of Kernel Streaming</h2>
+<p>So, what is Kernel Streaming? In fact, we use it very frequently.</p>
+
+<p><img src="/assets/img/blog/20240823/4.png" alt="" /></p>
+
+<p>On Windows systems, when we open the webcam, enable sound, and activate audio devices such as microphones, the system needs to write or read related data such as your voice and captured images from your devices into RAM. It is essential to read data into your computer more efficiently during this process. Microsoft provides a framework called <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/kernel-streaming">Kernel Streaming</a> to handle these data, which <strong>primarily operates in kernel mode</strong>. It features low latency, excellent scalability, and a unified interface, making handling streaming data more convenient and efficient.</p>
+
+<p>In Microsoft’s Kernel Streaming, three multimedia class driver models are provided: port class, AVStream, and stream class. We will briefly introduce port class and AVStream, as stream class is less common and more outdated and will not be discussed here.</p>
+
+<h3 id="port-class"><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/introduction-to-port-class">Port class</a></h3>
+
+<p>This type of driver is mostly used for PCI and DMA-based audio device hardware drivers. Currently, most audio-related processing, such as volume control or microphone-related processing, falls into this category. The main component library used would be <code class="language-plaintext highlighter-rouge">portcls.sys</code>.</p>
+
+<p><img src="/assets/img/blog/20240823/5.png" alt="" /></p>
+
+<h3 id="avstream"><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/avstream-overview">AVStream</a></h3>
+
+<p>AVStream is a multimedia driver provided by Microsoft that primarily supports video-only and integrated audio/video streaming. Currently, most video-related processing, such as your webcam, capture card, etc., is associated with this category.</p>
+
+<p><img src="/assets/img/blog/20240823/6.png" alt="" /></p>
+
+<p>In fact, the use of Kernel Streaming is also very complex. We will only provide a brief description. For more detailed information, please refer to <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/">Microsoft Learn</a>.</p>
+
+<h2 id="interact-with-device">Interact with device</h2>
+
+<p>When we want to interact with audio devices or webcams, we need to open the device just like with any other device. Essentially, it interacts with the device driver in the same way. So, what would the names of these types of devices be? These names are not typically like <code class="language-plaintext highlighter-rouge">\Device\NamedPipe</code>, but rather something like the following:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>\\?\hdaudio#subfunc_01&amp;ven_8086&amp;dev_2812&amp;nid_0001&amp;subsys_00000000&amp;rev_1000#6&amp;2f1f346a&amp;0&amp;0002&amp;0000001d#{6994ad04-93ef-11d0-a3cc-00a0c9223196}\ehdmiouttopo
+</code></pre></div></div>
+
+<h3 id="enumerate-device">Enumerate device</h3>
+<p>Here you can use APIs such as <a href="https://learn.microsoft.com/zh-tw/windows/win32/api/setupapi/nf-setupapi-setupdigetclassdevsw">SetupDiGetClassDevs</a> to enumerate devices. Generally, KS series devices are registered under <code class="language-plaintext highlighter-rouge">KSCATEGORY*</code>, such as audio devices which are registered under <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/install/kscategory-audio">KSCATEGORY_AUDIO</a>.</p>
+
+<p>Additionally, you can use the APIs provided by KS, such as <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ksproxy/nf-ksproxy-ksopendefaultdevice">KsOpenDefaultDevice</a>, to obtain the <code class="language-plaintext highlighter-rouge">handle</code> of the first matching PnP device in that category. Actually, it is just a wrapper around <code class="language-plaintext highlighter-rouge">SetupDiGetClassDevs</code> and <code class="language-plaintext highlighter-rouge">CreateFile</code>.</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">hr</span> <span class="o">=</span> <span class="n">KsOpenDefaultDevice</span><span class="p">(</span><span class="n">KSCATEGORY_VIDEO_CAMERA</span><span class="p">,</span><span class="n">GENERIC_READ</span><span class="o">|</span><span class="n">GENERIC_WRITE</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">g_hDevice</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="kernel-streaming-object">Kernel Streaming object</h3>
+
+<p>After we open these devices, Kernel Streaming will create some Kernel Streaming related instances, the most important of which are <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ks-filters">KS Filters</a> and <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ks-pins">KS Pins</a>.</p>
+
+<p>These will be used during the Kernel Streaming process. We will only provide a brief introduction here. We will use <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/audio-filters">audio filters</a> as an example, as most others are quite similar.</p>
+
+<h4 id="ks-filters">KS filters</h4>
+<p>Each KS Filter typically represents a device or a specific function of a device. When we open an audio device, it usually corresponds to a KS filter object. When we read data from the audio device, this data is first processed through this KS Filter.</p>
+
+<p>Conceptually, as shown in the diagram below, the large box in the middle represents a KS filter for the audio device. When we want to read data from the audio device, it is read into the filter from the left, processed through several nodes, and then output from the right.</p>
+
+<p><img src="/assets/img/blog/20240823/7.png" alt="" />
+ (From: https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/audio-filters)</p>
+
+<h4 id="ks-pins">KS pins</h4>
+<p>In the figure above, the points for reading and outputting data are called pins. The kernel also has corresponding KS pin Objects to describe the Pins, recording whether the Pin is a sink or a source, the data format for input and output, and so on. When we use it, we must <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/nf-ks-kscreatepin">open a pin</a> on the filters to create an instance to read from or write to the device.</p>
+
+<h3 id="ks-property">KS property</h3>
+
+<p>Each of these KS objects will have its own property, and each property corresponds to a specific feature. For instance, the data format mentioned earlier in the Pin, the volume level, and the status of the device are all properties. These properties typically correspond to a set of GUIDs. We can set these properties through <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_property">IOCTL_KS_PROPERTY</a>.</p>
+
+<p>This greatly simplifies the development of multimedia drivers and ensures consistency and scalability across different devices.</p>
+
+<h3 id="read-streams-from-webcam">Read streams from webcam</h3>
+<p>Here is a simple example illustrating how an application can read data from a webcam.</p>
+
+<p><img src="/assets/img/blog/20240823/8.png" alt="" /></p>
+
+<p>The most basic flow is roughly shown in this diagram:</p>
+
+<ol>
+  <li>Open the device to obtain the device handle.</li>
+  <li>Use this device handle to create an instance of the Pin on this filter and obtain the Pin handle.</li>
+  <li>Use <code class="language-plaintext highlighter-rouge">IOCTL_KS_PROPERTY</code> to set the device state of the Pin to RUN.</li>
+  <li>Finally, you can use <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_read_stream">IOCTL_KS_READ_STREAM</a> to read data from this Pin.</li>
+</ol>
+
+<h2 id="kernel-streaming-architecture">Kernel Streaming architecture</h2>
+<blockquote>
+  <p>For vulnerability research, we must first understand its architecture and consider the potential attack surfaces.</p>
+</blockquote>
+
+<p>After gaining a preliminary understanding of the functionalities and operations of Kernel Streaming, we need to understand the architecture to find vulnerabilities. It’s crucial to know how Windows implements these functions and what components are involved. This way, we can identify which sys files to analyze and where to start.</p>
+
+<p>After our analysis, the overall architecture looks approximately like this diagram:</p>
+
+<p><img src="/assets/img/blog/20240823/9.png" alt="" /></p>
+
+<p>In the Kernel Streaming components, the most important ones are <code class="language-plaintext highlighter-rouge">ksthunk.sys</code> and <code class="language-plaintext highlighter-rouge">ks.sys</code>. Almost all functionalities are related to them.</p>
+
+<h3 id="ksthunk-kernel-streaming-wow-thunk-service-driver">ksthunk (Kernel Streaming WOW Thunk Service Driver)</h3>
+<p><code class="language-plaintext highlighter-rouge">ksthunk.sys</code> is the entry point in Kernel Streaming. Its function is quite simple: it converts 32-bit requests from the WoW64 process into 64-bit requests, allowing the underlying driver to handle the requests without additional processing for 32-bit structures.</p>
+
+<h3 id="ks-kernel-connection-and-streaming-architecture-library">ks (Kernel Connection and Streaming Architecture Library)</h3>
+<p><code class="language-plaintext highlighter-rouge">ks.sys</code> is one of the <strong>core components of Kernel Streaming</strong>. It is the library of Kernel Streaming responsible for forwarding requests such as <code class="language-plaintext highlighter-rouge">IOCTL_KS_PROPERTY</code> to the corresponding device driver, and it also handles functions related to AVStream.</p>
+
+<h3 id="the-work-flow-of-ioctl_ks_">The work flow of IOCTL_KS_*</h3>
+<p><code class="language-plaintext highlighter-rouge">IOCTL_KS_PROPERTY</code> will be used as an example here. When calling <code class="language-plaintext highlighter-rouge">DeviceIoControl</code>, as shown in the figure below, the user’s request will be sequentially passed to the corresponding driver for processing.</p>
+
+<p><img src="/assets/img/blog/20240823/10.png" alt="" /></p>
+
+<p>At step 6, <code class="language-plaintext highlighter-rouge">ks.sys</code> will determine which driver and handler to hand over your request based on the <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ksproperty-structure">KSPROPERTY</a> you requested.</p>
+
+<p><img src="/assets/img/blog/20240823/11.png" alt="" /></p>
+
+<p>Finally, forward it to the corresponding driver, as shown in the figure above, where it is ultimately forwarded to the handler in <code class="language-plaintext highlighter-rouge">portcls</code> to operate the audio device.</p>
+
+<p>You should now have a preliminary understanding of the architecture and process of Kernel Streaming. Next, it’s time to look for vulnerabilities.</p>
+
+<p>Based on the existing elements, which attack surfaces are worth examining?</p>
+
+<h3 id="from-attackers-view">From attacker’s view</h3>
+<blockquote>
+  <p>　Before digging for vulnerabilities, if you can carefully consider under what circumstances they are likely to occur, you can achieve twice the result with half the effort.</p>
+</blockquote>
+
+<p>From a vulnerability researcher’s perspective, there are a few key points to consider:</p>
+
+<h4 id="1-property-handler-in-each-device">1. Property handler in each device</h4>
+<p>KS object for each device has its own properties, and each property has its own handler. Some properties are prone to issues during handling.</p>
+
+<h4 id="2-ks-and-ksthunk">2. ks and ksthunk</h4>
+<p><code class="language-plaintext highlighter-rouge">ks</code> and <code class="language-plaintext highlighter-rouge">ksthunk</code> have not had vulnerabilities for a long time, but they are the most accessible entry points and might be good targets. The last vulnerabilities(<a href="https://msrc.microsoft.com/update-guide/en-us/vulnerability/CVE-2020-16889">CVE-2020-16889</a> and <a href="https://msrc.microsoft.com/update-guide/en-US/vulnerability/CVE-2020-17045">CVE-2020-17045</a>) were found in 2020 by <a href="https://x.com/nghiadt1098">@nghiadt1098</a>.</p>
+
+<h4 id="3-each-driver-handles-a-part-of-the-content">3. Each driver handles a part of the content</h4>
+<p>In some functionalities of Kernel Streaming, certain drivers handle parts of the input individually, which may lead to inconsistencies.</p>
+
+<p>After reviewing Kernel Streaming from the above perspectives, we quickly identified several relatively easy-to-discover vulnerabilities.</p>
+
+<ul>
+  <li>portcls.sys
+    <ul>
+      <li>CVE-2024-38055 (out-of-bounds read when set dataformat for Pin)</li>
+      <li>CVE-2024-38056</li>
+    </ul>
+  </li>
+  <li>ksthunk
+    <ul>
+      <li>CVE-2024-38054 (out-of-bounds write)</li>
+      <li>CVE-2024-38057</li>
+    </ul>
+  </li>
+</ul>
+
+<p>However, we will not be explaining these vulnerabilities one by one. Most of these are obvious issues such as unchecked length or index leading to out-of-bounds access.  <a href="https://x.com/Fr0st1706">@Fr0st1706</a> also wrote an <a href="https://github.com/Black-Frost/windows-learning/tree/main/CVE-2024-38054">exploit for CVE-2024-38054</a> recently. We might slowly explain these in subsequent parts in the future. We will leave this for the readers to study for now.</p>
+
+<p>During the review process, we discovered some interesting things. Do you think the following code snippet is really fine?</p>
+
+<pre><code class="language-cpp=">__int64 __fastcall CKSThunkDevice::CheckIrpForStackAdjustmentNative(__int64 a1, struct _IRP *irp, __int64 a3, int *a4)
+{
+
+    if ( irp-&gt;RequestorMode )
+    {
+        v14 = 0xC0000010;
+    }
+    else
+    {
+        UserBuffer = (unsigned int *)irp-&gt;UserBuffer;
+        ...
+        v14 = (*(__int64 (__fastcall **)(_QWORD, _QWORD, __int64 *))    (Type3InputBuffer + 0x38))(// call Type3InputBuffer+0x38
+                *UserBuffer,
+                0LL,
+               v19);
+    }
+}
+</code></pre>
+
+<p>Seeing this code reminds me of <a href="https://decoded.avast.io/janvojtesek/lazarus-and-the-fudmodule-rootkit-beyond-byovd-with-an-admin-to-kernel-zero-day/">CVE-2024-21338</a>. Initially, the vulnerability had no checks, but after patching, <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-exgetpreviousmode">ExGetPreviousMode</a> was added. However, the check here uses the <code class="language-plaintext highlighter-rouge">RequestorMode</code> in <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/ns-wdm-_irp">IRP</a> for validation. Generally, the <code class="language-plaintext highlighter-rouge">RequestorMode</code> from a user-called IOCTL will be <code class="language-plaintext highlighter-rouge">UserMode(1)</code>, so there shouldn’t be any issues.</p>
+
+<p>At this point, I also recall <a href="https://x.com/tiraniddo">James Forshaw</a>’s article <a href="https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html">Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager</a>.</p>
+
+<h2 id="the-overlooked-bug-class">The overlooked bug class</h2>
+<p>First, we need to mention a few terms and concepts. If you are already familiar with <code class="language-plaintext highlighter-rouge">Previous Mode</code> and <code class="language-plaintext highlighter-rouge">RequestorMode</code>, you can skip to <a href="#A-logical-bug-class">A logical bug class</a> section.</p>
+
+<h3 id="previousmode">PreviousMode</h3>
+<p>The first one is <code class="language-plaintext highlighter-rouge">PreviousMode</code>. In an Application, if a user operates on a device or file through <code class="language-plaintext highlighter-rouge">Nt*</code> System Service Call, upon entering the kernel, it will be marked as <code class="language-plaintext highlighter-rouge">UserMode(1)</code> in <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/kernel/eprocess#ethread">_ETHREAD</a>’s <code class="language-plaintext highlighter-rouge">PreviousMode</code>, indicating that this System Service Call is from the user. Conversely, if it is called from kernel mode, such as a device driver invoking the <code class="language-plaintext highlighter-rouge">Zw*</code> System Service Call, it will be marked as <code class="language-plaintext highlighter-rouge">KernelMode(2)</code>.</p>
+
+<p><img src="/assets/img/blog/20240823/12.png" alt="" /></p>
+
+<h3 id="requestormode">RequestorMode</h3>
+<p>Another similar field is the <code class="language-plaintext highlighter-rouge">RequestorMode</code> in the IRP. This field records whether your original request came from <code class="language-plaintext highlighter-rouge">UserMode</code> or <code class="language-plaintext highlighter-rouge">KernelMode</code>. In kernel driver code, this is a very commonly used field, typically derived from <code class="language-plaintext highlighter-rouge">PreviousMode</code>.</p>
+
+<p>It is often used to decide whether to perform additional checks on user requests, such as Memory Access Check or Security Access Check. In the example below, if the request comes from <code class="language-plaintext highlighter-rouge">UserMode</code>, it will check the user-provided address. If it comes from the Kernel, no additional checks are performed to increase efficiency.</p>
+
+<p><img src="/assets/img/blog/20240823/13.png" alt="" /></p>
+
+<p>But in reality, this has also led to some issues.</p>
+
+<h3 id="a-logical-bug-class">A logical bug class</h3>
+<p><a href="https://x.com/tiraniddo">James Forshaw</a>’s <a href="https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html">Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager</a> mentions a type of Bug Class.</p>
+
+<p>What would happen if a user calls a System Service Call like <code class="language-plaintext highlighter-rouge">NtDeviceIoControlFile</code>, and then the driver handling it uses user-controllable data as parameters for <code class="language-plaintext highlighter-rouge">ZwOpenFile</code>?</p>
+
+<p><img src="/assets/img/blog/20240823/14.png" alt="" /></p>
+
+<p>After the driver calls <code class="language-plaintext highlighter-rouge">ZwOpenFile</code>, <code class="language-plaintext highlighter-rouge">PreviousMode</code> will switch to <code class="language-plaintext highlighter-rouge">KernelMode</code>, and when it uses <code class="language-plaintext highlighter-rouge">NtOpenFile</code> processing, most checks will be skipped due to <code class="language-plaintext highlighter-rouge">PreviousMode</code> being <code class="language-plaintext highlighter-rouge">KernelMode</code>. Subsequently, <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code> will become <code class="language-plaintext highlighter-rouge">KernelMode</code>,  bypassing the Security Access Check and Memory Access Check. However, this largely depends on how the subsequent driver implements these checks. There might be issues if it relies solely on <code class="language-plaintext highlighter-rouge">RequestorMode</code> to decide whether to perform checks The actual situation is slightly more complex and related to the flags of <code class="language-plaintext highlighter-rouge">CreateFile</code>. For details, refer to the following articles:</p>
+
+<ul>
+  <li><a href="https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html">Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager</a></li>
+  <li><a href="https://googleprojectzero.blogspot.com/2021/01/hunting-for-bugs-in-windows-mini-filter.html">Hunting for Bugs in Windows Mini-Filter Drivers</a></li>
+  <li><a href="https://msrc.microsoft.com/blog/2019/03/local-privilege-escalation-via-the-windows-i-o-manager-a-variant-finding-collaboration/">Local privilege escalation via the Windows I/O Manager: a variant finding collaboration</a></li>
+</ul>
+
+<p>These studies mainly focused on the <code class="language-plaintext highlighter-rouge">Zw*</code> series of System Service Call. Are there other similar situations that could also cause this kind of logical vulnerability?</p>
+
+<h4 id="the-new-bug-pattern">The new bug pattern</h4>
+<p>Actually, it is possible. When the device driver uses <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iobuilddeviceiocontrolrequest">IoBuildDeviceIoControlRequest</a> to create a <code class="language-plaintext highlighter-rouge">DeviceIoControl</code> IRP, it is easy to encounter such issues if not careful. This API is primarily used by kernel drivers to call IOCTL, and it helps you build the IRP. Subsequently, calling <code class="language-plaintext highlighter-rouge">IofCallDriver</code> allows you to call IOCTL within the kernel driver. On <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iobuilddeviceiocontrolrequest#remarks">Microsoft Learn</a>, there is a particular passage worth noting.</p>
+
+<p><img src="/assets/img/blog/20240823/15.png" alt="" /></p>
+
+<p>By default, if you do not explicitly set the <strong><code class="language-plaintext highlighter-rouge">RequestorMode</code></strong>, it will directly call IOCTL with <code class="language-plaintext highlighter-rouge">KernelMode</code>.</p>
+
+<p><img src="/assets/img/blog/20240823/16.png" alt="" /></p>
+
+<p>Following this approach, we revisited Kernel Streaming and discovered an intriguing aspect.</p>
+
+<p><img src="/assets/img/blog/20240823/17.png" alt="" /></p>
+
+<p>The function where <code class="language-plaintext highlighter-rouge">IoBuildDeviceIoControlRequest</code> is used in Kernel Streaming is in <code class="language-plaintext highlighter-rouge">ks!KsSynchronousIoControlDevice</code> and it obviously involves calling IOCTL in the kernel using the aforementioned method. However, it appears that <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code> is properly set here, and different values are assigned based on the parameters of <code class="language-plaintext highlighter-rouge">KsSynchronousIoControlDevice</code>. This will be a convenient library for kernel streaming driver developers.</p>
+
+<p>However…</p>
+
+<p>ks!CKsPin::GetState
+<img src="/assets/img/blog/20240823/18.png" alt="" /></p>
+
+<p>ks!SerializePropertySet
+<img src="/assets/img/blog/20240823/19.png" alt="" /></p>
+
+<p>ks!UnserializePropertySet
+<img src="/assets/img/blog/20240823/20.png" alt="" /></p>
+
+<p>We found that in Kernel Streaming, all functions using <code class="language-plaintext highlighter-rouge">KsSynchronousIoControlDevice</code> consistently use <strong><code class="language-plaintext highlighter-rouge">KernelMode(0)</code></strong>. At this point, we can carefully inspect whether the places it is used have any security issues. Therefore, we convert the bug pattern in Kernel Streaming into the following points:</p>
+
+<ol>
+  <li>Utilized <code class="language-plaintext highlighter-rouge">KsSynchronousIoControlDevice</code></li>
+  <li>Controllable InputBuffer &amp; OutputBuffer</li>
+  <li>The second processing of IOCTL relies on <strong>RequestorMode</strong> for security checks
+ <img src="/assets/img/blog/20240823/21.png" alt="" /></li>
+</ol>
+
+<p>Following this pattern, we quickly found the first vulnerability.</p>
+
+<h2 id="the-vulnerability--exploitation">The vulnerability &amp; exploitation</h2>
+
+<h3 id="cve-2024-35250">CVE-2024-35250</h3>
+
+<p>This vulnerability is also the one we used in <a href="https://x.com/thezdi/status/1770517322203070674">Pwn2Own Vancouver 2024</a>. In the <code class="language-plaintext highlighter-rouge">IOCTL_KS_PROPERTY</code> of Kernel Streaming, to increase efficiency, <code class="language-plaintext highlighter-rouge">KSPROPERTY_TYPE_SERIALIZESET</code> and <code class="language-plaintext highlighter-rouge">KSPROPERTY_TYPE_UNSERIALIZESET</code> requests are provided to allow users to operate on multiple properties through a single call.  These types of requests will be broken down into multiple calls by the <code class="language-plaintext highlighter-rouge">KsPropertyHandler</code>. For more details, refer to <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ksproperty-structure#remarks">this one</a>.</p>
+
+<p>It is implemented in <code class="language-plaintext highlighter-rouge">ks.sys</code></p>
+
+<p><img src="/assets/img/blog/20240823/22.png" alt="" /></p>
+
+<p>When handling property in <code class="language-plaintext highlighter-rouge">ks.sys</code>, if the <code class="language-plaintext highlighter-rouge">KSPROPERTY_TYPE_UNSERIALIZESET</code> flag is provided, <code class="language-plaintext highlighter-rouge">ks!UnserializePropertySet</code> will handle your request.</p>
+
+<p>Let’s take a look at <code class="language-plaintext highlighter-rouge">UnserializePropertySet</code>.</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">unsigned</span> <span class="n">__int64</span> <span class="kr">__fastcall</span> <span class="nf">UnserializePropertySet</span><span class="p">(</span>
+    <span class="n">PIRP</span> <span class="n">irp</span><span class="p">,</span>
+    <span class="n">KSIDENTIFIER</span><span class="o">*</span> <span class="n">UserProvideProperty</span><span class="p">,</span>
+    <span class="n">KSPROPERTY_SET</span><span class="o">*</span> <span class="n">propertyset_</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="p">...</span>
+    <span class="n">New_KsProperty_req</span> <span class="o">=</span> <span class="n">ExAllocatePoolWithTag</span><span class="p">(</span><span class="n">NonPagedPoolNx</span><span class="p">,</span> <span class="n">InSize</span><span class="p">,</span> <span class="mh">0x7070534Bu</span><span class="p">);</span>
+    <span class="p">...</span>
+    <span class="n">memmove</span><span class="p">(</span><span class="n">New_KsProperty_req</span><span class="p">,</span> <span class="n">CurrentStackLocation</span><span class="o">-&gt;</span><span class="n">Parameters</span><span class="p">.</span><span class="n">DeviceIoControl</span><span class="p">.</span><span class="n">Type3InputBuffer</span><span class="p">,</span> <span class="n">InSize</span><span class="p">);</span> <span class="c1">//------[1] </span>
+    <span class="p">...</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">KsSynchronousIoControlDevice</span><span class="p">(</span>
+            <span class="n">CurrentStackLocation</span><span class="o">-&gt;</span><span class="n">FileObject</span><span class="p">,</span>
+            <span class="mi">0</span><span class="p">,</span>
+            <span class="n">CurrentStackLocation</span><span class="o">-&gt;</span><span class="n">Parameters</span><span class="p">.</span><span class="n">DeviceIoControl</span><span class="p">.</span><span class="n">IoControlCode</span><span class="p">,</span>
+            <span class="n">New_KsProperty_req</span><span class="p">,</span>
+            <span class="n">InSize</span><span class="p">,</span>
+            <span class="n">OutBuffer</span><span class="p">,</span>
+            <span class="n">OutSize</span><span class="p">,</span>
+            <span class="o">&amp;</span><span class="n">BytesReturned</span><span class="p">);</span> <span class="c1">//-----------[2]</span>
+    <span class="p">...</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>You can see that during the processing, the original request is first copied into a newly allocated buffer at [1]. Subsequently, this buffer is used to call the new IOCTL using <code class="language-plaintext highlighter-rouge">KsSynchronousIoControlDevice</code> at [2]. Both <code class="language-plaintext highlighter-rouge">New_KsProperty_req</code> and <code class="language-plaintext highlighter-rouge">OutBuffer</code> are contents provided by the user.</p>
+
+<p>The flow when calling <code class="language-plaintext highlighter-rouge">UnserializePropertySet</code> is roughly as illustrated below:</p>
+
+<p><img src="/assets/img/blog/20240823/23.png" alt="" /></p>
+
+<p>When calling IOCTL, as shown in <code class="language-plaintext highlighter-rouge">step 2</code> of the diagram, the I/O Manager will set <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code> to <code class="language-plaintext highlighter-rouge">UserMode(1)</code>. Until step 6, it will check if the requested property by the user exists in the KS object. If the property exists in the KS object and is set with <code class="language-plaintext highlighter-rouge">KSPROPERTY_TYPE_UNSERIALIZESET</code>,  <code class="language-plaintext highlighter-rouge">UnserializePropertySet</code> will be used to handle the specified property.</p>
+
+<p><img src="/assets/img/blog/20240823/24.png" alt="" /></p>
+
+<p>Next, in step 7, <code class="language-plaintext highlighter-rouge">KsSynchronousIoControlDevice</code> will be used to perform the IOCTL again. At this point, the new <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code> will become <code class="language-plaintext highlighter-rouge">KernelMode(0)</code>, and the subsequent processing will be the same as a typical <code class="language-plaintext highlighter-rouge">IOCTL_KS_PROPERTY</code>. This part will not be elaborated further.</p>
+
+<p>As a result, we now have a primitive that allows us to perform arbitrary <code class="language-plaintext highlighter-rouge">IOCTL_KS_PROPERTY</code> operations. Next, we need to look for places where it might be possible to achieve EoP (Elevation of Privilege).</p>
+
+<h3 id="the-eop">The EoP</h3>
+<p>The first thing you will likely notice is the entry point <code class="language-plaintext highlighter-rouge">ksthunk.sys</code>.</p>
+
+<p>Let’s take a look at <code class="language-plaintext highlighter-rouge">ksthunk!CKSThunkDevice::DispatchIoctl</code>.</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="n">__int64</span> <span class="kr">__fastcall</span> <span class="n">CKSThunkDevice</span><span class="o">::</span><span class="n">DispatchIoctl</span><span class="p">(</span><span class="n">CKernelFilterDevice</span> <span class="o">*</span><span class="n">a1</span><span class="p">,</span> <span class="n">IRP</span> <span class="o">*</span><span class="n">irp</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">a3</span><span class="p">,</span> <span class="n">NTSTATUS</span> <span class="o">*</span><span class="n">a4</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="p">...</span>
+  <span class="k">if</span> <span class="p">(</span> <span class="n">IoIs32bitProcess</span><span class="p">(</span><span class="n">irp</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">irp</span><span class="o">-&gt;</span><span class="n">RequestorMode</span> <span class="p">)</span> <span class="c1">//------[3]</span>
+  <span class="p">{</span>
+   <span class="c1">//Convert 32-bit requests to 64-bit requests</span>
+  <span class="p">}</span>
+  <span class="k">else</span> <span class="k">if</span> <span class="p">(</span> <span class="n">CurrentStackLocation</span><span class="o">-&gt;</span><span class="n">Parameters</span><span class="p">.</span><span class="n">DeviceIoControl</span><span class="p">.</span><span class="n">IoControlCode</span> <span class="o">==</span> <span class="n">IOCTL_KS_PROPERTY</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">CKSThunkDevice</span><span class="o">::</span><span class="n">CheckIrpForStackAdjustmentNative</span><span class="p">((</span><span class="n">__int64</span><span class="p">)</span><span class="n">a1</span><span class="p">,</span> <span class="n">irp</span><span class="p">,</span> <span class="n">v11</span><span class="p">,</span> <span class="n">a4</span><span class="p">)</span> <span class="c1">//-----[4];</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>You can see that <code class="language-plaintext highlighter-rouge">ksthunk</code> will first determine whether the request is from a WoW64 Process. If it is, it will convert the original 32-bit Requests into 64-bit at [3]. If the original request is already 64-bit, it will call <code class="language-plaintext highlighter-rouge">CKSThunkDevice::CheckIrpForStackAdjustmentNative</code> at [4] to pass it down.</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">__int64</span> <span class="kr">__fastcall</span> <span class="n">CKSThunkDevice</span><span class="o">::</span><span class="n">CheckIrpForStackAdjustmentNative</span><span class="p">(</span><span class="n">__int64</span> <span class="n">a1</span><span class="p">,</span> <span class="k">struct</span> <span class="nc">_IRP</span> <span class="o">*</span><span class="n">irp</span><span class="p">,</span> <span class="n">__int64</span> <span class="n">a3</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">a4</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="p">...</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="o">*</span><span class="p">(</span><span class="n">_OWORD</span> <span class="o">*</span><span class="p">)</span><span class="o">&amp;</span><span class="n">Type3InputBuffer</span><span class="o">-&gt;</span><span class="n">Set</span> <span class="o">==</span> <span class="o">*</span><span class="p">(</span><span class="n">_OWORD</span> <span class="o">*</span><span class="p">)</span><span class="o">&amp;</span><span class="n">KSPROPSETID_DrmAudioStream</span>
+        <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">type3inputbuf</span><span class="p">.</span><span class="n">Id</span>
+        <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">type3inputbuf</span><span class="p">.</span><span class="n">Flags</span> <span class="o">&amp;</span> <span class="mi">2</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span> <span class="p">)</span>   <span class="c1">//-----[5]   </span>
+    <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">irp</span><span class="o">-&gt;</span><span class="n">RequestorMode</span> <span class="p">)</span> <span class="c1">//-------[6]</span>
+        <span class="p">{</span>
+        <span class="n">v14</span> <span class="o">=</span> <span class="mh">0xC0000010</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">else</span>
+        <span class="p">{</span>
+        <span class="n">UserBuffer</span> <span class="o">=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="o">*</span><span class="p">)</span><span class="n">irp</span><span class="o">-&gt;</span><span class="n">UserBuffer</span><span class="p">;</span>
+        <span class="p">...</span>
+        <span class="n">v14</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">__int64</span> <span class="p">(</span><span class="kr">__fastcall</span> <span class="o">**</span><span class="p">)(</span><span class="n">_QWORD</span><span class="p">,</span> <span class="n">_QWORD</span><span class="p">,</span> <span class="n">__int64</span> <span class="o">*</span><span class="p">))(</span><span class="n">Type3InputBuffer</span> <span class="o">+</span> <span class="mh">0x38</span><span class="p">))(</span><span class="c1">// call Type3InputBuffer+0x38</span>
+                <span class="o">*</span><span class="n">UserBuffer</span><span class="p">,</span>
+                <span class="mi">0LL</span><span class="p">,</span>
+                <span class="n">v19</span><span class="p">);</span> <span class="c1">//------------[7]</span>
+        <span class="p">}</span>
+    <span class="p">}</span> 
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>We can notice that if we give the property set as <a href="https://learn.microsoft.com/mt-mt/windows-hardware/drivers/audio/kspropsetid-drmaudiostream"><code class="language-plaintext highlighter-rouge">KSPROPSETID_DrmAudioStream</code></a>, there is additional processing at [5]. At [6], we can see that it first checks whether <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code> is <code class="language-plaintext highlighter-rouge">KernelMode(0)</code>. If it is called from user, it will directly return an error.</p>
+
+<p>It should be pretty obvious here that if we call IOCTL with <code class="language-plaintext highlighter-rouge">KSPROPERTY_TYPE_UNSERIALIZESET</code> and specify the <code class="language-plaintext highlighter-rouge">KSPROPSETID_DrmAudioStream</code> property, it will be <code class="language-plaintext highlighter-rouge">KernelMode(0)</code> here. Additionally, it will directly use the input provided by the user as a function call at [7]. Even the first parameter is controllable.</p>
+
+<p>After writing the PoC, we confirmed our results.</p>
+
+<p><img src="/assets/img/blog/20240823/25.png" alt="" /></p>
+
+<p>Some people might wonder, under what device or situation would have <code class="language-plaintext highlighter-rouge">KSPROPSETID_DrmAudioStream</code>? Actually, most audio devices will have it, primarily used for setting DRM-related content.</p>
+
+<h3 id="exploitation">Exploitation</h3>
+<p>Once arbitrary calls are achieved, accomplishing EoP is not too difficult. Although protections such as kCFG, kASLR, and SMEP will be encountered, the only protection that needs to be dealt with under Medium IL is kCFG.</p>
+
+<ul>
+  <li><strong>kCFG</strong></li>
+  <li>kASLR
+    <ul>
+      <li>NtQuerySystemInformation</li>
+    </ul>
+  </li>
+  <li>SMEP
+    <ul>
+      <li>Reuse Kernel Code</li>
+    </ul>
+  </li>
+  <li>…</li>
+</ul>
+
+<h4 id="bypass-kcfg">Bypass kCFG</h4>
+<p>Our goal here is straightforward: to create an arbitrary write primitive from a legitimate function, which can then be used to achieve EoP through typical methods like <a href="https://www.ired.team/miscellaneous-reversing-forensics/windows-kernel-internals/how-kernel-exploits-abuse-tokens-for-privilege-escalation#id-1.-replacing-tokens-for-privilege-escalation">replacing the current process token with system token</a> or <a href="https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf">abusing the token privilege</a>.</p>
+
+<p>It is intuitive to look directly for legitimate functions with names containing <code class="language-plaintext highlighter-rouge">set</code>, as they are more likely to do arbitrary writing.  We directly take the export functions from <code class="language-plaintext highlighter-rouge">ntoskrnl.exe</code> to see if there are any good gadgets, as these functions are generally legitimate.</p>
+
+<p><img src="/assets/img/blog/20240823/26.png" alt="" /></p>
+
+<p>We quickly found <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlsetallbits">RtlSetAllBits</a>.</p>
+
+<p><img src="/assets/img/blog/20240823/27.png" alt="" /></p>
+
+<p>It is a very useful gadget and a legitimate function in kCFG. Additionally, it only requires controlling the first parameter <code class="language-plaintext highlighter-rouge">_RTL_BITMAP</code>.</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="nc">_RTL_BITMAP</span>
+<span class="p">{</span>
+    <span class="n">ULONG</span> <span class="n">SizeOfBitMap</span><span class="p">;</span>                                               
+    <span class="n">ULONG</span><span class="o">*</span> <span class="n">Buffer</span><span class="p">;</span>                                                   
+<span class="p">};</span> 
+
+</code></pre></div></div>
+
+<p>We can assign the buffer to any address and specify the size, allowing us to set up a range of bits entirely. At this point, we are almost done. As long as <code class="language-plaintext highlighter-rouge">Token-&gt;Privilege</code> is fully set up, we can use the <code class="language-plaintext highlighter-rouge">Abuse Privilege</code> method to achieve EoP.</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/j1wzwXLxdVs?si=aKURBnYWXvbAaXin" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+
+<p>However, before the Pwn2Own event, we created a new Windows 11 23H2 VM on Hyper-V and ran the exploit. The result was a failure. It failed at the open device stage.</p>
+
+<p><img src="/assets/img/blog/20240823/28.png" alt="" /></p>
+
+<p>After investigation, we discovered that Hyper-V does not have an audio device by default, causing the exploit to fail.</p>
+
+<p><img src="/assets/img/blog/20240823/29.png" alt="" /></p>
+
+<p>In Hyper-V, only MSKSSRV is present by default. However, MSKSSRV does not have the <code class="language-plaintext highlighter-rouge">KSPROPSETID_DrmAudioStream</code> property, which prevents us from successfully exploiting this EoP vulnerability. Therefore, we must find other ways to trigger it or discover new vulnerabilities. We decided to review the entire process again to see if there were any other exploitable vulnerabilities.</p>
+
+<h3 id="cve-2024-30084">CVE-2024-30084</h3>
+<p>After re-examining, it was found that <code class="language-plaintext highlighter-rouge">IOCTL_KS_PROPERTY</code> uses <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-neither-buffered-nor-direct-i-o">Neither I/O</a> to transmit data, which means it uses the input buffer for data processing directly. Generally speaking, this method is not recommended as it often leads to <strong>double fetch</strong> issues.</p>
+
+<p><img src="/assets/img/blog/20240823/30.png" alt="" /></p>
+
+<p>From the above figure of <code class="language-plaintext highlighter-rouge">KspPropertyHandler</code>, we can see that after the user calls IOCTL, the <code class="language-plaintext highlighter-rouge">Type3InputBuffer</code> is directly copied into a newly allocated buffer, containing the <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/stream/ksproperty-structure">KSPROPERTY</a> structure. This GUID in the structure is then used to check if the property set exists in the device. If it does, it will proceed to call <code class="language-plaintext highlighter-rouge">UnserializePropertySet</code>.</p>
+
+<p>Let’s take another look at <code class="language-plaintext highlighter-rouge">UnserializePropertySet</code>.</p>
+
+<p><img src="/assets/img/blog/20240823/31.png" alt="" /></p>
+
+<p>It <strong>once again copies the user-provided data from <code class="language-plaintext highlighter-rouge">Type3InputBuffer</code></strong> as the input for the new IOCTL. Clearly, there exists a <strong>double fetch</strong> vulnerability here, so we have modified the entire process, as shown in the following diagram.</p>
+
+<p><img src="/assets/img/blog/20240823/32.png" alt="" /></p>
+
+<p>When we initially send <code class="language-plaintext highlighter-rouge">IOCTL_KS_PROPERTY</code>, we use the existing property  <code class="language-plaintext highlighter-rouge">KSPROPSETID_Service</code> of MSKSSRV for subsequent operations. As shown in step 6 of the diagram, a copy of <code class="language-plaintext highlighter-rouge">KSPROPERTY</code> is first made into the <code class="language-plaintext highlighter-rouge">SystemBuffer</code>, and then this property is used to check whether it is in the support list of the KS object. Since MSKSSRV supports it, it will then call <code class="language-plaintext highlighter-rouge">UnserializePropertySet</code>.</p>
+
+<p><img src="/assets/img/blog/20240823/33.png" alt="" /></p>
+
+<p>After calling <code class="language-plaintext highlighter-rouge">UnserializePropertySet</code>, due to the double fetch vulnerability, we can change <code class="language-plaintext highlighter-rouge">KSPROPSETID_Service</code> with <code class="language-plaintext highlighter-rouge">KSPROPSETID_DrmAudioStream</code> between the check and use phases. Subsequently, <code class="language-plaintext highlighter-rouge">KSPROPSETID_DrmAudioStream</code> will be used as the request to send IOCTL, thereby triggering the CVE-2024-35250 mentioned above logic flaw. This makes the vulnerability exploitable in any environment.</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/xNUj_XZ9LhQ?si=ONmvl9_8BV-z0idL" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+
+<p>Finally, we successfully compromised Microsoft Windows 11 during Pwn2Own Vancouver 2024.</p>
+
+<p><img src="/assets/img/blog/20240823/34.png" alt="" /></p>
+
+<p>After the Pwn2Own event, our investigation revealed that this vulnerability has existed since Windows 7 for nearly 20 years. Moreover, it is highly reliable and has a 100% success rate in exploitation. We strongly recommend that everyone update to the latest version as soon as possible.</p>
+
+<h2 id="to-be-continued">To be continued</h2>
+<p>This article focuses on how we identified the vulnerabilities used in this year’s Pwn2Own and the attack surface analysis of Kernel Streaming. After discovering this vulnerability, we continued our research on this attack surface and found another exploitable vulnerability along with other interesting findings.</p>
+
+<p>Stay tuned for Part II, expected to be published in October of this year.</p>
+
+<h2 id="reference">Reference</h2>
+<ul>
+  <li><a href="https://securityintelligence.com/x-force/critically-close-to-zero-day-exploiting-microsoft-kernel-streaming-service/">Critically Close to Zero-Day: Exploiting Microsoft Kernel Streaming Service</a></li>
+  <li><a href="https://conference.hitb.org/hitbsecconf2023hkt/materials/D2T1%20-%20Windows%20Kernel%20Security%20-%20A%20Deep%20Dive%20into%20Two%20Exploits%20Demonstrated%20at%20Pwn2Own%20-%20Thomas%20Imbert.pdf">Windows Kernel Security - A Deep Dive into Two Exploits Demonstrated at Pwn2Own</a></li>
+  <li><a href="https://big5-sec.github.io/posts/CVE-2023-29360-analysis/">CVE-2023-29360 Analysis</a></li>
+  <li><a href="https://securityintelligence.com/x-force/little-bug-that-could/">Racing Round and Round: The Little Bug That Could</a></li>
+  <li><a href="https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html">Windows Kernel Logic Bug Class: Access Mode Mismatch in IO Manager</a></li>
+  <li><a href="https://googleprojectzero.blogspot.com/2021/01/hunting-for-bugs-in-windows-mini-filter.html">Hunting for Bugs in Windows Mini-Filter Drivers</a></li>
+  <li><a href="https://msrc.microsoft.com/blog/2019/03/local-privilege-escalation-via-the-windows-i-o-manager-a-variant-finding-collaboration/">Local Privilege Escalation via the Windows I/O Manager: A Variant Finding &amp; Collaboration</a></li>
+</ul>
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/en/blog/author/angelboy">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/angelboy.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/en/blog/author/angelboy">
+                            <h3>Angelboy</h3>
+                        </a>
+                        <span>Senior Security Researcher</span>
+                        <p>
+                            I am 👼 :)
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2024 DEVCORE <b class="line-block">All rights reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

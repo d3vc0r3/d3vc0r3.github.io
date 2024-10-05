@@ -581,7 +581,7 @@
 <p>更多細節可以參考 Synacktiv 在 HITB 2023 HKT 的<a href="https://conference.hitb.org/hitbsecconf2023hkt/materials/D2T1%20-%20Windows%20Kernel%20Security%20-%20A%20Deep%20Dive%20into%20Two%20Exploits%20Demonstrated%20at%20Pwn2Own%20-%20Thomas%20Imbert.pdf">演講</a>及 <a href="https://x.com/Big5_sec">Nicolas Zilio(@Big5_sec)</a> 的<a href="https://big5-sec.github.io/posts/CVE-2023-29360-analysis/">部落格文章</a></p>
 
 <h3 id="cve-2023-36802---type-confusion">CVE-2023-36802 - type confusion</h3>
-<p>這個漏洞則是在 CVE-2023-29360 出來後沒多就被許多人發現，並且在微軟發佈更新時，就已經偵測到利用，是個非常容易被發現的漏洞。MSKSSRV 會先將內部使用的物件（FSContextReg、FSStreamReg）存放在 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_object">FILE_OBJECT</a> 的 FsContext2 中，然而後續使用時並沒有對 FsContext2 的<strong>型態</strong>做檢查，導致 type confusion，詳細內容可參考 <a href="https://securityintelligence.com/x-force/critically-close-to-zero-day-exploiting-microsoft-kernel-streaming-service/">IBM X-Force 的部落格</a>。</p>
+<p>這個漏洞則是在 CVE-2023-29360 出來後沒多久被許多人發現，並且在微軟發佈更新時，就已經偵測到利用，是個非常容易被發現的漏洞。MSKSSRV 會先將內部使用的物件（FSContextReg、FSStreamReg）存放在 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_object">FILE_OBJECT</a> 的 FsContext2 中，然而後續使用時並沒有對 FsContext2 的<strong>型態</strong>做檢查，導致 type confusion，詳細內容可參考 <a href="https://securityintelligence.com/x-force/critically-close-to-zero-day-exploiting-microsoft-kernel-streaming-service/">IBM X-Force 的部落格</a>。</p>
 
 <p>至此之後，就很少有關於 MSKSSRV 的相關漏洞了。</p>
 

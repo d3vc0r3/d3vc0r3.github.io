@@ -4,13 +4,608 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2024-09-06T11:02:20+08:00</updated>
+ <updated>2024-10-05T21:54:18+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name></name>
    <email></email>
  </author>
 
+ 
+ <entry>
+   <title>Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part II</title>
+   <link href="https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2/"/>
+   <updated>2024-10-05T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2</id>
+   <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2-en/&quot;&gt;English Version&lt;/a&gt;, &lt;a href=&quot;/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;這是一系列有關 Kernel Streaming 的相關的漏洞研究，建議先閱讀以下文章&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/&quot;&gt;Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;在先前 Proxying to Kernel 的研究中，我們在 Kernel Stearming 中找到了多個漏洞以及一個被忽視的 Bug Class，並在今年 Pwn2Own Vancouver 2024 中利用漏洞 &lt;a href=&quot;https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/#cve-2024-35250&quot;&gt;CVE-2024-35250&lt;/a&gt; 及 &lt;a href=&quot;https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/#cve-2024-30084&quot;&gt;CVE-2024-30084&lt;/a&gt; 成功攻下 Windows 11。&lt;/p&gt;
+
+&lt;p&gt;而在這篇研究中，我們將繼續延續這個攻擊面和這個 Bug Class，也將揭露另外一個漏洞和利用手法，亦發表於 &lt;a href=&quot;https://www.hexacon.fr/conference/speakers/&quot;&gt;HEXACON 2024&lt;/a&gt; 中。&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;在 Pwn2Own Vancouver 2024 之後，我們繼續針對 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks!KsSynchronousIoControlDevice&lt;/code&gt; 這個 bug pattern 去看看有沒有其他安全性上的問題，然而找了一段時間後，針對 KS Object 的 Property 操作中，並沒有找到其他可以利用的點，因而我們將方向轉往另外一個功能 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ks-events&quot;&gt;KS Event&lt;/a&gt; 上。&lt;/p&gt;
+
+&lt;h2 id=&quot;ks-event&quot;&gt;KS Event&lt;/h2&gt;
+&lt;p&gt;KS Event 與前一篇提到的 KS Property 類似。KS Object 中除了有自己的 Property Set 之外，也有提供設定 KS Event 的功能，比如說你可以設定設備狀態改變或是每個一段時間就觸發 Event，方便播放軟體等開發者定義後續的行為，而每個 KS Event 就如同 Property 一樣，要使用就必須該 KS Object 有支援。我們可以透過 &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_enable_event&quot;&gt;IOCTL_KS_ENABLE_EVENT&lt;/a&gt;  及 &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_disable_event&quot;&gt;IOCTL_KS_DISABLE_EVENT&lt;/a&gt; 來註冊或關閉這些 Event。&lt;/p&gt;
+
+&lt;h3 id=&quot;kseventdata&quot;&gt;KSEVENTDATA&lt;/h3&gt;
+&lt;p&gt;而在註冊 KS Event 時，你可以藉由提供 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ns-ks-kseventdata&quot;&gt;KSEVENTDATA&lt;/a&gt; 來註冊你想要的事件，其中可以提供 EVENT_HANDLE 及 SEMAPHORE_HANDLE 等 handle 來註冊，當 KS 觸發這個事件時，就會藉由這個 handle 來通知你。&lt;/p&gt;
+
+&lt;h3 id=&quot;the-work-flow-of-ioctl_ks_enable_event&quot;&gt;The work flow of IOCTL_KS_ENABLE_EVENT&lt;/h3&gt;
+&lt;p&gt;其整個運作流程也與 IOCTL_KS_PROPERTY 雷同，在呼叫 DeviceIoControl 時，就會像下圖一樣，將使用者的 requests 依序給相對應的 driver 來處理&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;同樣會在第 3 步時做 32-bit 的 requests 轉換成 64-bit 的 requests。到第 6 步時 ks.sys 就會根據你 requests 的 Event 來決定要交給哪個 driver 及 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/nc-ks-pfnksaddevent&quot;&gt;addhandler&lt;/a&gt; 來處理你的 request。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;最終再轉發給相對應的 Driver。如上圖中最後轉發給 ks 中的 KsiDefaultClockAddMarkEvent 來&lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-kesettimerex&quot;&gt;設置 Timer&lt;/a&gt;。&lt;/p&gt;
+
+&lt;p&gt;在了解了 KS Event 功能及流程後，根據之前的 &lt;a href=&quot;https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/#the-new-bug-pattern&quot;&gt;bug pattern&lt;/a&gt; 很快地又找到了一個可以利用的漏洞 &lt;a href=&quot;https://msrc.microsoft.com/update-guide/en-US/vulnerability/CVE-2024-30090&quot;&gt;CVE-2024-30090&lt;/a&gt;。&lt;/p&gt;
+
+&lt;h2 id=&quot;proxying-to-kernel-again-&quot;&gt;Proxying to kernel again !&lt;/h2&gt;
+&lt;p&gt;這次的問題點發生在 ksthunk 將 32-bit request 轉換成 64-bit request 的過程。&lt;/p&gt;
+
+&lt;p&gt;如下圖，當 ksthunk 接收到來自 WoW64 Process 的 IOCTL_KS_ENABLE_EVENT 時，會進行 32-bit 結構到 64-bit 結構的轉換
+&lt;img src=&quot;/assets/img/blog/20241005/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;轉換過程會呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk!CKSAutomationThunk::ThunkEnableEventIrp&lt;/code&gt; 來處理&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;__int64 __fastcall CKSAutomationThunk::ThunkEnableEventIrp(__int64 ioctlcode_d, PIRP irp, __int64 a3, int *a4)
+{
+  ...
+  if ( (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLE
+    || (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_ONESHOT
+    || (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLEBUFFERED )  
+  {
+    // Convert 32-bit requests and pass down directly
+  }
+  else if ( (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_QUERYBUFFER ) 
+  {
+    ...
+    newinputbuf = (KSEVENT *)ExAllocatePoolWithTag((POOL_TYPE)0x600, (unsigned int)(inputbuflen + 8), &apos;bqSK&apos;);
+    ...
+    memcpy(newinputbuf,Type3InputBuffer,0x28);  //------------------------[1]
+    ...
+    v18 = KsSynchronousIoControlDevice( 
+            v25-&amp;gt;FileObject,
+            0,
+            IOCTL_KS_ENABLE_EVENT,
+            newinputbuf,
+            inputbuflen + 8,
+            OutBuffer,
+            outbuflen,
+            &amp;amp;BytesReturned);  //-----------------[2]
+    ...
+  }
+  ...
+}
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;而在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CKSAutomationThunk::ThunkEnableEventIrp&lt;/code&gt; 中，明顯可以看到類似的 bug pattern，從 [1] 中可以看到，它會複製使用者的輸入到新分配出來的 Buffer 中，接著在 [2] 處，就會利用該 Buffer 來使用 KsSynchronousIoControlDevice 呼叫新的 IOCTL，。其中 newinputbuf 及 OutBuffer 都是使用者所傳入的內容。&lt;/p&gt;
+
+&lt;p&gt;呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CKSAutomationThunk::ThunkEnableEventIrp&lt;/code&gt; 時的流程，大概如下圖所示 :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 WoW64 的程式中呼叫 IOCTL 時，可以看到圖中第 2 步 I/O Manager 會將 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt; 設成 UserMode(1)，而在第 3 步時，ksthunk 會將使用者的 request 從 32-bit 轉換成 64-bit，這邊就會用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CKSAutomationThunk::ThunkEnableEventIrp&lt;/code&gt; 來處理。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;之後第 5 步，就會透過 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsSynchronousIoControlDevice&lt;/code&gt; 重新呼叫 IOCTL ，而此時新的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt; 就變成了 KernelMode(0) 了，而後續的處理就如一般的 IOCTL_KS_ENABLE_EVENT 相同，就不另外詳述了，總之我們到這裡已經有個可以任意做 IOCTL_KS_ENABLE_EVENT 的 primitive 了，接下來我們必須尋找看看是否有可以 EoP 的地方。&lt;/p&gt;
+
+&lt;h2 id=&quot;the-exploitation&quot;&gt;The Exploitation&lt;/h2&gt;
+&lt;p&gt;跟先前思路一樣，一開始還是會先分析入口點 ksthunk，然而我們找尋了一陣子之後，並沒有看到可以做為提權的地方，而且在 ksthunk 中，大多數只要看到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestMode&lt;/code&gt; 是 KernelMode(0) 就會直接往下傳遞而不另外做處理。因此我們將我們的目標轉向位在下一層的 ks，看看它在處理 event 的過程中，是否有可以用來提權的地方。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;很快的就找到一個吸引我們目光的地方：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 KspEnableEvent 的 Handler 中，有一處會先判斷你所傳入的 KSEVENTDATA 中的 NotificationType 來決定要怎麼註冊及處理你的事件，在一般情況下通常是給一個 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-createeventa&quot;&gt;EVENT_HANDLE&lt;/a&gt; 或是 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsemaphorea&quot;&gt;SEMAPHORE_HANDLE&lt;/a&gt;，然而在 ks 中，如果是從 KernelMode 呼叫的就給以提供 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/event-objects&quot;&gt;Event Object&lt;/a&gt; 甚至 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/introduction-to-dpc-objects&quot;&gt;DPC&lt;/a&gt; 來註冊你的事件，讓整體的處理上更有效率。&lt;/p&gt;
+
+&lt;p&gt;也就是說我們可以藉由這個 KernelMode 的 DeviceIoControl 的 primitive 來提供任意 Kernel Object，讓它做後續處理，構造的好就有機會達成 EoP 但要看後續怎麼使用這個 Object 就是了。&lt;/p&gt;
+
+&lt;p&gt;但是我們在嘗試了一段時間後發現到……&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;__int64 __fastcall CKSAutomationThunk::ThunkEnableEventIrp(__int64 ioctlcode_d, PIRP irp, __int64 a3, int *a4)
+{
+  ...
+  if ( (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLE
+    || (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_ONESHOT
+    || (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLEBUFFERED )  //-------[3]
+  {
+    // Convert 32-bit requests and pass down directly
+  }
+  else if ( (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_QUERYBUFFER ) //-------[4]
+  {
+    ...
+    newinputbuf = (KSEVENT *)ExAllocatePoolWithTag((POOL_TYPE)0x600, (unsigned int)(inputbuflen + 8), &apos;bqSK&apos;);
+    ...
+    memcpy(newinputbuf,Type3InputBuffer,0x28); //------[5] 
+    ...
+    v18 = KsSynchronousIoControlDevice( 
+            v25-&amp;gt;FileObject,
+            0,
+            IOCTL_KS_ENABLE_EVENT,
+            newinputbuf,
+            inputbuflen + 8,
+            OutBuffer,
+            outbuflen,
+            &amp;amp;BytesReturned);  
+    ...
+  }
+  ...
+}
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;如果要提供任意 Kernel Object 去註冊事件，那麼 IOCTL 中所給定的 &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/stream/ksevent-structure&quot;&gt;KSEVENT&lt;/a&gt; 的 flag，必須要是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSEVENT_TYPE_ENABLE&lt;/code&gt;，也就是上面程式碼 [3] 的部分，然而在程式碼片段 [4] 處是觸發漏洞的地方卻是要是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSEVENT_TYPE_QUERYBUFFER&lt;/code&gt;，並沒辦法如我們所想的一樣直接給一個 Kernel Object。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/8.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;然而幸運的是整個 IOCTL_KS_ENABLE_EVENT 也是使用 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-neither-buffered-nor-direct-i-o&quot;&gt;Neither I/O&lt;/a&gt; 直接拿使用者的 Input buffer 來做資料上的處理，&lt;strong&gt;再次&lt;/strong&gt;出現了 Double Fetch 的問題。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;如上圖中所示，我們可以在呼叫 IOCTL 前把 flag 設置成 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSEVENT_TYPE_QUERYBUFFER&lt;/code&gt;，檢查時就會以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSEVENT_TYPE_QUERYBUFFER&lt;/code&gt; 的功能處理，而在第二次呼叫 IOCTL 前，就把 flag 換成 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSEVENT_TYPE_ENABLE&lt;/code&gt;，這樣就可以成功觸發漏洞並構造特定的 Kernel Object 來註冊事件了。&lt;/p&gt;
+
+&lt;h3 id=&quot;trigger-the-event&quot;&gt;Trigger the event&lt;/h3&gt;
+&lt;p&gt;至於甚麼時候會用到你所構造的 KS Object 呢? 當事件觸發時， ks 會透過 DPC 呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks!ksGenerateEvent&lt;/code&gt;，此時就會依照你所給定的 NotificationType 來決定要怎麼處理你的事件。&lt;/p&gt;
+
+&lt;p&gt;我們就來看一下 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsGenerateEvent&lt;/code&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;NTSTATUS __stdcall KsGenerateEvent(PKSEVENT_ENTRY EventEntry)
+{
+
+  switch ( EventEntry-&amp;gt;NotificationType )
+  {
+    case KSEVENTF_DPC:
+      ...
+      if ( !KeInsertQueueDpc(EventEntry-&amp;gt;EventData-&amp;gt;Dpc.Dpc, EventEntry-&amp;gt;EventData, 0LL) )
+        _InterlockedAdd(&amp;amp;EventEntry-&amp;gt;EventData-&amp;gt;EventObject.Increment, 0xFFFFFFFF); //--------[6]
+      ...
+    case KSEVENTF_KSWORKITEM:
+      ...
+      KsIncrementCountedWorker(eventdata-&amp;gt;KsWorkItem.KsWorkerObject); //-----------[7]
+
+  }
+}
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;其實到這邊就有多種利用方式可以利用，最直接的莫過於直接構造 DPC 結構註冊 DPC 來達成任意 Kernel 程式碼執行，也就是上面程式碼片段 [6] 的地方，&lt;strong&gt;但在呼叫 KsGenerateEvent 時的 IRQL 是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DISPATCH_LEVEL&lt;/code&gt; 很難在 User space 下構造 DPC object 利用過程也會遇到許多問題&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;所以我們改用另外一條 KSEVENTF_KSWORKITEM，也就是程式碼片段 [7] 的部分，藉由傳入 Kernel 位置，讓他誤認為是 KSWORKITEM 的指標。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;其中就會對該指標指向位置加上 0x5c 的地方加一，也就是可以達到任意 Kerenl Address 加一的寫入，其整個過程就如下圖：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在呼叫 IOCTL_KS_ENABLE_EVENT 時，構造 KSEVENTDATA 指向 Kernel 記憶體位置後，ks 處理時就會將它作為 Kernel Object 來操作，並註冊指定的事件&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而到觸發時，ks 就會將我們給的記憶體位置內容 +1，因此我們這邊就有了一個 kernel 任意 +1 的 primitive 了。&lt;/p&gt;
+
+&lt;h3 id=&quot;arbitrary-increment-primitive-to-eop&quot;&gt;Arbitrary increment primitive to EoP&lt;/h3&gt;
+
+&lt;p&gt;從任意記憶體位置 +1 到提權有許多方法可以利用，其中最知名的莫過於 &lt;a href=&quot;https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf&quot;&gt;Abuse token privilege&lt;/a&gt; 以及 &lt;a href=&quot;https://windows-internals.com/one-i-o-ring-to-rule-them-all-a-full-read-write-exploit-primitive-on-windows-11/&quot;&gt;IoRing&lt;/a&gt;，原本以為到這邊就差不多結束了…&lt;/p&gt;
+
+&lt;p&gt;然而上述兩種方法在這個情境中都有一定的侷限：&lt;/p&gt;
+
+&lt;h4 id=&quot;abuse-token-privilege&quot;&gt;Abuse token Privilege&lt;/h4&gt;
+&lt;p&gt;如果是以 Abuse token privilege 方法來做提權，其關鍵在於覆寫 Privileges.Enable 及 Privileges.Present，而我們漏洞一次只能 +1 ，如果要拿到 SeDebugPrivilege 就必須兩個欄位都要寫到，這兩格欄位的預設數值為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x602880000&lt;/code&gt; 及 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x800000&lt;/code&gt; 必須要變成，0x602&lt;strong&gt;9&lt;/strong&gt;80000 及 0x&lt;strong&gt;9&lt;/strong&gt;00000，也就是說分別都要各寫 0x10 次，總共要 0x20 次的寫入，每次的寫入都要 race，需要花上不少時間，穩定度也大幅下降。&lt;/p&gt;
+
+&lt;h4 id=&quot;ioring&quot;&gt;IoRing&lt;/h4&gt;
+&lt;p&gt;透過 IoRing 來達到任意寫入，也許會是個更簡單的方法，只需覆寫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IoRing-&amp;gt;RegBuffersCount&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IoRing-&amp;gt;RegBuffers&lt;/code&gt; 就可達到任意寫入，然而有個問題就發生了…&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在觸發任意記憶體位置 +1 這個 primitive 時，如果原先的數值是 0 時，就會進到 KsQueueWorkItem 中，其中會有一些相對應複雜的處理，就會導致 BSoD， IoRing 的利用方式剛好就會遇到這狀況…&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;是不是真的沒辦法穩定利用了呢?&lt;/p&gt;
+
+&lt;h4 id=&quot;lets-find-a-new-way-&quot;&gt;Let’s find a new way !&lt;/h4&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;當傳統的利用方法遇到瓶頸時，深入探討技術的核心機制可能會是值得的。你或許會在此過程中意外發現新的方法。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;經過幾天沉思之後，我們決定找尋新方法，但從頭找新的方法可能會花不少時間也可能找不到，於是我們決定從舊有的兩個方法中找尋新的靈感，首先來看的是 Abuse token privilege，其中最關鍵的就是利用漏洞拿到 SeDebugPrivilege 使得我們可以 Open 像是 winlogon 等高權限的 Process。&lt;/p&gt;
+
+&lt;p&gt;問題就來了，&lt;strong&gt;為什麼只要有 SeDebugPrivilege 就可以開啟高權限的 Process 呢？&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;這邊就要來看一下 PsOpenProcess，以下是 PsOpenProcess 的程式碼片段：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;由此可見，當我們在 Open Process 時， kernel 會優先使用 SeSinglePrivilegeCheck 檢查你是否有 SeDebugPrivilege，如果你具有 SeDebugPrivilege 那就會給你 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PROCESS_ALL_ACCESS&lt;/code&gt; 的權限，不會有其他 ACL 的檢查，讓你可以對任意 Process 去做任何事情，顧名思義就是讓你 Debug 用的，然而有一點值得注意的地方是 SeDebugPrivilege 是在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ntoskrnl.exe&lt;/code&gt; 上的全域變數。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;它會是個 &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-luid&quot;&gt;LUID&lt;/a&gt; 結構，會在系統啟動時初始化，實際數值為 0x14 ，表示在 Privileges.Enable 及 Privileges.Present 欄位中哪個 bit 是代表 SeDebugPrivilege。所以當我們在用 NtOpenProcess 時，系統去查看這個全域變數中的數值。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;獲得要檢查的數值後，就會依照這個數值去檢查 Token 中的 Privileges 欄位是否有 Enable 及 Present 這個欄位，以 SeDebugPrivilege 來說就會檢查&lt;strong&gt;第 0x14 bit&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/18.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;然而有一件有趣的事情是…&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/19.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nt!SeDebugPrivilege&lt;/code&gt; 這個全域變數是&lt;strong&gt;位於可寫的區段中&lt;/strong&gt;!&lt;/p&gt;
+
+&lt;p&gt;因此一個新的想法就誕生了。&lt;/p&gt;
+
+&lt;h4 id=&quot;make-abusing-token-privilege-great-again-&quot;&gt;Make abusing token privilege great again !&lt;/h4&gt;
+
+&lt;p&gt;預設情況下，一般權限的使用者會像這張圖一樣，僅有少數的 Privileges&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/20.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;不過我們可以注意到的是，大部分情況下都會有 SeChangeNotifyPrivilege 且是 Enable 的。這時我們就可以來看看初始化的地方，就可發現 SeChangeNotifyPrivilege 所代表是數值為 0x17。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/21.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;那如果我們利用漏洞把 SeDebugPrivilege 從 0x14 換成 0x17 會發生甚麼事情呢?&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/22.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;如上圖，在原先 OpenProcess 的流程中，依舊會先去看 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nt!SeDebugPrivilege&lt;/code&gt; 中的數值，而這時獲得的數值為 0x17(SeChangeNotifyPrivilege)&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/23.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;接下來的檢查就會以 0x17 對當前 Process token 做驗證，看看有沒有這個 Privilege，然而一般使用者都會有這個 Privilege，因此即使你沒有 SeDebugPrivilege 也會直接通過檢查，拿到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PROCESS_ALL_ACCESS&lt;/code&gt;，&lt;strong&gt;也就是說任何擁有 SeChangeNotifyPrivilege 都可以 open 除了 PPL 之外的高權限的 Process&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;此外利用我們上述的漏洞來將 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nt!SeDebugPrivilege&lt;/code&gt; 從 0x14 改成 0x17，因為原本的數值不是 0 是不會受到 KsQueueWorkItem 影響的，因此非常適合我們。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/24.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在可以 open 高權限的 Process 後，提權方式就與一般的 Abuse token privilege 方法相同就不再這邊多提了，最終我們又在一次利用 Proxying to kernel 成功在 Windows 11 23H2 上達成 EoP。&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/m2TNVDgz7CI?si=YJQ9_u7xoyVt1wRm&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;h4 id=&quot;remark&quot;&gt;Remark&lt;/h4&gt;
+&lt;p&gt;實際上來說，這個方法也適用於其他高權限的 Privilege 中&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;SeTcbPrivilege = 0x7&lt;/li&gt;
+  &lt;li&gt;SeTakeOwnershipPrivilege = 0x9&lt;/li&gt;
+  &lt;li&gt;SeLoadDriverPrivilege = 0xa&lt;/li&gt;
+  &lt;li&gt;…&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;the-next--summary&quot;&gt;The Next &amp;amp; Summary&lt;/h2&gt;
+&lt;p&gt;這兩篇文章中，主要著重於我們怎麼從過往的漏洞分析到發現新漏洞的過程，如何從過去的研究之中獲得新的想法、新的利用方式，新的漏洞以及新的攻擊面。關於這種 Proxy 類型的 Bug class 可能還存在很多，也可能不只侷限於 Kernel Streaming 和 &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-iobuilddeviceiocontrolrequest&quot;&gt;IoBuildDeviceIoControlRequest&lt;/a&gt;，我認為算是 Windows 設計上的一個小缺陷，如果認真找可能還會找到一些漏洞，這類型的漏洞你需要關注的地方就是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt; 設置的時間點，如果設置 KernelMode 之後還有拿使用者的輸入做事情，就有機會出問題，而且這類型的漏洞往往都很好用。&lt;/p&gt;
+
+&lt;p&gt;在 Kernel Streaming 中，我認為應該不少潛在的安全性漏洞，他也還有很多元件像是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Hdaudio.sys&lt;/code&gt; 或是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Usbvideo.sys&lt;/code&gt; 可能也是個可以看的方向，也是個適合 fuzzing 的地方。如果你是個 Kernel driver 開發者最好不要只有檢查 Irp-&amp;gt;Requestormode，Windows 架構下很有可能還是有問題。最後再次強烈建議大家盡速更新 Windows 到最新版本中。&lt;/p&gt;
+
+&lt;h2 id=&quot;is-that-the-end-of-it-&quot;&gt;Is that the end of it ?&lt;/h2&gt;
+&lt;p&gt;實際上來說除了 Proxy 類型的漏洞之外，我們還有找到其他更多的 Bug class 使得我們在 Kernel Streaming 上找到超過 20 個漏洞，有些漏洞非常特別，敬請期待 Part III。&lt;/p&gt;
+
+&lt;h2 id=&quot;reference&quot;&gt;Reference&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf&quot;&gt;Easy Local Windows Kernel Exploitation&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://windows-internals.com/one-i-o-ring-to-rule-them-all-a-full-read-write-exploit-primitive-on-windows-11/&quot;&gt;One I/O Ring to Rule Them All: A Full Read/Write Exploit Primitive on Windows 11
+&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</content>
+ </entry>
+ 
+ <entry>
+   <title>Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part II</title>
+   <link href="https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2-en/"/>
+   <updated>2024-10-05T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2-en</id>
+   <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2-en/&quot;&gt;English Version&lt;/a&gt;, &lt;a href=&quot;/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This is a series of research related to Kernel Streaming attack surface. It is recommended to read the following articles first.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en/&quot;&gt;Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;In the previous research on &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Proxying to Kernel&lt;/code&gt;, we discovered multiple vulnerabilities in Kernel Stearming as well as an overlooked bug Class. We successfully exploited vulnerabilities CVE-2024-35250 and CVE-2024-30084 to compromise Windows 11 at Pwn2Own Vancouver 2024.&lt;/p&gt;
+
+&lt;p&gt;In this article, we will continue to explore this attack surface and bug Class, revealing another vulnerability and exploitation technique, which was also presented at &lt;a href=&quot;https://www.hexacon.fr/&quot;&gt;HEXACON 2024&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;After Pwn2Own Vancouver 2024, we continued to investigate the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks!KsSynchronousIoControlDevice&lt;/code&gt; bug pattern to see if there were any other security issues. However, after some time, we did not find any other exploitable points in the property operations of KS object. Therefore, we shifted our focus to another feature, KS Event.&lt;/p&gt;
+
+&lt;h2 id=&quot;ks-event&quot;&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ks-events&quot;&gt;KS Event&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;Similar to the &lt;a href=&quot;https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en/#ks-property&quot;&gt;KS Property&lt;/a&gt; mentioned in the previous article, the KS object not only has its own property set but also provides the functionality to set KS Event. For instance, you can set an event to trigger when the device status changes or at regular intervals, which is convenient for developers of playback software to define subsequent behaviors. Each KS Event, like a property, requires the KS object to support it to be used. We can register or disable these Events through &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_enable_event&quot;&gt;IOCTL_KS_ENABLE_EVENT&lt;/a&gt; and &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_disable_event&quot;&gt;IOCTL_KS_DISABLE_EVENT&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h3 id=&quot;kseventdata&quot;&gt;KSEVENTDATA&lt;/h3&gt;
+&lt;p&gt;When registering a KS Event, you can register the desired event by providing &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ns-ks-kseventdata&quot;&gt;KSEVENTDATA&lt;/a&gt;. You can include handles such as EVENT_HANDLE and SEMAPHORE_HANDLE in the registration. When KS triggers this event, it will notify you using the provided handle.&lt;/p&gt;
+
+&lt;h3 id=&quot;the-work-flow-of-ioctl_ks_enable_event&quot;&gt;The work flow of IOCTL_KS_ENABLE_EVENT&lt;/h3&gt;
+&lt;p&gt;The entire work flow is similar to IOCTL_KS_PROPERTY. When calling DeviceIoControl, as shown in the figure below, the user’s requests are sequentially passed to the corresponding driver for processing.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Similarly, in step 3, 32-bit requests will be converted into 64-bit requests. By step 6, ks.sys will determine which driver and &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/nc-ks-pfnksaddevent&quot;&gt;addhandler&lt;/a&gt; to handle your request based on the event of your requests.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Finally, forward it to the corresponding driver. As shown in the figure above, it is finally forwarded to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsiDefaultClockAddMarkEvent&lt;/code&gt; in ks to set the &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-kesettimerex&quot;&gt;timer&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;After grasping the KS Event functionality and process, we swiftly identified another exploitable vulnerability, &lt;a href=&quot;https://msrc.microsoft.com/update-guide/en-US/vulnerability/CVE-2024-30090&quot;&gt;CVE-2024-30090&lt;/a&gt;, based on the previous &lt;a href=&quot;https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/#the-new-bug-pattern&quot;&gt;bug pattern&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;proxying-to-kernel-again-&quot;&gt;Proxying to kernel again !&lt;/h2&gt;
+
+&lt;p&gt;This time, the issue occurs when &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk&lt;/code&gt; converts a 32-bit request into a 64-bit one.&lt;/p&gt;
+
+&lt;p&gt;As shown in the figure below, when &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk&lt;/code&gt; receives an &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_ENABLE_EVENT&lt;/code&gt; request and the request is from a WoW64 Process, it will perform the conversion from a 32-bit structure to a 64-bit structure.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The conversion would call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk!CKSAutomationThunk::ThunkEnableEventIrp&lt;/code&gt; to handle it.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;__int64 __fastcall CKSAutomationThunk::ThunkEnableEventIrp(__int64 ioctlcode_d, PIRP irp, __int64 a3, int *a4)
+{
+  ...
+  if ( (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLE
+    || (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_ONESHOT
+    || (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLEBUFFERED )  
+  {
+    // Convert 32-bit requests and pass down directly
+  }
+  else if ( (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_QUERYBUFFER ) 
+  {
+    ...
+    newinputbuf = (KSEVENT *)ExAllocatePoolWithTag((POOL_TYPE)0x600, (unsigned int)(inputbuflen + 8), &apos;bqSK&apos;);
+    ...
+    memcpy(newinputbuf,Type3InputBuffer,0x28);  //------------------------[1]
+    ...
+    v18 = KsSynchronousIoControlDevice( 
+            v25-&amp;gt;FileObject,
+            0,
+            IOCTL_KS_ENABLE_EVENT,
+            newinputbuf,
+            inputbuflen + 8,
+            OutBuffer,
+            outbuflen,
+            &amp;amp;BytesReturned);  //-----------------[2]
+    ...
+  }
+  ...
+}
+
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;In &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CKSAutomationThunk::ThunkEnableEventIrp&lt;/code&gt;, a similar bug pattern is clearly visible. You can see that during the processing, the original request is first copied into a newly allocated buffer at [1]. Subsequently, this buffer is used to call the new IOCTL using &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsSynchronousIoControlDevice&lt;/code&gt; at [2]. Both &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;newinputbuf&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;OutBuffer&lt;/code&gt; are controlled by the user.&lt;/p&gt;
+
+&lt;p&gt;The flow when calling &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CKSAutomationThunk::ThunkEnableEventIrp&lt;/code&gt; is illustrated as follows:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When calling IOCTL in a WoW64 process, you can see in step 2 of the diagram that the I/O Manager sets &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt; to UserMode(1). In step 3, ksthunk converts the user’s request from 32-bit to 64-bit, handled by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CKSAutomationThunk::ThunkEnableEventIrp&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Afterward, in step 5, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsSynchronousIoControlDevice&lt;/code&gt; will be called to issue the IOCTL, and at this point, the new &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt; has become &lt;strong&gt;KernelMode(0)&lt;/strong&gt;. The subsequent processing is the same as a typical &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_ENABLE_EVENT&lt;/code&gt;, so it won’t be detailed further. In summary, we now have a primitive that allows us to perform arbitrary &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_ENABLE_EVENT&lt;/code&gt; with KernelMode. Next, we need to look for places where we can achieve EoP.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-exploitation&quot;&gt;The Exploitation&lt;/h2&gt;
+&lt;p&gt;Following the &lt;a href=&quot;https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en/#the-eop&quot;&gt;previous approach&lt;/a&gt;, we first analyzed the entry point &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk&lt;/code&gt;. However, after searching for a while, we found no potential privilege escalation points. In &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk&lt;/code&gt;, most instances where &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestMode&lt;/code&gt; is &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode(0)&lt;/code&gt; are directly passed down without additional processing. Therefore, we shifted our eyes to the next layer, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks&lt;/code&gt;, to see if there are any opportunities for privilege escalation during the event handling process.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Quickly, we found a place that caught our attention.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KspEnableEvent&lt;/code&gt; handler, a code snippet first checks the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;NotificationType&lt;/code&gt; in the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSEVENTDATA&lt;/code&gt; you passed in to determine how to register and handle your event. In general, it usually provides an &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-createeventa&quot;&gt;EVENT_HANDLE&lt;/a&gt; or a &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsemaphorea&quot;&gt;SEMAPHORE_HANDLE&lt;/a&gt;. However, in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks&lt;/code&gt;, if called from &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode&lt;/code&gt;, we can provide an &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/event-objects&quot;&gt;Event Object&lt;/a&gt; or even a &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/introduction-to-dpc-objects&quot;&gt;DPC Object&lt;/a&gt; to register your event, making the overall handling more efficient.&lt;/p&gt;
+
+&lt;p&gt;This means we can use this &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DeviceIoControl&lt;/code&gt; with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode&lt;/code&gt; primitive to provide a &lt;strong&gt;kernel object&lt;/strong&gt; for subsequent processing. If constructed well, it might achieve &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;EoP&lt;/code&gt;, but it depends on how this &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Object&lt;/code&gt; is used later.&lt;/p&gt;
+
+&lt;p&gt;However, after trying for a while, we discovered that …&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;__int64 __fastcall CKSAutomationThunk::ThunkEnableEventIrp(__int64 ioctlcode_d, PIRP irp, __int64 a3, int *a4)
+{
+  ...
+  if ( (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLE
+    || (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_ONESHOT
+    || (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLEBUFFERED )  //-------[3]
+  {
+    // Convert 32-bit requests and pass down directly
+  }
+  else if ( (v25-&amp;gt;Parameters.DeviceIoControl.Type3InputBuffer-&amp;gt;Flags &amp;amp; 0xEFFFFFFF) == KSEVENT_TYPE_QUERYBUFFER ) //-------[4]
+  {
+    ...
+    newinputbuf = (KSEVENT *)ExAllocatePoolWithTag((POOL_TYPE)0x600, (unsigned int)(inputbuflen + 8), &apos;bqSK&apos;);
+    ...
+    memcpy(newinputbuf,Type3InputBuffer,0x28); //------[5] 
+    ...
+    v18 = KsSynchronousIoControlDevice( 
+            v25-&amp;gt;FileObject,
+            0,
+            IOCTL_KS_ENABLE_EVENT,
+            newinputbuf,
+            inputbuflen + 8,
+            OutBuffer,
+            outbuflen,
+            &amp;amp;BytesReturned);  
+    ...
+  }
+  ...
+}
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;If you want to provide a kernel object to register an event, then the flag given in the IOCTL for &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/stream/ksevent-structure&quot;&gt;KSEVENT&lt;/a&gt; must be &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSEVENT_TYPE_ENABLE&lt;/code&gt; at [3]. However, at [4], where the vulnerability is triggered, it must be &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSEVENT_TYPE_QUERYBUFFER&lt;/code&gt;, and it is impossible to directly provide a kernel object as we might have expected.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/8.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Fortunately, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_ENABLE_EVENT&lt;/code&gt; also uses &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Neither I/O&lt;/code&gt; to transmit data. It also presents a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Double Fetch&lt;/code&gt; issue &lt;strong&gt;again&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As shown in the figure above, we can set the flag to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSEVENT_TYPE_QUERYBUFFER&lt;/code&gt; before calling IOCTL. When checking, it will handle it with  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSEVENT_TYPE_QUERYBUFFER&lt;/code&gt;. Before the second &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsSynchronousIoControlDevice&lt;/code&gt; call, we can change the flag to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSEVENT_TYPE_ENABLE&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;This way, we can successfully trigger the vulnerability and construct a specific kernel object to register the event.&lt;/p&gt;
+
+&lt;h3 id=&quot;trigger-the-event&quot;&gt;Trigger the event&lt;/h3&gt;
+&lt;p&gt;When would it use the kernel object that you constructed? When an event is triggered, ks will call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks!ksGenerateEvent&lt;/code&gt; through DPC. At this point, it will determine how to handle your event based on the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;NotificationType&lt;/code&gt; you specified.&lt;/p&gt;
+
+&lt;p&gt;Let’s take a look at KsGenerateEvent&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;NTSTATUS __stdcall KsGenerateEvent(PKSEVENT_ENTRY EventEntry)
+{
+
+  switch ( EventEntry-&amp;gt;NotificationType )
+  {
+    case KSEVENTF_DPC:
+      ...
+      if ( !KeInsertQueueDpc(EventEntry-&amp;gt;EventData-&amp;gt;Dpc.Dpc, EventEntry-&amp;gt;EventData, 0LL) )
+        _InterlockedAdd(&amp;amp;EventEntry-&amp;gt;EventData-&amp;gt;EventObject.Increment, 0xFFFFFFFF); //--------[6]
+      ...
+    case KSEVENTF_KSWORKITEM:
+      ...
+      KsIncrementCountedWorker(eventdata-&amp;gt;KsWorkItem.KsWorkerObject); //-----------[7]
+
+  }
+}
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;At this point, there are multiple ways to exploit this. The most straightforward method is to directly construct a DPC structure and queue a DPC to achieve arbitrary kernel code execution, which corresponds to the code snippet at [6]. However, the IRQL when calling KsGenerateEvent is &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DISPATCH_LEVEL&lt;/code&gt;, making it very difficult to construct a DPC object in User space, and the exploitation process will encounter many issues.&lt;/p&gt;
+
+&lt;p&gt;Therefore, we opt for an alternative route using &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSEVENTF_KSWORKITEM&lt;/code&gt; at [7]. This method involves passing in a kernel address and manipulating it to be recognized as a pointer to &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ns-ks-kseventdata&quot;&gt;KSWORKITEM&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It can achieve an arbitrary kernel address increment by one. The entire process is illustrated in the diagram below.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When calling &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_ENABLE_EVENT&lt;/code&gt;, after constructing &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSEVENTDATA&lt;/code&gt; to point to a kernel memory address, ks will handle it as a kernel object and register the specified event.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When triggered, ks will increment the content at our provided memory address. Therefore, we have a kernel arbitrary increment primitive here.&lt;/p&gt;
+
+&lt;h3 id=&quot;arbitrary-increment-primitive-to-eop&quot;&gt;Arbitrary increment primitive to EoP&lt;/h3&gt;
+&lt;p&gt;From arbitrary increment primitive to EoP, there are many methods that can be exploited, among which the most well-known are &lt;a href=&quot;https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;abuse token privilege&lt;/code&gt;&lt;/a&gt; and &lt;a href=&quot;https://windows-internals.com/one-i-o-ring-to-rule-them-all-a-full-read-write-exploit-primitive-on-windows-11/&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IoRing&lt;/code&gt;&lt;/a&gt;. Initially, it seemed like this would be the end of it.&lt;/p&gt;
+
+&lt;p&gt;However, both of these methods have certain limitations in this situation:&lt;/p&gt;
+
+&lt;h4 id=&quot;abuse-token-privilege&quot;&gt;Abuse token Privilege&lt;/h4&gt;
+&lt;p&gt;If we use the method of abusing token privilege for EoP, the key lies of the technique in overwriting &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Privileges.Enable&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Privileges.Present&lt;/code&gt;. Since our vulnerability can only be incremented by one at a time, both fields need to be written to obtain &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SeDebugPrivilege&lt;/code&gt;. The default values for these two fields are &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x602880000&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x800000&lt;/code&gt;, which need to be changed to 0x602&lt;strong&gt;9&lt;/strong&gt;80000 and 0x&lt;strong&gt;9&lt;/strong&gt;00000. This means each field needs to be written 0x10 times, totaling 0x20 writes. Each write requires a race condition, which takes times and significantly reduces stability.&lt;/p&gt;
+
+&lt;h4 id=&quot;ioring&quot;&gt;IoRing&lt;/h4&gt;
+&lt;p&gt;Using IoRing to achieve arbitrary writing might be a simpler method. To achieve arbitrary write, you just need to overwrite &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IoRing-&amp;gt;RegBuffersCount&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IoRing-&amp;gt;RegBuffers&lt;/code&gt;. However, a problem arises.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When triggering the arbitrary increment, if the original value is 0, it will call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsQueueWorkItem&lt;/code&gt;, where some corresponding complex processing will occur, leading to BSoD. The exploitation method of IoRing happens to encounter this situation…&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Is it really impossible to exploit it stably?&lt;/p&gt;
+
+&lt;h4 id=&quot;lets-find-a-new-way-&quot;&gt;Let’s find a new way !&lt;/h4&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;When traditional exploitation methods hit a roadblock, it might be worthwhile to dive deeper into the core mechanics of the technique. You may unexpectedly discover new approaches along the way.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;After several days of contemplation, we decided to seek a new approach. However, starting from scratch might take considerable time and may not yield results. Therefore, we chose to derive new inspiration from two existing methods. First, let’s look at &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;abusing token privilege&lt;/code&gt;. The key aspect here is exploiting a vulnerability to obtain &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SeDebugPrivilege&lt;/code&gt;, allowing us to open high-privilege processes such as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;winlogon&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;The question arises: why does having &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SeDebugPrivilege&lt;/code&gt; allow you to open high-privilege processes?&lt;/p&gt;
+
+&lt;p&gt;We need to take a look at &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nt!PsOpenProcess&lt;/code&gt; first.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;From this code snippet, we can see that when we open the process, the kernel will use &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-sesingleprivilegecheck&quot;&gt;SeSinglePrivilegeCheck&lt;/a&gt; to check if you have SeDebugPrivilege. If you have it, you will be granted &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PROCESS_ALL_ACCESS&lt;/code&gt; permission, allowing you to perform any action on any process except PPL. As the name implies, it is intended for debugging purposes. However, it is worth noting that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nt!SeDebugPrivilege&lt;/code&gt; is a global variable in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ntoskrnl.exe&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It’s a &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-luid&quot;&gt;LUID&lt;/a&gt; structure that was initialized at system startup. The actual value is 0x14, indicating which bit in the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Privileges.Enable&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Privileges.Present&lt;/code&gt; fields represent &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SeDebugPrivilege&lt;/code&gt;. Therefore, when we use NtOpenProcess, the system reads the value in this global variable&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Once the value of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nt!SeDebugPrivilege&lt;/code&gt; is obtained, it will be used to inspect the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Privileges&lt;/code&gt; field in the Token to see if the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Enable&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Present&lt;/code&gt; fields are set. For &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SeDebugPrivilege&lt;/code&gt;, it will check the 0x14 bit.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/18.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, there is an interesting thing…&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/19.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The global variable &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nt!SeDebugPrivilege&lt;/code&gt; is located in a writable section!&lt;/p&gt;
+
+&lt;p&gt;A new idea was born.&lt;/p&gt;
+
+&lt;h4 id=&quot;make-abusing-token-privilege-great-again-&quot;&gt;Make abusing token privilege great again !&lt;/h4&gt;
+&lt;p&gt;By default, a normal user will have only a limited number of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Privileges&lt;/code&gt;, as shown in this diagram.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/20.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We can notice that in most cases, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SeChangeNotifyPrivilege&lt;/code&gt; is enabled. At this point, we can look at the initialization part and find that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SeChangeNotifyPrivilege&lt;/code&gt; represents the value 0x17.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/21.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;What would happen if we use the vulnerability to change &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nt!SeDebugPrivilege&lt;/code&gt; from 0x14 to 0x17?&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/22.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As shown in the figure, in the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;NtOpenProcess&lt;/code&gt; flow, it will first get the value of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nt!SeDebugPrivilege&lt;/code&gt;, and at this time the obtained value is 0x17 (SeChangeNotifyPrivilege)&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/23.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The next check will verify the current process token using 0x17 to see if it has this &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Privilege&lt;/code&gt;. However, normal users generally have &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SeChangeNotifyPrivilege&lt;/code&gt;, so even if you don’t have &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SeDebugPrivilege&lt;/code&gt;, you will still pass the check and obtain &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PROCESS_ALL_ACCESS&lt;/code&gt;. In other words, anyone with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SeChangeNotifyPrivilege&lt;/code&gt; can open a high-privilege process except PPL.&lt;/p&gt;
+
+&lt;p&gt;Furthermore, by using the vulnerability mentioned above, we can change &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nt!SeDebugPrivilege&lt;/code&gt; from &lt;strong&gt;0x14 to 0x17&lt;/strong&gt;. Since the original value is not 0, it will not be affected by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsQueueWorkItem&lt;/code&gt;, making it highly suitable for our purposes.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20241005/24.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Once we can open a high-privilege process, the privilege escalation method is the same as the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;abuse token privilege&lt;/code&gt; approach so that we won’t elaborate on that here. Ultimately, we successfully achieved EoP on Windows 11 23H2 by again utilizing Proxying to kernel.&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/m2TNVDgz7CI?si=YJQ9_u7xoyVt1wRm&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;h4 id=&quot;remark&quot;&gt;Remark&lt;/h4&gt;
+&lt;p&gt;Actually, this technique also applies to other &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Privilege&lt;/code&gt;.&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;SeTcbPrivilege = 0x7&lt;/li&gt;
+  &lt;li&gt;SeTakeOwnershipPrivilege = 0x9&lt;/li&gt;
+  &lt;li&gt;SeLoadDriverPrivilege = 0xa&lt;/li&gt;
+  &lt;li&gt;…&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;the-next--summary&quot;&gt;The Next &amp;amp; Summary&lt;/h2&gt;
+
+&lt;p&gt;The focus of these two articles is primarily on how we analyze past vulnerabilities to discover new ones, how we gain new ideas from previous research, find new exploitation methods, new vulnerabilities, and new attack surfaces.&lt;/p&gt;
+
+&lt;p&gt;There may still be many security issues of this bug class, and they might not be limited to Kernel Streaming and &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-iobuilddeviceiocontrolrequest&quot;&gt;IoBuildDeviceIoControlRequest&lt;/a&gt;. I believe this is a design flaw in Windows, and if we search carefully, we might find more vulnerabilities.&lt;/p&gt;
+
+&lt;p&gt;For this type of vulnerability, you need to pay attention to the timing of setting &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt;. If it is set to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KernelMode&lt;/code&gt; and then user input is used, issues may arise. Moreover, this type of vulnerability is often very exploitable.&lt;/p&gt;
+
+&lt;p&gt;In Kernel Streaming, I believe there are quite a few potential security vulnerabilities. There are also many components like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Hdaudio.sys&lt;/code&gt; or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Usbvideo.sys&lt;/code&gt; that might be worth examining and are suitable places for fuzzing. If you are a kernel driver developer, it is best not to only check &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Irp-&amp;gt;RequestorMode&lt;/code&gt; . There might still be issues within the Windows architecture. Finally, I strongly recommend everyone to update Windows to the latest version as soon as possible.&lt;/p&gt;
+
+&lt;h2 id=&quot;is-that-the-end-of-it-&quot;&gt;Is that the end of it ?&lt;/h2&gt;
+&lt;p&gt;Apart from proxy-based vulnerabilities, we have also identified many other bug classes, allowing us to discover over 20 vulnerabilities in Kernel Streaming. Some of these vulnerabilities are quite unique, so stay tuned for Part III.&lt;/p&gt;
+
+&lt;h2 id=&quot;reference&quot;&gt;Reference&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf&quot;&gt;Easy Local Windows Kernel Exploitation&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://windows-internals.com/one-i-o-ring-to-rule-them-all-a-full-read-write-exploit-primitive-on-windows-11/&quot;&gt;One I/O Ring to Rule Them All: A Full Read/Write Exploit Primitive on Windows 11
+&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</content>
+ </entry>
  
  <entry>
    <title>DEVCORE 2024 全國資訊安全獎學金、資安教育活動贊助計畫即日起開放報名</title>

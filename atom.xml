@@ -4,13 +4,1042 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2025-01-15T23:57:11+08:00</updated>
+ <updated>2025-02-12T21:46:07+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name></name>
    <email></email>
  </author>
 
+ 
+ <entry>
+   <title>全境擴散：從 Windows 11 到 Libarchive 的 Half-Day 威脅與全面影響</title>
+   <link href="https://devco.re/blog/2025/02/12/from-convenience-to-contagion-the-half-day-threat-and-libarchive-vulnerabilities-lurking-in-windows-11/"/>
+   <updated>2025-02-12T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2025/02/12/from-convenience-to-contagion-the-half-day-threat-and-libarchive-vulnerabilities-lurking-in-windows-11</id>
+   <content type="html">&lt;h2 id=&quot;摘要&quot;&gt;摘要&lt;/h2&gt;
+&lt;p&gt;Windows 11 在 2023 年 10 月發布的更新中，新增了對 RAR、7z 等多達 11 種壓縮格式的支援，使用者可以在原生的檔案總管內操作這些格式的檔案，大幅提升了便利性。然而，這一改進同時也引入了潛在的資安風險。Windows 11 使用老牌開源專案 libarchive 來實現多種壓縮格式的支援，該專案被廣泛使用在 Linux、BSD、macOS 等作業系統，以及 ClickHouse、Homebrew、Osquery 等等知名大型專案中。自 2016 起，Google 的 OSS-Fuzz 專案便 24 小時不間斷地對其進行模糊測試，是歷經時間考驗的函式庫。&lt;/p&gt;
+
+&lt;p&gt;然而，在 OSS-Fuzz 執行的模糊測試中，libarchive 的覆蓋率並不理想。除了 Microsoft Offensive Research &amp;amp; Security Engineering (MORSE) 在 2024 年 1 月自行揭露的兩個遠端程式碼執行漏洞（RCE）之外，我們仍透過程式碼審查與模糊測試發現了 libarchive 中的數個弱點。其中包括位於 RAR 解壓縮程式碼中的 Heap Buffer Overflow 漏洞，以及因 Windows 未對 libarchive 的執行結果進行妥善檢查，導致的任意檔案寫入和任意檔案刪除的漏洞。此外，我們也將在本文中揭露 libarchive 與 Windows 結合後產生的諸多神奇特性。&lt;/p&gt;
+
+&lt;p&gt;而每當 libarchive 這類廣泛使用的函式庫存在弱點時，其風險往往滲透到各個層面，影響難以估計。加上當 Microsoft 為 Windows 進行修補時，相應的 patch 並不會立即回饋到 libarchive 中，這使得攻擊者能夠通過分析 patch 找出漏洞位置，並在漏洞修補的空窗期，利用該漏洞對其他使用 libarchive 的專案進行攻擊。所以最後，我們將以 ClickHouse 為例，說明如何在 libarchive 尚未獲得修補時，在看似不受影響的 ClickHouse 中觸發尚未修補的漏洞。&lt;/p&gt;
+
+&lt;h2 id=&quot;introduction&quot;&gt;Introduction&lt;/h2&gt;
+
+&lt;p&gt;在 Windows 11 的 KB5031455 更新之前，Windows 原生僅支援 ZIP 格式的壓縮檔案。ZIP 在檔案總管中顯示的類型是「Compressed (zipped) Folder」，使用者可以直接點兩下 ZIP 來查看其包含什麼檔案，甚至可以直接開啟檔案或是加入新的檔案。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;「Compressed (zipped) Folder」讓使用者可以在不解壓縮的情況下瀏覽壓縮檔案內的清單，並且對檔案點兩下就可以直接使用，例如直接點擊兩下開啟文字檔案：
+&lt;img src=&quot;/assets/img/blog/20250212/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這是因為當使用者點兩下壓縮檔案內的檔案時，檔案總管會將該檔案解壓縮到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;%TEMP%&lt;/code&gt; 目錄下的一個以隨機 UUID 命名的暫存資料夾中，實際上是從該暫存位置開啟檔案。由於這是暫存檔案，稍後會自動刪除：
+&lt;img src=&quot;/assets/img/blog/20250212/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;compressed-archived-folder&quot;&gt;Compressed Archived folder&lt;/h3&gt;
+
+&lt;p&gt;接著，Windows 11 在 2023 年 10 月的 KB5031455 更新之後支援了 11 種新的壓縮檔案格式：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;此類的檔案在檔案總管中顯示的類型是「Compressed Archive Folder」：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;由於非常好奇 Windows 11 是透過什麼方式來支援這 11 種新的壓縮格式，我們開始分析檔案總管以及相關的 DLL 檔案。檔案總管對 ZIP 的原生支援是由 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; 這支 DLL 所負責的。在 KB5031455 更新之後，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; 中多出了一個叫做 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ArchiveFolder&lt;/code&gt; 的 Class，有別於原本用以支援 ZIP 的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CZipFolder&lt;/code&gt; Class。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;第一個漏洞cve-2024-26185&quot;&gt;第一個漏洞：CVE-2024-26185&lt;/h3&gt;
+
+&lt;p&gt;在進行逆向分析之前，我們首先對新的「Compressed Archive Folder」進行了簡單的黑箱測試。講到壓縮檔案，那絕對要測試一下 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;../&lt;/code&gt;。&lt;/p&gt;
+
+&lt;p&gt;第一次測試，我們構造一個名稱為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;..\poc.txt&lt;/code&gt; 的檔案，並壓縮成 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.rar&lt;/code&gt;，接著上傳至 Windows 主機後點兩下進行瀏覽。結果是，我們僅會在檔案總管中看到一個空的資料夾，並沒有造成任何 Path Traversal：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;第二次測試，構造一個名稱為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;123\..\poc.txt&lt;/code&gt; 的檔案，並壓縮成 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rar&lt;/code&gt;，上傳至 Windows 主機後點兩下進行瀏覽。因為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;..&lt;/code&gt; 與 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;123&lt;/code&gt; 抵銷的關係，只會在檔案總管中看到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poc.txt&lt;/code&gt; 一個檔案：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/8.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;%TEMP%&lt;/code&gt; 中對應的暫存檔案也並未逃逸至上層目錄：
+&lt;img src=&quot;/assets/img/blog/20250212/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;除了點兩下互動之外，在檔案總管中對「Compressed (zipped) Folder」或是 「Compressed Archive Folder」類型的檔案按右鍵可以看到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Extract All&lt;/code&gt; 的選項，這個選項會嘗試將整個壓縮檔案解壓縮，透過這個選項我們再進行一次測試。&lt;/p&gt;
+
+&lt;p&gt;這次，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;..\poc.txt&lt;/code&gt; 被認為會逃逸到上層目錄，所以檔案總管給出一個 Error：
+&lt;img src=&quot;/assets/img/blog/20250212/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;123\..\poc.txt&lt;/code&gt; 則解壓縮成功，但一樣只會解壓縮出 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poc.txt&lt;/code&gt;
+&lt;img src=&quot;/assets/img/blog/20250212/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;由於 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Extract All&lt;/code&gt; 是直接解壓縮整個檔案，因此我們認為「當檔案包含絕對路徑時」也需要測試一下：
+&lt;img src=&quot;/assets/img/blog/20250212/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;可以發現，透過 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Extract All&lt;/code&gt; 解壓縮確實有包含資料夾，不過，資料夾 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:&lt;/code&gt; 被重新命名成了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C_&lt;/code&gt; 資料夾。因此我們可以知道，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; 有對特殊字元進行處理來避免解壓縮時的 Path Traversal 與 Arbitrary File Write。
+&lt;img src=&quot;/assets/img/blog/20250212/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但當我們「點兩下」包含絕對路徑的 RAR 檔案進行測試時，卻看到一個叫做 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Local Disk (C:)&lt;/code&gt; 的資料夾！&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:&lt;/code&gt; 並沒有被替換成 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C_&lt;/code&gt;！&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;如果我們進到資料夾的最內層，並且把 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poc.txt&lt;/code&gt; 檔案打開，看似一切正常：
+&lt;img src=&quot;/assets/img/blog/20250212/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但其實，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:&lt;/code&gt; 下多出了不應該存在的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poc&lt;/code&gt; 資料夾！
+&lt;img src=&quot;/assets/img/blog/20250212/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;表示檔案總管誤認為此處是用來暫放檔案的地方，因此 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poc&lt;/code&gt; 資料夾中也包含我們剛才打開的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poc.txt&lt;/code&gt; 檔案：
+&lt;img src=&quot;/assets/img/blog/20250212/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;也就是說，我們找到了一個 Arbitrary File Write 的漏洞！且由於寫入的目的是放置暫存檔案來進行互動，所以在經過一段時間或是使用者結束瀏覽時就會被刪除，因此我們實際上找到的是一個任意檔案寫/刪除的漏洞。不過稍微稍微可惜的是，任意檔案寫與任意檔案刪除所使用的權限是當前使用者的權限。&lt;/p&gt;
+
+&lt;p&gt;這就是 &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-26185&quot;&gt;CVE-2024-26185&lt;/a&gt;：一個好笑但沒什麼用處的漏洞。因為如果要利用此漏洞創建或刪除特定位置的檔案，那就必須在壓縮檔中建立出相同的路徑，接著還需要誘騙使用者打開所有資料夾後，點擊兩下目標檔案才行，正常人點到一半就會覺得哪裡怪怪的了。&lt;/p&gt;
+
+&lt;p&gt;話是這麼說，但根據規則，微軟還是得付我 1,000 美金，好耶。
+&lt;img src=&quot;/assets/img/blog/20250212/18.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2024-26185成因&quot;&gt;CVE-2024-26185：成因&lt;/h3&gt;
+
+&lt;p&gt;剛才發現的 CVE-2024-26185，成因是因為沒有正確的對檔案名稱進行過濾。逆向之後我們發現，在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; 中，進行解壓縮之前會呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;replace_invalid_path_chars&lt;/code&gt; 進行過濾。這個 function 將 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;*:&amp;lt;&amp;gt;?|&lt;/code&gt; 等字元替換為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;_&lt;/code&gt;、將 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/&lt;/code&gt; 替換成 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\&lt;/code&gt;。此外，與「Compressed (zipped) Folder」或 「Compressed Archive Folder」互動時，使用者總共有三個方式可以進行解壓縮，這三個行為各自觸發了不同的 function，分別是：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;點兩下壓縮檔案中的檔案
+    &lt;ul&gt;
+      &lt;li&gt;觸發 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ExtractFromArchiveByIndex&lt;/code&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;點兩下壓縮檔案中的 cmd、bat、exe 檔案
+    &lt;ul&gt;
+      &lt;li&gt;觸發 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ExtractEntireArchive&lt;/code&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;對壓縮檔案點擊右鍵，點擊選單中的「Extract All」
+    &lt;ul&gt;
+      &lt;li&gt;觸發 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ArchiveExtractWizard::ExtractToDestination&lt;/code&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;逆向這些函數之後我們發現，它們都使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_next_header&lt;/code&gt; 取得壓縮檔內的檔案名稱，並呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;replace_invalid_path_chars&lt;/code&gt; 對名稱進行過濾。但卻忘記在「點兩下壓縮檔案中的檔案」對應的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ExtractFromArchiveByIndex&lt;/code&gt; 中做這件事情，導致任意檔案寫、任意檔案刪除的發生。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/19.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2024-38165-繞過-cve-2024-26185-的修補&quot;&gt;CVE-2024-38165： 繞過 CVE-2024-26185 的修補&lt;/h3&gt;
+
+&lt;p&gt;在微軟修復 CVE-2024-26185 之後，我們稍微對 patch 進行了檢查，隨機的執行了一些 PoC，結果發現其中一些還是可以繞過 Windows 最新的 patch，讓我們來看看微軟是怎麼修復上一個漏洞的。&lt;/p&gt;
+
+&lt;p&gt;在 patch 之後，可以發現微軟在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ExtractFromArchiveByIndex&lt;/code&gt; 之前加入了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;replace_invalid_path_chars&lt;/code&gt; 來對傳入的路徑進行過濾，看起來沒什麼問題。
+&lt;img src=&quot;/assets/img/blog/20250212/20.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但實際上，我們可以透過檔案名稱為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\poc\poc.txt&lt;/code&gt; 的檔案繞過這個保護。首先 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\poc\poc.txt&lt;/code&gt; 會先被傳入 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;replace_invalid_path_chars&lt;/code&gt; 進行過濾，但由於名稱中不包含任何非法字元所以沒有產生變化：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/21.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;接下來，由於目前&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; 正在做的事情是「將檔案解壓縮至 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;%TEMP%&lt;/code&gt; 下的資料夾，讓使用者與檔案互動」，因此 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; 需要將 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;%TEMP%&lt;/code&gt; 下的暫存資料夾路徑和我們提供的檔案名稱串接起來：
+&lt;img src=&quot;/assets/img/blog/20250212/22.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 Windows 中，開頭為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:\&lt;/code&gt; 或是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\&lt;/code&gt; 開頭的路徑都被視為根路徑，所以實際上，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; 正在串接兩個絕對路徑。而根據 &lt;a href=&quot;https://github.com/microsoft/STL/blob/90820002693fe6eaaec2e55884472c654186207e/stl/inc/filesystem#L723&quot;&gt;Path 的串接在 Windows 上的實作&lt;/a&gt;，若遇到兩個輸入都是絕對路徑時，會直接拿取第二個絕對路徑回傳，因此這個 function 的回傳值便是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:\poc\poc.txt&lt;/code&gt;，成功繞過保護：
+&lt;img src=&quot;/assets/img/blog/20250212/23.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;symlink-ntlm-exfiltration&quot;&gt;Symlink NTLM Exfiltration&lt;/h3&gt;
+
+&lt;p&gt;在缺少 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;replace_invalid_path_chars&lt;/code&gt; 的情況下，我們當然可以攻擊成功。那麼，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;replace_invalid_path_chars&lt;/code&gt; 本身真的安全嗎？&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;replace_invalid_path_chars&lt;/code&gt; 僅過濾 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;*:&amp;lt;&amp;gt;?|&lt;/code&gt;。我們馬上可以發現，「&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.&lt;/code&gt;」是合法的字元，或許我們可以構造出遠端的路徑，導致 NTLM exfiltration 之類的問題，我們嘗試構造此類路徑：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\\172.23.176.34\Users\nini\Desktop\sharing\test.txt&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\Device\Mup\172.23.176.34\Users\nini\Desktop\sharing\test.txt&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;不過在檔案為 regular file 的情況下，這頂多只會在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:&lt;/code&gt; 之下建立相對應的目錄（在修補 CVE-2024-38165 之前才有用），無法存取遠端的檔案系統。然而，如果我們建立一個指向 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\\172.23.176.34\poc\poc.txt&lt;/code&gt; 的 symlink，當使用者觸發「Extract All」或是點兩下互動時，檔案總管便會嘗試去與該 IP 的 SMB 進行互動，導致 NTLM leak:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/24.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;並且，在尚未解壓縮前，Windows 僅使用副檔名判斷壓縮檔案內的檔案類型，欺騙性極高。以此處為例，我們的 symlink 檔案就被當作 Text Document：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/25.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;不過，在解壓縮時，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; 是透過 &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows/win32/api/winbase/nf-winbase-createsymboliclinka&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CreateSymbolicLinkA&lt;/code&gt;&lt;/a&gt; 這個 API 來建立 symlink。呼叫的程式必須有高權限才能建立 symlink，而在解壓縮時，檔案總管並不會要求任何權限，而是直接報錯：
+&lt;img src=&quot;/assets/img/blog/20250212/26.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;雖然檔案總管在呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CreateSymbolicLinkA&lt;/code&gt; 時，有啟用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE&lt;/code&gt;，但手冊中說到必須要開啟開發人員模式，才能使此 flag 作用：
+&lt;img src=&quot;/assets/img/blog/20250212/27.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;所以目前這個弱點只能用來攻擊管理員或是開發者，感覺還是一個不完整的功能。因此，這個弱點被判定為不優先修復。&lt;/p&gt;
+
+&lt;h2 id=&quot;libarchive&quot;&gt;Libarchive&lt;/h2&gt;
+
+&lt;p&gt;前一部分提到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; 負責處理與「Compressed (zipped) Folder」、「Compressed Archive Folder」互動的邏輯。但實際上負責解壓縮的是 libarchive，在 Windows 系統上對應的 DLL 是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archiveint.dll&lt;/code&gt;。 libarchive 被廣泛使用在 Linux、BSD、macOS 等作業系統，以及 ClickHouse、Homebrew、Osquery 等等知名大型專案中。自 2016 起，Google 的 OSS-Fuzz 專案便 24 小時不間斷地對其進行模糊測試，是歷經時間考驗的函式庫。在黑箱測試時，我們觀察到下列幾件有趣的事情。&lt;/p&gt;
+
+&lt;h3 id=&quot;fun-fact-1-windows-supports-file-formats-more-than-they-claimed&quot;&gt;Fun Fact 1: Windows Supports File Formats More Than They Claimed&lt;/h3&gt;
+
+&lt;p&gt;雖然微軟在 KB5031455 更新中宣稱他們新增了以下 11 種壓縮格式的原生支援，但實際上他們所支援的檔案格式遠遠超過 11 種。
+&lt;img src=&quot;/assets/img/blog/20250212/28.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; 中我們看到 Ｗindows 是這樣設定 libarchive 的：
+&lt;img src=&quot;/assets/img/blog/20250212/29.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但實際上，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_format_all&lt;/code&gt; 會啟用 libarchive 中 ar、cpio、lha、mtree、tar、xar、warc、7zip、cab、rar、rar5、iso9660、zip 等 13 種壓縮檔案格式；&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_filter_all&lt;/code&gt; 會啟用 libarchive 中 bzip2、compress、gzip、lzip、lzma、xz、uu、rpm、lrzip、lzop、grzip、lz4、zstd 等 13 種格式。&lt;/p&gt;
+
+&lt;p&gt;由於 format 與 filter 可以同時使用，例如，支援 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.tar.gz&lt;/code&gt; 格式即是同時啟用 format 中的 tar 與 filter 中的 gzip。所以實際上 Windows 11 支援了 $13+13+13 \times 13 = 195$ 種格式嗎？&lt;/p&gt;
+
+&lt;p&gt;大錯特錯，filter 最多可以串連 25 個，例如：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive.rar.gzip.xz.uu.zstd.uu......&lt;/code&gt; 也就是說 Windows 11 實際上支援了 $13+13+13\times 13^{25}$ 種格式，也就是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;91733330193268616658399616035&lt;/code&gt; 種格式！佛心公司！佛心公司！&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;也因此，更新後的攻擊面大幅擴展。只要 libarchive 中的任一檔案格式存在漏洞，在 Windows 上都可以被觸發。此外，同時解析多種 filter 時，也可能存在安全弱點。相較於原本僅 11 種格式的情況，潛在風險已大幅增加。&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;fun-fact-2-file-format-confusion&quot;&gt;Fun Fact 2: File Format Confusion&lt;/h3&gt;
+
+&lt;p&gt;使用 libarchive 時，並不需要提供副檔名或是指定格式，libarchive 會根據檔案內容自動辨識當前檔案的格式，接著以對應的方式進行解壓縮。但在啟用 ZIP 的情況下可能會有 File Format Confusion 的狀況發生。舉個例子，如果我們建立一個 demo3.rar，並且裡面放入一個 poc.zip 的檔案，如下圖所示：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/30.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;如果我們在 Windows 上直接點兩下 demo3.rar 開啟的話，會發現我們僅能看到 poc2.txt 這個文字檔案，其餘的資料夾、檔案，甚至 poc.zip 都不存在。因為 libarchive 將 demo3.rar 誤認為一個 ZIP 檔案！&lt;/p&gt;
+
+&lt;p&gt;為了理解原因，我們首先觀察一下 libarchive 是如何選定檔案格式的。libarchive 會在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;choose_format&lt;/code&gt; 這個函式中，呼叫已啟用的 format 的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bid&lt;/code&gt; 函式，而哪個格式的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bid&lt;/code&gt; 回傳的數值最高，libarchive 就會將檔案當作該格式處理。
+&lt;img src=&quot;/assets/img/blog/20250212/31.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ar&lt;/code&gt; 為例，如果檔案的起頭是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;!&amp;lt;arch&amp;gt;\n&quot;&lt;/code&gt; 這 8 個字元，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_format_ar_bid&lt;/code&gt; 就會回傳 64，推測是 $8 bits \times 8 個字元 = 64$，看起來好像挺有道理的。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/32.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;接著，看到 RAR 的格式可以發現它最高的分數只會是 30。雖然 30 不知道怎麼算來的，但如果每個檔案格式都是從檔案的起頭開始檢查，應該也很難做出會讓這個機制壞掉的 polyglot，對吧？
+&lt;img src=&quot;/assets/img/blog/20250212/33.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但，libarchive 的 ZIP 中有個神奇的模式：seekable。也就是 ZIP 的 signature 不需要在檔案的開頭，libarchive 會自行去尋找，而 seekable zip 最高的數值為 32:
+&lt;img src=&quot;/assets/img/blog/20250212/34.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;所以當 RAR 壓縮率不足，還保留有 ZIP 的 signature 時，libarchive 會將包有 ZIP 檔案的 RAR 檔案當作 ZIP 來處理。&lt;/p&gt;
+
+&lt;h3 id=&quot;fun-fact-3-sometimes-libarchive-tries-to-spawn-an-external-executable&quot;&gt;Fun Fact 3: Sometimes, Libarchive Tries to Spawn an External Executable&lt;/h3&gt;
+
+&lt;p&gt;在 libarchive 的 source code 中可以發現，如果編譯時缺少一些 library，libarchive 執行時會嘗試直接呼叫外部指令來協助解壓縮：
+&lt;img src=&quot;/assets/img/blog/20250212/35.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;如果 decompile Windows 中對應的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archiveint.dll&lt;/code&gt;，可以發現某些格式確實會呼叫外部的執行檔案，以 lzop 的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;lzop_bidder_init&lt;/code&gt; 為例：
+&lt;img src=&quot;/assets/img/blog/20250212/36.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;因此，根據「libarchive 會自行根據檔案內容決定用什麼格式進行解壓縮」的事實，我們只要將一個 lzop 格式的壓縮檔案的副檔名改為 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.rar&lt;/code&gt;，對其點兩下開啟，就能觸發對應的 lzop 解壓縮函式 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;lzop_bidder_init&lt;/code&gt;：
+&lt;img src=&quot;/assets/img/blog/20250212/37.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;接著就會看到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archiveint.dll&lt;/code&gt; 嘗試使用外部指令 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;lzop -d&lt;/code&gt; 來進行解壓縮。結果就是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;explorer.exe&lt;/code&gt; 會去 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PATH&lt;/code&gt; 中尋找有沒有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;lzop.exe&lt;/code&gt; 存在，並嘗試執行：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/38.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;rces-reported-by-morse-cve-2024-20696-and-cve-2024-20697&quot;&gt;RCEs Reported by MORSE: CVE-2024-20696 and CVE-2024-20697&lt;/h3&gt;
+
+&lt;p&gt;到目前為止，不難發現 libarchive 帶來許多攻擊面。實際上，Windwos 也在 2024 的 1 月修復了微軟研究團隊 Microsoft Offensive Research Security Engineering (MORSE) team 回報的兩個漏洞，分別是與 &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-20696&quot;&gt;CVE-2024-20696&lt;/a&gt; 與 &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-20697&quot;&gt;CVE-2024-20697&lt;/a&gt; 兩個 RCE 漏洞。&lt;/p&gt;
+
+&lt;h4 id=&quot;cve-2024-20696-oob-write-in-copy_from_lzss_window_to_unp&quot;&gt;CVE-2024-20696: OOB Write In &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;copy_from_lzss_window_to_unp&lt;/code&gt;&lt;/h4&gt;
+
+&lt;p&gt;CVE-2024-20696 發生在 libarchive 解壓縮 RAR 格式的檔案時候。在解壓縮的過程中 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;copy_from_lzss_window_to_unp&lt;/code&gt; 的第四個參數 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length&lt;/code&gt; 是根據 lzss 解壓縮後的狀態計算出的 copy length。由於 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;copy_from_lzss_window_to_unp&lt;/code&gt; 在這裡錯誤地將 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length&lt;/code&gt; 定義為 int，導致攻擊者可以透過構造 lzss 將 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length&lt;/code&gt; 變為負數，從而繞過檢查造成越界寫的漏洞。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/39.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;cve-2024-20697-oob-write-in-execute_filter_e8&quot;&gt;CVE-2024-20697: OOB Write In &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;execute_filter_e8&lt;/code&gt;&lt;/h4&gt;
+
+&lt;p&gt;CVE-2024-20697 也發生在 libarchive 解壓縮 RAR 格式的檔案時候。如果 RAR 檔案有使用到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;filter e8&lt;/code&gt; 時（RAR 檔案格式的 filter，與 libarchive 的 filter 無關），解壓縮便會觸發 libarchive 的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;execute_filter_e8&lt;/code&gt;。
+&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;execute_filter_e8&lt;/code&gt; 在檢查 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length&lt;/code&gt; 時雖然是檢查 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length&lt;/code&gt; 必須大於等於 4，但是在迴圈計算卻使用了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length - 5&lt;/code&gt;，所以當 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;legnth&lt;/code&gt; 為 4 時，迴圈便會執行 0x100000000 次，導致越界寫。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/40.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;fuzzing-why-oss-fuzz-never-found-hese&quot;&gt;Fuzzing: Why OSS-Fuzz Never Found hese?&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/41.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在復現這兩個 CVE 時，由於需要構造 RAR，製作起來較耗費時間，例如在 CVE-2024-20696 中需要構造 lzss 使得 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length&lt;/code&gt; 的計算結果為負數，而在 CVE-2024-20697 中我們需要放入 filter e8，在構造上較為麻煩。因此我們透過 AFL++ ，將合法的 RAR 以及有使用 filter e8 的 RAR 作為 seed 進行 Fuzzing。意外的是，僅在 56 秒之內我們就找到了一個 CVE-2024-20697 的 crash：
+&lt;img src=&quot;/assets/img/blog/20250212/42.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;很快就能找到 crash 當然是好事，但這裡有一個大問題：OSS-Fuzz 至少從 2016 年開始就 24 小時全年無休的對 libarchive 進行 Fuzzing，56 秒就能夠找到 crash 的漏洞怎麼可能還沒有被發現呢？
+&lt;img src=&quot;/assets/img/blog/20250212/43.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;從 OSS-Fuzz 對 libarchive 的總結可以看到，六月時，OSS-Fuzz 對 libarchive 進行的 Fuzzing 的覆蓋率僅有 15.03%:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/44.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而且看起來已經持續了很長一段時間：
+&lt;img src=&quot;/assets/img/blog/20250212/45.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;從檔案來看，可以發現有些 format 基本上沒有被測試過，例如 RAR 的覆蓋率僅有 4.07%
+&lt;img src=&quot;/assets/img/blog/20250212/46.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;謎底揭曉&quot;&gt;謎底揭曉&lt;/h4&gt;
+
+&lt;p&gt;在我們準備演講的同時，libarchive 的 GitHub 上有個關於 OSS-Fuzz 的 commit。他是這麼說的： libarchive 在提交給 OSS-Fuzz 執行的設定中，呼叫 CMake 時雖然有啟用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DONT_FAIL_ON_CRC_ERROR&lt;/code&gt;，但卻從來都沒有在 CMake 中好好定義這個 option！
+&lt;img src=&quot;/assets/img/blog/20250212/47.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;本來，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DONT_FAIL_ON_CRC_ERROR&lt;/code&gt; 這個 flag 會讓 libarchive 在 CRC 不符的情況下也繼續處理該檔案。而我們都知道 Fuzzer 一直都不擅於構造出正確的 checksum。也就是說 OSS-Fuzz 覆蓋率長期低下的原因是因為 Fuzzer 無法產生出合法的 CRC 來通過檢查，導致 Fuzzer 永遠卡在 libarchive 檢查 CRC 的邏輯之中。&lt;/p&gt;
+
+&lt;p&gt;修正之後可以看到 OSS-Fuzz 對 libarchive 的覆蓋率有飛躍性的提升，從 15.03% 提升到 63.10%。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/48.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;從個別檔案的覆蓋率來看也可以發現大部分的檔案格式覆蓋率大幅提升：
+&lt;img src=&quot;/assets/img/blog/20250212/49.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;keep-fuzzing&quot;&gt;Keep Fuzzing&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/50.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在進行 code review 的同時我們讓 AFL++ 繼續為我們勞動，除了我們接下來即將提到的 RCE 漏洞之外，我們還透過 Fuzzing 找到了 CVE-2024-48957、CVE-2024-48958 兩個越界讀漏洞。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/51.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2024-26256-libarchive-remote-code-execution-vulnerability&quot;&gt;CVE-2024-26256: Libarchive Remote Code Execution Vulnerability&lt;/h3&gt;
+
+&lt;p&gt;在分析了微軟自行回報的 CVE-2024-20696 以及 CVE-2024-20697 之後，我們可以發現這兩個漏洞皆出現在解析 RAR 的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_format_rar.c&lt;/code&gt; 中，而且都是近三年加入的 feature。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/52.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;所以我們決定從 RAR 開始進行檢查，看看是否還能發現其他漏洞。而我們第一個想知道的是，CVE-2024-20697 成因中的「&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;filter_e8&lt;/code&gt;」是什麼? Commit message 的「support rar filters」的「filters」是什麼？&lt;/p&gt;
+
+&lt;h4 id=&quot;rar-中的-vm&quot;&gt;RAR 中的 VM&lt;/h4&gt;
+
+&lt;p&gt;要知道 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;filter_e8&lt;/code&gt; 是什麼，我們首先得先知道：其實 RAR 中有一個 VM！RAR 實際上包含了一個 register-based VM，這個 VM 可以執行自訂的小程式來增加 RAR 的壓縮比。具體方式就是在建立 RAR 檔案時，可以在裡面放入客製的「filter」小程式，所以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;filter_e8&lt;/code&gt; 實際上就是這麼一個程式，他是專門為了 Intel 的 binary 所產生的一個增加壓縮比的程式，而名稱中的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;e8&lt;/code&gt; 源自於 Intel 指令集中 near call 的 opcode：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/53.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但是 call instruction 與改善壓縮比之間的關係是什麼？以下面的程式為例，假設在程式中，有兩個位置呼叫了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;funcA&lt;/code&gt;，程式會產生兩個 call 指令，在這裏分別是位置 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0&lt;/code&gt; 與位置 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x10&lt;/code&gt;。在 Intel 的機器語言中，我們可以看到 near call 是以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0xe8&lt;/code&gt; 開頭，後面跟著四個 bytes，也就是手冊中說的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rel32&lt;/code&gt;。&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rel32&lt;/code&gt; 即是呼叫的目標與下一條指令的相對位置，以第一條 call 指令來看，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rel32&lt;/code&gt; 是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x1b&lt;/code&gt;，即是呼叫的目標（0x20），減去下一條指令（0+5）所得出的相對位置 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x1b&lt;/code&gt;：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/54.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這兩條指令雖然皆是呼叫 funcA，但由於內容不同，在進行壓縮時表現就較差。那既然 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rel32&lt;/code&gt; 是可以簡單計算來的，那只要先把 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rel32&lt;/code&gt; 的位置都先替換成目標的位置，機器語言會就長得一樣，壓縮比就能夠進一步上升！&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/55.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在解壓縮時，只要將把被替代掉的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rel32&lt;/code&gt; 透過計算還原回來就好了，這一步便是使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;e8 filter&lt;/code&gt; 將之復原。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/56.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;而 libarchive 的實作為了簡化，並沒有實作整個 VM，而是單純將 filter 程式的內容進行 crc32 運算，並將結果作為 fingerprint，直接執行對應的 filter，參考 &lt;a href=&quot;https://github.com/libarchive/libarchive/blob/42565b88b5cc7441239269902a9d1735fd9ca0e2/libarchive/archive_read_support_format_rar.c#L3826&quot;&gt;libarchive&lt;/a&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;
+&lt;span class=&quot;nf&quot;&gt;execute_filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;archive_read&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;rar_filter&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;rar_virtual_machine&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;vm&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pos&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prog&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fingerprint&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x1D0E06077D&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;execute_filter_delta&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;vm&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prog&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fingerprint&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x35AD576887&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;execute_filter_e8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;vm&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pos&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prog&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fingerprint&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x393CD7E57E&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;execute_filter_e8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;vm&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pos&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prog&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fingerprint&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x951C2C5DC8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;execute_filter_rgb&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;vm&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prog&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fingerprint&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0xD8BC85E701&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;execute_filter_audio&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;vm&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+  &lt;span class=&quot;n&quot;&gt;archive_set_error&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;archive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ARCHIVE_ERRNO_FILE_FORMAT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;No support for RAR VM program filter&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;在 RAR v5 之後，filter 在 RAR 中變成了 enum 類型，只能選用預先定義好的 filter，可以參考 &lt;a href=&quot;https://www.rarlab.com/rar_add.htm&quot;&gt;UnRAR source&lt;/a&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;enum&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FilterType&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;c1&quot;&gt;// These values must not be changed, because we use them directly&lt;/span&gt;
+  &lt;span class=&quot;c1&quot;&gt;// in RAR5 compression and decompression code.&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;FILTER_DELTA&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILTER_E8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILTER_E8E9&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILTER_ARM&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+  &lt;span class=&quot;n&quot;&gt;FILTER_AUDIO&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILTER_RGB&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILTER_ITANIUM&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILTER_TEXT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+  
+  &lt;span class=&quot;c1&quot;&gt;// These values can be changed.&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;FILTER_LONGRANGE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILTER_EXHAUSTIVE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILTER_NONE&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h4 id=&quot;code-review&quot;&gt;Code Review&lt;/h4&gt;
+
+&lt;p&gt;filter 的行為看起來很有趣，而微軟所發現的漏洞也位於 filter 之內，所以我們嘗試對 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_format_rar.c&lt;/code&gt; 進行 code reveiw。&lt;/p&gt;
+
+&lt;p&gt;經過一段時間我們也在&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;copy_from_lzss_window&lt;/code&gt; 找到了一個 heap buffer overflow 的漏洞，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;copy_from_lzss_window&lt;/code&gt; 的參數 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length&lt;/code&gt; 沒有任何檢查就直接使用於 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;memcpy&lt;/code&gt;，而 buffer 的大小僅為 0x40004 bytes：
+&lt;img src=&quot;/assets/img/blog/20250212/57.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;從呼叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;copy_from_lzss_window&lt;/code&gt; 的地方來看，可以發現這是用來將資料複製進 VM 記憶體的函式：
+&lt;img src=&quot;/assets/img/blog/20250212/58.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;漏洞成因看起來非常簡單，但較麻煩的是需要構造 libarchive 願意執行的 filter，並提供正確長度的資料。這些資訊並不直接存在於 RAR 中最表層的欄位，而是存在於 data 之中。並且，data 經過 Huffman coding 編碼，因此後面所提供的資訊也必須先進行一次編碼，而且不是 byte by byte 而是 7-bit by 7-bit。由於這部分不是本文的重點，我們不在這裡展開來講，我們鼓勵讀者進行復現。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/59.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這個漏洞已經被微軟修復：&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-26256&quot;&gt;CVE-2024-26256&lt;/a&gt;。而這個漏洞沒有被 Fuzzer 發現的原因也很簡單，雖然 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;filter-&amp;gt;blocklength&lt;/code&gt; 只要夠大就能夠觸發越界寫，但需要提供與 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;filter-&amp;gt;blocklength&lt;/code&gt; 一樣長的 data 才能通過檢查，而在 coverage 相同的情況下，Fuzzer 通常傾向於將檔案縮小。&lt;/p&gt;
+
+&lt;h3 id=&quot;half-day長得像-0-day-的-1-day&quot;&gt;Half-day：長得像 0-day 的 1-day&lt;/h3&gt;
+
+&lt;p&gt;當我們稍早提到「微軟研究團隊 Microsoft Offensive Research Security Engineering (MORSE) team 回報的兩個漏洞」時。我們提到在構造 PoC 上較困難，或許有人馬上就想到了：「為什麼不去 libarchive 的 GitHub repository 找 test 或是說明呢？」對，我們找過了，沒有。&lt;/p&gt;
+
+&lt;p&gt;因為當時的 libarchive 甚至還沒有被 patch，或是說，可能甚至沒有人知道漏洞已經存在！微軟在一月時，就已經修復 Windows fork 出去的 libarchive：
+&lt;img src=&quot;/assets/img/blog/20250212/60.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在研究結束之後，我們才在 libarchive 的 GitHub repository 上看到對應的兩個 patch ，分別是五月跟四月才被 merge 進去：
+&lt;img src=&quot;/assets/img/blog/20250212/61.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;那豈不是只要長期有關注 Windows patch 的人馬上就會發現 libarchive upstream 存在兩個尚未修補的漏洞嗎？它們對於 Windows forked 版本的 libarchive 來說是 1-day，因為漏洞已被發現並且修補了；對 libarchive upstream 來說是 0-day，因為尚未有修補存在且維護者甚至可能不知情！我們接下來會將這種情況稱為「0.5-day」或是「Half-day」。&lt;/p&gt;
+
+&lt;p&gt;於是我們開始尋找有使用 libarchive 的大型專案，我們想嘗試模擬這個「利用 Half-day 攻擊」的場景，同時也認為，在軟體中採用 libarchive 的廠商會更願意幫我們敦促 libarchive 修補漏洞。&lt;/p&gt;
+
+&lt;h3 id=&quot;attacking-clickhouse&quot;&gt;Attacking ClickHouse&lt;/h3&gt;
+
+&lt;p&gt;經過一番調查後，我們發現 ClickHouse 有使用 libarchive 進行解壓縮，非常有可能包含了存在漏洞的程式碼。在 ClickHouse 中我們可以透過 file table engine 對壓縮檔內的資料進行操作：
+&lt;img src=&quot;/assets/img/blog/20250212/62.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;不過手冊也提到，ClickHouse 僅支援 zip、tar、7z 三種格式的壓縮檔案：
+&lt;img src=&quot;/assets/img/blog/20250212/63.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但真的是這樣嗎？除了 zip 之外，tar 與 7z 在 ClickHouse 中由 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;TarArchiveReader&lt;/code&gt; 與 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SevenZipArchiveReader&lt;/code&gt; 實作，兩者皆繼承於 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LibArchiveReader&lt;/code&gt;。&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LibArchiveReader&lt;/code&gt; 開啟檔案的行為實作於 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;open&lt;/code&gt; 函式，在 &lt;a href=&quot;https://github.com/ClickHouse/ClickHouse/blob/0bd3016a17dab23e64a7e550b2754ce7f7aa1d82/src/IO/Archives/LibArchiveReader.cpp#L150&quot;&gt;source code&lt;/a&gt; 中可看到熟悉的 pattern：&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    &lt;span class=&quot;k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;archive&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;open&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;path_to_archive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;auto&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;archive&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;archive_read_new&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;archive_read_support_filter_all&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;archive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;archive_read_support_format_all&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;archive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;沒錯，ClickHouse 也是使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_format_all&lt;/code&gt; 與 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_filter_all&lt;/code&gt;，表示我們一樣可以觸發存在於 RAR 中的弱點！接下來只要讓 ClickHouse 為我們解壓縮檔案即可，雖然現在解壓縮的 feature 可以直接存取 s3 上的檔案，但&lt;strong&gt;當時並不能這樣使用&lt;/strong&gt;：
+&lt;img src=&quot;/assets/img/blog/20250212/64.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;所以我們必須先上傳檔案，可以透過下列 query 新增一個 table，並且該 table 會以檔案的形式被儲存：&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TABLE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FUNCTION&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;poc.7z&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;Native&apos;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;column1 String&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;VALUES&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;payload&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;但這樣產生的 file 會包含 table 的 metadata，在有 metadata 的情況下我們沒有辦法使 libarchive 認為這是一個 RAR 檔案，進而觸發漏洞：&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;00000000: 0101 0763 6f6c 756d 6e31 0653 7472 696e  ...column1.Strin
+00000010: 6707 7061 796c 6f61 64                   g.payload
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;我們需要在 ClickHouse 的 &lt;a href=&quot;https://clickhouse.com/docs/en/interfaces/formats&quot;&gt;Output Data Formats&lt;/a&gt; 中尋找哪些格式不會在檔案的開頭存放置 metadata。最後我們決定使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;TabSeparatedRaw&lt;/code&gt;，在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;TabSeparatedRaw&lt;/code&gt; 中：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;資料被一列一列儲存&lt;/li&gt;
+  &lt;li&gt;一列中的資料被 tab 分隔開&lt;/li&gt;
+  &lt;li&gt;資料內不能有 tab 或換行&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;例如，如果使用下列兩個 qeury:&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TABLE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FUNCTION&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;test.7z&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;TabSeparatedRaw&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;column1 String&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;VALUES&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;row1 string&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TABLE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FUNCTION&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;test.7z&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;TabSeparatedRaw&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;column1 String&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;VALUES&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;row2 string&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;最後產出的檔案內容會是：&lt;/p&gt;
+&lt;div class=&quot;language-text highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;row1 string
+row2 string
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;因此，若可以處理好第三點「資料內不能有 tab 或換行」，那我們就可以構造出一個合法的 RAR 檔案！那該怎麼樣避免使用 tab 或換行呢？聽起來很難，但不要忘了，ClickHouse 呼叫了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_filter_all&lt;/code&gt; 為我們開啟了所有的 filter！其中，最符合 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;TabSeperatedRaw&lt;/code&gt; 描述的就是 UUencode，經過 UUencode 的資料會長這樣：&lt;/p&gt;
+
+&lt;div class=&quot;language-text highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;begin 600 exploit.rar.uu
+M4F%R(1H&apos;`,^0&amp;lt;P``#0````````!287(A&amp;amp;@&amp;lt;`SY!S```-`````````%VI=(&quot;0
+M,0&quot;VXP0`4,\+``(2&apos;^X4O1EY5QTU#``@````;7-V8W(Q,#`N9&amp;amp;QL`/#&amp;lt;ZFP8
+M(AE0S(EB&apos;!(&quot;,EM(4I0M-&quot;H*&quot;T6JBHJ!1$1T%IKHFBA0H*:(VV2VP)98R9+*
+M&quot;*`T&apos;I;&amp;amp;]1&amp;gt;J]&amp;gt;HZ!&amp;gt;KU4=(ZQTC:4VHB@J4WH2D-%--VSX9S);9IOO.9HF2E
+MH47O?/GG[Y^6LSGO/&amp;gt;&amp;gt;Z&amp;gt;&amp;gt;\]YJS!N3_(^_P3SS&quot;O\S`P+6&amp;lt;_V&apos;P(,#`P,#`B
+M.EX#-(,!V$Z07A+LVZ?4@K:RB=`NN&amp;lt;+9(IB&amp;lt;?NX``Y[L`3`P,#``,`&apos;/YCL*
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;因此最後我們只需要將原本的 rar payload 進行 UUEncode 之後上傳：&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TABLE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FUNCTION&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;poc.7z&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;TabSeparatedRaw&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;column1 String&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;VALUES&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;uu_encoded_rar_payload&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;並且觸發解壓縮：&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;SELECT * FROM file(&apos;poc.7z :: **&apos;, RawBLOB)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;就可以成功觸發越界寫漏洞了：
+&lt;img src=&quot;/assets/img/blog/20250212/65.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我們最後透過 ClickHouse 在 Bugcrowd 上的賞金計劃進行回報：
+&lt;img src=&quot;/assets/img/blog/20250212/66.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;ClickHouse 很快的就進行了&lt;a href=&quot;https://github.com/ClickHouse/ClickHouse/commit/c8a3a0bb11ad1344fbb50b10f50f8eb2a962aa7f&quot;&gt;修復&lt;/a&gt;，並且願意幫我們敦促 libarchive 進行漏洞的修補！雖然不確定微軟是否有告知 libarchive 的維護者們任何關於 CVE-2024-20696 與 CVE-2024-20697 的漏洞資訊（因為沒有任何公開資料，libarchive 在 GitHub repository 上的 &lt;a href=&quot;https://github.com/libarchive/libarchive/security/advisories?state=draft&quot;&gt;Security Advisories&lt;/a&gt; 也沒有任何資料可以參考！）。但如同我們先前提到的，這兩個原先由微軟在 forked 版本的 libarchive 中發現的漏洞，最終 libarchive 也分別在五月跟四月獲得修復，結束了「Half-day」的尷尬狀況。&lt;/p&gt;
+
+&lt;h3 id=&quot;持續追蹤&quot;&gt;持續追蹤&lt;/h3&gt;
+
+&lt;p&gt;除了回報上述兩個「Half-day」之外，別忘了我們還有另外回報三個 0-day 漏洞，它們個別是：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;微軟已經修復的 RCE：CVE-2024-26256
+    &lt;ul&gt;
+      &lt;li&gt;4/27 回報&lt;/li&gt;
+      &lt;li&gt;8/14 修補&lt;/li&gt;
+      &lt;li&gt;9/28 關閉&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;filter_audio 中的 oob read
+    &lt;ul&gt;
+      &lt;li&gt;3/20 回報&lt;/li&gt;
+      &lt;li&gt;4/29 修補&lt;/li&gt;
+      &lt;li&gt;9/28 關閉&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;filter_delta 中的 oob read
+    &lt;ul&gt;
+      &lt;li&gt;3/20 回報&lt;/li&gt;
+      &lt;li&gt;4/29 修補&lt;/li&gt;
+      &lt;li&gt;9/28 關閉&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;在回報後的數個月，他們終於獲得修復，這時已經是九月：
+&lt;img src=&quot;/assets/img/blog/20250212/67.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;half-day-的迴環複沓&quot;&gt;Half-day 的迴環複沓&lt;/h4&gt;
+
+&lt;p&gt;其中較嚴重的是我們已經回報給微軟的漏洞 CVE-2024-26256，微軟在四月時便已經修復：
+&lt;img src=&quot;/assets/img/blog/20250212/68.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在三月回報漏洞的同時，我們有詢問 MSRC 是否會將 CVE-2024-26256 的 patch 提交到 libarchive 的 GitHub repository，第一時間沒有獲得回應。在微軟 patch CVE-2024-26256 之後我們又提問了一次，想確定他們是否有將該漏洞的資訊同步給 libarchive 的 maintainers，MSRC 說：「如果你願意的話，我們鼓勵你開一個獨立的 GitHub issue。」為了避免「Half-day」情況發生，所以我們也在收到訊息後馬上到 libarchive 的 Security Advisory 開了一個 issue：
+&lt;img src=&quot;/assets/img/blog/20250212/69.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;然而，「Half-day」還是發生了，因為太久沒有人回應。所以七月時，&lt;a href=&quot;https://github.com/libarchive/libarchive/pull/2269&quot;&gt;我們自己發了一個 PR &lt;/a&gt;將微軟的 patch 移植過來，雖然不確定這個修補方式是不是最好的，但至少比沒有修補還要強。所以，歷史又重演了一次，從四月到修補完成的九月之間，我們又陷入了「Half-day」的情境。&lt;/p&gt;
+
+&lt;h4 id=&quot;餘下的兩個-0-day&quot;&gt;餘下的兩個 0-day&lt;/h4&gt;
+
+&lt;p&gt;眼尖的讀者或許已經注意到，我們所回報的 Security Advisory 並不是在「Published」的分頁中，而是「Closed」：
+&lt;img src=&quot;/assets/img/blog/20250212/70.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;除了剛才提到的 CVE-2024-26256 之外，其餘是兩個尚未申請 CVE 的越界讀取漏洞。針對已經有 CVE 編號的修補，人們會意識到這是一個關於安全性的修補。然而，由於其他兩個漏洞並不為人所知，僅修補卻不通知其他人安全風險的存在是一件危險的事情。尤其，libarchive 是一個廣泛使用的函式庫，有許許多多的軟體或服務使用它，導致人們並不知道自己正在使用 libarchive。這類軟體的相依鏈可能十分龐大且複雜，如果開發者或是終端使用者沒有意識到這是一個安全性的更新，那麼，該修補在整個相依鏈中將會極為緩慢地傳播，進而增加潛在風險。&lt;/p&gt;
+
+&lt;p&gt;所以，在確認 libarchive 將 issue 關閉之後我們就立即申請了 CVE 編號，這兩個漏洞分別是 &lt;a href=&quot;https://github.com/advisories/GHSA-rmj4-vvpv-4m33&quot;&gt;CVE-2024-48957&lt;/a&gt; 與 &lt;a href=&quot;https://github.com/advisories/GHSA-9mw4-2ppr-4mcg&quot;&gt;CVE-2024-48958&lt;/a&gt;，當它們被發佈時，已經是十月，距離修補發布的四月已經過去了六個月。&lt;/p&gt;
+
+&lt;h2 id=&quot;結語&quot;&gt;結語&lt;/h2&gt;
+
+&lt;p&gt;本文介紹了 Windows 在採用 libarchive 以支援更多壓縮檔案格式時，所引發的一些漏洞與有趣的特性。此外，我們也向 libarchive 回報了數個 0-day 漏洞。&lt;/p&gt;
+
+&lt;p&gt;接著，我們在 ClickHouse 上成功利用了我們認為介於 0-day 與 1-day 之間的「Half-day」漏洞。這源於 Windows 將 libarchive fork 出來後，將其編譯為閉源的 archiveint.dll，並在修補該 DLL 後，未能及時通知 libarchive 的維護者，或將修補程式回饋到 libarchive 上游，從而導致了「Half-day」漏洞的產生。&lt;/p&gt;
+
+&lt;p&gt;upstream 較晚獲得修補的原因，除了溝通延遲之外，也因缺乏公開可用的修補程式。維護者在 fork 版本已經完成修補後，才在接獲通報時開始著手解決問題。因此，微軟在修補 fork 版本的 libarchive 後，除了應主動通知原始維護者，更應直接提交 Pull Request (PR) 至上游，以協助完成修補。&lt;/p&gt;
+
+&lt;p&gt;libarchive 的維護者是一群志願者，而且可能沒有領取任何薪水。而開源精神便是人人皆可「分享、參與、行動」，因此我們認為，研究人員在漏洞回報的過程中，除了提供漏洞分析與 PoC 外，也應該積極的提出修補方案，共同維護開源軟體的安全性與品質。&lt;/p&gt;
+
+</content>
+ </entry>
+ 
+ <entry>
+   <title>From Convenience to Contagion: The Half-Day Threat and Libarchive Vulnerabilities Lurking in Windows 11</title>
+   <link href="https://devco.re/blog/2025/02/12/from-convenience-to-contagion-the-half-day-threat-and-libarchive-vulnerabilities-lurking-in-windows-11-en/"/>
+   <updated>2025-02-12T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2025/02/12/from-convenience-to-contagion-the-half-day-threat-and-libarchive-vulnerabilities-lurking-in-windows-11-en</id>
+   <content type="html">&lt;h2 id=&quot;abstract&quot;&gt;Abstract&lt;/h2&gt;
+&lt;p&gt;In the October 2023 update, Windows 11 introduced support for 11 additional compression formats, including RAR and 7z, allowing users to manage these types of files natively within File Explorer. The enhancement significantly improves convenience; however, it also introduces potential security risks. To support these various compression formats, Windows 11 utilizes the libarchive library, a well-established open-source library used across multiple operating systems like Linux, BSD, and macOS, and in major projects such as ClickHouse, Homebrew, and Osquery.&lt;/p&gt;
+
+&lt;p&gt;The libarchive has been continuously fuzzed by Google’s OSS-Fuzz project, making it a time-tested library. However, its coverage in OSS-Fuzz has been less than ideal. In addition to the two remote code execution (RCE) vulnerabilities disclosed by Microsoft Offensive Research &amp;amp; Security Engineering (MORSE) in January, we have identified several vulnerabilities in libarchive through code review and fuzzing. These include a heap buffer overflow vulnerability in the RAR decompression and arbitrary file write and delete vulnerabilities due to insufficient checks of libarchive’s output on Windows. Additionally, in our presentation, we will reveal several interesting features that emerged from the integration of libarchive with Windows.&lt;/p&gt;
+
+&lt;p&gt;And whenever vulnerabilities are discovered in widely-used libraries like libarchive, their risks often permeate every corner, making it difficult to estimate the potential hazards. Moreover, when Microsoft patches Windows, the corresponding fixes are not immediately merged into libarchive. This delay gives attackers the opportunity to exploit other projects using libarchive. For example, the vulnerabilities patched by Microsoft in January were not merged into libarchive until May, leaving countless applications exposed to risk for four months. The worst part is that the developers might not know the vulnerability details or even be aware of its existence. To illustrate this situation, we will use the vulnerabilities we reported to ClickHouse as an example to demonstrate how attackers can exploit the vulnerabilities while libarchive remains unpatched.&lt;/p&gt;
+
+&lt;h2 id=&quot;introduction&quot;&gt;Introduction&lt;/h2&gt;
+
+&lt;p&gt;Before the KB5031455 update, Windows 11 only supported ZIP archives natively. In File Explorer, ZIP files are labeled “Compressed (zipped) Folder.” Users can double-click a ZIP file to view its contents:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Or, even better, add new files to the archive or open existing ones directly:
+&lt;img src=&quot;/assets/img/blog/20250212/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When a user double-clicks a file inside a ZIP archive, File Explorer extracts it to a temporary folder with a randomly generated UUID under the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;%temp%&lt;/code&gt; directory. The file is accessed from this temporary location, and since it’s a temporary file, it will be automatically deleted later:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;compressed-archived-folder&quot;&gt;Compressed Archived Folder&lt;/h3&gt;
+
+&lt;p&gt;Next, after the KB5031455 update in October 2023, Windows 11 added support for 11 new archive file formats:
+&lt;img src=&quot;/assets/img/blog/20250212/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;This kind of file is labeled “Compressed Archive Folder” by File Explorer:
+&lt;img src=&quot;/assets/img/blog/20250212/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Curious about how Windows 11 supports these 11 new archive file formats, we began analyzing File Explorer and the related DLL files. The native support for ZIP in File Explorer is handled by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;After the KB5031455 update, a new class called &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ArchiveFolder&lt;/code&gt; was added, distinct from the old &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CZipFolder&lt;/code&gt; class used to support ZIP Files.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;first-vulnerability-cve-2024-26185&quot;&gt;First Vulnerability: CVE-2024-26185&lt;/h3&gt;
+
+&lt;p&gt;Before firing up IDA, we first conducted black-box testing on the new “Compressed Archive Folder” feature. When it comes to extracting files, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;../&lt;/code&gt; is a timeless trick.&lt;/p&gt;
+
+&lt;p&gt;In the first test case, we constructed a file named &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;..\poc.txt&lt;/code&gt;, compressed it into an RAR file, and then uploaded it to a Windows machine to open it by double-clicking. There was no Path Traversal; we only saw an empty folder:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We constructed a file named &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;123\..\poc.txt&lt;/code&gt; in the second test case. Because the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;123&lt;/code&gt; was canceled out by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;..&lt;/code&gt;, we only saw the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poc.txt&lt;/code&gt; solely in File Explore, and still no Path Traversal:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/8.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;There is also no Path Traversal in the corresponding temp folder:
+&lt;img src=&quot;/assets/img/blog/20250212/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Excluding “double-clicking,” users will see &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Extract All&lt;/code&gt; if they right-click on “Compressed (zipped) Folder” or “Compressed Archive Folder” in File Explorer.
+The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Extract All&lt;/code&gt; will try to decompress the whole archive. Let’s test “Compressed Archive Folder” again with that:&lt;/p&gt;
+
+&lt;p&gt;When using &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Extract All&lt;/code&gt;,&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;..\poc.txt&lt;/code&gt; is considered an attempt to escape to the parent directory, causing File Explorer to display an error:
+&lt;img src=&quot;/assets/img/blog/20250212/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The extraction of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;123\..\poc.txt&lt;/code&gt; is a success, but we still only got the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poc.txt&lt;/code&gt;.
+&lt;img src=&quot;/assets/img/blog/20250212/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Because &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Extract All&lt;/code&gt; decompresses the whole archive, we think we should also test the situation when the file name is an absolute path, for example, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:\poc\poc.txt&lt;/code&gt;:
+&lt;img src=&quot;/assets/img/blog/20250212/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;There is no error, but the folder &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:&lt;/code&gt; was renamed to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C_&lt;/code&gt;. Thus, we now know &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; will sanitize the input to avoid Path Traversal or Arbitrary File Write.
+&lt;img src=&quot;/assets/img/blog/20250212/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;But if one “double-clicks” the RAR file, which contains a file with absolute path name, instead of “Extract All,” it will show a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Local Disk (C:)&lt;/code&gt; folder! The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:&lt;/code&gt; isn’t replaced with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C_&lt;/code&gt;!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Besides that, everything seemed normal, even when we navigated to the innermost folder and opened the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poc.txt&lt;/code&gt; file:
+&lt;img src=&quot;/assets/img/blog/20250212/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Except for the fact that the extra &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poc&lt;/code&gt; folder is under our &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C&lt;/code&gt; volume!
+&lt;img src=&quot;/assets/img/blog/20250212/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;That means File Explorer considers here a place to put its temporary files; thus, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poc.txt&lt;/code&gt; file is also here, inside the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;poc&lt;/code&gt; folder:
+&lt;img src=&quot;/assets/img/blog/20250212/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In other words, we have discovered an Arbitrary File Write vulnerability! Since this write operation aims to place temporary files, the files will be deleted after a while. Therefore, what we have actually found is an Arbitrary File Write/Delete vulnerability. But it’s a shame that the permissions used for both writing and deleting are limited to the current user’s privileges.&lt;/p&gt;
+
+&lt;p&gt;That’s &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-26185&quot;&gt;CVE-2024-26185&lt;/a&gt;, a funny yet useless vulnerability. To exploit it to create or delete a file in a specific location, you would need to create the exact same path structure within the archive and then trick the user into opening every folder and double-clicking the target file. Most people would probably find it suspicious halfway through the process.&lt;/p&gt;
+
+&lt;p&gt;Well, that may be true, but according to the rules, Microsoft still has to pay me $1,000. Yay!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/18.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2024-26185-root-cause&quot;&gt;CVE-2024-26185: Root Cause&lt;/h3&gt;
+
+&lt;p&gt;The root cause of CVE-2024-26185 is the insufficient filtering of file names. After decompiling the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt;, we found it will call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;replace_invalid_path_chars&lt;/code&gt; to sanitize the file name before decompression. The function replaces &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;*:&amp;lt;&amp;gt;?|&lt;/code&gt; with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;_&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/&lt;/code&gt; with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Additionally, when interacting with the “Compressed (zipped) Folder” or “Compressed Archive Folder,” users have three methods to extract files, each triggering a different function:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Double-clicking a file inside the archive
+    &lt;ul&gt;
+      &lt;li&gt;Triggers &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ExtractFromArchiveByIndex&lt;/code&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Double-clicking a cmd, bat, or exe file inside the archive
+    &lt;ul&gt;
+      &lt;li&gt;Triggers &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ExtractEntireArchive&lt;/code&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Right-clicking the archive and selecting “Extract All” from the menu
+    &lt;ul&gt;
+      &lt;li&gt;Triggers &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ArchiveExtractWizard::ExtractToDestination&lt;/code&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;All of them use &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_next_header&lt;/code&gt; to get the file names in the archive, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;replace_invalid_path_chars&lt;/code&gt; to sanitize the file name, and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ExtractArchiveEntry&lt;/code&gt; to actually extract the file. However, they forgot to call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;replace_invalid_path_chars&lt;/code&gt; in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ExtractFromArchiveByIndex&lt;/code&gt;, which is triggered when “Double-clicking a file inside the archive,” leading to the arbitrary file write and arbitrary file delete vulnerabilities.
+&lt;img src=&quot;/assets/img/blog/20250212/19.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2024-38165-bypassing-the-patch-for-cve-2024-26185&quot;&gt;CVE-2024-38165: Bypassing the Patch for CVE-2024-26185&lt;/h3&gt;
+
+&lt;p&gt;After Microsoft patched CVE-2024-26185, we randomly picked some PoCs created a while ago and executed them to check the patch’s correctness. It turns out that some of our PoCs are still working!?&lt;/p&gt;
+
+&lt;p&gt;In the patch, they add a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;replace_invalid_path_chars&lt;/code&gt; before 
+&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ExtractFromArchiveByIndex&lt;/code&gt; to sanitize the file name. It looks perfect:
+&lt;img src=&quot;/assets/img/blog/20250212/20.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, it can be easily bypassed by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\poc\poc.txt&lt;/code&gt;. How does that happen? Let’s follow the code step by step. First, the file name &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\poc\poc.txt&lt;/code&gt; is passed into &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;replace_invalid_path_chars&lt;/code&gt;. Since there are no invalid characters in the file name, the output is still &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\poc\poc.txt&lt;/code&gt;:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/21.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Next, because &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; is currently “extracting file to a temporary folder under the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;%TEMP%&lt;/code&gt; to let users interact with it,” the file name should be concatenated with the path of the temporary folder to construct the destination of extraction:
+&lt;img src=&quot;/assets/img/blog/20250212/22.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;But here comes the problem, in Windows, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:\&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\&lt;/code&gt; are both considered as root. In other words, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; is currently concatenating two absolute paths! According to &lt;a href=&quot;https://github.com/microsoft/STL/blob/90820002693fe6eaaec2e55884472c654186207e/stl/inc/filesystem#L723&quot;&gt;the STL implemented by Microsoft&lt;/a&gt;, if two arguments of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;std::filesystem::operator/&lt;/code&gt; are both absolute paths, it will return the second argument directly. Thus, the function’s return value is  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:\poc\poc.txt&lt;/code&gt;, causing a patch bypass.
+&lt;img src=&quot;/assets/img/blog/20250212/23.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;symlink-ntlm-exfiltration&quot;&gt;Symlink NTLM Exfiltration&lt;/h3&gt;
+
+&lt;p&gt;Of course, it’s vulnerable without &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;replace_invalid_path_chars&lt;/code&gt;. But can we still exploit File Explorer even if &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;replace_invalid_path_chars&lt;/code&gt; is used correctly? This function only filters &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;*:&amp;lt;&amp;gt;?|&lt;/code&gt;, meaning &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.&lt;/code&gt; can still be used to construct a remote path. Could NTLM exfiltration still be possible? We attempted to construct paths such as:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\\172.23.176.34\Users\nini\Desktop\sharing\test.txt&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\Device\Mup\172.23.176.34\Users\nini\Desktop\sharing\test.txt&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;While these are regular files, they only create a corresponding directory under the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C:&lt;/code&gt; volume (before the CVE-2024-38165 fix). However, if we create a symlink pointing to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\\172.23.176.34\poc\poc.txt&lt;/code&gt;, when the user either double-clicks the symlink or selects “Extract All,” File Explorer will attempt to communicate with the SMB server at that IP address, leading to an NTLM leak:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/24.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Moreover, Windows determines the file type within the archive based solely on the file extension, which can be highly misleading. For example, in this case, our symlink file was recognized as a Text Document:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/25.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; uses the &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows/win32/api/winbase/nf-winbase-createsymboliclinka&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CreateSymbolicLinkA&lt;/code&gt;&lt;/a&gt; API to create a symlink during decompression. Although this API requires elevated privileges, File Explorer won’t prompt for privilege escalation and will simply display an error message instead.
+&lt;img src=&quot;/assets/img/blog/20250212/26.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Even though File Explorer adds the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE&lt;/code&gt; flag when using &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CreateSymbolicLinkA&lt;/code&gt;, the documentation states that Developer Mode must be enabled for this flag to take effect.
+&lt;img src=&quot;/assets/img/blog/20250212/27.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The “extracting symlink from archive” feature appears to be incomplete, limiting the vulnerability to attacks targeting administrators or developers. As a result, it does not meet MSRC’s threshold for immediate servicing. Therefore, they will not provide ongoing updates on the status of the fix and have closed this case.&lt;/p&gt;
+
+&lt;h2 id=&quot;libarchive&quot;&gt;Libarchive&lt;/h2&gt;
+
+&lt;p&gt;In the previous section, we mentioned that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt; is responsible for handling interactions with the “Compressed (zipped) Folder” and “Compressed Archive Folder.”&lt;/p&gt;
+
+&lt;p&gt;In this section, we’ll talk about the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archiveint.dll&lt;/code&gt;, which is actually a forked version of libarchive. Libarchive is a powerful, open-source library for handling archive file formats. It is used across multiple operating systems like Linux, BSD, and macOS, as well as in projects such as ClickHouse, Homebrew, and Osquery. Google’s OSS-Fuzz project has continuously fuzzed it 24/7 since 2016, making it a time-tested library.&lt;/p&gt;
+
+&lt;p&gt;By black-box testing, we observed several interesting behaviors.&lt;/p&gt;
+
+&lt;h3 id=&quot;fun-fact-1-windows-supports-file-formats-more-than-they-claimed&quot;&gt;Fun Fact 1: Windows Supports File Formats More Than They Claimed&lt;/h3&gt;
+
+&lt;p&gt;Although Microsoft claimed to have added native support for the following 11 archive formats in the KB5031455 update, the actual number of supported file formats far exceeds 11.
+&lt;img src=&quot;/assets/img/blog/20250212/28.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;This is how Windows initialize libarchive in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zipfldr.dll&lt;/code&gt;:
+&lt;img src=&quot;/assets/img/blog/20250212/29.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In fact, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_format_all&lt;/code&gt; function in libarchive enables support for a total of 13 archive formats, including ar, cpio, lha, mtree, tar, xar, warc, 7zip, cab, rar, rar5, iso9660, and zip; the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_filter_all&lt;/code&gt; function in libarchive enables support for a total of 13 filters, including bzip2, compress, gzip, lzip, lzma, xz, uu, rpm, lrzip, lzop, grzip, lz4, zstd.&lt;/p&gt;
+
+&lt;p&gt;In addition, format and filer can be used simultaneously. For example, the tar format and gzip filter should be enabled to support the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.tar.gz&lt;/code&gt; file format. So, the total number of Windows’ natively supported file formats is $13+13+13 \times 13 = 195$ ?&lt;/p&gt;
+
+&lt;p&gt;Completely wrong! A maximum of 25 filters can be chained, e.g., &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive.rar.gzip.xz.uu.zstd.uu......&lt;/code&gt;. That said, Windows 11 actually supports $13+13+13\times 13^{25}$ types of file formats, which equals &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;91733330193268616658399616035&lt;/code&gt; formats! For free!&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;As a result, the attack surface has significantly expanded after the update. Any vulnerability in a file format within libarchive can be triggered on Windows. Additionally, parsing multiple filters simultaneously could also introduce security weaknesses.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;fun-fact-2-file-format-confusion&quot;&gt;Fun Fact 2: File Format Confusion&lt;/h3&gt;
+
+&lt;p&gt;When calling libarchive to decompress files, there is no need to specify the archive’s file format; libarchive automatically determines the format based on the content. However, there is a chance that File Format Confusion can happen when ZIP support is enabled. For example, if we create a demo3.rar archive and place a poc.zip file inside, the result will look like this:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/30.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;If we double-click demo3.rar directly on Windows, we will find that only the poc2.txt file is visible, while the other folders, files, and even poc.zip are missing. This is because libarchive mistakenly identifies demo3.rar as a ZIP file!&lt;/p&gt;
+
+&lt;p&gt;To understand the bug, let’s see how libarchive determines the file format for an archive. In &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;choose_format&lt;/code&gt;, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bid&lt;/code&gt; function of the enabled formats is called, and the format whose &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bid&lt;/code&gt; returns the highest value is the one libarchive will treat the file as.
+&lt;img src=&quot;/assets/img/blog/20250212/31.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Take &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ar&lt;/code&gt;’s &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bid&lt;/code&gt; function, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_format_ar_bid&lt;/code&gt;, for example, if the beginning 8 bytes of an archive is &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;!&amp;lt;arch&amp;gt;\n&quot;&lt;/code&gt;, the function will return 64, which should be derived from $8\ bits \times 8\ bytes = 64$:
+&lt;img src=&quot;/assets/img/blog/20250212/32.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Next, the RAR format’s highest score is only 30. Although it’s unclear how the number was determined, if each file format is checked starting from the beginning of the file, it should be difficult to create a polyglot that would break this mechanism, right?
+&lt;img src=&quot;/assets/img/blog/20250212/33.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;But, there is a special mode for ZIP in libarchive: seekable. In other words, the ZIP signature does not need to be at the beginning of the file; libarchive will search for it itself. The highest value for a seekable ZIP is 32:
+&lt;img src=&quot;/assets/img/blog/20250212/34.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The consequence is that when a RAR archive contains a ZIP file and the RAR’s compression ratio is low enough to leave the ZIP signature untouched, libarchive will incorrectly treat the RAR file as a ZIP file.&lt;/p&gt;
+
+&lt;h3 id=&quot;fun-fact-3-sometimes-libarchive-tries-to-spawn-an-external-executable&quot;&gt;Fun Fact 3: Sometimes, Libarchive Tries to Spawn an External Executable&lt;/h3&gt;
+
+&lt;p&gt;By reviewing the source code of libarchive, we found that if some libraries are missed during compiling, libarchive will change its behavior from using the library to executing commands to decompressing the archive:
+&lt;img src=&quot;/assets/img/blog/20250212/35.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Then we decompiled the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archiveint.dll&lt;/code&gt;, which is the forked libarchive on Windows. We confirmed that the function for decompressing some file formats will try to execute the external binary, e.g., &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;lzop_bidder_init&lt;/code&gt;:
+&lt;img src=&quot;/assets/img/blog/20250212/36.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Plus, “libarchive decides which format to use for extraction based on the file content,” all we need to do is change the extension of an lzop compressed file to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.rar&lt;/code&gt;, and double-click it to trigger the corresponding lzop extraction function &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;lzop_bidder_init&lt;/code&gt;:
+&lt;img src=&quot;/assets/img/blog/20250212/37.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;At the end, we’ll see that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;explorer.exe&lt;/code&gt; is trying to execute &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;lzop&lt;/code&gt; in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PATH&lt;/code&gt; to decompress the archive:
+&lt;img src=&quot;/assets/img/blog/20250212/38.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;rces-reported-by-morse-cve-2024-20696-and-cve-2024-20697&quot;&gt;RCEs Reported by MORSE: CVE-2024-20696 and CVE-2024-20697&lt;/h3&gt;
+
+&lt;p&gt;So far, it’s clear that libarchive introduces numerous attack surfaces. In fact, Windows also patched two vulnerabilities reported by Microsoft’s Offensive Research Security Engineering (MORSE) team in January 2024, specifically the RCE vulnerabilities &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-20696&quot;&gt;CVE-2024-20696&lt;/a&gt; and &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-20697&quot;&gt;CVE-2024-20697&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h4 id=&quot;cve-2024-20696-oob-write-in-copy_from_lzss_window_to_unp&quot;&gt;CVE-2024-20696: OOB Write in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;copy_from_lzss_window_to_unp&lt;/code&gt;&lt;/h4&gt;
+
+&lt;p&gt;While extracting RAR files, the fourth argument of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;copy_from_lzss_window_to_unp&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length&lt;/code&gt;, is calculated based on the state after lzss decompression, representing the copy length. However, it was incorrectly defined as an int. This mistake allows an attacker to manipulate the lzss data, causing length to become a negative value, bypassing validation checks, and resulting in an out-of-bounds write vulnerability.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/39.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;cve-2024-20697-oob-write-in-execute_filter_e8&quot;&gt;CVE-2024-20697: OOB Write in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;execute_filter_e8&lt;/code&gt;&lt;/h4&gt;
+
+&lt;p&gt;It’s also a vulnerability that happens when extracting RAR files. If an RAR file contains an e8 filter, libarchive will run into the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;execute_filter_e8&lt;/code&gt; function. (the filter here is defined by RAR, not the filter of libarchive we mentioned earlier)
+The problem is that although there is a check in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;execute_filter_e8&lt;/code&gt; to ensure the variable &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length&lt;/code&gt; is larger or equal to 4, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length&lt;/code&gt; will be used in a for loop for &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length-5&lt;/code&gt;. So, when the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length&lt;/code&gt; is 4, the loop will run 0x100000000 times, causing an out-of-bounds write.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/40.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;fuzzing-why-oss-fuzz-never-found-these&quot;&gt;Fuzzing: Why OSS-Fuzz Never Found These?&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/41.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;To reproduce these two CVEs, we must construct RAR files, which is time-consuming. In CVE-2024-20696, we have to construct data of lzss that causes the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length&lt;/code&gt; to become a negative number; in CVE-2024-20697, we have to put an e8 filter in an RAR archive. Instead of building RAR bytes by bytes, we chose to collect RAR archives, especially those with the e8 filter, and feed them to the AFL++ fuzzer. To our surprise, it only took 56 seconds to find the first crash for CVE-2024-20697:
+&lt;img src=&quot;/assets/img/blog/20250212/42.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It’s great that the crash happened quickly, but here’s the big problem: OSS-Fuzz has been Fuzzing libarchive 24/7 since at least 2016, so how can a vulnerability found in 56 seconds not be discovered yet?
+&lt;img src=&quot;/assets/img/blog/20250212/43.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;From the OSS-Fuzz summary for libarchive, we can see that in June 2024, the code coverage of libarchive was only 15.03%:
+&lt;img src=&quot;/assets/img/blog/20250212/44.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;And seems it has lasted a long time:
+&lt;img src=&quot;/assets/img/blog/20250212/45.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;From the file view, it is obvious that some file formats are basically untested. For example, the coverage of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_format_rar.c&lt;/code&gt; is only 4.07%:
+&lt;img src=&quot;/assets/img/blog/20250212/46.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;the-answer-revealed&quot;&gt;The Answer Revealed&lt;/h4&gt;
+
+&lt;p&gt;While preparing our talks, we noticed a pull request in the libarchive repository. It turns out that though they enabled the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DONT_FAIL_ON_CRC_ERROR&lt;/code&gt; flag for CMake while compiling libarchive for OSS-Fuzz, they didn’t define that option in CMake!?
+&lt;img src=&quot;/assets/img/blog/20250212/47.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DONT_FAIL_ON_CRC_ERROR&lt;/code&gt; flag allowed libarchive to continue processing a file even when the CRC check failed. As we all know, fuzzers are generally poor at generating correct checksums. This means that the long-term low coverage of OSS-Fuzz was due to the fuzzer’s inability to produce valid CRC values to pass the checks.&lt;/p&gt;
+
+&lt;p&gt;After the fix, a significant improvement in OSS-Fuzz’s coverage of libarchive can be observed, increasing from 15.03% to 63.10%:
+&lt;img src=&quot;/assets/img/blog/20250212/48.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;From the file view, the code coverage for individual file formats is also improved:
+&lt;img src=&quot;/assets/img/blog/20250212/49.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;keep-fuzzing&quot;&gt;Keep Fuzzing&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/50.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;While conducting the code review, we kept AFL++ working for us. At the end of our research, the fuzzer found two out-of-bound read vulnerabilities: CVE-2024-48957 and CVE-2024-48958.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/51.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;cve-2024-26256-libarchive-remote-code-execution-vulnerability&quot;&gt;CVE-2024-26256: Libarchive Remote Code Execution Vulnerability&lt;/h3&gt;
+
+&lt;p&gt;After analyzing the vulnerabilities, CVE-2024-20696 and CVE-2024-20697, found by Microsoft, we found they are both in the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_format_rar.c&lt;/code&gt; and both in the newly added functions within the previous three years.
+&lt;img src=&quot;/assets/img/blog/20250212/52.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We decided to review RAR to investigate whether there are any other vulnerabilities. The first thing we wanted to understand was what filter_e8 refers to in CVE-2024-20697 and what the “filter” mentioned in the commit message “support RAR filters” means.&lt;/p&gt;
+
+&lt;h4 id=&quot;the-vm-in-rar&quot;&gt;The VM in RAR&lt;/h4&gt;
+
+&lt;p&gt;To understand &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;filter_e8&lt;/code&gt;, we must know that there is a VM in RAR! There is actually a register-based VM in RAR. The VM can be used to run a custom program to improve the compression ratio of an RAR file.&lt;/p&gt;
+
+&lt;p&gt;When creating an RAR file, a custom “filter” program can be included. The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;filter_e8&lt;/code&gt; is one such program, designed to improve the compression ratio for Intel binaries. The “e8” in its name refers to the near call opcode in the Intel instruction set.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/53.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;But what is the correlation between call instruction and improved compression ratio?&lt;/p&gt;
+
+&lt;p&gt;Take the following small program as an example: if there are two &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;call&lt;/code&gt; instructions that will call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;funcA&lt;/code&gt;, located at addresses &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x10&lt;/code&gt; respectively, we can see in the machine code that the near &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;call&lt;/code&gt; instruction starts with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0xe8&lt;/code&gt;, followed by 4 bytes, which corresponds to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rel32&lt;/code&gt; in the manual. The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rel32&lt;/code&gt; value represents the relative offset between the address of the target function and the address of the instruction following the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;call&lt;/code&gt; instruction. For example, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rel32&lt;/code&gt; value of the first &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;call&lt;/code&gt; instruction is &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x1b&lt;/code&gt;, which is calculated by subtracting the address of the next instruction (0+5) from the address of the target function (0x20):
+&lt;img src=&quot;/assets/img/blog/20250212/54.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Both instructions are used to call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;funcA&lt;/code&gt;, but due to their different machine code representations, the compression ratio is lower. However, since the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rel32&lt;/code&gt; value can be easily calculated, it can be replaced with the absolute address of the target function, making the instructions identical and improving the compression ratio:
+&lt;img src=&quot;/assets/img/blog/20250212/55.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;While decompressing, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;e8 filter&lt;/code&gt; will be used to recover the replaced &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rel32&lt;/code&gt;:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/56.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;To simplify the implementation, libarchive doesn’t fully implement the entire VM. Instead, it simply calculates the fingerprint of the filter using &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;crc32&lt;/code&gt;. The relevant code can be found in &lt;a href=&quot;https://github.com/libarchive/libarchive/blob/42565b88b5cc7441239269902a9d1735fd9ca0e2/libarchive/archive_read_support_format_rar.c#L3826&quot;&gt;libarchive&lt;/a&gt;:&lt;/p&gt;
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt;
+&lt;span class=&quot;nf&quot;&gt;execute_filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;archive_read&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;rar_filter&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;rar_virtual_machine&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;vm&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;size_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pos&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prog&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fingerprint&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x1D0E06077D&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;execute_filter_delta&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;vm&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prog&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fingerprint&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x35AD576887&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;execute_filter_e8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;vm&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pos&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prog&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fingerprint&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x393CD7E57E&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;execute_filter_e8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;vm&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pos&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prog&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fingerprint&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x951C2C5DC8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;execute_filter_rgb&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;vm&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prog&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fingerprint&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0xD8BC85E701&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;execute_filter_audio&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filter&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;vm&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+  &lt;span class=&quot;n&quot;&gt;archive_set_error&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;archive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ARCHIVE_ERRNO_FILE_FORMAT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;No support for RAR VM program filter&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;After RAR v5, filters became an enum type in the file format, making it possible to use only pre-defined filters. This can be observed in the &lt;a href=&quot;https://www.rarlab.com/rar_add.htm&quot;&gt;UnRAR source&lt;/a&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;enum&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FilterType&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;c1&quot;&gt;// These values must not be changed, because we use them directly&lt;/span&gt;
+  &lt;span class=&quot;c1&quot;&gt;// in RAR5 compression and decompression code.&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;FILTER_DELTA&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILTER_E8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILTER_E8E9&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILTER_ARM&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+  &lt;span class=&quot;n&quot;&gt;FILTER_AUDIO&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILTER_RGB&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILTER_ITANIUM&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FILTER_TEXT&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+  
+  &lt;span class=&quot;c1&quot;&gt;// These values can be changed.&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;FILTER_LONGRANGE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILTER_EXHAUSTIVE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FILTER_NONE&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h4 id=&quot;code-review&quot;&gt;Code Review&lt;/h4&gt;
+
+&lt;p&gt;The concept of filters is interesting, and the vulnerabilities that Microsoft found are also related to the filter. So, we conducted a code review of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_format_rar.c&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;After some time, we discovered a heap buffer overflow vulnerability in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;copy_from_lzss_window&lt;/code&gt;. The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;length&lt;/code&gt; parameter of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;copy_from_lzss_window&lt;/code&gt; is used directly in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;memcpy&lt;/code&gt; without any checks, while the buffer size is only 0x40004 bytes:
+&lt;img src=&quot;/assets/img/blog/20250212/57.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;From the places where &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;copy_from_lzss_window&lt;/code&gt; is called, it can be observed that the function is used to copy data into the VM memory:
+&lt;img src=&quot;/assets/img/blog/20250212/58.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The vulnerability itself is straightforward, but constructing a valid filter and data is a bit more complex. These elements are not immediately presented in the RAR file format, they are actually part of the data. Additionally, the data is encoded using Huffman coding, and it isn’t consumed byte by byte, but rather 7 bits at a time. Since this is not the focus of this article, we won’t delve into the details here, but we encourage readers to attempt reproducing the vulnerability.
+&lt;img src=&quot;/assets/img/blog/20250212/59.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The vulnerability is &lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-26256&quot;&gt;CVE-2024-26256&lt;/a&gt;. The reason it was not detected by fuzzing is straightforward: the data must be exactly the same size as the value of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;filter-&amp;gt;blocklength&lt;/code&gt;. However, fuzzers often trim files when their coverage is similar.&lt;/p&gt;
+
+&lt;h3 id=&quot;half-day-a-1-day-that-looks-like-a-0-day&quot;&gt;Half-Day: A 1-Day That Looks Like a 0-Day&lt;/h3&gt;
+
+&lt;p&gt;When we mentioned earlier the two vulnerabilities the Microsoft Offensive Research Security Engineering (MORSE) team reported, we said that constructing a PoC is a little complex. Perhaps someone immediately thought, “Why not check the GitHub repository of libarchive for test cases or commit messages?” Well, we did look—there was nothing.&lt;/p&gt;
+
+&lt;p&gt;Because, at that time, libarchive hadn’t even been patched yet, or perhaps no one even knew the vulnerabilities existed! We can see that Microsoft had already fixed the libarchive fork used in Windows back in January:
+&lt;img src=&quot;/assets/img/blog/20250212/60.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, the corresponding two patches for libarchive were merged in May and April, respectively:
+&lt;img src=&quot;/assets/img/blog/20250212/61.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Wouldn’t it mean that anyone who has been closely following Windows patches would immediately discover that there were two unpatched vulnerabilities in the libarchive upstream? These vulnerabilities would be considered 1-day for the Windows forked version of libarchive, because they have been discovered and patched. However, for libarchive upstream, they are 0-day, as no patch has been made, and the maintainers may even be unaware of the issue! We will refer to this situation as “0.5-day” or “Half-day” in the rest of the article.&lt;/p&gt;
+
+&lt;p&gt;So, we began searching for large projects that use libarchive. We wanted to simulate a “Half-day attack” scenario and also believed that vendors incorporating libarchive in their software would be more willing to help us urge libarchive to patch the vulnerabilities.&lt;/p&gt;
+
+&lt;h3 id=&quot;attacking-clickhouse&quot;&gt;Attacking ClickHouse&lt;/h3&gt;
+
+&lt;p&gt;After some investigation, we discovered that ClickHouse uses libarchive for decompression, which likely contains the vulnerable code. In ClickHouse, we can interact with the data inside the archive through the file table engine:
+&lt;img src=&quot;/assets/img/blog/20250212/62.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, the manual also mentions that ClickHouse only supports zip, tar, and 7z file formats:
+&lt;img src=&quot;/assets/img/blog/20250212/63.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;But is that really the case? Aside from zip, both tar and 7z in ClickHouse are implemented by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;TarArchiveReader&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SevenZipArchiveReader&lt;/code&gt;, both of which inherit from &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LibArchiveReader&lt;/code&gt;. The behavior of opening files with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LibArchiveReader&lt;/code&gt; is implemented in the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;open&lt;/code&gt; function. In the &lt;a href=&quot;https://github.com/ClickHouse/ClickHouse/blob/0bd3016a17dab23e64a7e550b2754ce7f7aa1d82/src/IO/Archives/LibArchiveReader.cpp#L150&quot;&gt;source code&lt;/a&gt;, you can see the familiar pattern:&lt;/p&gt;
+
+&lt;div class=&quot;language-cpp highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    &lt;span class=&quot;k&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;archive&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;open&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;path_to_archive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;auto&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;archive&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;archive_read_new&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;archive_read_support_filter_all&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;archive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;archive_read_support_format_all&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;archive&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Yes, ClickHouse also uses the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_format_all&lt;/code&gt; and the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_filter_all&lt;/code&gt; to initialize the libarchive, which means we can trigger the vulnerabilities relative to RAR! All we need to do next is have ClickHouse decompress the files for us. Although the current decompression feature allows direct access to files on S3, &lt;strong&gt;it could not be used this way at the time&lt;/strong&gt;:
+&lt;img src=&quot;/assets/img/blog/20250212/64.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;So, we must upload the file first. The following query will create a new table, which will be stored as a file:&lt;/p&gt;
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TABLE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FUNCTION&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;poc.7z&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;Native&apos;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;column1 String&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;VALUES&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;payload&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Even so, the file generated this way would include the table’s metadata. With the metadata present, we cannot make libarchive treat it as a RAR file, thus preventing the vulnerability from being triggered:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;00000000: 0101 0763 6f6c 756d 6e31 0653 7472 696e  ...column1.Strin
+00000010: 6707 7061 796c 6f61 64                   g.payload
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;We needed to look for formats in ClickHouse’s Output Data Formats that dont’ have metadata at the beginning of the file. We decided to use &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;TabSeparatedRaw&lt;/code&gt; because in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;TabSeparatedRaw&lt;/code&gt;:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Data is stored row by row.&lt;/li&gt;
+  &lt;li&gt;Data within a row is separated by tabs.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;For example, if using the following two queries:&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TABLE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FUNCTION&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;test.7z&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;TabSeparatedRaw&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;column1 String&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;VALUES&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;row1 string&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TABLE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FUNCTION&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;test.7z&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;TabSeparatedRaw&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;column1 String&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;VALUES&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;row2 string&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The content of the generated file would be:&lt;/p&gt;
+&lt;div class=&quot;language-text highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;row1 string
+row2 string
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Nonetheless, there is a constraint: the data cannot contain tabs or newlines.
+If we can overcome this, we can construct a valid RAR file! So, how can we avoid using tabs or newlines? It sounds complicated, but don’t forget that ClickHouse calls &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_filter_all&lt;/code&gt; to enable all filters for us! The one that fits the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;TabSeparatedRaw&lt;/code&gt; the most is UUencode. Data that has been UUencoded would look like this:&lt;/p&gt;
+
+&lt;div class=&quot;language-text highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;begin 600 exploit.rar.uu
+M4F%R(1H&apos;`,^0&amp;lt;P``#0````````!287(A&amp;amp;@&amp;lt;`SY!S```-`````````%VI=(&quot;0
+M,0&quot;VXP0`4,\+``(2&apos;^X4O1EY5QTU#``@````;7-V8W(Q,#`N9&amp;amp;QL`/#&amp;lt;ZFP8
+M(AE0S(EB&apos;!(&quot;,EM(4I0M-&quot;H*&quot;T6JBHJ!1$1T%IKHFBA0H*:(VV2VP)98R9+*
+M&quot;*`T&apos;I;&amp;amp;]1&amp;gt;J]&amp;gt;HZ!&amp;gt;KU4=(ZQTC:4VHB@J4WH2D-%--VSX9S);9IOO.9HF2E
+MH47O?/GG[Y^6LSGO/&amp;gt;&amp;gt;Z&amp;gt;&amp;gt;\]YJS!N3_(^_P3SS&quot;O\S`P+6&amp;lt;_V&apos;P(,#`P,#`B
+M.EX#-(,!V$Z07A+LVZ?4@K:RB=`NN&amp;lt;+9(IB&amp;lt;?NX``Y[L`3`P,#``,`&apos;/YCL*
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Finally, all we need to do next is UUEncode the original RAR payload and then upload it:&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;INSERT&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;INTO&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;TABLE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FUNCTION&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;poc.7z&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;TabSeparatedRaw&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;column1 String&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;VALUES&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;uu_encoded_rar_payload&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Ask ClickHouse to decompress it for us:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;SELECT * FROM file(&apos;poc.7z :: **&apos;, RawBLOB)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;That would successfully trigger the out-of-bounds write vulnerability:
+&lt;img src=&quot;/assets/img/blog/20250212/65.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We reported those issues to the Bug Bounty program of ClickHouse on Bugcrowd:
+&lt;img src=&quot;/assets/img/blog/20250212/66.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;ClickHouse quickly &lt;a href=&quot;https://github.com/ClickHouse/ClickHouse/commit/c8a3a0bb11ad1344fbb50b10f50f8eb2a962aa7f&quot;&gt;fixed&lt;/a&gt; the issue and was willing to help us urge libarchive to patch the vulnerabilities! While it’s unclear whether Microsoft informed the libarchive maintainers about the CVE-2024-20696 and CVE-2024-20697 vulnerabilities (since there’s no public information, and the &lt;a href=&quot;https://github.com/libarchive/libarchive/security/advisories?state=draft&quot;&gt;Security Advisories&lt;/a&gt; on libarchive’s GitHub repository have no relevant details), as we mentioned earlier, these two vulnerabilities, initially discovered by Microsoft in the forked version of libarchive, were eventually patched in libarchive in May and April, ending the awkward “Half-day”  situation.&lt;/p&gt;
+
+&lt;h3 id=&quot;issue-tracking&quot;&gt;Issue Tracking&lt;/h3&gt;
+
+&lt;p&gt;In addition to reporting the two “Half-day” vulnerabilities mentioned earlier, don’t forget that we also reported three other 0-day vulnerabilities, each of which is as follows:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;RCE fixed by Microsoft: CVE-2024-26256
+    &lt;ul&gt;
+      &lt;li&gt;Reported to libarhicve on 4/27&lt;/li&gt;
+      &lt;li&gt;Fixed on 8/14&lt;/li&gt;
+      &lt;li&gt;Closed on 9/28&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;OOB read in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;filter_audio&lt;/code&gt;
+    &lt;ul&gt;
+      &lt;li&gt;Reported to libarhicve on 3/20&lt;/li&gt;
+      &lt;li&gt;Fixed on 4/29&lt;/li&gt;
+      &lt;li&gt;Closed on 9/28&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;OOB read in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;filter_delta&lt;/code&gt;
+    &lt;ul&gt;
+      &lt;li&gt;Reported to libarhicve on 3/20&lt;/li&gt;
+      &lt;li&gt;Fixed on 4/29&lt;/li&gt;
+      &lt;li&gt;Closed on 9/28&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;After several months following the reports, these vulnerabilities were finally patched, by which time it was already September.
+&lt;img src=&quot;/assets/img/blog/20250212/67.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;the-half-day-cycle-of-repetition&quot;&gt;The “Half-day” Cycle of Repetition&lt;/h4&gt;
+
+&lt;p&gt;The most severe one is CVE-2024-26256, a vulnerability we reported to Microsoft, which was already patched on Windows in April.
+&lt;img src=&quot;/assets/img/blog/20250212/68.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When we reported the vulnerability CVE-2024-26256 in March, we asked MSRC whether they would submit the patch to libarchive’s GitHub repository, but we didn’t receive a response initially. After Microsoft patched CVE-2024-26256, we followed up to confirm if they had shared the vulnerability information with libarchive maintainers. MSRC replied, “If you wish, we encourage you to open a separate GitHub issue.” To avoid a “Half-day” situation, we immediately created an issue in libarchive’s Security Advisory after receiving their message:
+&lt;img src=&quot;/assets/img/blog/20250212/69.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, the “Half-day” situation still occurred due to a lack of response. In July, we submitted a PR to port Microsoft’s patch to libarchive. While we weren’t sure if this was the best fix, it was certainly better than leaving the issue unaddressed. As a result, history repeated itself, and we found ourselves stuck in a “Half-day” scenario again, from April until the patch was finally completed in September.&lt;/p&gt;
+
+&lt;h4 id=&quot;the-remaining-two-0-days&quot;&gt;The Remaining Two 0-Days&lt;/h4&gt;
+
+&lt;p&gt;Attentive readers may have already noticed that the issues we reported are not listed under the “Published” tab but rather under “Closed”:
+&lt;img src=&quot;/assets/img/blog/20250212/70.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In addition to CVE-2024-26256, which we mentioned earlier, the other two vulnerabilities are out-of-bounds read issues that had not been assigned CVE identifiers at the time. When a patch is linked to an existing CVE number, it is generally understood to be a security fix. However, the other two vulnerabilities were not publicly disclosed. Given that libarchive is widely used across many software applications and services, many users may be unaware they are relying on it. The dependency chains within such software can be large and intricate. If developers or end-users do not recognize that a patch addresses a security issue, the fix may propagate slowly through the dependency chain, significantly increasing the risk exposure.&lt;/p&gt;
+
+&lt;p&gt;As a result, after confirming that libarchive had closed the issue, we promptly applied for CVE identifiers for these vulnerabilities. The two vulnerabilities were assigned &lt;a href=&quot;https://github.com/advisories/GHSA-rmj4-vvpv-4m33&quot;&gt;CVE-2024-48957&lt;/a&gt; and &lt;a href=&quot;https://github.com/advisories/GHSA-9mw4-2ppr-4mcg&quot;&gt;CVE-2024-48958&lt;/a&gt;. By the time these were published, it was already October, six months after the patch had been released in April.&lt;/p&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;This article discusses the vulnerabilities and notable characteristics introduced when Windows adopted libarchive to support additional archive file formats.&lt;/p&gt;
+
+&lt;p&gt;We also successfully exploited what we consider “Half-day” vulnerabilities in ClickHouse. These “Half-day” vulnerabilities arise from the fact that after Windows forked libarchive and compiled it into the closed-source archiveint.dll, it failed to promptly inform the libarchive maintainers or contribute the patch back to the upstream repository, leading to the creation of the “Half-day” vulnerability.&lt;/p&gt;
+
+&lt;p&gt;The delayed fix in the upstream repository can be attributed to communication delays and the absence of a publicly available patch. The maintainers were only able to address the issue after receiving the report, by which point the forked version had already been patched. Therefore, after patching its forked version of libarchive, Microsoft should have not only notified the original maintainers but also submitted a Pull Request to the upstream repository to facilitate the fix.&lt;/p&gt;
+
+&lt;p&gt;Libarchive maintainers are volunteers who may be unpaid. The open-source ethos encourages everyone to “share, collaborate, and contribute” (and much more). Thus, we believe that researchers should not only provide vulnerability analysis and PoCs but also actively propose fixes to help preserve the security and quality of open-source software when reporting vulnerabilities.&lt;/p&gt;
+
+</content>
+ </entry>
  
  <entry>
    <title>WorstFit: Unveiling Hidden Transformers in Windows ANSI!</title>

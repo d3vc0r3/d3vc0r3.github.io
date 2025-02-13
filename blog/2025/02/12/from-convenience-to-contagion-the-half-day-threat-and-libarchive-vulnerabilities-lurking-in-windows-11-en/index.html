@@ -691,9 +691,9 @@ The <code class="language-plaintext highlighter-rouge">Extract All</code> will t
 
 <p>In fact, the <code class="language-plaintext highlighter-rouge">archive_read_support_format_all</code> function in libarchive enables support for a total of 13 archive formats, including ar, cpio, lha, mtree, tar, xar, warc, 7zip, cab, rar, rar5, iso9660, and zip; the <code class="language-plaintext highlighter-rouge">archive_read_support_filter_all</code> function in libarchive enables support for a total of 13 filters, including bzip2, compress, gzip, lzip, lzma, xz, uu, rpm, lrzip, lzop, grzip, lz4, zstd.</p>
 
-<p>In addition, format and filer can be used simultaneously. For example, the tar format and gzip filter should be enabled to support the <code class="language-plaintext highlighter-rouge">.tar.gz</code> file format. So, the total number of Windows’ natively supported file formats is $13+13+13 \times 13 = 195$ ?</p>
+<p>In addition, format and filer can be used simultaneously. For example, the tar format and gzip filter should be enabled to support the <code class="language-plaintext highlighter-rouge">.tar.gz</code> file format. So, the total number of Windows’ natively supported file formats is 13+13+13×13=195 ?</p>
 
-<p>Completely wrong! A maximum of 25 filters can be chained, e.g., <code class="language-plaintext highlighter-rouge">archive.rar.gzip.xz.uu.zstd.uu......</code>. That said, Windows 11 actually supports $13+13+13\times 13^{25}$ types of file formats, which equals <code class="language-plaintext highlighter-rouge">91733330193268616658399616035</code> formats! For free!</p>
+<p>Completely wrong! A maximum of 25 filters can be chained, e.g., <code class="language-plaintext highlighter-rouge">archive.rar.gzip.xz.uu.zstd.uu......</code>. That said, Windows 11 actually supports 13+13+13×13²⁵ types of file formats, which equals <code class="language-plaintext highlighter-rouge">91733330193268616658399616035</code> formats! For free!</p>
 
 <p><strong>As a result, the attack surface has significantly expanded after the update. Any vulnerability in a file format within libarchive can be triggered on Windows. Additionally, parsing multiple filters simultaneously could also introduce security weaknesses.</strong></p>
 
@@ -708,7 +708,8 @@ The <code class="language-plaintext highlighter-rouge">Extract All</code> will t
 <p>To understand the bug, let’s see how libarchive determines the file format for an archive. In <code class="language-plaintext highlighter-rouge">choose_format</code>, the <code class="language-plaintext highlighter-rouge">bid</code> function of the enabled formats is called, and the format whose <code class="language-plaintext highlighter-rouge">bid</code> returns the highest value is the one libarchive will treat the file as.
 <img src="/assets/img/blog/20250212/31.png" alt="" /></p>
 
-<p>Take <code class="language-plaintext highlighter-rouge">ar</code>’s <code class="language-plaintext highlighter-rouge">bid</code> function, <code class="language-plaintext highlighter-rouge">archive_read_format_ar_bid</code>, for example, if the beginning 8 bytes of an archive is <code class="language-plaintext highlighter-rouge">"!&lt;arch&gt;\n"</code>, the function will return 64, which should be derived from $8\ bits \times 8\ bytes = 64$:
+<p>Take <code class="language-plaintext highlighter-rouge">ar</code>’s <code class="language-plaintext highlighter-rouge">bid</code> function, <code class="language-plaintext highlighter-rouge">archive_read_format_ar_bid</code>, for example, if the beginning 8 bytes of an archive is <code class="language-plaintext highlighter-rouge">"!&lt;arch&gt;\n"</code>, the function will return 64, which should be derived from 8𝑏𝑖𝑡𝑠 × 8𝑏𝑦𝑡𝑒𝑠 = 64
+ :
 <img src="/assets/img/blog/20250212/32.png" alt="" /></p>
 
 <p>Next, the RAR format’s highest score is only 30. Although it’s unclear how the number was determined, if each file format is checked starting from the beginning of the file, it should be difficult to create a polyglot that would break this mechanism, right?
@@ -973,21 +974,21 @@ M.EX#-(,!V$Z07A+LVZ?4@K:RB=`NN&lt;+9(IB&lt;?NX``Y[L`3`P,#``,`'/YCL*
 <ol>
   <li>RCE fixed by Microsoft: CVE-2024-26256
     <ul>
-      <li>Reported to libarhicve on 4/27</li>
+      <li>Reported to libarchive on 4/27</li>
       <li>Fixed on 8/14</li>
       <li>Closed on 9/28</li>
     </ul>
   </li>
   <li>OOB read in <code class="language-plaintext highlighter-rouge">filter_audio</code>
     <ul>
-      <li>Reported to libarhicve on 3/20</li>
+      <li>Reported to libarchive on 3/20</li>
       <li>Fixed on 4/29</li>
       <li>Closed on 9/28</li>
     </ul>
   </li>
   <li>OOB read in <code class="language-plaintext highlighter-rouge">filter_delta</code>
     <ul>
-      <li>Reported to libarhicve on 3/20</li>
+      <li>Reported to libarchive on 3/20</li>
       <li>Fixed on 4/29</li>
       <li>Closed on 9/28</li>
     </ul>

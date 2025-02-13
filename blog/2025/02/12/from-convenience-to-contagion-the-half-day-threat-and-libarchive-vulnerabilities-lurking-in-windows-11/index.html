@@ -716,9 +716,9 @@
 
 <p>但實際上，<code class="language-plaintext highlighter-rouge">archive_read_support_format_all</code> 會啟用 libarchive 中 ar、cpio、lha、mtree、tar、xar、warc、7zip、cab、rar、rar5、iso9660、zip 等 13 種壓縮檔案格式；<code class="language-plaintext highlighter-rouge">archive_read_support_filter_all</code> 會啟用 libarchive 中 bzip2、compress、gzip、lzip、lzma、xz、uu、rpm、lrzip、lzop、grzip、lz4、zstd 等 13 種格式。</p>
 
-<p>由於 format 與 filter 可以同時使用，例如，支援 <code class="language-plaintext highlighter-rouge">.tar.gz</code> 格式即是同時啟用 format 中的 tar 與 filter 中的 gzip。所以實際上 Windows 11 支援了 $13+13+13 \times 13 = 195$ 種格式嗎？</p>
+<p>由於 format 與 filter 可以同時使用，例如，支援 <code class="language-plaintext highlighter-rouge">.tar.gz</code> 格式即是同時啟用 format 中的 tar 與 filter 中的 gzip。所以實際上 Windows 11 支援了 13+13+13×13=195 種格式嗎？</p>
 
-<p>大錯特錯，filter 最多可以串連 25 個，例如：<code class="language-plaintext highlighter-rouge">archive.rar.gzip.xz.uu.zstd.uu......</code> 也就是說 Windows 11 實際上支援了 $13+13+13\times 13^{25}$ 種格式，也就是 <code class="language-plaintext highlighter-rouge">91733330193268616658399616035</code> 種格式！佛心公司！佛心公司！</p>
+<p>大錯特錯，filter 最多可以串連 25 個，例如：<code class="language-plaintext highlighter-rouge">archive.rar.gzip.xz.uu.zstd.uu......</code> 也就是說 Windows 11 實際上支援了 13+13+13×13²⁵ 種格式，也就是 <code class="language-plaintext highlighter-rouge">91733330193268616658399616035</code> 種格式！佛心公司！佛心公司！</p>
 
 <p><strong>也因此，更新後的攻擊面大幅擴展。只要 libarchive 中的任一檔案格式存在漏洞，在 Windows 上都可以被觸發。此外，同時解析多種 filter 時，也可能存在安全弱點。相較於原本僅 11 種格式的情況，潛在風險已大幅增加。</strong></p>
 
@@ -733,7 +733,7 @@
 <p>為了理解原因，我們首先觀察一下 libarchive 是如何選定檔案格式的。libarchive 會在 <code class="language-plaintext highlighter-rouge">choose_format</code> 這個函式中，呼叫已啟用的 format 的 <code class="language-plaintext highlighter-rouge">bid</code> 函式，而哪個格式的 <code class="language-plaintext highlighter-rouge">bid</code> 回傳的數值最高，libarchive 就會將檔案當作該格式處理。
 <img src="/assets/img/blog/20250212/31.png" alt="" /></p>
 
-<p>以 <code class="language-plaintext highlighter-rouge">ar</code> 為例，如果檔案的起頭是 <code class="language-plaintext highlighter-rouge">"!&lt;arch&gt;\n"</code> 這 8 個字元，<code class="language-plaintext highlighter-rouge">archive_read_format_ar_bid</code> 就會回傳 64，推測是 $8 bits \times 8 個字元 = 64$，看起來好像挺有道理的。</p>
+<p>以 <code class="language-plaintext highlighter-rouge">ar</code> 為例，如果檔案的起頭是 <code class="language-plaintext highlighter-rouge">"!&lt;arch&gt;\n"</code> 這 8 個字元，<code class="language-plaintext highlighter-rouge">archive_read_format_ar_bid</code> 就會回傳 64，推測是 8𝑏𝑖𝑡𝑠 × 8𝑏𝑦𝑡𝑒𝑠 = 64，看起來好像挺有道理的。</p>
 
 <p><img src="/assets/img/blog/20250212/32.png" alt="" /></p>
 

@@ -4,7 +4,7 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2025-02-12T21:46:07+08:00</updated>
+ <updated>2025-04-02T20:46:47+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name></name>
@@ -181,9 +181,9 @@
 
 &lt;p&gt;但實際上，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_format_all&lt;/code&gt; 會啟用 libarchive 中 ar、cpio、lha、mtree、tar、xar、warc、7zip、cab、rar、rar5、iso9660、zip 等 13 種壓縮檔案格式；&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_filter_all&lt;/code&gt; 會啟用 libarchive 中 bzip2、compress、gzip、lzip、lzma、xz、uu、rpm、lrzip、lzop、grzip、lz4、zstd 等 13 種格式。&lt;/p&gt;
 
-&lt;p&gt;由於 format 與 filter 可以同時使用，例如，支援 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.tar.gz&lt;/code&gt; 格式即是同時啟用 format 中的 tar 與 filter 中的 gzip。所以實際上 Windows 11 支援了 $13+13+13 \times 13 = 195$ 種格式嗎？&lt;/p&gt;
+&lt;p&gt;由於 format 與 filter 可以同時使用，例如，支援 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.tar.gz&lt;/code&gt; 格式即是同時啟用 format 中的 tar 與 filter 中的 gzip。所以實際上 Windows 11 支援了 13+13+13×13=195 種格式嗎？&lt;/p&gt;
 
-&lt;p&gt;大錯特錯，filter 最多可以串連 25 個，例如：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive.rar.gzip.xz.uu.zstd.uu......&lt;/code&gt; 也就是說 Windows 11 實際上支援了 $13+13+13\times 13^{25}$ 種格式，也就是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;91733330193268616658399616035&lt;/code&gt; 種格式！佛心公司！佛心公司！&lt;/p&gt;
+&lt;p&gt;大錯特錯，filter 最多可以串連 25 個，例如：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive.rar.gzip.xz.uu.zstd.uu......&lt;/code&gt; 也就是說 Windows 11 實際上支援了 13+13+13×13²⁵ 種格式，也就是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;91733330193268616658399616035&lt;/code&gt; 種格式！佛心公司！佛心公司！&lt;/p&gt;
 
 &lt;p&gt;&lt;strong&gt;也因此，更新後的攻擊面大幅擴展。只要 libarchive 中的任一檔案格式存在漏洞，在 Windows 上都可以被觸發。此外，同時解析多種 filter 時，也可能存在安全弱點。相較於原本僅 11 種格式的情況，潛在風險已大幅增加。&lt;/strong&gt;&lt;/p&gt;
 
@@ -198,7 +198,7 @@
 &lt;p&gt;為了理解原因，我們首先觀察一下 libarchive 是如何選定檔案格式的。libarchive 會在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;choose_format&lt;/code&gt; 這個函式中，呼叫已啟用的 format 的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bid&lt;/code&gt; 函式，而哪個格式的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bid&lt;/code&gt; 回傳的數值最高，libarchive 就會將檔案當作該格式處理。
 &lt;img src=&quot;/assets/img/blog/20250212/31.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ar&lt;/code&gt; 為例，如果檔案的起頭是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;!&amp;lt;arch&amp;gt;\n&quot;&lt;/code&gt; 這 8 個字元，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_format_ar_bid&lt;/code&gt; 就會回傳 64，推測是 $8 bits \times 8 個字元 = 64$，看起來好像挺有道理的。&lt;/p&gt;
+&lt;p&gt;以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ar&lt;/code&gt; 為例，如果檔案的起頭是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;!&amp;lt;arch&amp;gt;\n&quot;&lt;/code&gt; 這 8 個字元，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_format_ar_bid&lt;/code&gt; 就會回傳 64，推測是 8𝑏𝑖𝑡𝑠 × 8𝑏𝑦𝑡𝑒𝑠 = 64，看起來好像挺有道理的。&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250212/32.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 
@@ -703,9 +703,9 @@ The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Extract A
 
 &lt;p&gt;In fact, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_format_all&lt;/code&gt; function in libarchive enables support for a total of 13 archive formats, including ar, cpio, lha, mtree, tar, xar, warc, 7zip, cab, rar, rar5, iso9660, and zip; the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_support_filter_all&lt;/code&gt; function in libarchive enables support for a total of 13 filters, including bzip2, compress, gzip, lzip, lzma, xz, uu, rpm, lrzip, lzop, grzip, lz4, zstd.&lt;/p&gt;
 
-&lt;p&gt;In addition, format and filer can be used simultaneously. For example, the tar format and gzip filter should be enabled to support the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.tar.gz&lt;/code&gt; file format. So, the total number of Windows’ natively supported file formats is $13+13+13 \times 13 = 195$ ?&lt;/p&gt;
+&lt;p&gt;In addition, format and filer can be used simultaneously. For example, the tar format and gzip filter should be enabled to support the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.tar.gz&lt;/code&gt; file format. So, the total number of Windows’ natively supported file formats is 13+13+13×13=195 ?&lt;/p&gt;
 
-&lt;p&gt;Completely wrong! A maximum of 25 filters can be chained, e.g., &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive.rar.gzip.xz.uu.zstd.uu......&lt;/code&gt;. That said, Windows 11 actually supports $13+13+13\times 13^{25}$ types of file formats, which equals &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;91733330193268616658399616035&lt;/code&gt; formats! For free!&lt;/p&gt;
+&lt;p&gt;Completely wrong! A maximum of 25 filters can be chained, e.g., &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive.rar.gzip.xz.uu.zstd.uu......&lt;/code&gt;. That said, Windows 11 actually supports 13+13+13×13²⁵ types of file formats, which equals &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;91733330193268616658399616035&lt;/code&gt; formats! For free!&lt;/p&gt;
 
 &lt;p&gt;&lt;strong&gt;As a result, the attack surface has significantly expanded after the update. Any vulnerability in a file format within libarchive can be triggered on Windows. Additionally, parsing multiple filters simultaneously could also introduce security weaknesses.&lt;/strong&gt;&lt;/p&gt;
 
@@ -720,7 +720,8 @@ The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Extract A
 &lt;p&gt;To understand the bug, let’s see how libarchive determines the file format for an archive. In &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;choose_format&lt;/code&gt;, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bid&lt;/code&gt; function of the enabled formats is called, and the format whose &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bid&lt;/code&gt; returns the highest value is the one libarchive will treat the file as.
 &lt;img src=&quot;/assets/img/blog/20250212/31.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;Take &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ar&lt;/code&gt;’s &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bid&lt;/code&gt; function, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_format_ar_bid&lt;/code&gt;, for example, if the beginning 8 bytes of an archive is &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;!&amp;lt;arch&amp;gt;\n&quot;&lt;/code&gt;, the function will return 64, which should be derived from $8\ bits \times 8\ bytes = 64$:
+&lt;p&gt;Take &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ar&lt;/code&gt;’s &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bid&lt;/code&gt; function, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;archive_read_format_ar_bid&lt;/code&gt;, for example, if the beginning 8 bytes of an archive is &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&quot;!&amp;lt;arch&amp;gt;\n&quot;&lt;/code&gt;, the function will return 64, which should be derived from 8𝑏𝑖𝑡𝑠 × 8𝑏𝑦𝑡𝑒𝑠 = 64
+ :
 &lt;img src=&quot;/assets/img/blog/20250212/32.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;Next, the RAR format’s highest score is only 30. Although it’s unclear how the number was determined, if each file format is checked starting from the beginning of the file, it should be difficult to create a polyglot that would break this mechanism, right?
@@ -985,21 +986,21 @@ M.EX#-(,!V$Z07A+LVZ?4@K:RB=`NN&amp;lt;+9(IB&amp;lt;?NX``Y[L`3`P,#``,`&apos;/YCL*
 &lt;ol&gt;
   &lt;li&gt;RCE fixed by Microsoft: CVE-2024-26256
     &lt;ul&gt;
-      &lt;li&gt;Reported to libarhicve on 4/27&lt;/li&gt;
+      &lt;li&gt;Reported to libarchive on 4/27&lt;/li&gt;
       &lt;li&gt;Fixed on 8/14&lt;/li&gt;
       &lt;li&gt;Closed on 9/28&lt;/li&gt;
     &lt;/ul&gt;
   &lt;/li&gt;
   &lt;li&gt;OOB read in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;filter_audio&lt;/code&gt;
     &lt;ul&gt;
-      &lt;li&gt;Reported to libarhicve on 3/20&lt;/li&gt;
+      &lt;li&gt;Reported to libarchive on 3/20&lt;/li&gt;
       &lt;li&gt;Fixed on 4/29&lt;/li&gt;
       &lt;li&gt;Closed on 9/28&lt;/li&gt;
     &lt;/ul&gt;
   &lt;/li&gt;
   &lt;li&gt;OOB read in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;filter_delta&lt;/code&gt;
     &lt;ul&gt;
-      &lt;li&gt;Reported to libarhicve on 3/20&lt;/li&gt;
+      &lt;li&gt;Reported to libarchive on 3/20&lt;/li&gt;
       &lt;li&gt;Fixed on 4/29&lt;/li&gt;
       &lt;li&gt;Closed on 9/28&lt;/li&gt;
     &lt;/ul&gt;

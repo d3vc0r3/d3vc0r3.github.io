@@ -1,0 +1,1135 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>關於分分鐘拿下整個網域，你還疏忽了什麼？ | DEVCORE 戴夫寇爾</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="本文分享我們在實戰上遇到 AD CS 的經驗以及特別的案例，並介紹 AD CS 的基本概念，希望讓企業與對 Active Directory 安全有興趣的讀者了解其重要性和潛在的風險。" />
+    <meta name="keywords" content="AD CS exploitation, Active Directory, ESCx, THEFTx, PERSISTx, DPERSISTx" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="關於分分鐘拿下整個網域，你還疏忽了什麼？ | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2025/04/10/taking-over-the-entire-domain-in-minutes-what-have-you-overlooked-in-active-directory/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20250410/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="關於分分鐘拿下整個網域，你還疏忽了什麼？ | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="本文分享我們在實戰上遇到 AD CS 的經驗以及特別的案例，並介紹 AD CS 的基本概念，希望讓企業與對 Active Directory 安全有興趣的讀者了解其重要性和潛在的風險。">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20250410/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2025/04/10/taking-over-the-entire-domain-in-minutes-what-have-you-overlooked-in-active-directory/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body>
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>服務<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    紅隊演練
+                                </h2>
+                                <p class="two-line">
+                                    在不影響企業營運前提下，無所不用其極，從各種進入點執行模擬入侵攻擊，達成企業指定的演練情境。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    滲透測試
+                                </h2>
+                                <p class="two-line">
+                                    以駭客思維及手法嘗試入侵企業指定系統，找出潛在漏洞，驗證企業資料與設備是否可被竊取或破壞。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    資安顧問服務
+                                </h2>
+                                <p class="two-line">
+                                    以紅隊演練為基礎，提供攻擊者視角與可能入侵路徑，協助企業評估資安資源優先順序，並擬定長期防禦策略。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    資安教育訓練
+                                </h2>
+                                <p class="two-line">
+                                    從攻擊思維出發，協助企業有效預防資安事故並防禦；以及事件發生時，如何快速判定攻擊目的、手法、漏洞與及應變方式。
+                                </p>
+                            </div>
+                        </a>
+
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>研究<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    總覽概要
+                                </h2>
+                                <p class="two-line">
+                                    持續精研資安最新技術及漏洞研究趨勢，全方位檢測企業產品安全性、吸取經驗並轉化為紅隊演練工具與手法。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    競賽與獎項
+                                </h2>
+                                <p class="two-line">
+                                    國際級資訊安全競賽獎項肯定。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    企業漏洞回報
+                                </h2>
+                                <p class="two-line">
+                                    研究企業系統中的資安風險及各種可能的突破口，並通報企業修補。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    國際研討會
+                                </h2>
+                                <p class="two-line">
+                                    參與全球資安盛會，發表、交流漏洞的知識與資訊。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE 漏洞列表
+                                </h2>
+                                <p class="two-line">
+                                    挖掘並回報國際知名產品與服務的重大漏洞。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>公司<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                公司簡介
+                            </h2>
+                            <p>
+                                DEVCORE 戴夫寇爾由世界級白帽駭客團隊創立，提供紅隊演練、滲透測試、資安顧問服務、資安教育訓練等服務。
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    團隊成員
+                                </h2>
+                                <p class="two-line">
+                                    由熱衷挑戰、具備駭客思維的資安專家組成，專注於創新攻擊手法研究，並以「高道德、高自律、高嚴謹」為最高指導原則。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    成就與沿革
+                                </h2>
+                                <p class="two-line">
+                                    長期聚焦於攻擊研究，屢屢獲邀參與全球知名資安研討會，已揭露數百個重要產品漏洞、協助企業提升防禦能量。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    企業社會責任
+                                </h2>
+                                <p class="two-line">
+                                    提供多元實習管道和研習計畫，提升新世代人才資安能量，推廣資訊安全意識。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    工作機會
+                                </h2>
+                                <p class="two-line">
+                                    加入 DEVCORE，共同改善資安產業結構，與我們一起打造更安全的世界。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>新聞<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    DEVCORE 最新消息。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    媒體素材下載
+                                </h2>
+                                <p>
+                                    使用 DEVCORE 商標須遵循的使用規範。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/search/">搜尋</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/contact/">聯絡我們</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>服務</span>
+                <div class="menuItem">
+                    <a href="/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                紅隊演練
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                滲透測試
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                顧問服務
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                教育訓練
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>資安研究</span>
+                <div class="menuItem">
+                    <a href="/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>總覽概要</h2>
+                        </div>
+                    </a>
+                    <a href="/research/awards/">
+                        <div class="item">
+                            <h2>競賽與獎項</h2>
+                        </div>
+                    </a>
+                    <a href="/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Bug Bounty</h2>
+                        </div>
+                    </a>
+                    <a href="/research/talks/">
+                        <div class="item">
+                            <h2>國際研討會</h2>
+                        </div>
+                    </a>
+                    <a href="/research/cve/">
+                        <div class="item">
+                            <h2>CVE 漏洞列表</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>公司</span>
+                <div class="menuItem">
+                    <a href="/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>公司簡介</h2>
+                        </div>
+                    </a>
+                    <a href="/company/our-team/">
+                        <div class="item">
+                            <h2>團隊成員</h2>
+                        </div>
+                    </a>
+                    <a href="/company/history/">
+                        <div class="item">
+                            <h2>成就與沿革</h2>
+                        </div>
+                    </a>
+                    <a href="/company/csr/">
+                        <div class="item">
+                            <h2>企業社會責任</h2>
+                        </div>
+                    </a>
+                    <a href="/company/jobs/">
+                        <div class="item">
+                            <h2>工作機會</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>新聞</span>
+                <div class="menuItem">
+                    <!-- <a href="/blog/">
+                    <div class="item">
+                        <h2>所有文章</h2>
+                    </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>案例剖析</h2>
+                        </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>科普文章</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>技術專欄</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>資安新聞</h2>
+                        </div>
+                    </a> -->
+                    <a href="/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/media-kit/">
+                        <div class="item">
+                            <h2>媒體素材下載</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                搜尋
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                聯絡我們
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/blog/">所有文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/最新消息/">最新消息</a>
+                </li>
+                <li>
+                    <a href="/blog/category/技術專欄/">技術專欄</a>
+                </li>
+                <li>
+                    <a href="/blog/category/科普文章/">科普文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/資安新聞/">資安新聞</a>
+                </li>
+                <li>
+                    <a href="/media-kit/">媒體素材下載</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                    <span class="tag">
+
+                      <a href="/blog/tag/DEVCORE CONF/">#DEVCORE CONF</a> <a href="/blog/tag/Red Team/">#Red Team</a> <a href="/blog/tag/Active Directory/">#Active Directory</a> 
+                    </span>
+                    <h1>
+                        關於分分鐘拿下整個網域，你還疏忽了什麼？
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/blog/author/xy">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/xy.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/blog/author/xy">XY</a></span>
+                        <span class="date">2025-04-10</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20250410/cover.png"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p>本篇基於強者我隊長 vtim 在 DEVCORE Conference 2024 的 talk「<a href="https://conf.devco.re/2024/keynote/DEVCORE-CONFERENCE-2024-Vtim-Taking-down-AD-in-minutes-things-that-you-missed-about-AD.pdf">分分鐘拿下整個網域 - 關於 AD，你還疏忽了什麼？</a>」。</p>
+
+<h2 id="tldr">TL;DR</h2>
+
+<p>本文分享我們在實戰上遇到 AD CS 的經驗以及特別的案例，並介紹 AD CS 的基本概念，希望讓企業與對 Active Directory 安全有興趣的讀者了解其重要性和潛在的風險。</p>
+
+<ul>
+  <li><a href="#什麼是-ad-cs">什麼是 AD CS？</a></li>
+  <li><a href="#實戰統計">實戰統計</a></li>
+  <li><a href="#一個漏洞的產生">一個漏洞的產生</a></li>
+  <li><a href="#網域風險">網域風險</a></li>
+  <li><a href="#案例分享">案例分享</a>
+    <ul>
+      <li><a href="#案例一esc8--esc3-like-escalation">案例一：ESC8 + ESC3-like Escalation</a></li>
+      <li><a href="#案例二沒有-135-port-的-esc11">案例二：沒有 135 port 的 ESC11</a></li>
+      <li><a href="#案例三撿到私鑰">案例三：撿到私鑰</a></li>
+    </ul>
+  </li>
+  <li><a href="#時間軸">時間軸</a></li>
+  <li><a href="#結語">結語</a></li>
+  <li><a href="#references">References</a></li>
+</ul>
+
+<h2 id="什麼是-ad-cs">什麼是 AD CS？</h2>
+
+<p>在企業中，管理內網大量主機一直都是系統管理員的一大挑戰。Microsoft 提供了 Active Directory 這個解決方案 (以下簡稱為 AD)，以階層式且集中化的架構來管理電腦、使用者及資源，它的方便性也因此成為許多企業愛用的內網管理工具。從 2017 年紅隊演練統計至今，我們約有 89.6% 的客戶使用 AD 作爲管理的解決方案。</p>
+
+<p>AD CS，全名為 Active Directory Certificate Services，是 Microsoft 提供在 AD 中作為可選用的 PKI 角色，用於憑證管理和頒發、身分驗證、加密傳輸等。AD CS 的 CA (Certificate Authority) 分為兩種模式：</p>
+
+<ul>
+  <li>Standalone CA</li>
+  <li>Enterprise CA -&gt; 本文要探討的配置</li>
+</ul>
+
+<p>Enterprise CA 模式會與 AD 整合，因此身分驗證及憑證權限等設定是和 AD 的身分綁定，也是企業通常採用的方式。</p>
+
+<p>談到 AD CS 的運作，憑證是透過憑證範本 (Certificate Templates) 來管理，它包含這張憑證的各種屬性如 Extended Key Usage (EKU)、加密方式、申請權限、有效時間等，企業可以根據需求建立不同的憑證範本。</p>
+
+<p>舉例來說，網域使用者申請 User 憑證要透過對 CA 發起 Certificate Signing Request (CSR)，並指定 User 憑證範本，這個過程中 CA 會驗證使用者的身分及權限，若允許則根據憑證範本的設定頒發憑證，使用者便能以這張憑證進行身分驗證存取網域內的資源：</p>
+
+<p><img src="/assets/img/blog/20250410/1.png" alt="" /></p>
+
+<p>然而 AD CS 的設定容易造成疏失，弱點會發生在 <strong>CA 及憑證範本的設定</strong>上。若攻擊者成功利用這些漏洞，可能導致網域中的高權限使用者的憑證被攻擊者取得並驗證成為這些身分，而得以存取網域中的機密資訊。加上<strong>變更密碼並無法讓憑證失效</strong>，必須直接撤銷該憑證，若不知道根因攻擊者還是可以以該身分存取網域！</p>
+
+<p>甚至攻擊者可取得根憑證的私鑰，偽造任意身分的憑證，除了可存取所有網域資源外也非常難以偵測，還需要撤銷根憑證才有辦法避免再被偽造。這代表網域中的憑證皆會失效，後果不堪設想。</p>
+
+<p>2021 年 SpectreOps 團隊整理了<a href="https://specterops.io/wp-content/uploads/sites/3/2022/06/Certified_Pre-Owned.pdf">白皮書 Certified Pre-Owned</a>，文中歸納了各種攻擊手法包括 (<code class="language-plaintext highlighter-rouge">x</code> 表示編號)：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">THEFTx</code> - 憑證竊取</li>
+  <li><code class="language-plaintext highlighter-rouge">PERSISTx</code> - 網域帳號權限維持</li>
+  <li><code class="language-plaintext highlighter-rouge">DPERSISTx</code> - 網域權限維持</li>
+  <li><code class="language-plaintext highlighter-rouge">ESCx</code> - 網域提權</li>
+</ul>
+
+<p>白皮書中也包括了防禦及偵測的建議，非常建議讀者閱讀～</p>
+
+<h2 id="實戰統計">實戰統計</h2>
+
+<p>截至 2025 年 1 月，我們發現在上百場紅隊演練中：</p>
+
+<ul>
+  <li>86.1% 企業有安裝 AD CS</li>
+  <li>這些企業中有 70.1% 存在不安全設定</li>
+  <li>不安全設定中 90.9% 可利用</li>
+</ul>
+
+<p>總計來說，裝有 AD CS 的 AD 中高達 54.9% 左右的比例可以<strong>直接取得網域最高權限</strong>，整個利用過程<strong>僅需數分鐘</strong>：</p>
+
+<p><img src="/assets/img/blog/20250410/2.png" alt="" /></p>
+
+<p>在這之中可以細分利用的手法，其中以 ESC1 發生的頻率最高：</p>
+
+<p><img src="/assets/img/blog/20250410/3.png" alt="" /></p>
+
+<p>你可能想問真的這麼容易發生嗎？接下來我們來看看一個常見的情境可能造成這樣的弱點。</p>
+
+<h2 id="一個漏洞的產生">一個漏洞的產生</h2>
+
+<p>想像你是一位 AD 管理員，今天內網網站的管理者説：「ㄟ！最近被通報網站會跳出連線不安全的警告，不處理會被電啦，幫我<strong>弄個憑證</strong>處理⼀下好嗎？」</p>
+
+<p>「喔對了，⼀些比較重要的伺服器有<strong>雙向驗證</strong>的需求，也⿇煩幫處理⼀下」</p>
+
+<p>於是你開啟 MMC.exe 進入憑證範本設定頁面：</p>
+
+<p><img src="/assets/img/blog/20250410/4.png" alt="" /></p>
+
+<p>預設的 <code class="language-plaintext highlighter-rouge">Web Server</code> 憑證範本的版本是 1，可設定的選項很少。你複製出一張新的範本來操作，創建了一個 <code class="language-plaintext highlighter-rouge">CORP Web Server</code> 的憑證範本並設定好有效的時間：</p>
+
+<p><img src="/assets/img/blog/20250410/5.png" alt="" /></p>
+
+<p><img src="/assets/img/blog/20250410/a.png" style="display:block;margin-left: auto;margin-right:auto;zoom:50%;" /></p>
+
+<p>為了要讓使用者可自行申請，所以加上申請權限：</p>
+
+<p><img src="/assets/img/blog/20250410/b.png" style="display:block;margin-left: auto;margin-right:auto;zoom:50%;" /></p>
+
+<p>內網管理者說他需要雙向驗證，而原本的憑證範本的 EKU 只有 <code class="language-plaintext highlighter-rouge">Server Authentication</code>，那就打開 <code class="language-plaintext highlighter-rouge">Client Authentication</code> 沒錯吧：</p>
+
+<p><img src="/assets/img/blog/20250410/c.png" style="display:block;margin-left: auto;margin-right:auto;zoom:50%;" /></p>
+
+<p>參考一下網路上憑證的設定，可以看到像是微軟官方網站 microsoft.com 的憑證也有 <code class="language-plaintext highlighter-rouge">Client Authentication</code> 和 <code class="language-plaintext highlighter-rouge">Server Authentication</code> 等 EKU，看起來設定非常完美：</p>
+
+<p><img src="/assets/img/blog/20250410/6.png" alt="" /></p>
+
+<p>最後在 CA 啟用該憑證範本：</p>
+
+<p><img src="/assets/img/blog/20250410/7.png" alt="" /></p>
+
+<p>這樣普通的流程卻造成了 ESC1，也就是我們案例中最常見的 AD CS 提權弱點。下列是以 <a href="https://github.com/ly4k/Certipy">certipy</a> 工具檢查的結果，滿足下列條件：</p>
+
+<ol>
+  <li>憑證範本啟用</li>
+  <li>允許申請者指定 <code class="language-plaintext highlighter-rouge">Subject Alternative Name</code> (SAN) 欄位 -&gt; <code class="language-plaintext highlighter-rouge">EnrolleeSuppliesSubject</code></li>
+  <li>憑證範本的 EKU 允許網域認證，例如 <code class="language-plaintext highlighter-rouge">Client Authentication</code>、<code class="language-plaintext highlighter-rouge">Smart Card Logon</code>、<code class="language-plaintext highlighter-rouge">Any Purpose</code>、<code class="language-plaintext highlighter-rouge">PKINIT Client Authentication</code> 或沒有 EKU</li>
+  <li>不需管理者授權申請</li>
+  <li>不需簽章</li>
+  <li>允許低權限使用者申請</li>
+</ol>
+
+<p><img src="/assets/img/blog/20250410/8.png" alt="" /></p>
+
+<p>簡單來說，由於 AD CS 會以 SAN 欄位來驗證使用者身分，因此若可以任意申請該憑證且指定 SAN，加上該憑證允許對網域認證時，申請者便能<strong>假扮為任意網域使用者</strong>進行身分驗證來提權。</p>
+
+<p>這樣簡單的設定疏失也非常容易發生在 AD CS 的各種地方，例如 CA 安裝了 Web Enrollment 等 HTTP 服務時就預設存在弱點 (ESC8)，也造成如此高比例安裝 AD CS 的企業存在這些不安全的設定。</p>
+
+<p>實戰上，我們也有遇到憑證範本只允許特定的群組申請，然而該群組卻沒有足夠的保護，導致攻擊者取得這些權限的成本不高，例如透過 Kerberoasting 等手法取得可申請憑證的帳號，<strong>僅僅多了一個步驟，同樣可達成網域接管</strong>；又或是開啟了管理員授權申請及拔掉了申請權限，但卻留下了寫入權限。在這個情境下，攻擊者仍可自行將權限寫入並移除管理者授權申請的設定，導致憑證範本仍可被利用來取得網域管理員權限。</p>
+
+<h2 id="網域風險">網域風險</h2>
+
+<p>多數企業會安裝一個網域樹系，再往下切分多個子網域進行管理，較少數會切出多個樹系，這樣的做法在資源存取上會有較多的限制，但同時提供了更好的保護得以將資源隔離，例如同個樹系下 CA 不需額外設定即可讓所有的網域使用該 PKI 架構，但也代表若該 CA 被入侵，將導致所有在該樹系的網域被攻擊者取得控制權。</p>
+
+<p>假設攻擊者取得任一個子網域的控制權限，對於整個樹系將會造成什麼樣的風險？通常我們會先利用 SID History Injection 等攻擊手法提權到根網域，但並不是每個網域環境皆可用，因為這個手法可能會被 SID Filtering 機制所阻擋。然而，若是企業中存在 AD CS，攻擊者可以修改 LDAP 的 Configuration Naming Context 中相關的 PKI 物件，進而影響整個樹系包含根網域，最終取得 Enterprise Admins 的憑證，詳細手法可參考 SpecterOps 團隊的技術文章 <a href="https://posts.specterops.io/from-da-to-ea-with-esc5-f9f045aa105c">From DA to EA with ESC5</a>：</p>
+
+<p><img src="/assets/img/blog/20250410/9.png" alt="" /></p>
+
+<p>更驚人的是，在網域樹系<strong>沒有 AD CS</strong> 的情境下，攻擊者可自行安裝 AD CS 提權到根網域！實際上兩個手法的原理其實是相同的，因為涵蓋整個樹系的設定除了子網域會從根網域向下同步外，也會向上同步，影響到根網域的設定達到提權的效果。</p>
+
+<p>至於多個樹系的情境下，一個網域樹系的 CA 被入侵也有可能導致其他樹系的淪陷，但前提必須有額外設定讓其他網域樹系信任該 CA：</p>
+
+<p><img src="/assets/img/blog/20250410/10.png" alt="" /></p>
+
+<p>如果其他網域樹系信任被入侵的 CA 的話，攻擊者可以簽任意憑證存取這些樹系，突破樹系的 security boundary。</p>
+
+<p>對於 AD CS 的部署，理想情況應將 root CA 離線，並用 subordinate CA 來頒發憑證，也就是兩階層以上的架構如 <a href="https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/dn786436(v=ws.11)">Securing PKI: Planning a CA Hierarchy</a> 文中所述。假設不幸的 subordinate CA 被入侵，還可透過撤銷其憑證來避免需要整個 PKI 重建的窘境。在多個樹系的架構，這樣的做法也可以讓損害不至於擴大到其他樹系。</p>
+
+<h2 id="案例分享">案例分享</h2>
+
+<p>在我們遇到的案例中，絕大多數情境都是可以直接利用，導致整個網域樹系在數分鐘內被取得最高權限。我們想分享幾個特別的例子；這些例子是已經經過一定程度的強化，無法直接利用或是不存在「定義」上的弱點，卻仍可被攻擊者間接利用，成功取得網域最高權限的案例。</p>
+
+<p>註：以下案例皆已去識別化。</p>
+
+<h3 id="案例一esc8--esc3-like-escalation">案例一：ESC8 + ESC3 like Escalation</h3>
+
+<p>在我們進入企業內網並取得網域帳號後，起手式當然先是 AD CS 的偵察，馬上掏出 certipy 工具：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>certipy find <span class="nt">-stdout</span> <span class="nt">-u</span> <span class="s1">'user@corp.local'</span>
+</code></pre></div></div>
+
+<p>結果顯示 <code class="language-plaintext highlighter-rouge">corp-CA01-CA</code> 這個 CA 存在 ESC8 弱點，該弱點爲 CA 的 HTTP 服務可被 relay，攻擊者可透過 coerce 手法例如 PetitPotam 強制讓 Domain Controller 等重要主機主動連線到攻擊者控制的機器，進而 relay 到 CA  的 HTTP 服務來取得憑證。</p>
+
+<p><img src="/assets/img/blog/20250410/11.png" alt="" /></p>
+
+<p>但 Domain Controller 可申請的憑證範本像是 <code class="language-plaintext highlighter-rouge">DomainController</code> 或 <code class="language-plaintext highlighter-rouge">Machine</code> 範本都沒有啟用在存在 ESC8 的 <code class="language-plaintext highlighter-rouge">corp-CA01-CA</code> 上 (如下圖)，因此需要其他方式進行利用：</p>
+
+<p><img src="/assets/img/blog/20250410/12.png" alt="" /></p>
+
+<p>這時候我們注意到可串連類似 ESC3 的利用鏈。ESC3 的弱點在於憑證範本具備 <code class="language-plaintext highlighter-rouge">Certificate Request Agent</code> EKU，當可成功申請這樣的憑證範本時，申請者可用申請到的憑證再以任意身分申請另一張憑證。從偵察結果，我們發現另一個網域 <code class="language-plaintext highlighter-rouge">child1.corp.local</code> 的一台機器  <code class="language-plaintext highlighter-rouge">ws01</code> 可申請下列 <code class="language-plaintext highlighter-rouge">Template1</code> 憑證，其滿足 Certified Pre-Owned 白皮書中除了申請權限之外的 ESC3 的第一張憑證範本條件：</p>
+
+<p><img src="/assets/img/blog/20250410/13.png" alt="" /></p>
+
+<p>透過 ESC8，我們利用 PetitPotam 手法讓 <code class="language-plaintext highlighter-rouge">ws01</code> 對我們控制的主機連線，進而 relay 到 <code class="language-plaintext highlighter-rouge">corp-CA01-CA</code> 申請 <code class="language-plaintext highlighter-rouge">Template1</code> 憑證。</p>
+
+<p>ESC3 第二張憑證範本的條件則可用另一個網域 <code class="language-plaintext highlighter-rouge">child2.corp.local</code> 的主機向 <code class="language-plaintext highlighter-rouge">corp-CA02-CA</code> 申請取得。因此在成功獲得 <code class="language-plaintext highlighter-rouge">Template1</code> 憑證後，藉由已控制的主機 <code class="language-plaintext highlighter-rouge">ws02.child2.corp.local</code> 以 Enterprise Admins 的身分申請 <code class="language-plaintext highlighter-rouge">Template2</code> 憑證範本，加上該憑證允許網域認證，確認獲得最高控制權。</p>
+
+<p><img src="/assets/img/blog/20250410/14.png" alt="" /></p>
+
+<p>你可能會想問為什麼不能直接申請 <code class="language-plaintext highlighter-rouge">Template2</code> 憑證，這是因為該憑證需要簽章，必須以帶有 <code class="language-plaintext highlighter-rouge">Certificate Request Agent</code> EKU 的憑證申請，也就是透過 ESC8 申請的 <code class="language-plaintext highlighter-rouge">Template1</code> 憑證。</p>
+
+<p>從這個案例中，雖然弱點在於 ESC8，且單獨的弱點無法造成太大影響，但我們仍可搭配其他憑證加上內網橫向移動獲得的成果，一步步地滿足條件，最終取得目標權限。</p>
+
+<h3 id="案例二沒有-135-port-的-esc11">案例二：沒有 135 port 的 ESC11</h3>
+
+<p>ESC11 與 ESC8 類似，皆為 relay 攻擊。差別在於 ESC8 relay 的目標是 CA 的 HTTP 服務，而 ESC11 則是因為用於憑證相關操作的 ICPR 協定沒有強制加密的設定造成，攻擊本身是 relay 到 RPC 的介面 (TCP 135 port 及相關的高 port 等)。</p>
+
+<p>執行滲透過程時，我們遇到 CA 的 135 port 無法連線，但 certipy 透過 445 port 存取 remote registry 可以確認存在 ESC11 弱點。然而正常 RPC 流程會透過 135 port 的 Endpoint Mapper 來確認 ICPR 所使用的動態 port 來進行溝通，下圖以 49783 port 為例：</p>
+
+<p><img src="/assets/img/blog/20250410/15.png" alt="" /></p>
+
+<p><strong>問題：能不能在不對 135 port 連線的狀況下，存取 ICPR 來成功 relay 請求進而取得憑證？</strong></p>
+
+<p>回頭檢視 RPC 機制，在進行 ICPR 溝通時，會需要先對這個介面做 binding 並帶上 ICPR 介面的 UUID。若該介面不是 ICPR 則 binding 會失敗。</p>
+
+<p>我們可以直接對所有可能且開啟的 RPC port 進行 ICPR binding，預設為範圍是 49152 ~ 65535，成功 binding 的話即為 ICPR 介面：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">impacket.dcerpc.v5</span> <span class="kn">import</span> <span class="n">transport</span>
+<span class="kn">from</span> <span class="nn">impacket.uuid</span> <span class="kn">import</span> <span class="n">uuidtup_to_bin</span>
+<span class="kn">from</span> <span class="nn">impacket.dcerpc.v5</span> <span class="kn">import</span> <span class="n">rpcrt</span>
+
+
+<span class="k">def</span> <span class="nf">icpr_check</span><span class="p">(</span><span class="n">target_ip</span><span class="p">,</span> <span class="n">port</span><span class="p">):</span>
+    <span class="n">MSRPC_UUID_ICPR</span> <span class="o">=</span> <span class="n">uuidtup_to_bin</span><span class="p">((</span><span class="s">"91ae6020-9e3c-11cf-8d7c-00aa00c091be"</span><span class="p">,</span> <span class="s">"0.0"</span><span class="p">))</span>
+
+    <span class="n">rpctransport</span> <span class="o">=</span> <span class="n">transport</span><span class="p">.</span><span class="n">DCERPCTransportFactory</span><span class="p">(</span><span class="sa">f</span><span class="s">"ncacn_ip_tcp:</span><span class="si">{</span><span class="n">target_ip</span><span class="si">}</span><span class="s">[</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s">]"</span><span class="p">)</span>
+    <span class="n">rpctransport</span><span class="p">.</span><span class="n">setRemoteHost</span><span class="p">(</span><span class="n">target_ip</span><span class="p">)</span>
+    <span class="n">rpctransport</span><span class="p">.</span><span class="n">set_connect_timeout</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">dce</span> <span class="o">=</span> <span class="n">rpctransport</span><span class="p">.</span><span class="n">get_dce_rpc</span><span class="p">()</span>
+    <span class="n">dce</span><span class="p">.</span><span class="n">set_auth_level</span><span class="p">(</span><span class="n">rpcrt</span><span class="p">.</span><span class="n">RPC_C_AUTHN_LEVEL_PKT_PRIVACY</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">dce</span><span class="p">.</span><span class="n">connect</span><span class="p">()</span>
+        <span class="n">dce</span><span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="n">MSRPC_UUID_ICPR</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">True</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+<span class="c1"># TODO: modify these variables
+</span><span class="n">ca_ip</span> <span class="o">=</span> <span class="s">"10.1.1.101"</span>
+<span class="n">open_ports</span> <span class="o">=</span> <span class="p">[</span><span class="mi">49664</span><span class="p">,</span> <span class="mi">49669</span><span class="p">,</span> <span class="mi">49670</span><span class="p">,</span> <span class="mi">49783</span><span class="p">,</span> <span class="mi">53661</span><span class="p">]</span>
+
+<span class="k">for</span> <span class="n">port</span> <span class="ow">in</span> <span class="n">open_ports</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="n">icpr_check</span><span class="p">(</span><span class="n">ca_ip</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>最後透過修改 <a href="https://github.com/ly4k/Certipy/blob/4.8.2/certipy/commands/relay.py#L137">certipy 程式碼</a>到對應的 port 及 CA 的 IP 如下即可成功 relay 並取得憑證達成網域提權：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="bp">self</span><span class="p">.</span><span class="n">stringbinding</span> <span class="o">=</span> <span class="s">"ncacn_ip_tcp:&lt;CA_IP&gt;[&lt;ICPR_PORT&gt;]"</span>
+</code></pre></div></div>
+
+<p>修改動態取得對應 port 的程式邏輯如附圖：</p>
+
+<p><img src="/assets/img/blog/20250410/16.png" alt="" /></p>
+
+<h3 id="案例三撿到私鑰">案例三：撿到私鑰</h3>
+
+<p>我們也曾遇過幾次在橫向移動的過程撿到 PFX 或 P12 憑證檔案，它出現在公開的 SMB share 或特定我們有取得權限的主機檔案系統中。</p>
+
+<p>在一次紅隊演練取得外網進入點並建立 Tunnel 後，發現 Domain Controller 有多個額外的 SMB 分享資料夾且允許網域使用者存取。我們透過取得的帳號開始翻找各種可能的高價值檔案。在這之中，看到幾個與 CA 名稱相關的 P12 檔案。直覺和經驗告訴我們，這可能是非常關鍵的檔案，便在取得檔案後以 John the Ripper 破解憑證檔案的密碼：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pfx2john corp-CA01-CA.p12 <span class="o">&gt;</span> <span class="nb">hash
+</span>john <span class="nt">--wordlist</span><span class="o">=</span>WORDLIST <span class="nb">hash</span>
+</code></pre></div></div>
+
+<p><img src="/assets/img/blog/20250410/17.png" alt="" /></p>
+
+<p>由於密碼強度不足，在成功破解後便能檢視其中的憑證資訊：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>openssl pkcs12 <span class="nt">-in</span> corp-CA01-CA.p12 <span class="nt">-nokeys</span> <span class="nt">-out</span> corp-CA01-CA.crt
+openssl x509 <span class="nt">-in</span> corp-CA01-CA.crt <span class="nt">-text</span> <span class="nt">-noout</span>
+</code></pre></div></div>
+
+<p>內容大致如下：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            23:23:8f:98:da:e5:21:95:4d:59:49:af:23:b4:47:34
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: DC=local, DC=corp, CN=corp-CA01-CA
+        Validity
+            Not Before: Dec  3 09:34:02 2024 GMT
+            Not After : Dec  3 09:44:02 2029 GMT
+        Subject: DC=local, DC=corp, CN=corp-CA01-CA
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (2048 bit)
+                Modulus:
+                    00:ba:1e:cb:84:ff:5c:9d:91:09:75:38:40:ee:7f:
+                    f7:1c:0b:bb:fd:91:81:f3:eb:07:3d:c9:93:39:a8:
+...SNIP...
+</code></pre></div></div>
+
+<p>從發行者 (Issuer) 及 Subject 可看出該憑證檔案對應到 AD CS 的 CA，便可嘗試以該私鑰偽造憑證並驗證身分：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>certipy cert <span class="nt">-pfx</span> corp-CA01-CA.p12 <span class="nt">-password</span> <span class="s1">'1qaz@WSX'</span> <span class="nt">-export</span> <span class="nt">-out</span> corp-CA01-CA-nopass.p12
+certipy forge <span class="nt">-ca-pfx</span> corp-CA01-CA-nopass.p12 <span class="nt">-upn</span> administrator@corp.local <span class="nt">-subject</span> <span class="s1">'CN=Administrator,CN=Users,DC=corp,DC=local'</span>
+
+certipy auth <span class="nt">-pfx</span> administrator_forged.pfx
+</code></pre></div></div>
+
+<p>最後經過 PKINIT 取得網域管理員的 NTHash 進行 Pass the Hash，成功偽造身分成爲 DA！</p>
+
+<p>這些情境常發生在備份時，匯出了憑證及私鑰，但卻沒有使用足夠複雜的密碼進行加密來保護，導致我們取得 root CA 及 Domain Controller 的私鑰等高權限的身分，因此可以任意偽造憑證或進行 DCSync 等操作進而取得整個網域的控制權。</p>
+
+<h2 id="時間軸">時間軸</h2>
+
+<p>以下整理從 2021 年 Certified Pre-Owned 白皮書發佈截至 2025 年 1 月的 AD CS 攻擊手法的演進：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>時間</th>
+      <th>攻擊手法</th>
+      <th>備註</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2021/06</td>
+      <td><a href="https://specterops.io/wp-content/uploads/sites/3/2022/06/Certified_Pre-Owned.pdf">Certified Pre-Owned</a> ESC1 ~ ESC8</td>
+      <td>歸納了 AD CS 的各種手法，包含提權、Persistence，還有防禦及偵測的建議</td>
+    </tr>
+    <tr>
+      <td>2021/06</td>
+      <td><a href="https://posts.specterops.io/shadow-credentials-abusing-key-trust-account-mapping-for-takeover-8ee1a53566ab">Shadow Credential</a></td>
+      <td>透過寫入帳號的 <code class="language-plaintext highlighter-rouge">msDS-KeyCredentialLink</code> 屬性來接管帳號的手法</td>
+    </tr>
+    <tr>
+      <td>2022/02</td>
+      <td><a href="https://research.ifcr.dk/certipy-2-0-bloodhound-new-escalations-shadow-credentials-golden-certificates-and-more-34d1c26f0dc6">Certipy 2.0</a></td>
+      <td>提到 certipy 新增的功能，以及一個簡潔的 ESC7 利用方式</td>
+    </tr>
+    <tr>
+      <td>2022/05</td>
+      <td><a href="https://research.ifcr.dk/certifried-active-directory-domain-privilege-escalation-cve-2022-26923-9e098fe298f4">Certifried: CVE-2022–26923</a></td>
+      <td>利用 <code class="language-plaintext highlighter-rouge">dNSHostName</code> 及憑證 mapping 的機制達成網域提權漏洞</td>
+    </tr>
+    <tr>
+      <td>2022/05</td>
+      <td><a href="https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16">KB5014754</a></td>
+      <td>該 patch 修復 Certifried 漏洞，但也讓 ESC6 失效</td>
+    </tr>
+    <tr>
+      <td>2022/08</td>
+      <td><a href="https://research.ifcr.dk/certipy-4-0-esc9-esc10-bloodhound-gui-new-authentication-and-request-methods-and-more-7237d88061f7">ESC9 &amp; ESC10</a></td>
+      <td>ESC6 失效後的延伸利用</td>
+    </tr>
+    <tr>
+      <td>2022/11</td>
+      <td><a href="https://posts.specterops.io/certificates-and-pwnage-and-patches-oh-my-8ae0f4304c1d">Certificates and Pwnage and Patches, Oh My!</a></td>
+      <td>提到前述手法的演進還有 patch 導致的一些利用技巧變化</td>
+    </tr>
+    <tr>
+      <td>2022/11</td>
+      <td><a href="https://blog.compass-security.com/2022/11/relaying-to-ad-certificate-services-over-rpc/?ref=heartburn.dev">ESC11</a></td>
+      <td>ICPR 未強制加密的設定導致可能的 relay 攻擊</td>
+    </tr>
+    <tr>
+      <td>2023/05</td>
+      <td><a href="https://posts.specterops.io/from-da-to-ea-with-esc5-f9f045aa105c">From DA to EA with ESC5</a></td>
+      <td>從 Domain Admins 提權到 Enterprise Admins 的方式</td>
+    </tr>
+    <tr>
+      <td>2023/10</td>
+      <td><a href="https://pkiblog.knobloch.info/esc12-shell-access-to-adcs-ca-with-yubihsm">ESC12</a></td>
+      <td>CA 若使用 YubiHSM2 ，可登入 CA 的使用者有機會取得解密的金鑰進而提升權限</td>
+    </tr>
+    <tr>
+      <td>2024/02</td>
+      <td><a href="https://posts.specterops.io/adcs-esc13-abuse-technique-fda4272fbd53">ESC13</a></td>
+      <td>憑證範本若存在 issuance policy 且有相應的 OID group link 時的利用手法</td>
+    </tr>
+    <tr>
+      <td>2024/02</td>
+      <td><a href="https://posts.specterops.io/adcs-esc14-abuse-technique-333a004dc2b9">ESC14</a></td>
+      <td>透過寫入 <code class="language-plaintext highlighter-rouge">altSecurityIdentities</code> 可達成帳號接管，並詳細解釋了 certificate mapping 的機制</td>
+    </tr>
+    <tr>
+      <td>2024/11</td>
+      <td><a href="https://trustedsec.com/blog/ekuwu-not-just-another-ad-cs-esc">ESC15 EKUwu</a> CVE-2024-49019</td>
+      <td>發生在預設的舊版憑證範本使用者可添加自訂的 Application Policies，僅需申請權限便可提權</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="結語">結語</h2>
+
+<ul>
+  <li>AD CS 應納入 <strong>Tier 0 保護</strong>，每個細節會影響你的網域安全，包含備份操作等。企業藍隊應考慮：
+    <ul>
+      <li>定期檢核所有憑證範本</li>
+      <li>停用所有廢棄的憑證範本</li>
+      <li>檢核憑證範本權限設定</li>
+      <li>高風險憑證啟用管理員授權申請</li>
+    </ul>
+  </li>
+  <li><strong>網路隔離很重要</strong>，僅允許需要的連線，可大幅縮小攻擊面及駭客可活動的空間</li>
+  <li>單一的防禦機制並不一定能杜絕入侵，應<strong>思考是否有可能的方式</strong>可以繞過防禦限制，或是讓我們幫你想吧！</li>
+</ul>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://conf.devco.re/2024/keynote/DEVCORE-CONFERENCE-2024-Vtim-Taking-down-AD-in-minutes-things-that-you-missed-about-AD.pdf">分分鐘拿下整個網域: 關於 AD，你還疏忽了什麼？</a></li>
+  <li><a href="https://specterops.io/wp-content/uploads/sites/3/2022/06/Certified_Pre-Owned.pdf">Certified Pre-Owned: Abusing Active Directory Certificate Services</a></li>
+  <li><a href="https://posts.specterops.io/from-da-to-ea-with-esc5-f9f045aa105c">From DA to EA with ESC5</a></li>
+  <li><a href="https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/dn786436(v=ws.11)">Securing PKI: Planning a CA Hierarchy</a></li>
+  <li><a href="https://posts.specterops.io/shadow-credentials-abusing-key-trust-account-mapping-for-takeover-8ee1a53566ab">Shadow Credentials: Abusing Key Trust Account Mapping for Account Takeover</a></li>
+  <li><a href="https://research.ifcr.dk/certipy-2-0-bloodhound-new-escalations-shadow-credentials-golden-certificates-and-more-34d1c26f0dc6">Certipy 2.0: BloodHound, New Escalations, Shadow Credentials, Golden Certificates, and more!</a></li>
+  <li><a href="https://research.ifcr.dk/certifried-active-directory-domain-privilege-escalation-cve-2022-26923-9e098fe298f4">Certifried: Active Directory Domain Privilege Escalation (CVE-2022–26923)</a></li>
+  <li><a href="https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16">KB5014754: Certificate-based authentication changes on Windows domain controllers</a></li>
+  <li><a href="https://research.ifcr.dk/certipy-4-0-esc9-esc10-bloodhound-gui-new-authentication-and-request-methods-and-more-7237d88061f7">Certipy 4.0: ESC9 &amp; ESC10, BloodHound GUI, New Authentication and Request Methods — and more!</a></li>
+  <li><a href="https://posts.specterops.io/certificates-and-pwnage-and-patches-oh-my-8ae0f4304c1d">Certificates and Pwnage and Patches, Oh My!</a></li>
+  <li><a href="https://blog.compass-security.com/2022/11/relaying-to-ad-certificate-services-over-rpc/?ref=heartburn.dev">Relaying to AD Certificate Services over RPC</a></li>
+  <li><a href="https://pkiblog.knobloch.info/esc12-shell-access-to-adcs-ca-with-yubihsm">ESC12 – Shell access to ADCS CA with YubiHSM</a></li>
+  <li><a href="https://posts.specterops.io/adcs-esc13-abuse-technique-fda4272fbd53">ADCS ESC13 Abuse Technique</a></li>
+  <li><a href="https://posts.specterops.io/adcs-esc14-abuse-technique-333a004dc2b9">ADCS ESC14 Abuse Technique</a></li>
+  <li><a href="https://trustedsec.com/blog/ekuwu-not-just-another-ad-cs-esc">EKUwu: Not just another AD CS ESC</a></li>
+</ul>
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/blog/author/xy">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/xy.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/blog/author/xy">
+                            <h3>XY</h3>
+                        </a>
+                        <span>Red Team Specialist</span>
+                        <p>
+                            一位熱愛資安技術的實踐家
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+        <!-- 相關文章 -->
+        <section class="recommand articles-list">
+            <div class="container">
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/DEVCORE CONF/">#DEVCORE CONF</a> <a href="/blog/tag/Red Team/">#Red Team</a> <a href="/blog/tag/Active Directory/">#Active Directory</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2025/04/10/taking-over-the-entire-domain-in-minutes-what-have-you-overlooked-in-active-directory/">關於分分鐘拿下整個網域，你還疏忽了什麼？</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/xy">
+                            <h3>XY</h3>
+                        </a>
+                    
+                        <span class="date">2025-04-10</span>
+                        <p class="line-litmit-3">本文分享我們在實戰上遇到 AD CS 的經驗以及特別的案例，並介紹 AD CS 的基本概念，希望讓企業與對 Active Directory 安全有興趣的讀者了解其重要性和潛在的風險。
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/blog/tag/Windows/">#Windows</a> <a href="/blog/tag/Advisory/">#Advisory</a> <a href="/blog/tag/CVE/">#CVE</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2025/02/12/from-convenience-to-contagion-the-half-day-threat-and-libarchive-vulnerabilities-lurking-in-windows-11/">全境擴散：從 Windows 11 到 Libarchive 的 Half-Day 威脅與全面影響</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/terrynini">
+                            <h3>Terrynini</h3>
+                        </a>
+                    
+                        <span class="date">2025-02-12</span>
+                        <p class="line-litmit-3">Windows 11 的 KB5031455 更新讓檔案總管支援 RAR、7z 等格式，看似提升便利性，卻暗藏資安隱患。DEVCORE 研究組發現 libarchive 存在多個漏洞，包括 Heap Buffer Overflow、任意檔案寫入與刪除，而修補機制的延遲更導致「Half-day」攻擊風險。攻擊者可藉此影響如 ClickHouse 等廣泛使用 libarchive 的專案。Windows 真的變得更方便，還是埋下了更大的風險？
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/最新消息">最新消息</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> <a href="/blog/tag/徵才/">#徵才</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2024/12/02/7th-internship-program-recruit/">DEVCORE 2025 第七屆實習生計畫</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2024-12-02</span>
+                        <p class="line-litmit-3">DEVCORE 第七屆實習生計畫開始，計畫目的希望能培育人才、增強新世代的資安技能，如果您對這個計畫有興趣，歡迎來信報名！
+                        </p>
+                    </div>
+                </article>
+              
+
+            </div>
+        </section>
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">服務</h6>
+        <ul>
+            <li><a href="/services/red-team/">紅隊演練</a></li>
+            <li><a href="/services/penetration-test/">滲透測試</a></li>
+            <li><a href="/services/security-consulting/">資安顧問服務</a></li>
+            <li><a href="/services/security-training/">資安教育訓練</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">研究</h6>
+        <ul>
+            <li><a href="/research/overview/">總覽概要</a></li>
+            <li><a href="/research/awards/">競賽與獎項</a></li>
+            <li><a href="/research/bug-bounty/">企業漏洞回報</a></li>
+            <li><a href="/research/talks/">國際研討會</a></li>
+            <li><a href="/research/cve/">CVE 漏洞列表</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">公司</h6>
+        <ul>
+            <li><a href="/company/about/">公司簡介</a></li>
+            <li><a href="/company/our-team/">團隊成員</a></li>
+            <li><a href="/company/history/">成就與沿革</a></li>
+            <li><a href="/company/csr/">企業社會責任</a></li>
+            <li><a href="/company/jobs/">工作機會</a></li>
+            <li><a href="/contact/">聯絡我們</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">新聞</h6>
+        <ul>
+            <li><a href="/blog/">BLOG</a></li>
+            <li><a href="/media-kit/">媒體素材下載</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2025 DEVCORE 戴夫寇爾股份有限公司. <b class="line-block">All rights reserved.</b></span>
+            <span><a href="/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+

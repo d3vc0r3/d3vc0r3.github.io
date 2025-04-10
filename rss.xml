@@ -4,11 +4,419 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 紅隊演練服務、滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Wed, 02 Apr 2025 20:46:47 +0800</lastBuildDate>
-        <pubDate>Wed, 02 Apr 2025 20:46:47 +0800</pubDate>
+        <lastBuildDate>Thu, 10 Apr 2025 21:23:26 +0900</lastBuildDate>
+        <pubDate>Thu, 10 Apr 2025 21:23:26 +0900</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>關於分分鐘拿下整個網域，你還疏忽了什麼？</title>
+                <description>&lt;p&gt;本篇基於強者我隊長 vtim 在 DEVCORE Conference 2024 的 talk「&lt;a href=&quot;https://conf.devco.re/2024/keynote/DEVCORE-CONFERENCE-2024-Vtim-Taking-down-AD-in-minutes-things-that-you-missed-about-AD.pdf&quot;&gt;分分鐘拿下整個網域 - 關於 AD，你還疏忽了什麼？&lt;/a&gt;」。&lt;/p&gt;
+
+&lt;h2 id=&quot;tldr&quot;&gt;TL;DR&lt;/h2&gt;
+
+&lt;p&gt;本文分享我們在實戰上遇到 AD CS 的經驗以及特別的案例，並介紹 AD CS 的基本概念，希望讓企業與對 Active Directory 安全有興趣的讀者了解其重要性和潛在的風險。&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;#什麼是-ad-cs&quot;&gt;什麼是 AD CS？&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#實戰統計&quot;&gt;實戰統計&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#一個漏洞的產生&quot;&gt;一個漏洞的產生&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#網域風險&quot;&gt;網域風險&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#案例分享&quot;&gt;案例分享&lt;/a&gt;
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;#案例一esc8--esc3-like-escalation&quot;&gt;案例一：ESC8 + ESC3-like Escalation&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;#案例二沒有-135-port-的-esc11&quot;&gt;案例二：沒有 135 port 的 ESC11&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;#案例三撿到私鑰&quot;&gt;案例三：撿到私鑰&lt;/a&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#時間軸&quot;&gt;時間軸&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#結語&quot;&gt;結語&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#references&quot;&gt;References&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;什麼是-ad-cs&quot;&gt;什麼是 AD CS？&lt;/h2&gt;
+
+&lt;p&gt;在企業中，管理內網大量主機一直都是系統管理員的一大挑戰。Microsoft 提供了 Active Directory 這個解決方案 (以下簡稱為 AD)，以階層式且集中化的架構來管理電腦、使用者及資源，它的方便性也因此成為許多企業愛用的內網管理工具。從 2017 年紅隊演練統計至今，我們約有 89.6% 的客戶使用 AD 作爲管理的解決方案。&lt;/p&gt;
+
+&lt;p&gt;AD CS，全名為 Active Directory Certificate Services，是 Microsoft 提供在 AD 中作為可選用的 PKI 角色，用於憑證管理和頒發、身分驗證、加密傳輸等。AD CS 的 CA (Certificate Authority) 分為兩種模式：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Standalone CA&lt;/li&gt;
+  &lt;li&gt;Enterprise CA -&amp;gt; 本文要探討的配置&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Enterprise CA 模式會與 AD 整合，因此身分驗證及憑證權限等設定是和 AD 的身分綁定，也是企業通常採用的方式。&lt;/p&gt;
+
+&lt;p&gt;談到 AD CS 的運作，憑證是透過憑證範本 (Certificate Templates) 來管理，它包含這張憑證的各種屬性如 Extended Key Usage (EKU)、加密方式、申請權限、有效時間等，企業可以根據需求建立不同的憑證範本。&lt;/p&gt;
+
+&lt;p&gt;舉例來說，網域使用者申請 User 憑證要透過對 CA 發起 Certificate Signing Request (CSR)，並指定 User 憑證範本，這個過程中 CA 會驗證使用者的身分及權限，若允許則根據憑證範本的設定頒發憑證，使用者便能以這張憑證進行身分驗證存取網域內的資源：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;然而 AD CS 的設定容易造成疏失，弱點會發生在 &lt;strong&gt;CA 及憑證範本的設定&lt;/strong&gt;上。若攻擊者成功利用這些漏洞，可能導致網域中的高權限使用者的憑證被攻擊者取得並驗證成為這些身分，而得以存取網域中的機密資訊。加上&lt;strong&gt;變更密碼並無法讓憑證失效&lt;/strong&gt;，必須直接撤銷該憑證，若不知道根因攻擊者還是可以以該身分存取網域！&lt;/p&gt;
+
+&lt;p&gt;甚至攻擊者可取得根憑證的私鑰，偽造任意身分的憑證，除了可存取所有網域資源外也非常難以偵測，還需要撤銷根憑證才有辦法避免再被偽造。這代表網域中的憑證皆會失效，後果不堪設想。&lt;/p&gt;
+
+&lt;p&gt;2021 年 SpectreOps 團隊整理了&lt;a href=&quot;https://specterops.io/wp-content/uploads/sites/3/2022/06/Certified_Pre-Owned.pdf&quot;&gt;白皮書 Certified Pre-Owned&lt;/a&gt;，文中歸納了各種攻擊手法包括 (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;x&lt;/code&gt; 表示編號)：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;THEFTx&lt;/code&gt; - 憑證竊取&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PERSISTx&lt;/code&gt; - 網域帳號權限維持&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DPERSISTx&lt;/code&gt; - 網域權限維持&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ESCx&lt;/code&gt; - 網域提權&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;白皮書中也包括了防禦及偵測的建議，非常建議讀者閱讀～&lt;/p&gt;
+
+&lt;h2 id=&quot;實戰統計&quot;&gt;實戰統計&lt;/h2&gt;
+
+&lt;p&gt;截至 2025 年 1 月，我們發現在上百場紅隊演練中：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;86.1% 企業有安裝 AD CS&lt;/li&gt;
+  &lt;li&gt;這些企業中有 70.1% 存在不安全設定&lt;/li&gt;
+  &lt;li&gt;不安全設定中 90.9% 可利用&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;總計來說，裝有 AD CS 的 AD 中高達 54.9% 左右的比例可以&lt;strong&gt;直接取得網域最高權限&lt;/strong&gt;，整個利用過程&lt;strong&gt;僅需數分鐘&lt;/strong&gt;：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在這之中可以細分利用的手法，其中以 ESC1 發生的頻率最高：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;你可能想問真的這麼容易發生嗎？接下來我們來看看一個常見的情境可能造成這樣的弱點。&lt;/p&gt;
+
+&lt;h2 id=&quot;一個漏洞的產生&quot;&gt;一個漏洞的產生&lt;/h2&gt;
+
+&lt;p&gt;想像你是一位 AD 管理員，今天內網網站的管理者説：「ㄟ！最近被通報網站會跳出連線不安全的警告，不處理會被電啦，幫我&lt;strong&gt;弄個憑證&lt;/strong&gt;處理⼀下好嗎？」&lt;/p&gt;
+
+&lt;p&gt;「喔對了，⼀些比較重要的伺服器有&lt;strong&gt;雙向驗證&lt;/strong&gt;的需求，也⿇煩幫處理⼀下」&lt;/p&gt;
+
+&lt;p&gt;於是你開啟 MMC.exe 進入憑證範本設定頁面：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;預設的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Web Server&lt;/code&gt; 憑證範本的版本是 1，可設定的選項很少。你複製出一張新的範本來操作，創建了一個 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CORP Web Server&lt;/code&gt; 的憑證範本並設定好有效的時間：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/a.png&quot; style=&quot;display:block;margin-left: auto;margin-right:auto;zoom:50%;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;為了要讓使用者可自行申請，所以加上申請權限：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/b.png&quot; style=&quot;display:block;margin-left: auto;margin-right:auto;zoom:50%;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;內網管理者說他需要雙向驗證，而原本的憑證範本的 EKU 只有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Server Authentication&lt;/code&gt;，那就打開 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Client Authentication&lt;/code&gt; 沒錯吧：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/c.png&quot; style=&quot;display:block;margin-left: auto;margin-right:auto;zoom:50%;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;參考一下網路上憑證的設定，可以看到像是微軟官方網站 microsoft.com 的憑證也有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Client Authentication&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Server Authentication&lt;/code&gt; 等 EKU，看起來設定非常完美：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;最後在 CA 啟用該憑證範本：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這樣普通的流程卻造成了 ESC1，也就是我們案例中最常見的 AD CS 提權弱點。下列是以 &lt;a href=&quot;https://github.com/ly4k/Certipy&quot;&gt;certipy&lt;/a&gt; 工具檢查的結果，滿足下列條件：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;憑證範本啟用&lt;/li&gt;
+  &lt;li&gt;允許申請者指定 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Subject Alternative Name&lt;/code&gt; (SAN) 欄位 -&amp;gt; &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;EnrolleeSuppliesSubject&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;憑證範本的 EKU 允許網域認證，例如 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Client Authentication&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Smart Card Logon&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Any Purpose&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PKINIT Client Authentication&lt;/code&gt; 或沒有 EKU&lt;/li&gt;
+  &lt;li&gt;不需管理者授權申請&lt;/li&gt;
+  &lt;li&gt;不需簽章&lt;/li&gt;
+  &lt;li&gt;允許低權限使用者申請&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/8.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;簡單來說，由於 AD CS 會以 SAN 欄位來驗證使用者身分，因此若可以任意申請該憑證且指定 SAN，加上該憑證允許對網域認證時，申請者便能&lt;strong&gt;假扮為任意網域使用者&lt;/strong&gt;進行身分驗證來提權。&lt;/p&gt;
+
+&lt;p&gt;這樣簡單的設定疏失也非常容易發生在 AD CS 的各種地方，例如 CA 安裝了 Web Enrollment 等 HTTP 服務時就預設存在弱點 (ESC8)，也造成如此高比例安裝 AD CS 的企業存在這些不安全的設定。&lt;/p&gt;
+
+&lt;p&gt;實戰上，我們也有遇到憑證範本只允許特定的群組申請，然而該群組卻沒有足夠的保護，導致攻擊者取得這些權限的成本不高，例如透過 Kerberoasting 等手法取得可申請憑證的帳號，&lt;strong&gt;僅僅多了一個步驟，同樣可達成網域接管&lt;/strong&gt;；又或是開啟了管理員授權申請及拔掉了申請權限，但卻留下了寫入權限。在這個情境下，攻擊者仍可自行將權限寫入並移除管理者授權申請的設定，導致憑證範本仍可被利用來取得網域管理員權限。&lt;/p&gt;
+
+&lt;h2 id=&quot;網域風險&quot;&gt;網域風險&lt;/h2&gt;
+
+&lt;p&gt;多數企業會安裝一個網域樹系，再往下切分多個子網域進行管理，較少數會切出多個樹系，這樣的做法在資源存取上會有較多的限制，但同時提供了更好的保護得以將資源隔離，例如同個樹系下 CA 不需額外設定即可讓所有的網域使用該 PKI 架構，但也代表若該 CA 被入侵，將導致所有在該樹系的網域被攻擊者取得控制權。&lt;/p&gt;
+
+&lt;p&gt;假設攻擊者取得任一個子網域的控制權限，對於整個樹系將會造成什麼樣的風險？通常我們會先利用 SID History Injection 等攻擊手法提權到根網域，但並不是每個網域環境皆可用，因為這個手法可能會被 SID Filtering 機制所阻擋。然而，若是企業中存在 AD CS，攻擊者可以修改 LDAP 的 Configuration Naming Context 中相關的 PKI 物件，進而影響整個樹系包含根網域，最終取得 Enterprise Admins 的憑證，詳細手法可參考 SpecterOps 團隊的技術文章 &lt;a href=&quot;https://posts.specterops.io/from-da-to-ea-with-esc5-f9f045aa105c&quot;&gt;From DA to EA with ESC5&lt;/a&gt;：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;更驚人的是，在網域樹系&lt;strong&gt;沒有 AD CS&lt;/strong&gt; 的情境下，攻擊者可自行安裝 AD CS 提權到根網域！實際上兩個手法的原理其實是相同的，因為涵蓋整個樹系的設定除了子網域會從根網域向下同步外，也會向上同步，影響到根網域的設定達到提權的效果。&lt;/p&gt;
+
+&lt;p&gt;至於多個樹系的情境下，一個網域樹系的 CA 被入侵也有可能導致其他樹系的淪陷，但前提必須有額外設定讓其他網域樹系信任該 CA：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;如果其他網域樹系信任被入侵的 CA 的話，攻擊者可以簽任意憑證存取這些樹系，突破樹系的 security boundary。&lt;/p&gt;
+
+&lt;p&gt;對於 AD CS 的部署，理想情況應將 root CA 離線，並用 subordinate CA 來頒發憑證，也就是兩階層以上的架構如 &lt;a href=&quot;https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/dn786436(v=ws.11)&quot;&gt;Securing PKI: Planning a CA Hierarchy&lt;/a&gt; 文中所述。假設不幸的 subordinate CA 被入侵，還可透過撤銷其憑證來避免需要整個 PKI 重建的窘境。在多個樹系的架構，這樣的做法也可以讓損害不至於擴大到其他樹系。&lt;/p&gt;
+
+&lt;h2 id=&quot;案例分享&quot;&gt;案例分享&lt;/h2&gt;
+
+&lt;p&gt;在我們遇到的案例中，絕大多數情境都是可以直接利用，導致整個網域樹系在數分鐘內被取得最高權限。我們想分享幾個特別的例子；這些例子是已經經過一定程度的強化，無法直接利用或是不存在「定義」上的弱點，卻仍可被攻擊者間接利用，成功取得網域最高權限的案例。&lt;/p&gt;
+
+&lt;p&gt;註：以下案例皆已去識別化。&lt;/p&gt;
+
+&lt;h3 id=&quot;案例一esc8--esc3-like-escalation&quot;&gt;案例一：ESC8 + ESC3 like Escalation&lt;/h3&gt;
+
+&lt;p&gt;在我們進入企業內網並取得網域帳號後，起手式當然先是 AD CS 的偵察，馬上掏出 certipy 工具：&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;certipy find &lt;span class=&quot;nt&quot;&gt;-stdout&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-u&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;user@corp.local&apos;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;結果顯示 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;corp-CA01-CA&lt;/code&gt; 這個 CA 存在 ESC8 弱點，該弱點爲 CA 的 HTTP 服務可被 relay，攻擊者可透過 coerce 手法例如 PetitPotam 強制讓 Domain Controller 等重要主機主動連線到攻擊者控制的機器，進而 relay 到 CA  的 HTTP 服務來取得憑證。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但 Domain Controller 可申請的憑證範本像是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DomainController&lt;/code&gt; 或 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Machine&lt;/code&gt; 範本都沒有啟用在存在 ESC8 的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;corp-CA01-CA&lt;/code&gt; 上 (如下圖)，因此需要其他方式進行利用：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;這時候我們注意到可串連類似 ESC3 的利用鏈。ESC3 的弱點在於憑證範本具備 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Certificate Request Agent&lt;/code&gt; EKU，當可成功申請這樣的憑證範本時，申請者可用申請到的憑證再以任意身分申請另一張憑證。從偵察結果，我們發現另一個網域 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;child1.corp.local&lt;/code&gt; 的一台機器  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ws01&lt;/code&gt; 可申請下列 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Template1&lt;/code&gt; 憑證，其滿足 Certified Pre-Owned 白皮書中除了申請權限之外的 ESC3 的第一張憑證範本條件：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;透過 ESC8，我們利用 PetitPotam 手法讓 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ws01&lt;/code&gt; 對我們控制的主機連線，進而 relay 到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;corp-CA01-CA&lt;/code&gt; 申請 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Template1&lt;/code&gt; 憑證。&lt;/p&gt;
+
+&lt;p&gt;ESC3 第二張憑證範本的條件則可用另一個網域 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;child2.corp.local&lt;/code&gt; 的主機向 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;corp-CA02-CA&lt;/code&gt; 申請取得。因此在成功獲得 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Template1&lt;/code&gt; 憑證後，藉由已控制的主機 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ws02.child2.corp.local&lt;/code&gt; 以 Enterprise Admins 的身分申請 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Template2&lt;/code&gt; 憑證範本，加上該憑證允許網域認證，確認獲得最高控制權。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;你可能會想問為什麼不能直接申請 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Template2&lt;/code&gt; 憑證，這是因為該憑證需要簽章，必須以帶有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Certificate Request Agent&lt;/code&gt; EKU 的憑證申請，也就是透過 ESC8 申請的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Template1&lt;/code&gt; 憑證。&lt;/p&gt;
+
+&lt;p&gt;從這個案例中，雖然弱點在於 ESC8，且單獨的弱點無法造成太大影響，但我們仍可搭配其他憑證加上內網橫向移動獲得的成果，一步步地滿足條件，最終取得目標權限。&lt;/p&gt;
+
+&lt;h3 id=&quot;案例二沒有-135-port-的-esc11&quot;&gt;案例二：沒有 135 port 的 ESC11&lt;/h3&gt;
+
+&lt;p&gt;ESC11 與 ESC8 類似，皆為 relay 攻擊。差別在於 ESC8 relay 的目標是 CA 的 HTTP 服務，而 ESC11 則是因為用於憑證相關操作的 ICPR 協定沒有強制加密的設定造成，攻擊本身是 relay 到 RPC 的介面 (TCP 135 port 及相關的高 port 等)。&lt;/p&gt;
+
+&lt;p&gt;執行滲透過程時，我們遇到 CA 的 135 port 無法連線，但 certipy 透過 445 port 存取 remote registry 可以確認存在 ESC11 弱點。然而正常 RPC 流程會透過 135 port 的 Endpoint Mapper 來確認 ICPR 所使用的動態 port 來進行溝通，下圖以 49783 port 為例：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;問題：能不能在不對 135 port 連線的狀況下，存取 ICPR 來成功 relay 請求進而取得憑證？&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;回頭檢視 RPC 機制，在進行 ICPR 溝通時，會需要先對這個介面做 binding 並帶上 ICPR 介面的 UUID。若該介面不是 ICPR 則 binding 會失敗。&lt;/p&gt;
+
+&lt;p&gt;我們可以直接對所有可能且開啟的 RPC port 進行 ICPR binding，預設為範圍是 49152 ~ 65535，成功 binding 的話即為 ICPR 介面：&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;impacket.dcerpc.v5&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;transport&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;impacket.uuid&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;uuidtup_to_bin&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;impacket.dcerpc.v5&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rpcrt&lt;/span&gt;
+
+
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;icpr_check&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;target_ip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;port&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;MSRPC_UUID_ICPR&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;uuidtup_to_bin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;91ae6020-9e3c-11cf-8d7c-00aa00c091be&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;0.0&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;rpctransport&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;transport&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;DCERPCTransportFactory&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sa&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;ncacn_ip_tcp:&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;target_ip&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;port&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;]&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;rpctransport&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setRemoteHost&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;target_ip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;rpctransport&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;set_connect_timeout&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;dce&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rpctransport&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get_dce_rpc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;dce&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;set_auth_level&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rpcrt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;RPC_C_AUTHN_LEVEL_PKT_PRIVACY&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+    &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;dce&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;connect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;dce&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bind&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;MSRPC_UUID_ICPR&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;except&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;False&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;# TODO: modify these variables
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ca_ip&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;10.1.1.101&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;open_ports&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;49664&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;49669&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;49670&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;49783&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;53661&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;port&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;open_ports&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;port&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;icpr_check&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ca_ip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;port&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;最後透過修改 &lt;a href=&quot;https://github.com/ly4k/Certipy/blob/4.8.2/certipy/commands/relay.py#L137&quot;&gt;certipy 程式碼&lt;/a&gt;到對應的 port 及 CA 的 IP 如下即可成功 relay 並取得憑證達成網域提權：&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stringbinding&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;ncacn_ip_tcp:&amp;lt;CA_IP&amp;gt;[&amp;lt;ICPR_PORT&amp;gt;]&quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;修改動態取得對應 port 的程式邏輯如附圖：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;案例三撿到私鑰&quot;&gt;案例三：撿到私鑰&lt;/h3&gt;
+
+&lt;p&gt;我們也曾遇過幾次在橫向移動的過程撿到 PFX 或 P12 憑證檔案，它出現在公開的 SMB share 或特定我們有取得權限的主機檔案系統中。&lt;/p&gt;
+
+&lt;p&gt;在一次紅隊演練取得外網進入點並建立 Tunnel 後，發現 Domain Controller 有多個額外的 SMB 分享資料夾且允許網域使用者存取。我們透過取得的帳號開始翻找各種可能的高價值檔案。在這之中，看到幾個與 CA 名稱相關的 P12 檔案。直覺和經驗告訴我們，這可能是非常關鍵的檔案，便在取得檔案後以 John the Ripper 破解憑證檔案的密碼：&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;pfx2john corp-CA01-CA.p12 &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;hash
+&lt;/span&gt;john &lt;span class=&quot;nt&quot;&gt;--wordlist&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;WORDLIST &lt;span class=&quot;nb&quot;&gt;hash&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250410/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;由於密碼強度不足，在成功破解後便能檢視其中的憑證資訊：&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;openssl pkcs12 &lt;span class=&quot;nt&quot;&gt;-in&lt;/span&gt; corp-CA01-CA.p12 &lt;span class=&quot;nt&quot;&gt;-nokeys&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-out&lt;/span&gt; corp-CA01-CA.crt
+openssl x509 &lt;span class=&quot;nt&quot;&gt;-in&lt;/span&gt; corp-CA01-CA.crt &lt;span class=&quot;nt&quot;&gt;-text&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-noout&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;內容大致如下：&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            23:23:8f:98:da:e5:21:95:4d:59:49:af:23:b4:47:34
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: DC=local, DC=corp, CN=corp-CA01-CA
+        Validity
+            Not Before: Dec  3 09:34:02 2024 GMT
+            Not After : Dec  3 09:44:02 2029 GMT
+        Subject: DC=local, DC=corp, CN=corp-CA01-CA
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (2048 bit)
+                Modulus:
+                    00:ba:1e:cb:84:ff:5c:9d:91:09:75:38:40:ee:7f:
+                    f7:1c:0b:bb:fd:91:81:f3:eb:07:3d:c9:93:39:a8:
+...SNIP...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;從發行者 (Issuer) 及 Subject 可看出該憑證檔案對應到 AD CS 的 CA，便可嘗試以該私鑰偽造憑證並驗證身分：&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;certipy cert &lt;span class=&quot;nt&quot;&gt;-pfx&lt;/span&gt; corp-CA01-CA.p12 &lt;span class=&quot;nt&quot;&gt;-password&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;1qaz@WSX&apos;&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-export&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-out&lt;/span&gt; corp-CA01-CA-nopass.p12
+certipy forge &lt;span class=&quot;nt&quot;&gt;-ca-pfx&lt;/span&gt; corp-CA01-CA-nopass.p12 &lt;span class=&quot;nt&quot;&gt;-upn&lt;/span&gt; administrator@corp.local &lt;span class=&quot;nt&quot;&gt;-subject&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;CN=Administrator,CN=Users,DC=corp,DC=local&apos;&lt;/span&gt;
+
+certipy auth &lt;span class=&quot;nt&quot;&gt;-pfx&lt;/span&gt; administrator_forged.pfx
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;最後經過 PKINIT 取得網域管理員的 NTHash 進行 Pass the Hash，成功偽造身分成爲 DA！&lt;/p&gt;
+
+&lt;p&gt;這些情境常發生在備份時，匯出了憑證及私鑰，但卻沒有使用足夠複雜的密碼進行加密來保護，導致我們取得 root CA 及 Domain Controller 的私鑰等高權限的身分，因此可以任意偽造憑證或進行 DCSync 等操作進而取得整個網域的控制權。&lt;/p&gt;
+
+&lt;h2 id=&quot;時間軸&quot;&gt;時間軸&lt;/h2&gt;
+
+&lt;p&gt;以下整理從 2021 年 Certified Pre-Owned 白皮書發佈截至 2025 年 1 月的 AD CS 攻擊手法的演進：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;時間&lt;/th&gt;
+      &lt;th&gt;攻擊手法&lt;/th&gt;
+      &lt;th&gt;備註&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/06&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://specterops.io/wp-content/uploads/sites/3/2022/06/Certified_Pre-Owned.pdf&quot;&gt;Certified Pre-Owned&lt;/a&gt; ESC1 ~ ESC8&lt;/td&gt;
+      &lt;td&gt;歸納了 AD CS 的各種手法，包含提權、Persistence，還有防禦及偵測的建議&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2021/06&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://posts.specterops.io/shadow-credentials-abusing-key-trust-account-mapping-for-takeover-8ee1a53566ab&quot;&gt;Shadow Credential&lt;/a&gt;&lt;/td&gt;
+      &lt;td&gt;透過寫入帳號的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;msDS-KeyCredentialLink&lt;/code&gt; 屬性來接管帳號的手法&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2022/02&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://research.ifcr.dk/certipy-2-0-bloodhound-new-escalations-shadow-credentials-golden-certificates-and-more-34d1c26f0dc6&quot;&gt;Certipy 2.0&lt;/a&gt;&lt;/td&gt;
+      &lt;td&gt;提到 certipy 新增的功能，以及一個簡潔的 ESC7 利用方式&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2022/05&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://research.ifcr.dk/certifried-active-directory-domain-privilege-escalation-cve-2022-26923-9e098fe298f4&quot;&gt;Certifried: CVE-2022–26923&lt;/a&gt;&lt;/td&gt;
+      &lt;td&gt;利用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;dNSHostName&lt;/code&gt; 及憑證 mapping 的機制達成網域提權漏洞&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2022/05&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16&quot;&gt;KB5014754&lt;/a&gt;&lt;/td&gt;
+      &lt;td&gt;該 patch 修復 Certifried 漏洞，但也讓 ESC6 失效&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2022/08&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://research.ifcr.dk/certipy-4-0-esc9-esc10-bloodhound-gui-new-authentication-and-request-methods-and-more-7237d88061f7&quot;&gt;ESC9 &amp;amp; ESC10&lt;/a&gt;&lt;/td&gt;
+      &lt;td&gt;ESC6 失效後的延伸利用&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2022/11&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://posts.specterops.io/certificates-and-pwnage-and-patches-oh-my-8ae0f4304c1d&quot;&gt;Certificates and Pwnage and Patches, Oh My!&lt;/a&gt;&lt;/td&gt;
+      &lt;td&gt;提到前述手法的演進還有 patch 導致的一些利用技巧變化&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2022/11&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://blog.compass-security.com/2022/11/relaying-to-ad-certificate-services-over-rpc/?ref=heartburn.dev&quot;&gt;ESC11&lt;/a&gt;&lt;/td&gt;
+      &lt;td&gt;ICPR 未強制加密的設定導致可能的 relay 攻擊&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2023/05&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://posts.specterops.io/from-da-to-ea-with-esc5-f9f045aa105c&quot;&gt;From DA to EA with ESC5&lt;/a&gt;&lt;/td&gt;
+      &lt;td&gt;從 Domain Admins 提權到 Enterprise Admins 的方式&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2023/10&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://pkiblog.knobloch.info/esc12-shell-access-to-adcs-ca-with-yubihsm&quot;&gt;ESC12&lt;/a&gt;&lt;/td&gt;
+      &lt;td&gt;CA 若使用 YubiHSM2 ，可登入 CA 的使用者有機會取得解密的金鑰進而提升權限&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/02&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://posts.specterops.io/adcs-esc13-abuse-technique-fda4272fbd53&quot;&gt;ESC13&lt;/a&gt;&lt;/td&gt;
+      &lt;td&gt;憑證範本若存在 issuance policy 且有相應的 OID group link 時的利用手法&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/02&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://posts.specterops.io/adcs-esc14-abuse-technique-333a004dc2b9&quot;&gt;ESC14&lt;/a&gt;&lt;/td&gt;
+      &lt;td&gt;透過寫入 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;altSecurityIdentities&lt;/code&gt; 可達成帳號接管，並詳細解釋了 certificate mapping 的機制&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2024/11&lt;/td&gt;
+      &lt;td&gt;&lt;a href=&quot;https://trustedsec.com/blog/ekuwu-not-just-another-ad-cs-esc&quot;&gt;ESC15 EKUwu&lt;/a&gt; CVE-2024-49019&lt;/td&gt;
+      &lt;td&gt;發生在預設的舊版憑證範本使用者可添加自訂的 Application Policies，僅需申請權限便可提權&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2 id=&quot;結語&quot;&gt;結語&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;AD CS 應納入 &lt;strong&gt;Tier 0 保護&lt;/strong&gt;，每個細節會影響你的網域安全，包含備份操作等。企業藍隊應考慮：
+    &lt;ul&gt;
+      &lt;li&gt;定期檢核所有憑證範本&lt;/li&gt;
+      &lt;li&gt;停用所有廢棄的憑證範本&lt;/li&gt;
+      &lt;li&gt;檢核憑證範本權限設定&lt;/li&gt;
+      &lt;li&gt;高風險憑證啟用管理員授權申請&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;網路隔離很重要&lt;/strong&gt;，僅允許需要的連線，可大幅縮小攻擊面及駭客可活動的空間&lt;/li&gt;
+  &lt;li&gt;單一的防禦機制並不一定能杜絕入侵，應&lt;strong&gt;思考是否有可能的方式&lt;/strong&gt;可以繞過防禦限制，或是讓我們幫你想吧！&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;references&quot;&gt;References&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://conf.devco.re/2024/keynote/DEVCORE-CONFERENCE-2024-Vtim-Taking-down-AD-in-minutes-things-that-you-missed-about-AD.pdf&quot;&gt;分分鐘拿下整個網域: 關於 AD，你還疏忽了什麼？&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://specterops.io/wp-content/uploads/sites/3/2022/06/Certified_Pre-Owned.pdf&quot;&gt;Certified Pre-Owned: Abusing Active Directory Certificate Services&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://posts.specterops.io/from-da-to-ea-with-esc5-f9f045aa105c&quot;&gt;From DA to EA with ESC5&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/dn786436(v=ws.11)&quot;&gt;Securing PKI: Planning a CA Hierarchy&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://posts.specterops.io/shadow-credentials-abusing-key-trust-account-mapping-for-takeover-8ee1a53566ab&quot;&gt;Shadow Credentials: Abusing Key Trust Account Mapping for Account Takeover&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://research.ifcr.dk/certipy-2-0-bloodhound-new-escalations-shadow-credentials-golden-certificates-and-more-34d1c26f0dc6&quot;&gt;Certipy 2.0: BloodHound, New Escalations, Shadow Credentials, Golden Certificates, and more!&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://research.ifcr.dk/certifried-active-directory-domain-privilege-escalation-cve-2022-26923-9e098fe298f4&quot;&gt;Certifried: Active Directory Domain Privilege Escalation (CVE-2022–26923)&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16&quot;&gt;KB5014754: Certificate-based authentication changes on Windows domain controllers&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://research.ifcr.dk/certipy-4-0-esc9-esc10-bloodhound-gui-new-authentication-and-request-methods-and-more-7237d88061f7&quot;&gt;Certipy 4.0: ESC9 &amp;amp; ESC10, BloodHound GUI, New Authentication and Request Methods — and more!&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://posts.specterops.io/certificates-and-pwnage-and-patches-oh-my-8ae0f4304c1d&quot;&gt;Certificates and Pwnage and Patches, Oh My!&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://blog.compass-security.com/2022/11/relaying-to-ad-certificate-services-over-rpc/?ref=heartburn.dev&quot;&gt;Relaying to AD Certificate Services over RPC&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://pkiblog.knobloch.info/esc12-shell-access-to-adcs-ca-with-yubihsm&quot;&gt;ESC12 – Shell access to ADCS CA with YubiHSM&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://posts.specterops.io/adcs-esc13-abuse-technique-fda4272fbd53&quot;&gt;ADCS ESC13 Abuse Technique&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://posts.specterops.io/adcs-esc14-abuse-technique-333a004dc2b9&quot;&gt;ADCS ESC14 Abuse Technique&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://trustedsec.com/blog/ekuwu-not-just-another-ad-cs-esc&quot;&gt;EKUwu: Not just another AD CS ESC&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+                <link>https://devco.re/blog/2025/04/10/taking-over-the-entire-domain-in-minutes-what-have-you-overlooked-in-active-directory/</link>
+                <guid>https://devco.re/blog/2025/04/10/taking-over-the-entire-domain-in-minutes-what-have-you-overlooked-in-active-directory</guid>
+                <pubDate>Thu, 10 Apr 2025 00:00:00 +0900</pubDate>
+        </item>
 
         <item>
                 <title>全境擴散：從 Windows 11 到 Libarchive 的 Half-Day 威脅與全面影響</title>
@@ -520,7 +928,7 @@ M.EX#-(,!V$Z07A+LVZ?4@K:RB=`NN&amp;lt;+9(IB&amp;lt;?NX``Y[L`3`P,#``,`&apos;/YCL*
 </description>
                 <link>https://devco.re/blog/2025/02/12/from-convenience-to-contagion-the-half-day-threat-and-libarchive-vulnerabilities-lurking-in-windows-11/</link>
                 <guid>https://devco.re/blog/2025/02/12/from-convenience-to-contagion-the-half-day-threat-and-libarchive-vulnerabilities-lurking-in-windows-11</guid>
-                <pubDate>Wed, 12 Feb 2025 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 12 Feb 2025 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -1037,7 +1445,7 @@ M.EX#-(,!V$Z07A+LVZ?4@K:RB=`NN&amp;lt;+9(IB&amp;lt;?NX``Y[L`3`P,#``,`&apos;/YCL*
 </description>
                 <link>https://devco.re/blog/2025/02/12/from-convenience-to-contagion-the-half-day-threat-and-libarchive-vulnerabilities-lurking-in-windows-11-en/</link>
                 <guid>https://devco.re/blog/2025/02/12/from-convenience-to-contagion-the-half-day-threat-and-libarchive-vulnerabilities-lurking-in-windows-11-en</guid>
-                <pubDate>Wed, 12 Feb 2025 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 12 Feb 2025 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -1843,7 +2251,7 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2025/01/09/worstfit-unveiling-hidden-transformers-in-windows-ansi/</link>
                 <guid>https://devco.re/blog/2025/01/09/worstfit-unveiling-hidden-transformers-in-windows-ansi</guid>
-                <pubDate>Thu, 09 Jan 2025 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 09 Jan 2025 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -2060,7 +2468,7 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2024/12/02/7th-internship-program-recruit/</link>
                 <guid>https://devco.re/blog/2024/12/02/7th-internship-program-recruit</guid>
-                <pubDate>Mon, 02 Dec 2024 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 02 Dec 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -2355,7 +2763,7 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2/</link>
                 <guid>https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2</guid>
-                <pubDate>Sat, 05 Oct 2024 00:00:00 +0800</pubDate>
+                <pubDate>Sat, 05 Oct 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -2655,7 +3063,7 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2-en/</link>
                 <guid>https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2-en</guid>
-                <pubDate>Sat, 05 Oct 2024 00:00:00 +0800</pubDate>
+                <pubDate>Sat, 05 Oct 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -2733,7 +3141,7 @@ It could pop &lt;strong&gt;calc.exe&lt;/strong&gt; on the system!&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2024/09/06/2024-devcore-cybersecurity-scholarship-application-opens/</link>
                 <guid>https://devco.re/blog/2024/09/06/2024-devcore-cybersecurity-scholarship-application-opens</guid>
-                <pubDate>Fri, 06 Sep 2024 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 06 Sep 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -3232,7 +3640,7 @@ ks 及 ksthunk 已經有很長一段時間沒有漏洞，但卻是個最容易�
 </description>
                 <link>https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1/</link>
                 <guid>https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1</guid>
-                <pubDate>Fri, 23 Aug 2024 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 23 Aug 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -3733,7 +4141,7 @@ ks 及 ksthunk 已經有很長一段時間沒有漏洞，但卻是個最容易�
 </description>
                 <link>https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en/</link>
                 <guid>https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en</guid>
-                <pubDate>Fri, 23 Aug 2024 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 23 Aug 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -4765,7 +5173,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/08/09/confusion-attacks-exploiting-hidden-semantic-ambiguity-in-apache-http-server/</link>
                 <guid>https://devco.re/blog/2024/08/09/confusion-attacks-exploiting-hidden-semantic-ambiguity-in-apache-http-server</guid>
-                <pubDate>Fri, 09 Aug 2024 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 09 Aug 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -5799,7 +6207,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/08/09/confusion-attacks-exploiting-hidden-semantic-ambiguity-in-apache-http-server-en/</link>
                 <guid>https://devco.re/blog/2024/08/09/confusion-attacks-exploiting-hidden-semantic-ambiguity-in-apache-http-server-en</guid>
-                <pubDate>Fri, 09 Aug 2024 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 09 Aug 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -5822,7 +6230,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/08/08/msrc-2024-most-valuable-security-researchers-angelboy/</link>
                 <guid>https://devco.re/blog/2024/08/08/msrc-2024-most-valuable-security-researchers-angelboy</guid>
-                <pubDate>Thu, 08 Aug 2024 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 08 Aug 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -5844,7 +6252,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/08/08/msrc-2024-most-valuable-security-researchers-angelboy-en/</link>
                 <guid>https://devco.re/blog/2024/08/08/msrc-2024-most-valuable-security-researchers-angelboy-en</guid>
-                <pubDate>Thu, 08 Aug 2024 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 08 Aug 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -6058,7 +6466,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/07/18/6th-internship-program-recruit/</link>
                 <guid>https://devco.re/blog/2024/07/18/6th-internship-program-recruit</guid>
-                <pubDate>Thu, 18 Jul 2024 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 18 Jul 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -6247,7 +6655,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/07/09/guide-to-applying-for-red-team-specialist/</link>
                 <guid>https://devco.re/blog/2024/07/09/guide-to-applying-for-red-team-specialist</guid>
-                <pubDate>Tue, 09 Jul 2024 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 09 Jul 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -6364,7 +6772,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability/</link>
                 <guid>https://devco.re/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability</guid>
-                <pubDate>Thu, 06 Jun 2024 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 06 Jun 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -6483,7 +6891,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability-en/</link>
                 <guid>https://devco.re/blog/2024/06/06/security-alert-cve-2024-4577-php-cgi-argument-injection-vulnerability-en</guid>
-                <pubDate>Thu, 06 Jun 2024 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 06 Jun 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -7098,7 +7506,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros/</link>
                 <guid>https://devco.re/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros</guid>
-                <pubDate>Fri, 24 May 2024 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 24 May 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -7735,7 +8143,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros-en/</link>
                 <guid>https://devco.re/blog/2024/05/24/pwn2own-toronto-2022-a-9-year-old-bug-in-mikrotik-routeros-en</guid>
-                <pubDate>Fri, 24 May 2024 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 24 May 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -7974,7 +8382,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2024/01/05/5nd-internship-program-recruit/</link>
                 <guid>https://devco.re/blog/2024/01/05/5nd-internship-program-recruit</guid>
-                <pubDate>Fri, 05 Jan 2024 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 05 Jan 2024 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -8718,7 +9126,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2023/11/06/your-printer-is-not-your-printer-hacking-printers-pwn2own-part2/</link>
                 <guid>https://devco.re/blog/2023/11/06/your-printer-is-not-your-printer-hacking-printers-pwn2own-part2</guid>
-                <pubDate>Mon, 06 Nov 2023 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 06 Nov 2023 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -9577,7 +9985,7 @@ MergeSlashes &lt;span class=&quot;ss&quot;&gt;Off&lt;/span&gt;
 </description>
                 <link>https://devco.re/blog/2023/11/06/your-printer-is-not-your-printer-hacking-printers-pwn2own-part2-en/</link>
                 <guid>https://devco.re/blog/2023/11/06/your-printer-is-not-your-printer-hacking-printers-pwn2own-part2-en</guid>
-                <pubDate>Mon, 06 Nov 2023 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 06 Nov 2023 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -10208,7 +10616,7 @@ HP 則是在開機就會啟用，並將每個 region 定義好權限，因此無
 </description>
                 <link>https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1/</link>
                 <guid>https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1</guid>
-                <pubDate>Thu, 05 Oct 2023 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 05 Oct 2023 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -10846,7 +11254,7 @@ just open the service you want to use.&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1-en/</link>
                 <guid>https://devco.re/blog/2023/10/05/your-printer-is-not-your-printer-hacking-printers-pwn2own-part1-en</guid>
-                <pubDate>Thu, 05 Oct 2023 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 05 Oct 2023 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -10990,7 +11398,7 @@ cmd=whoami
 </description>
                 <link>https://devco.re/blog/2023/09/18/hitcon-2023-devcore-wargame-my-todolist-writeup/</link>
                 <guid>https://devco.re/blog/2023/09/18/hitcon-2023-devcore-wargame-my-todolist-writeup</guid>
-                <pubDate>Mon, 18 Sep 2023 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 18 Sep 2023 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -11068,7 +11476,7 @@ cmd=whoami
 </description>
                 <link>https://devco.re/blog/2023/08/30/2023-devcore-cybersecurity-scholarship-application-opens/</link>
                 <guid>https://devco.re/blog/2023/08/30/2023-devcore-cybersecurity-scholarship-application-opens</guid>
-                <pubDate>Wed, 30 Aug 2023 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 30 Aug 2023 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -11291,7 +11699,7 @@ cmd=whoami
 </description>
                 <link>https://devco.re/blog/2023/07/18/4nd-internship-program-recruit/</link>
                 <guid>https://devco.re/blog/2023/07/18/4nd-internship-program-recruit</guid>
-                <pubDate>Tue, 18 Jul 2023 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 18 Jul 2023 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -12245,7 +12653,7 @@ Linux Kernel 的 seccomp 都是 GSA 中有使用的技術，而本次研究中�
 </description>
                 <link>https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance/</link>
                 <guid>https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance</guid>
-                <pubDate>Fri, 07 Jul 2023 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 07 Jul 2023 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -13224,7 +13632,7 @@ and this research has also left some goals for further study:&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance-en/</link>
                 <guid>https://devco.re/blog/2023/07/07/a-journey-into-hacking-google-search-appliance-en</guid>
-                <pubDate>Fri, 07 Jul 2023 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 07 Jul 2023 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -13287,7 +13695,7 @@ and this research has also left some goals for further study:&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2023/05/26/from-cybersecurity-muggle-to-red-team-specialist-vtim/</link>
                 <guid>https://devco.re/blog/2023/05/26/from-cybersecurity-muggle-to-red-team-specialist-vtim</guid>
-                <pubDate>Fri, 26 May 2023 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 26 May 2023 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -13543,7 +13951,7 @@ and this research has also left some goals for further study:&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2023/01/14/3rd-internship-program-recruit/</link>
                 <guid>https://devco.re/blog/2023/01/14/3rd-internship-program-recruit</guid>
-                <pubDate>Sat, 14 Jan 2023 00:00:00 +0800</pubDate>
+                <pubDate>Sat, 14 Jan 2023 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -13791,7 +14199,7 @@ DEVCORE 自 2020 年開始參與白帽駭客最高殿堂競賽 Pwn2Own，迄今�
 </description>
                 <link>https://devco.re/blog/2023/01/12/DEVCORE-conference-registration-open-now/</link>
                 <guid>https://devco.re/blog/2023/01/12/DEVCORE-conference-registration-open-now</guid>
-                <pubDate>Thu, 12 Jan 2023 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 12 Jan 2023 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -13812,7 +14220,7 @@ DEVCORE 自 2020 年開始參與白帽駭客最高殿堂競賽 Pwn2Own，迄今�
 </description>
                 <link>https://devco.re/blog/2022/12/23/2022-devcore-national-cyber-security-scholarship-results-announcement/</link>
                 <guid>https://devco.re/blog/2022/12/23/2022-devcore-national-cyber-security-scholarship-results-announcement</guid>
-                <pubDate>Fri, 23 Dec 2022 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 23 Dec 2022 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -14010,7 +14418,7 @@ DEVCORE 自 2020 年開始參與白帽駭客最高殿堂競賽 Pwn2Own，迄今�
 </description>
                 <link>https://devco.re/blog/2022/10/19/a-new-attack-surface-on-MS-exchange-part-4-ProxyRelay/</link>
                 <guid>https://devco.re/blog/2022/10/19/a-new-attack-surface-on-MS-exchange-part-4-ProxyRelay</guid>
-                <pubDate>Wed, 19 Oct 2022 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 19 Oct 2022 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -14095,7 +14503,7 @@ DEVCORE 自 2020 年開始參與白帽駭客最高殿堂競賽 Pwn2Own，迄今�
 </description>
                 <link>https://devco.re/blog/2022/09/21/202209-security-researcher-recruitment/</link>
                 <guid>https://devco.re/blog/2022/09/21/202209-security-researcher-recruitment</guid>
-                <pubDate>Wed, 21 Sep 2022 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 21 Sep 2022 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -14177,7 +14585,7 @@ DEVCORE 自 2020 年開始參與白帽駭客最高殿堂競賽 Pwn2Own，迄今�
 </description>
                 <link>https://devco.re/blog/2022/08/26/2022-devcore-national-cyber-security-scholarship/</link>
                 <guid>https://devco.re/blog/2022/08/26/2022-devcore-national-cyber-security-scholarship</guid>
-                <pubDate>Fri, 26 Aug 2022 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 26 Aug 2022 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -14308,7 +14716,7 @@ HTTP/1.1 200 OK
 </description>
                 <link>https://devco.re/blog/2022/08/18/lets-dance-in-the-cache-destabilizing-hash-table-on-microsoft-iis/</link>
                 <guid>https://devco.re/blog/2022/08/18/lets-dance-in-the-cache-destabilizing-hash-table-on-microsoft-iis</guid>
-                <pubDate>Thu, 18 Aug 2022 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 18 Aug 2022 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -14553,7 +14961,7 @@ HTTP/1.1 200 OK
 </description>
                 <link>https://devco.re/blog/2022/07/25/2nd-internship-program-recruit/</link>
                 <guid>https://devco.re/blog/2022/07/25/2nd-internship-program-recruit</guid>
-                <pubDate>Mon, 25 Jul 2022 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 25 Jul 2022 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -14915,7 +15323,7 @@ HTTP/1.1 200 OK
 </description>
                 <link>https://devco.re/blog/2022/03/28/your-NAS-is-not-your-NAS/</link>
                 <guid>https://devco.re/blog/2022/03/28/your-NAS-is-not-your-NAS</guid>
-                <pubDate>Mon, 28 Mar 2022 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 28 Mar 2022 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -15308,7 +15716,7 @@ Next, we need to forge the structure &lt;code class=&quot;language-plaintext hig
 </description>
                 <link>https://devco.re/blog/2022/03/28/your-NAS-is-not-your-NAS-en/</link>
                 <guid>https://devco.re/blog/2022/03/28/your-NAS-is-not-your-NAS-en</guid>
-                <pubDate>Mon, 28 Mar 2022 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 28 Mar 2022 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -15535,7 +15943,7 @@ Next, we need to forge the structure &lt;code class=&quot;language-plaintext hig
 </description>
                 <link>https://devco.re/blog/2022/01/27/intern-recruit/</link>
                 <guid>https://devco.re/blog/2022/01/27/intern-recruit</guid>
-                <pubDate>Thu, 27 Jan 2022 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 27 Jan 2022 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -15561,7 +15969,7 @@ Next, we need to forge the structure &lt;code class=&quot;language-plaintext hig
 </description>
                 <link>https://devco.re/blog/2021/08/22/a-new-attack-surface-on-MS-exchange-part-3-ProxyShell/</link>
                 <guid>https://devco.re/blog/2021/08/22/a-new-attack-surface-on-MS-exchange-part-3-ProxyShell</guid>
-                <pubDate>Sun, 22 Aug 2021 00:00:00 +0800</pubDate>
+                <pubDate>Sun, 22 Aug 2021 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -15722,7 +16130,7 @@ Next, we need to forge the structure &lt;code class=&quot;language-plaintext hig
 </description>
                 <link>https://devco.re/blog/2021/08/07/a-new-attack-surface-on-MS-exchange/</link>
                 <guid>https://devco.re/blog/2021/08/07/a-new-attack-surface-on-MS-exchange</guid>
-                <pubDate>Sat, 07 Aug 2021 00:00:00 +0800</pubDate>
+                <pubDate>Sat, 07 Aug 2021 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -15924,7 +16332,7 @@ Next, we need to forge the structure &lt;code class=&quot;language-plaintext hig
 </description>
                 <link>https://devco.re/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-2-ProxyOracle/</link>
                 <guid>https://devco.re/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-2-ProxyOracle</guid>
-                <pubDate>Fri, 06 Aug 2021 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 06 Aug 2021 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -16411,7 +16819,7 @@ Next, we need to forge the structure &lt;code class=&quot;language-plaintext hig
 </description>
                 <link>https://devco.re/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-1-ProxyLogon/</link>
                 <guid>https://devco.re/blog/2021/08/06/a-new-attack-surface-on-MS-exchange-part-1-ProxyLogon</guid>
-                <pubDate>Fri, 06 Aug 2021 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 06 Aug 2021 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -16584,7 +16992,7 @@ Next, we need to forge the structure &lt;code class=&quot;language-plaintext hig
 </description>
                 <link>https://devco.re/blog/2021/06/22/devcore-202106-recruit/</link>
                 <guid>https://devco.re/blog/2021/06/22/devcore-202106-recruit</guid>
-                <pubDate>Tue, 22 Jun 2021 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 22 Jun 2021 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -16998,7 +17406,7 @@ Balsn CTF 2020 on CTFtime: https://ctftime.org/event/1122/&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2020/10/30/devcore-wargame-at-hitcon-2020/</link>
                 <guid>https://devco.re/blog/2020/10/30/devcore-wargame-at-hitcon-2020</guid>
-                <pubDate>Fri, 30 Oct 2020 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 30 Oct 2020 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -17108,7 +17516,7 @@ Balsn CTF 2020 on CTFtime: https://ctftime.org/event/1122/&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2020/10/13/mitigate-real-threats-by-framework-and-standards/</link>
                 <guid>https://devco.re/blog/2020/10/13/mitigate-real-threats-by-framework-and-standards</guid>
-                <pubDate>Tue, 13 Oct 2020 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 13 Oct 2020 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -17390,7 +17798,7 @@ s
 </description>
                 <link>https://devco.re/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM/</link>
                 <guid>https://devco.re/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM</guid>
-                <pubDate>Sat, 12 Sep 2020 00:00:00 +0800</pubDate>
+                <pubDate>Sat, 12 Sep 2020 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -17662,7 +18070,7 @@ s
 </description>
                 <link>https://devco.re/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM-en/</link>
                 <guid>https://devco.re/blog/2020/09/12/how-I-hacked-Facebook-again-unauthenticated-RCE-on-MobileIron-MDM-en</guid>
-                <pubDate>Sat, 12 Sep 2020 00:00:00 +0800</pubDate>
+                <pubDate>Sat, 12 Sep 2020 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -17713,7 +18121,7 @@ s
 </description>
                 <link>https://devco.re/blog/2020/08/21/the-enemy-is-not-ransomware-its-nation-state-hackers/</link>
                 <guid>https://devco.re/blog/2020/08/21/the-enemy-is-not-ransomware-its-nation-state-hackers</guid>
-                <pubDate>Fri, 21 Aug 2020 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 21 Aug 2020 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -17993,7 +18401,7 @@ aspnet_regsql.exe &lt;span class=&quot;nt&quot;&gt;-S&lt;/span&gt; 127.0.0.1 &lt
 </description>
                 <link>https://devco.re/blog/2020/04/21/from-sql-to-rce-exploit-aspnet-app-with-sessionstate/</link>
                 <guid>https://devco.re/blog/2020/04/21/from-sql-to-rce-exploit-aspnet-app-with-sessionstate</guid>
-                <pubDate>Tue, 21 Apr 2020 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 21 Apr 2020 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -18104,7 +18512,7 @@ aspnet_regsql.exe &lt;span class=&quot;nt&quot;&gt;-S&lt;/span&gt; 127.0.0.1 &lt
 </description>
                 <link>https://devco.re/blog/2020/03/11/play-with-dotnet-viewstate-exploit-and-create-fileless-webshell/</link>
                 <guid>https://devco.re/blog/2020/03/11/play-with-dotnet-viewstate-exploit-and-create-fileless-webshell</guid>
-                <pubDate>Wed, 11 Mar 2020 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 11 Mar 2020 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -18248,7 +18656,7 @@ aspnet_regsql.exe &lt;span class=&quot;nt&quot;&gt;-S&lt;/span&gt; 127.0.0.1 &lt
 </description>
                 <link>https://devco.re/blog/2020/03/04/telework-security/</link>
                 <guid>https://devco.re/blog/2020/03/04/telework-security</guid>
-                <pubDate>Wed, 04 Mar 2020 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 04 Mar 2020 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -18479,7 +18887,7 @@ ASLR 在大部分的環境中都是預設開啟的，因此在撰寫 exploit 時
 </description>
                 <link>https://devco.re/blog/2019/12/23/how-binary-dog-survives-in-web-world/</link>
                 <guid>https://devco.re/blog/2019/12/23/how-binary-dog-survives-in-web-world</guid>
-                <pubDate>Mon, 23 Dec 2019 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 23 Dec 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -18695,7 +19103,7 @@ ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
 </description>
                 <link>https://devco.re/blog/2019/11/11/HiNet-GPON-Modem-RCE/</link>
                 <guid>https://devco.re/blog/2019/11/11/HiNet-GPON-Modem-RCE</guid>
-                <pubDate>Mon, 11 Nov 2019 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 11 Nov 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -18830,7 +19238,7 @@ ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
 </description>
                 <link>https://devco.re/blog/2019/10/24/evolution-of-DEVCORE-red-team-and-the-next/</link>
                 <guid>https://devco.re/blog/2019/10/24/evolution-of-DEVCORE-red-team-and-the-next</guid>
-                <pubDate>Thu, 24 Oct 2019 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 24 Oct 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -19192,7 +19600,7 @@ ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
 </description>
                 <link>https://devco.re/blog/2019/10/09/def-strategy/</link>
                 <guid>https://devco.re/blog/2019/10/09/def-strategy</guid>
-                <pubDate>Wed, 09 Oct 2019 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 09 Oct 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -19498,7 +19906,7 @@ ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
 </description>
                 <link>https://devco.re/blog/2019/09/02/attacking-ssl-vpn-part-3-the-golden-Pulse-Secure-ssl-vpn-rce-chain-with-Twitter-as-case-study/</link>
                 <guid>https://devco.re/blog/2019/09/02/attacking-ssl-vpn-part-3-the-golden-Pulse-Secure-ssl-vpn-rce-chain-with-Twitter-as-case-study</guid>
-                <pubDate>Mon, 02 Sep 2019 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 02 Sep 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -19544,7 +19952,7 @@ ELF 32-bit MSB executable, MIPS, MIPS-I version 1 (SYSV), dynamically linked
 </description>
                 <link>https://devco.re/blog/2019/08/28/Pulse-Secure-SSL-VPN-advisory/</link>
                 <guid>https://devco.re/blog/2019/08/28/Pulse-Secure-SSL-VPN-advisory</guid>
-                <pubDate>Wed, 28 Aug 2019 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 28 Aug 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -19821,7 +20229,7 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
 </description>
                 <link>https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn/</link>
                 <guid>https://devco.re/blog/2019/08/09/attacking-ssl-vpn-part-2-breaking-the-Fortigate-ssl-vpn</guid>
-                <pubDate>Fri, 09 Aug 2019 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 09 Aug 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -19855,7 +20263,7 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
 </description>
                 <link>https://devco.re/blog/2019/08/09/Fortigate-SSL-VPN-advisory/</link>
                 <guid>https://devco.re/blog/2019/08/09/Fortigate-SSL-VPN-advisory</guid>
-                <pubDate>Fri, 09 Aug 2019 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 09 Aug 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -20030,7 +20438,7 @@ To trigger this overflow, we need to put our exploit on an HTTP server, and then
 </description>
                 <link>https://devco.re/blog/2019/07/23/devcore-201907-recruit/</link>
                 <guid>https://devco.re/blog/2019/07/23/devcore-201907-recruit</guid>
-                <pubDate>Tue, 23 Jul 2019 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 23 Jul 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -20207,7 +20615,7 @@ Last-Modified: Sun, 10 Sep 2017 16:48:23 GMT
 </description>
                 <link>https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study/</link>
                 <guid>https://devco.re/blog/2019/07/17/attacking-ssl-vpn-part-1-PreAuth-RCE-on-Palo-Alto-GlobalProtect-with-Uber-as-case-study</guid>
-                <pubDate>Wed, 17 Jul 2019 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 17 Jul 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -20237,7 +20645,7 @@ Last-Modified: Sun, 10 Sep 2017 16:48:23 GMT
 </description>
                 <link>https://devco.re/blog/2019/07/17/Palo-Alto-GlobalProtect-advisory/</link>
                 <guid>https://devco.re/blog/2019/07/17/Palo-Alto-GlobalProtect-advisory</guid>
-                <pubDate>Wed, 17 Jul 2019 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 17 Jul 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -20378,7 +20786,7 @@ ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz23456789
 </description>
                 <link>https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way/</link>
                 <guid>https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way</guid>
-                <pubDate>Fri, 21 Jun 2019 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 21 Jun 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -20518,7 +20926,7 @@ ABCDEFGHJKLMPQRSTUVWXYZabcdefghijkmpqrstuvwxyz23456789
 </description>
                 <link>https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en/</link>
                 <guid>https://devco.re/blog/2019/06/21/operation-crack-hacking-IDA-Pro-installer-PRNG-from-an-unusual-way-en</guid>
-                <pubDate>Fri, 21 Jun 2019 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 21 Jun 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -20837,7 +21245,7 @@ import Orange;
 </description>
                 <link>https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE/</link>
                 <guid>https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE</guid>
-                <pubDate>Tue, 19 Feb 2019 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 19 Feb 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -21148,7 +21556,7 @@ import Orange;
 </description>
                 <link>https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en/</link>
                 <guid>https://devco.re/blog/2019/02/19/hacking-Jenkins-part2-abusing-meta-programming-for-unauthenticated-RCE-en</guid>
-                <pubDate>Tue, 19 Feb 2019 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 19 Feb 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -21406,7 +21814,7 @@ import Orange;
 </description>
                 <link>https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing/</link>
                 <guid>https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing</guid>
-                <pubDate>Wed, 16 Jan 2019 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 16 Jan 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -21660,7 +22068,7 @@ Due to the lack of permission check on search functionality. By modifying the &l
 </description>
                 <link>https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en/</link>
                 <guid>https://devco.re/blog/2019/01/16/hacking-Jenkins-part1-play-with-dynamic-routing-en</guid>
-                <pubDate>Wed, 16 Jan 2019 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 16 Jan 2019 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -21679,7 +22087,7 @@ Due to the lack of permission check on search functionality. By modifying the &l
 </description>
                 <link>https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789/</link>
                 <guid>https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789</guid>
-                <pubDate>Tue, 06 Mar 2018 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 06 Mar 2018 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -21913,7 +22321,7 @@ http://www.openwall.com/lists/oss-security/2018/02/07/2&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789-en/</link>
                 <guid>https://devco.re/blog/2018/03/06/exim-off-by-one-RCE-exploiting-CVE-2018-6789-en</guid>
-                <pubDate>Tue, 06 Mar 2018 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 06 Mar 2018 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -22040,7 +22448,7 @@ http://www.openwall.com/lists/oss-security/2018/02/07/2&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200/</link>
                 <guid>https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200</guid>
-                <pubDate>Fri, 26 Jan 2018 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 26 Jan 2018 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -22168,7 +22576,7 @@ On Sandstorm, owners of each Grain (Sandstorm container, in short, an app sandbo
 </description>
                 <link>https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200-en/</link>
                 <guid>https://devco.re/blog/2018/01/26/Sandstorm-Security-Review-CVE-2017-6200-en</guid>
-                <pubDate>Fri, 26 Jan 2018 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 26 Jan 2018 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -22186,7 +22594,7 @@ On Sandstorm, owners of each Grain (Sandstorm container, in short, an app sandbo
 </description>
                 <link>https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943/</link>
                 <guid>https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943</guid>
-                <pubDate>Mon, 11 Dec 2017 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 11 Dec 2017 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -22480,7 +22888,7 @@ https://lists.exim.org/lurker/message/20171125.034842.d1d75cac.en.html&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943-en/</link>
                 <guid>https://devco.re/blog/2017/12/11/Exim-RCE-advisory-CVE-2017-16943-en</guid>
-                <pubDate>Mon, 11 Dec 2017 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 11 Dec 2017 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -22668,7 +23076,7 @@ https://lists.exim.org/lurker/message/20171125.034842.d1d75cac.en.html&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957/</link>
                 <guid>https://devco.re/blog/2017/01/03/web2py-unserialize-code-execution-CVE-2016-3957</guid>
-                <pubDate>Tue, 03 Jan 2017 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 03 Jan 2017 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -22703,7 +23111,7 @@ https://lists.exim.org/lurker/message/20171125.034842.d1d75cac.en.html&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2016/12/26/a-look-into-the-growth-of-IoT-DDoS-attacks/</link>
                 <guid>https://devco.re/blog/2016/12/26/a-look-into-the-growth-of-IoT-DDoS-attacks</guid>
-                <pubDate>Mon, 26 Dec 2016 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 26 Dec 2016 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -23070,7 +23478,7 @@ uid=0(root) gid=0(root) groups=0(root),1(bin),2(daemon),3(sys),4(adm),6(disk),10
 </description>
                 <link>https://devco.re/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability/</link>
                 <guid>https://devco.re/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability</guid>
-                <pubDate>Thu, 22 Sep 2016 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 22 Sep 2016 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -23442,7 +23850,7 @@ Upon discovering the FTA vulnerability in early February, I notified Facebook an
 </description>
                 <link>https://devco.re/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability-eng-ver/</link>
                 <guid>https://devco.re/blog/2016/09/22/advisory-accellion-file-transfer-appliance-vulnerability-eng-ver</guid>
-                <pubDate>Thu, 22 Sep 2016 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 22 Sep 2016 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -23525,7 +23933,7 @@ Upon discovering the FTA vulnerability in early February, I notified Facebook an
 </description>
                 <link>https://devco.re/blog/2016/07/29/the_security_dilemma_of_e-commerce/</link>
                 <guid>https://devco.re/blog/2016/07/29/the_security_dilemma_of_e-commerce</guid>
-                <pubDate>Fri, 29 Jul 2016 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 29 Jul 2016 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -23890,7 +24298,7 @@ base64: invalid input&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 </description>
                 <link>https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script/</link>
                 <guid>https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script</guid>
-                <pubDate>Thu, 21 Apr 2016 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 21 Apr 2016 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -24250,7 +24658,7 @@ Thanks to this event, it inspired me to write some articles about penetration :P
 </description>
                 <link>https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver/</link>
                 <guid>https://devco.re/blog/2016/04/21/how-I-hacked-facebook-and-found-someones-backdoor-script-eng-ver</guid>
-                <pubDate>Thu, 21 Apr 2016 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 21 Apr 2016 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -24350,7 +24758,7 @@ Thanks to this event, it inspired me to write some articles about penetration :P
 </description>
                 <link>https://devco.re/blog/2015/08/19/devcore-2015-recruit/</link>
                 <guid>https://devco.re/blog/2015/08/19/devcore-2015-recruit</guid>
-                <pubDate>Wed, 19 Aug 2015 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 19 Aug 2015 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -24490,7 +24898,7 @@ This is DEMO page.&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 </description>
                 <link>https://devco.re/blog/2015/07/24/the-vulnerability-of-dynamic-render-paths-in-rails/</link>
                 <guid>https://devco.re/blog/2015/07/24/the-vulnerability-of-dynamic-render-paths-in-rails</guid>
-                <pubDate>Fri, 24 Jul 2015 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 24 Jul 2015 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -24588,7 +24996,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2015/01/30/cookie-security-insight-acer/</link>
                 <guid>https://devco.re/blog/2015/01/30/cookie-security-insight-acer</guid>
-                <pubDate>Fri, 30 Jan 2015 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 30 Jan 2015 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -24675,7 +25083,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2015/01/09/information-security-insight-kham/</link>
                 <guid>https://devco.re/blog/2015/01/09/information-security-insight-kham</guid>
-                <pubDate>Fri, 09 Jan 2015 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 09 Jan 2015 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -24832,7 +25240,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/10/13/android-webview-left-shortcuts-for-hacker/</link>
                 <guid>https://devco.re/blog/2014/10/13/android-webview-left-shortcuts-for-hacker</guid>
-                <pubDate>Mon, 13 Oct 2014 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 13 Oct 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -25113,7 +25521,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/09/30/shellshock-CVE-2014-6271/</link>
                 <guid>https://devco.re/blog/2014/09/30/shellshock-CVE-2014-6271</guid>
-                <pubDate>Tue, 30 Sep 2014 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 30 Sep 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -25224,7 +25632,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/09/24/security-of-ip-camera-and-nvr/</link>
                 <guid>https://devco.re/blog/2014/09/24/security-of-ip-camera-and-nvr</guid>
-                <pubDate>Wed, 24 Sep 2014 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 24 Sep 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -25291,7 +25699,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/08/26/information-leakage-in-taiwan-HITCON2014/</link>
                 <guid>https://devco.re/blog/2014/08/26/information-leakage-in-taiwan-HITCON2014</guid>
-                <pubDate>Tue, 26 Aug 2014 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 26 Aug 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -25716,7 +26124,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/08/15/ssl-mishandling-on-mobile-app-development/</link>
                 <guid>https://devco.re/blog/2014/08/15/ssl-mishandling-on-mobile-app-development</guid>
-                <pubDate>Fri, 15 Aug 2014 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 15 Aug 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -25774,7 +26182,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/07/18/waf-configuration-security-issue/</link>
                 <guid>https://devco.re/blog/2014/07/18/waf-configuration-security-issue</guid>
-                <pubDate>Fri, 18 Jul 2014 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 18 Jul 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -25902,7 +26310,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/07/03/apple-id-phishing-scam/</link>
                 <guid>https://devco.re/blog/2014/07/03/apple-id-phishing-scam</guid>
-                <pubDate>Thu, 03 Jul 2014 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 03 Jul 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -26030,7 +26438,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/06/19/client-ip-detection/</link>
                 <guid>https://devco.re/blog/2014/06/19/client-ip-detection</guid>
-                <pubDate>Thu, 19 Jun 2014 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 19 Jun 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -26246,7 +26654,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/06/13/zone-transfer-statistics-of-alexa-top-1m/</link>
                 <guid>https://devco.re/blog/2014/06/13/zone-transfer-statistics-of-alexa-top-1m</guid>
-                <pubDate>Fri, 13 Jun 2014 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 13 Jun 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -26343,7 +26751,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3/</link>
                 <guid>https://devco.re/blog/2014/06/11/setcookie-httponly-security-issues-of-http-headers-3</guid>
-                <pubDate>Wed, 11 Jun 2014 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 11 Jun 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -26422,7 +26830,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/06/09/openssl-CVE-2014-0224-ccs-injection/</link>
                 <guid>https://devco.re/blog/2014/06/09/openssl-CVE-2014-0224-ccs-injection</guid>
-                <pubDate>Mon, 09 Jun 2014 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 09 Jun 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -26571,7 +26979,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/06/03/http-session-protection/</link>
                 <guid>https://devco.re/blog/2014/06/03/http-session-protection</guid>
-                <pubDate>Tue, 03 Jun 2014 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 03 Jun 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -26611,7 +27019,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/05/12/line-phishing/</link>
                 <guid>https://devco.re/blog/2014/05/12/line-phishing</guid>
-                <pubDate>Mon, 12 May 2014 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 12 May 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -26673,7 +27081,7 @@ https://www.jody-ticket.com.tw/UTK0196_.aspx&lt;/p&gt;
 </description>
                 <link>https://devco.re/blog/2014/05/07/vote.tw.am-potential-phishing-site/</link>
                 <guid>https://devco.re/blog/2014/05/07/vote.tw.am-potential-phishing-site</guid>
-                <pubDate>Wed, 07 May 2014 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 07 May 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -26843,7 +27251,7 @@ server ns12.zoneedit.com
 </description>
                 <link>https://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue/</link>
                 <guid>https://devco.re/blog/2014/05/05/zone-transfer-CVE-1999-0532-an-old-dns-security-issue</guid>
-                <pubDate>Mon, 05 May 2014 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 05 May 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -26879,7 +27287,7 @@ server ns12.zoneedit.com
 </description>
                 <link>https://devco.re/blog/2014/04/24/php.net-insecure-direct-object-reference/</link>
                 <guid>https://devco.re/blog/2014/04/24/php.net-insecure-direct-object-reference</guid>
-                <pubDate>Thu, 24 Apr 2014 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 24 Apr 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -26989,7 +27397,7 @@ hmac 值用來驗證 cookie 是否合法。&lt;br /&gt;
 </description>
                 <link>https://devco.re/blog/2014/04/16/cve-2014-0166-wordpress-forged-cookie-vulnerabilities/</link>
                 <guid>https://devco.re/blog/2014/04/16/cve-2014-0166-wordpress-forged-cookie-vulnerabilities</guid>
-                <pubDate>Wed, 16 Apr 2014 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 16 Apr 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -27292,7 +27700,7 @@ sudo service apache2 restart    # Debian
 </description>
                 <link>https://devco.re/blog/2014/04/11/openssl-heartbleed-how-to-hack-how-to-protect/</link>
                 <guid>https://devco.re/blog/2014/04/11/openssl-heartbleed-how-to-hack-how-to-protect</guid>
-                <pubDate>Fri, 11 Apr 2014 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 11 Apr 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -27566,7 +27974,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 </description>
                 <link>https://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160/</link>
                 <guid>https://devco.re/blog/2014/04/09/openssl-heartbleed-CVE-2014-0160</guid>
-                <pubDate>Wed, 09 Apr 2014 00:00:00 +0800</pubDate>
+                <pubDate>Wed, 09 Apr 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -27743,7 +28151,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 </description>
                 <link>https://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy/</link>
                 <guid>https://devco.re/blog/2014/04/08/security-issues-of-http-headers-2-content-security-policy</guid>
-                <pubDate>Tue, 08 Apr 2014 00:00:00 +0800</pubDate>
+                <pubDate>Tue, 08 Apr 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -27812,7 +28220,7 @@ Heartbleed: What is it and what are options to mitigate it? &lt;a href=&quot;htt
 </description>
                 <link>https://devco.re/blog/2014/03/31/Google-Account-Phishing-Scam/</link>
                 <guid>https://devco.re/blog/2014/03/31/Google-Account-Phishing-Scam</guid>
-                <pubDate>Mon, 31 Mar 2014 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 31 Mar 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -27999,7 +28407,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 </description>
                 <link>https://devco.re/blog/2014/03/14/3rd-party-software-security-issues/</link>
                 <guid>https://devco.re/blog/2014/03/14/3rd-party-software-security-issues</guid>
-                <pubDate>Fri, 14 Mar 2014 00:00:00 +0800</pubDate>
+                <pubDate>Fri, 14 Mar 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -28118,7 +28526,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 </description>
                 <link>https://devco.re/blog/2014/03/10/security-issues-of-http-headers-1/</link>
                 <guid>https://devco.re/blog/2014/03/10/security-issues-of-http-headers-1</guid>
-                <pubDate>Mon, 10 Mar 2014 00:00:00 +0800</pubDate>
+                <pubDate>Mon, 10 Mar 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -28196,7 +28604,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 </description>
                 <link>https://devco.re/blog/2014/03/06/qiyou-ads-hijacking/</link>
                 <guid>https://devco.re/blog/2014/03/06/qiyou-ads-hijacking</guid>
-                <pubDate>Thu, 06 Mar 2014 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 06 Mar 2014 00:00:00 +0900</pubDate>
         </item>
 
         <item>
@@ -28218,7 +28626,7 @@ CVE Number: Pending&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 </description>
                 <link>https://devco.re/blog/2014/02/27/devcore-new-website/</link>
                 <guid>https://devco.re/blog/2014/02/27/devcore-new-website</guid>
-                <pubDate>Thu, 27 Feb 2014 00:00:00 +0800</pubDate>
+                <pubDate>Thu, 27 Feb 2014 00:00:00 +0900</pubDate>
         </item>
 
 

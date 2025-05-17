@@ -1,0 +1,1455 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>Frame by Frame, Kernel Streaming Keeps Giving Vulnerabilities | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="In-depth research into Windows Kernel Streaming vulnerabilities, revealing MDL misuse, buffer misalignment, and exploitation techniques used in CVE-2024-38238 and others." />
+    <meta name="keywords" content="Windows Kernel, Kernel Streaming, CVE-2024-38238, CVE-2025-21375, CVE-2025-24066, MDL, Memory Descriptor List, ks.sys, ksthunk.sys, KSSTREAM_HEADER, Windows Exploitation, kernel vulnerabilities, physical memory write, buffer overflow, frame misalignment, Pwn2Own, Windows security research" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="Frame by Frame, Kernel Streaming Keeps Giving Vulnerabilities | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2025/05/17/frame-by-frame-kernel-streaming-keeps-giving-vulnerabilities-en/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20250517/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="Frame by Frame, Kernel Streaming Keeps Giving Vulnerabilities | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="In-depth research into Windows Kernel Streaming vulnerabilities, revealing MDL misuse, buffer misalignment, and exploitation techniques used in CVE-2024-38238 and others.">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20250517/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2025/05/17/frame-by-frame-kernel-streaming-keeps-giving-vulnerabilities-en/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Simulation of real-world attacks to identify vulnerabilities and achieve objectives without disrupting business operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltration of designated enterprise systems to uncover potential vulnerabilities and assess the risks or damages.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Consultation of resource distribution and long-term defensive strategies from the attacker’s perspective.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Instruction on defending and preventing incidents with the hacker mindset, also the response procedures and analysis of attacks when incidents happen.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="https://training.devco.re/" target="_blank">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu offsec"></i>
+                                    OffSec Advanced Training <i class="icon open-in-new"></i>
+                                </h2>
+                                <p class="two-line">
+                                    Structured in-person (OffSec Live Training) and online training, featuring up-to-date offensive security skills with OffSec certification and resources.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research of updated cybersecurity techniques and trends, assess the security of products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research of the risk of enterprise systems, identification of potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Sharing vulnerability research and security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Discovery of critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                Founded by a world-class white hat hacker team, providing cybersecurity services including Red Team Assessment,  Penetration Testing, Security Consulting, and Security Training.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    Composed of cybersecurity experts with the hacker mindset, exploring innovative exploitation techniques with high morality and extreme caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    DEVCORE has been invited to leading cybersecurity conferences, has uncovered hundreds of critical product vulnerabilities, and helped enterprises improve their defensive capabilities.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    We provide diverse internship channels and programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="https://conf.devco.re/" target="_blank">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu conference"></i>
+                                    DEVCORE CONFERENCE <i class="icon open-in-new"></i>
+                                </h2>
+                                <p class="two-line">
+                                    DEVCORE’s annual technical conference focused on offensive security research, red team insights, and novel attack vectors from real-world operations.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Media Kit, Logo and Usage Guideline
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                    <a href="https://conf.devco.re/" target="_blank">
+                        <div class="item">
+                            <h2>DEVCORE CONFERENCE</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Tech Editorials">Tech Editorials</a>
+                    <span class="tag">
+
+                      <a href="/en/blog/tag/CVE/">#CVE</a> <a href="/en/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/en/blog/tag/Windows/">#Windows</a> <a href="/en/blog/tag/Kernel/">#Kernel</a> <a href="/en/blog/tag/Advisory/">#Advisory</a> 
+                    </span>
+                    <h1>
+                        Frame by Frame, Kernel Streaming Keeps Giving Vulnerabilities
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/en/blog/author/angelboy">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/angelboy.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/en/blog/author/angelboy">Angelboy</a></span>
+                        <span class="date">2025-05-17</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20250517/cover.png"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p>This is a series of research related to Kernel Streaming attack surface. It is recommended to read the following articles first.</p>
+
+<ul>
+  <li><a href="https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en/">Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I</a></li>
+  <li><a href="https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2-en/">Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part II</a></li>
+</ul>
+
+<p>Welcome to Part III of my series on streaming vulnerabilities in the Windows kernel. This research was also presented at <a href="https://www.offensivecon.org/agenda/2025.html">OffensiveCon 2025</a>.</p>
+
+<p>Over the past year, we uncovered an overlooked bug class called <code class="language-plaintext highlighter-rouge">Proxying to Kernel</code>, which led to severe consequences, making exploitation straightforward in Windows kernel. However, this is just the tip of the iceberg for Kernel Streaming.</p>
+
+<p><img src="/assets/img/blog/20250517/1.png" alt="" /></p>
+
+<p>After discovering several vulnerabilities — including those related to the Proxying series — in Kernel Streaming, we decided to dive deeper into its internals. Between late 2023 and the end of 2024, we identified over 20 vulnerabilities. Approximately 14 of them are related to <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/avstream-overview">AVStream</a>, with most occurring during frame handling. In this post, I’ll focus on these frame-related issues.</p>
+
+<p>Let’s talk about kernel streaming frame.</p>
+
+<h2 id="brief-overview-of-kernel-streaming-frame">Brief overview of Kernel Streaming Frame</h2>
+
+<p><img src="/assets/img/blog/20250517/2.png" alt="" /></p>
+
+<p>In Kernel Streaming, when reading data from a device, Kernel Streaming will allocate KS frame to carry streaming data such as video or audio.</p>
+
+<pre><code class="language-cpp=">struct _KSPFRAME_HEADER
+{
+  _LIST_ENTRY ListEntry;
+  _KSPFRAME_HEADER *NextFrameHeaderInIrp;
+  void *Queue;
+  _IRP *OriginalIrp;
+  _MDL *Mdl;
+  _IRP *Irp;
+  KSPIRP_FRAMING_ *IrpFraming;
+  KSSTREAM_HEADER *StreamHeader;
+  void *FrameBuffer;
+  KSPMAPPINGS_TABLE *MappingsTable;
+  unsigned int StreamHeaderSize;
+  unsigned int FrameBufferSize;
+  void *Context;
+  int RefCount;
+  void *OriginalData;
+  void *BufferedData;
+  int Status;
+  unsigned __int8 DismissalCall;
+  _KSPFRAME_HEADER_TYPE Type;
+  _KSPSTREAM_POINTER *FrameHolder;
+  unsigned int OriginalOptionsFlags;
+  _KSPMDLCACHED_STREAM_POINTER *MdlCaching;
+};
+
+</code></pre>
+
+<p>The frame buffer inside the KS frame stores the actual image or audio data. Most frame buffers are described by a <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_mdl">Memory Descriptor List (MDL)</a> that maps their physical memory. If you’re not familiar with what an MDL is, don’t worry — here’s a quick overview.</p>
+
+<h3 id="mdl">MDL</h3>
+<p><code class="language-plaintext highlighter-rouge">MDL (Memory Descriptor List)</code> is a kernel-mode structure used in Windows to describe the physical pages backing a virtual memory buffer. It allows kernel components and drivers to perform direct memory access (DMA) and safely share buffers across different contexts. MDLs are widely used throughout the Windows kernel, commonly in conjunction with IRPs during <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-direct-i-o">Direct I/O</a>, as well as in file system and network drivers during data transfer operations.</p>
+
+<p>The <code class="language-plaintext highlighter-rouge">MDL (Memory Descriptor List)</code> structure is defined as follows:</p>
+
+<pre><code class="language-cpp=">typedef struct _MDL {
+  struct _MDL      *Next;
+  CSHORT           Size;
+  CSHORT           MdlFlags;
+  struct _EPROCESS *Process;
+  PVOID            MappedSystemVa;
+  PVOID            StartVa;
+  ULONG            ByteCount;
+  ULONG            ByteOffset;
+  ULONG64          PFN[];  // Variable-length array of page frame numbers
+
+} MDL, *PMDL;
+</code></pre>
+<p>This is a variable-sized structure, where the <strong>PFN (Page Frame Numbers)</strong> array is stored at the end of the MDL. Each PFN represents the physical page corresponding to a  the virtual buffer described by the MDL.</p>
+
+<p>In Kernel Streaming, an MDL describes a buffer that is mapped into user space and kernel space, and both mappings refer to the same physical memory.</p>
+
+<p><img src="/assets/img/blog/20250517/3.png" alt="" /></p>
+
+<p>As a result, when data is read from a device, it is written to both the user-mode and kernel-mode buffers at the same time.</p>
+
+<p>Let’s take a quick look at how MDLs are typically used.</p>
+
+<h4 id="basic-usage-of-mdl">Basic Usage of MDL</h4>
+
+<p>When the kernel needs to access user-mode memory — especially at elevated IRQL levels such as <code class="language-plaintext highlighter-rouge">DISPATCH_LEVEL</code> or within a DPC — it often relies on an MDL to safely describe and lock that memory. Typically, this process invokes the set of APIs shown in the diagram below.</p>
+
+<p><img src="/assets/img/blog/20250517/4.png" alt="" /></p>
+
+<h4 id="ioallocatemdl"><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-ioallocatemdl">IoAllocateMDL</a></h4>
+
+<p><img src="/assets/img/blog/20250517/5.png" alt="" /></p>
+
+<p>First, the kernel calls <code class="language-plaintext highlighter-rouge">IoAllocateMdl</code> to allocate an MDL structure, initializing it to describe a buffer based on the provided virtual address and length. <strong>But it does not initialize the PFN (Page Frame Number) array in the MDL.</strong></p>
+
+<h4 id="mmprobeandlockpages"><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-mmprobeandlockpages">MmProbeAndLockPages</a></h4>
+
+<p><img src="/assets/img/blog/20250517/6.png" alt="" /></p>
+
+<p>Next, the kernel calls <code class="language-plaintext highlighter-rouge">MmProbeAndLockPages</code> to lock the physical pages corresponding to the virtual address range, and to populate the PFN (Page Frame Number) array inside the MDL.</p>
+
+<h4 id="mmmaplockedpagesspecifycache"><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-mmmaplockedpagesspecifycache">MmMapLockedPagesSpecifyCache</a></h4>
+
+<p><img src="/assets/img/blog/20250517/7.png" alt="" /></p>
+
+<p>Once the kernel needs to access the memory, it calls <code class="language-plaintext highlighter-rouge">MmMapLockedPagesSpecifyCache</code> to map a new virtual address <strong>using the PFNs stored in the MDL</strong>.</p>
+
+<p>By the way, it’s also possible to map kernel buffers into user space using this API.</p>
+
+<h4 id="mmunlockpagesiofreemdl"><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-mmunlockpages">MmUnlockPages</a>/<a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iofreemdl">IoFreeMdl</a></h4>
+
+<p>After the kernel has finished using the buffer mapped through the MDL, it must call <code class="language-plaintext highlighter-rouge">MmUnlockPages</code> to release the locked physical pages. Finally, the MDL itself should be freed using <code class="language-plaintext highlighter-rouge">IoFreeMdl</code>.</p>
+
+<p>For the purposes of this post, it’s enough to understand that Kernel Streaming uses MDLs to manage frame buffers shared between user space and kernel space.</p>
+
+<p>If you’re interested in more details about MDL, here are some helpful references:</p>
+
+<ul>
+  <li><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-mdls">Using MDLs</a></li>
+  <li><a href="https://medium.com/@WaterBucket/understanding-memory-descriptor-lists-mdls-for-windows-vulnerability-research-exploit-7de8729caee7">Understanding Memory Descriptor Lists (MDLs) for Windows Vulnerability Research &amp; Exploit Development</a></li>
+</ul>
+
+<p>Next, let’s take a look at how a typical application reads data from a webcam — and how Kernel Streaming implements this functionality under the hood.</p>
+
+<h3 id="how-to-read-streams-from-webcam">How to Read Streams from webcam</h3>
+
+<p>Here is a simplified overview of the workflow for reading a video stream from a webcam using Kernel Streaming:</p>
+
+<p><img src="/assets/img/blog/20250517/8.png" alt="" /></p>
+
+<ol>
+  <li>Open the device to obtain a handle to the webcam device.</li>
+  <li>Use this device handle to create an instance of the Pin on this filter and obtain the Pin handle.</li>
+  <li>Set the Pin’s state to <code class="language-plaintext highlighter-rouge">RUN</code> using <a href="https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_property">IOCTL_KS_PROPERTY</a>. When the Pin enters the RUN state, the webcam’s indicator light usually turns on, indicating that the device is active and ready to stream.</li>
+  <li>Finally, you can use <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_read_stream">IOCTL_KS_READ_STREAM</a> to read data from this Pin. When sending the IOCTL to read the stream, we need to provide a <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ns-ks-ksstream_header">KSSTREAM_HEADER</a> structure as input to specify the necessary information.</li>
+</ol>
+
+<pre><code class="language-cpp=">typedef struct {
+  ULONG    Size;
+  ULONG    TypeSpecificFlags;
+  KSTIME   PresentationTime;
+  LONGLONG Duration;
+  ULONG    FrameExtent; //Buffer Size
+  ULONG    DataUsed; 
+  PVOID    Data; // point to image Buffer
+  ULONG    OptionsFlags;
+  ULONG    Reserved;
+} KSSTREAM_HEADER, *PKSSTREAM_HEADER;
+</code></pre>
+
+<p>The kernel will use this structure to copy data from the device into memory. The most important fields are the <code class="language-plaintext highlighter-rouge">Data</code>, which points to your user-space buffer, and <code class="language-plaintext highlighter-rouge">FrameExtent</code>, which indicates the size of the buffer. Kernel Streaming will map a frame buffer based on these values and write the image data into the memory region you provided.  Optionally, you can also use the <code class="language-plaintext highlighter-rouge">OptionsFlags</code> field to describe the attributes of the frame.</p>
+
+<h3 id="stream-reading-in-kernel-streaming">Stream Reading in Kernel Streaming</h3>
+<p>Let’s briefly introduce how ks implements reading a frame.</p>
+
+<p><img src="/assets/img/blog/20250517/9.png" alt="" /></p>
+
+<p>First, a buffer must be allocated in user space to store the incoming image data.
+Then, a <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER</code> structure is prepared, containing the buffer’s address and size, and passed to the kernel via an <code class="language-plaintext highlighter-rouge">IOCTL_KS_READ_STREAM</code>. When this IOCTL is sent to the webcam device, it is handled by <code class="language-plaintext highlighter-rouge">ksthunk.sys</code> and <code class="language-plaintext highlighter-rouge">ks.sys</code>. If the request does not originate from a WoW64 process, it will be passed to <code class="language-plaintext highlighter-rouge">ks.sys</code> for further processing.</p>
+
+<p><img src="/assets/img/blog/20250517/10.png" alt="" /></p>
+
+<p>Once <code class="language-plaintext highlighter-rouge">ks.sys</code> receives the request, it parses the <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER</code>, creates an MDL based on the provided buffer and size, and insert it to the IRP. The user-space buffer is then mapped into kernel space as a frame buffer through this MDL. At this point, both the user buffer and the frame buffer point to the same physical memory, enabling efficient zero-copy data transfers between user space and kernel space.</p>
+
+<p><img src="/assets/img/blog/20250517/11.png" alt="" /></p>
+
+<p>Finally, <code class="language-plaintext highlighter-rouge">ks.sys</code> allocates a <code class="language-plaintext highlighter-rouge">KS Frame (_KSPFRAME_HEADER)</code> in kernel. This structure contains the associated MDL, a pointer to the frame buffer, the buffer size, and other metadata used for managing the streaming operation.</p>
+
+<p><img src="/assets/img/blog/20250517/12.png" alt="" /></p>
+
+<p>The <code class="language-plaintext highlighter-rouge">KS FRAME</code> is then placed into an internal queue, where it waits to be filled with data.
+Next, the Kernel Streaming worker thread dequeues a <code class="language-plaintext highlighter-rouge">KS FRAME</code> and begins capturing image data from the device into the associated frame buffer. Any remaining <code class="language-plaintext highlighter-rouge">KS FRAME</code> structures in the queue will be processed one by one in the order they were enqueued.</p>
+
+<p><img src="/assets/img/blog/20250517/13.png" alt="" /></p>
+
+<p>By the way, it’s also possible to submit multiple <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER</code> structures in a single IOCTL call to request multiple frames. In that case, <code class="language-plaintext highlighter-rouge">ks.sys</code> will process each frame request in order, based on the <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER</code> array provided in the input buffer. Each frame has a <strong>one-to-one mapping with a <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER</code>, an MDL, and a <code class="language-plaintext highlighter-rouge">KS FRAME</code></strong>.</p>
+
+<p>With the basics of the architecture and frame reading in place, we can now examine things from an attacker’s point of view.</p>
+
+<h3 id="from-attackers-perspective">From Attacker’s Perspective</h3>
+
+<p>So, where should we focus our attention?</p>
+
+<p><img src="/assets/img/blog/20250517/14.png" alt="" /></p>
+
+<p>The first and most intuitive target is the transition between <code class="language-plaintext highlighter-rouge">ksthunk.sys</code> and <code class="language-plaintext highlighter-rouge">ks.sys</code>.When 32-bit requests are converted to 64-bit, improper handling of user-controlled <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER</code> structures may lead to memory corruption — for example, <a href="https://github.com/Black-Frost/windows-learning/tree/main/CVE-2024-38054">CVE-2024-38054</a> is one such case. This transition layer can also introduce inconsistency issues.</p>
+
+<p><img src="/assets/img/blog/20250517/15.png" alt="" /></p>
+
+<p>Another interesting target is how <code class="language-plaintext highlighter-rouge">ks.sys</code> manages frame buffers. If MDLs are <strong>misused</strong> during frame buffer handling, it can result in various forms of memory corruption. We’ll examine some examples of these issues later.</p>
+
+<p>In the course of our research on Kernel Streaming, we identified several new bug classes worth highlighting.</p>
+
+<h2 id="new-bug-classes-in-kernel-streaming">New Bug Classes in Kernel Streaming</h2>
+
+<p>The first bug class we identified is MDL mismatch.</p>
+
+<h3 id="mdl-mismatch">MDL Mismatch</h3>
+
+<p>When <code class="language-plaintext highlighter-rouge">ksthunk.sys</code> receives a 32-bit request, it not only converts the request to its 64-bit equivalent, but also pre-allocates an MDL to describe the frame buffer.</p>
+
+<p><img src="/assets/img/blog/20250517/16.png" alt="" /></p>
+
+<p>As illustrated in the diagram, when a 32-bit request is issued, <code class="language-plaintext highlighter-rouge">ksthunk.sys</code> is the first to handle it. During this step, it sets up the MDL and performs the mapping for the frame buffer.</p>
+
+<p><img src="/assets/img/blog/20250517/17.png" alt="" /></p>
+
+<p>Once <code class="language-plaintext highlighter-rouge">ksthunk.sys</code> completes its preprocessing, it passes the IRP to <code class="language-plaintext highlighter-rouge">ks.sys</code> for further handling. Since the MDL has already been created by <code class="language-plaintext highlighter-rouge">ksthunk.sys</code>, <code class="language-plaintext highlighter-rouge">ks.sys</code> will <strong>not</strong> allocate a new one. At this point, a <code class="language-plaintext highlighter-rouge">KS FRAME</code> is allocated to represent the frame within the Kernel Streaming framework.</p>
+
+<p><img src="/assets/img/blog/20250517/18.png" alt="" /></p>
+
+<p>Moreover, if multiple frames are requested in a single call, <code class="language-plaintext highlighter-rouge">ksthunk.sys</code> will pre-allocate all the necessary MDLs and perform the corresponding frame buffer mappings.</p>
+
+<p>However, if the OptionsFlags field is set to <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER_OPTIONSF_PERSIST_SAMPLE (0x8000)</code>, <code class="language-plaintext highlighter-rouge">ksthunk.sys</code> will skip the normal MDL allocation process. This flag is actually part of Kernel Streaming’s MDL caching mechanism. While we won’t go into the full details here, it’s important to understand that enabling this flag <strong>causes ksthunk to skip MDL allocation for that frame</strong>.</p>
+
+<p>Additionally, since each frame is handled independently, it’s possible to intentionally mark only one of the submitted frames as caching by setting the <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER_OPTIONSF_PERSIST_SAMPLE</code> flag on that specific frame when submitting multiple frames in a single request.</p>
+
+<p>Let me give you an example :</p>
+
+<p><img src="/assets/img/blog/20250517/19.png" alt="" /></p>
+
+<p>Suppose we submit two frames, with the second frame marked as caching.</p>
+
+<p><img src="/assets/img/blog/20250517/20.png" alt="" /></p>
+
+<p><code class="language-plaintext highlighter-rouge">ksthunk.sys</code> will check the <code class="language-plaintext highlighter-rouge">OptionsFlags</code> field for each frame. If the cache flag is <strong>not</strong> set, it allocates an MDL and maps the frame buffer accordingly. Since the second frame <strong>has</strong> the cache flag set, <code class="language-plaintext highlighter-rouge">ksthunk.sys</code> will skip MDL allocation for that frame.</p>
+
+<p><img src="/assets/img/blog/20250517/21.png" alt="" /></p>
+
+<p>After that, the IRP is passed down to <code class="language-plaintext highlighter-rouge">ks.sys</code>, which will once again inspect the <code class="language-plaintext highlighter-rouge">OptionsFlags</code> field for each frame. However, the logic here is reversed compared to <code class="language-plaintext highlighter-rouge">ksthunk.sys</code>.</p>
+<ul>
+  <li>For the first frame — because it doesn’t have the cache flag — ks.sys assumes the MDL has already been allocated by ksthunk, and therefore skips MDL allocation.</li>
+  <li>For the second frame, since the cache flag is set, <code class="language-plaintext highlighter-rouge">ks.sys</code> will allocate a new MDL and map the frame buffer.</li>
+</ul>
+
+<p><img src="/assets/img/blog/20250517/22.png" alt="" /></p>
+
+<p><code class="language-plaintext highlighter-rouge">ks.sys</code> then creates <code class="language-plaintext highlighter-rouge">KS FRAME</code> based on <strong>the order of the <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER</code> entries</strong>.
+Each KSFRAME is paired one-to-one with its corresponding MDL, and the frames are placed into an internal queue, waiting to be pulled and processed by the worker thread.</p>
+
+<blockquote>
+  <p>But… is it really safe ?</p>
+</blockquote>
+
+<p>There seems to be something inconsistent. <strong>Let’s abuse the MDL chain !</strong></p>
+
+<p><img src="/assets/img/blog/20250517/23.png" alt="" /></p>
+
+<p>Suppose we submit two frames:</p>
+<ul>
+  <li>For the first frame, we set the buffer size to <code class="language-plaintext highlighter-rouge">0x1000</code> and enable the cache flag.</li>
+  <li>For the second frame, we set the buffer size to <code class="language-plaintext highlighter-rouge">0x20000</code>, but do not set the cache flag.</li>
+</ul>
+
+<p><img src="/assets/img/blog/20250517/24.png" alt="" /></p>
+
+<p><code class="language-plaintext highlighter-rouge">ksthunk.sys</code> checks each stream header as usual. For the first frame, since <strong>the cache flag is set</strong>, it <strong>skips</strong> MDL allocation. For the second frame, since the cache flag is <strong>not</strong> set, ksthunk allocates a new MDL and maps the frame buffer accordingly.</p>
+
+<p><img src="/assets/img/blog/20250517/25.png" alt="" /></p>
+
+<p>After that, the IRP is passed down to <code class="language-plaintext highlighter-rouge">ks.sys</code>, which once again inspects the <code class="language-plaintext highlighter-rouge">OptionsFlags</code> field for each frame.</p>
+<ul>
+  <li>For the first frame, since the cache flag is set, <code class="language-plaintext highlighter-rouge">ks.sys</code> will allocate a new MDL, map the frame buffer, and insert it into the MDL chain.</li>
+  <li>For the second frame, the cache flag is not set, so <code class="language-plaintext highlighter-rouge">ks.sys</code> assumes the MDL has already been allocated by ksthunk, and therefore skips the allocation.</li>
+</ul>
+
+<p><img src="/assets/img/blog/20250517/26.png" alt="" /></p>
+
+<p>Finally, <code class="language-plaintext highlighter-rouge">ks.sys</code> creates <code class="language-plaintext highlighter-rouge">KS FRAME</code>  based on the MDL chain and the corresponding <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER</code> entries. The <code class="language-plaintext highlighter-rouge">FrameExtent</code> field from each header is stored into the associated <code class="language-plaintext highlighter-rouge">KS FRAME</code>, defining the expected frame size.</p>
+
+<p><img src="/assets/img/blog/20250517/27.png" alt="" /></p>
+
+<p>As shown in the diagram above, the first frame will have a size of 0x1000 stored, while the second frame will have 0x20000 stored.</p>
+
+<p><strong>Do you notice the problem?</strong> After we run it …</p>
+
+<p><img src="/assets/img/blog/20250517/28.png" alt="" /></p>
+
+<blockquote>
+  <p>Why ?</p>
+</blockquote>
+
+<p><img src="/assets/img/blog/20250517/29.png" alt="" /></p>
+
+<p>The root cause of this issue is a mismatch between each <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER</code> and its corresponding MDL. For example, the first <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER</code> gets paired with the MDL of the second frame, while the second <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER</code> ends up linked to the MDL of the first frame.</p>
+
+<blockquote>
+  <p>What’s the actual impact?</p>
+</blockquote>
+
+<p><img src="/assets/img/blog/20250517/30.png" alt="" /></p>
+
+<p>When the worker copies data from the device, it relies on the buffer address and size stored in each <code class="language-plaintext highlighter-rouge">KS FRAME</code> to perform the copy operation. Both frames are treated the same — the worker refers to the <code class="language-plaintext highlighter-rouge">KS FRAME</code> structure to determine where and how much data to copy. However, here lies the problem…</p>
+
+<p><img src="/assets/img/blog/20250517/31.png" alt="" /></p>
+
+<p>For the second <code class="language-plaintext highlighter-rouge">KS FRAME</code>, the actual allocated buffer is only <code class="language-plaintext highlighter-rouge">0x1000</code> bytes, but the <code class="language-plaintext highlighter-rouge">FrameExtent</code> field in the structure indicates a size of <code class="language-plaintext highlighter-rouge">0x20000</code>. As a result, the worker attempts to copy <code class="language-plaintext highlighter-rouge">0x20000</code> bytes into <strong>a much smaller buffer</strong>, leading to a buffer overflow.</p>
+
+<p>In fact, several of the vulnerabilities we discovered stem from this exact issue. As long as an attacker can create a mismatch between a <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER</code> and its corresponding MDL, the result is a buffer overflow.</p>
+<ul>
+  <li>CVE-2024-38237</li>
+  <li>CVE-2025-21375</li>
+  <li>…</li>
+</ul>
+
+<p>The second bug class we’re going to discuss is called <code class="language-plaintext highlighter-rouge">The Forgotten Lock in MDL</code> —
+a vulnerability pattern involving incorrect handling of MDL.</p>
+
+<p>This bug class is a bit more special</p>
+
+<h3 id="the-forgotten-lock">The Forgotten Lock</h3>
+
+<p>Actually, it is an <strong>uninitialized issue</strong> in MDL.</p>
+
+<p>Before we discuss this issue, let’s first look at some common mistakes developers make when working with MDLs.</p>
+
+<h4 id="security-risks-of-mdl">Security Risks of MDL</h4>
+
+<p>The first one is a common issued recently — one that I also mentioned in a <a href="https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en/#cve-2023-29360---logical-vulnerability">previous post</a>.</p>
+
+<blockquote>
+  <p>Incorrect <code class="language-plaintext highlighter-rouge">access mode</code> flag in <code class="language-plaintext highlighter-rouge">MmProbeAndLockPages</code></p>
+</blockquote>
+
+<p><img src="/assets/img/blog/20250517/32.png" alt="" /></p>
+
+<p>When the kernel calls <code class="language-plaintext highlighter-rouge">MmProbeAndLockPages</code> to lock a user-supplied memory buffer, it may incorrectly set the <code class="language-plaintext highlighter-rouge">access mode</code> flag. This mistake causes the kernel to skip the check that verifies whether the target address belongs to user space. As a result, a user-mode process could supply a kernel-mode address, leading to arbitrary memory writes in kernel space.</p>
+
+<p>For more details, please refer to <a href="https://conference.hitb.org/hitbsecconf2023hkt/materials/D2T1%20-%20Windows%20Kernel%20Security%20-%20A%20Deep%20Dive%20into%20Two%20Exploits%20Demonstrated%20at%20Pwn2Own%20-%20Thomas%20Imbert.pdf">Synacktiv’s presentation at HITB 2023 HKT</a> and <a href="https://x.com/Big5_sec">Nicolas Zilio(@Big5_sec)</a> ‘s blog <a href="https://big5-sec.github.io/posts/CVE-2023-29360-analysis/">post</a>.</p>
+
+<blockquote>
+  <p>Double Free in I/O Complete</p>
+</blockquote>
+
+<p><img src="/assets/img/blog/20250517/33.png" alt="" /></p>
+
+<p>Another common issue occurs when a kernel driver frees an MDL without clearing the corresponding MDL pointer in the IRP. Later, when the IRP is completed, the system attempts to free the MDL again, resulting in a double free vulnerability during <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iocompleterequest">IoCompleteRequest</a>. This pattern can also be found in Kernel Streaming(<a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2025-24046">CVE-2025-24046</a>).</p>
+
+<p><img src="/assets/img/blog/20250517/34.png" alt="" /></p>
+
+<p>When frame allocation fails, <code class="language-plaintext highlighter-rouge">ks.sys</code> releases the MDLs in the MDL chain, but it does not clear the MDL pointer stored in the IRP. As a result, the MDL is freed again when the IRP completes — leading to a double free.</p>
+
+<p>These two bug patterns are quite common, there are many more overlooked issues out there.</p>
+
+<p>Let’s take an example from <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/driversecurity/driver-security-dev-best-practices">Microsoft driver Security Guidance</a>.</p>
+
+<p>In this document, Microsoft warns that if developers use <code class="language-plaintext highlighter-rouge">MmMapIoSpace</code> without properly validating the physical address, it could result in arbitrary physical memory being mapped into virtual address space — potentially leading to serious security issues.</p>
+
+<p>To illustrate safe usage, Microsoft provides the following secure coding example:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Func ConstrainedMap(PHYSICAL_ADDRESS paAddress)
+{
+    // expected_Address must be constrained to required usage boundary to prevent abuse
+    if(paAddress == expected_Address &amp;&amp; qwSize == valid_Size)  //-----[1]
+    {
+        lpAddress = MmMapIoSpace(paAddress, qwSize, ...);   
+        pMdl = IoAllocateMdl( lpAddress, ...); //----------[2]
+        MmMapLockedPagesSpecifyCache(pMdl, UserMode, ... ); //-------------[3]
+    }
+    else
+    {
+        return error;
+    }
+}
+</code></pre></div></div>
+
+<p>First, the physical address is validated at [1]. Then, at [2], an MDL is allocated to describe the mapped memory region.Finally, [3] calls MmMapLockedPagesSpecifyCache to map the physical memory into a user-space virtual address.</p>
+
+<blockquote>
+  <p>Now… you might notice something strange here.</p>
+</blockquote>
+
+<p>As we mentioned earlier, in typical usage, after allocating an MDL, you are expected to call <code class="language-plaintext highlighter-rouge">MmProbeAndLockPages</code> to lock the underlying physical pages. However, in this case, the code calls <code class="language-plaintext highlighter-rouge">MmMapLockedPagesSpecifyCache</code> directly, without locking the pages first. This results in undefined behavior, as the MDL may not correctly describe valid or accessible physical memory.</p>
+
+<p><img src="/assets/img/blog/20250517/35.png" alt="" /></p>
+
+<p>As shown in diagram above, <code class="language-plaintext highlighter-rouge">IoAllocateMdl</code> is used to allocate the MDL structure and initialize some basic metadata. However, if we immediately call <code class="language-plaintext highlighter-rouge">MmMapLockedPagesSpecifyCache</code> without first locking the pages,the function will still attempt to access the PFN array inside the MDL. This can lead to undefined behavior, or worse, controlled memory corruption. In many cases, this leads directly to a BSoD.</p>
+
+<p><img src="/assets/img/blog/20250517/36.png" alt="" /></p>
+
+<p>However, this kind of mistake is widespread throughout Kernel Streaming. In the following section, I will examine CVE-2024-38238, which clearly demonstrates this issue in practice.</p>
+
+<h4 id="cve-2024-38238">CVE-2024-38238</h4>
+
+<p>We once again construct two <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER</code> structures — and this time, both frames are of the same size. The first frame has the cache flag set, while the second frame does not.</p>
+
+<p><img src="/assets/img/blog/20250517/37.png" alt="" /></p>
+
+<p>As mentioned earlier, <code class="language-plaintext highlighter-rouge">ksthunk.sys</code> will allocate and lock an MDL only for the frame that does not have the cache flag set. Once that’s done, the IRP is passed down to <code class="language-plaintext highlighter-rouge">ks.sys</code> for further processing.</p>
+
+<p>Now, let’s take a closer look at how <code class="language-plaintext highlighter-rouge">ks.sys</code> handles this frame.</p>
+
+<pre><code class="language-cpp=">__int64  CKsMdlcache::MdlCacheHandleThunkBufferIrp(...)
+{
+  ...
+  while(TotalSize &gt;= sizeof(KSSTREAM_HEADER)){ //-------[4]
+      ...
+      if(OptionsFlag &amp; 0x8000 == 0) //-------[5]
+        return KsProbeStreamIrp(irp, a3, 0); //-------[8]
+      IoAllocateMdl(header-&gt;Data,header-&gt;FrameExtent,...,Irp); //-------[6]
+  }
+  ...
+  for(i = irp-&gt;MdlAddress;i;i = i-&gt;Next){
+      MmProbeAndLockPages(i, irp-&gt;RequestorMode, IoWriteAccess); //-------[7]
+  }
+}
+
+</code></pre>
+
+<p>Looking at the while loop in <code class="language-plaintext highlighter-rouge">ks!CKsMdlcache::MdlCacheHandleThunkBufferIrp</code> at [4], we can see that it iterates through each <code class="language-plaintext highlighter-rouge">KSSTREAM_HEADER</code> and checks the <code class="language-plaintext highlighter-rouge">OptionsFlag</code>s at [5] to determine whether an MDL should be allocated.</p>
+
+<p>If the cache flag is set, it proceeds to allocate a new MDL at [6]. Under WOW64, if the MDL was already allocated (e.g., by ksthunk), KS will then call <code class="language-plaintext highlighter-rouge">MmProbeAndLockPages</code> at [7] to lock the memory pages.</p>
+
+<p>However, in our specific case:</p>
+
+<ul>
+  <li>The first frame has the cache flag set.</li>
+  <li>The second frame does not.</li>
+</ul>
+
+<p>So, when KS begins processing the second frame, it takes the path to KsProbeStreamIrp at [8]. At this point, the MDL chain inside the IRP looks like this:</p>
+
+<p><img src="/assets/img/blog/20250517/38.png" alt="" /></p>
+
+<p>The first MDL has already been properly locked, but the second one is not locked at all.</p>
+
+<p>After that, <code class="language-plaintext highlighter-rouge">ks!KsProbeStreamIrp</code> handles the mapping of the frame buffers:</p>
+
+<pre><code class="language-cpp=">
+NTSTATUS KsProbeStreamIrp(PIRP Irp, ULONG ProbeFlags, ULONG HeaderSize){
+ ...
+ MDL = Irp-&gt;MdlAddress;
+ if ( (MDL-&gt;MdlFlags &amp; is_locked_and_nonpaged) != 0 ) { //----[9]
+    while ( MDL ) 
+    {
+        if ( (MdlFlags &amp; 5) != 0 )
+        MappedSystemVa = MDL-&gt;MappedSystemVa;
+        else
+        MappedSystemVa = MmMapLockedPagesSpecifyCache(MDL, 0, MmCached, 0LL, 0, 0x40000010u); 
+        
+        MDL = MDL-&gt;Next;
+    }
+ }
+}
+
+
+</code></pre>
+
+<p>As shown above, the function uses <code class="language-plaintext highlighter-rouge">MmMapLockedPagesSpecifyCache</code> to map the frame buffer by each MDL. If the MDL is marked as locked, the function maps it directly. However, there’s a critical flaw: It <strong>only checks the first MDL</strong> in the MDL chain at [9],and assumes that the entire chain has already been locked.</p>
+
+<p><img src="/assets/img/blog/20250517/39.png" alt="" /></p>
+
+<p>When <code class="language-plaintext highlighter-rouge">MmMapLockedPagesSpecifyCache</code> is called on the second MDL, it attempts to map memory based on an uninitialized PFN list.</p>
+
+<blockquote>
+  <p>Unexploitatble ?</p>
+</blockquote>
+
+<p>The good news is that <code class="language-plaintext highlighter-rouge">IoAllocateMdl</code> allocates memory <strong>from NonPagedPoolNx</strong> <strong>without zero-initializing it</strong>. This means the PFN array located at the end of the MDL structure will contain leftover memory.</p>
+
+<p><img src="/assets/img/blog/20250517/40.png" alt="" /></p>
+
+<p>As shown above, when IoAllocateMdl allocates memory, it uses the <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/pool_flags">POOL_FLAG_UNINITIALIZED</a> flag, and does not initialize the PFN array in the MDL. This behavior allows us to apply pool spraying techniques to gain partial or full control over the PFN values inside the MDL.</p>
+
+<p>By calculating the exact size of the MDL structure — including the number of PFNs based on the frame size — we can perform a <a href="https://www.alex-ionescu.com/?p=231">pool spray using Named Pipes</a> to populate <code class="language-plaintext highlighter-rouge">NonPagedPoolNx</code> memory with carefully crafted data.</p>
+
+<p><img src="/assets/img/blog/20250517/41.png" alt="" /></p>
+
+<p>When<code class="language-plaintext highlighter-rouge">IoAllocateMdl</code> reuses this memory without zero-initialization, the leftover values will be interpreted as valid PFNs, giving the attacker control over physical-to-virtual mappings.</p>
+
+<p><img src="/assets/img/blog/20250517/42.png" alt="" /></p>
+
+<p>As shown above, when <code class="language-plaintext highlighter-rouge">MmMapLockedPagesSpecifyCache</code> is called afterward, it treats the attacker-controlled PFNs as valid physical page mappings and uses them to map the frame buffer.</p>
+
+<p>Finally, when the worker thread copies image data from the device, it writes directly to the physical addresses specified by the attacker, resulting in a powerful arbitrary physical memory write primitive.</p>
+
+<p>Actually, not all PFNs can be mapped — they must be valid, such as <code class="language-plaintext highlighter-rouge">ResidentPage</code>. But for our purposes, that’s more than enough.</p>
+
+<p>The next step is to achieve elevation of privilege (EoP) using the arbitrary physical memory write primitive. But that raises the question:</p>
+
+<blockquote>
+  <p>Where should we write?</p>
+</blockquote>
+
+<p>During testing on several Windows 24H2, we observed a consistent behavior:
+the physical base address of <code class="language-plaintext highlighter-rouge">ntoskrnl.exe</code> was typically fixed at 0x100400000.</p>
+
+<p><img src="/assets/img/blog/20250517/43.png" alt="" /></p>
+
+<p>We tested it on Hyper-V and VMware. The value might have changed in newer builds, but it’s still likely to remain fixed in many cases. This behavior may also depend on the device or hardware configuration.</p>
+
+<blockquote>
+  <p>So … does that mean we can just write directly to nt and take over the kernel?</p>
+</blockquote>
+
+<p>There is a problem ……</p>
+
+<p><img src="/assets/img/blog/20250517/44.png" alt="" /></p>
+
+<p>We cannot control the data being written, because it comes directly from the webcam device.</p>
+
+<p>Initially, it seemed like we were stuck. But with a primitive this powerful — stable and repeatable arbitrary physical memory writes — we knew there had to be a way forward.</p>
+
+<p>So we went back, carefully reviewed the entire Kernel Streaming workflow, and eventually discovered a new angle of attack.</p>
+
+<blockquote>
+  <p>Buffered</p>
+</blockquote>
+
+<p>Kernel Streaming offers a feature called buffered mode. When a <code class="language-plaintext highlighter-rouge">KS FRAME</code> is created with the <strong>buffered flag(KSSTREAM_HEADER_OPTIONSF_BUFFEREDTRANSFER)</strong> set, <code class="language-plaintext highlighter-rouge">ks.sys</code> allocates an additional intermediate buffer in kernel space.</p>
+
+<p><img src="/assets/img/blog/20250517/45.png" alt="" />
+<img src="/assets/img/blog/20250517/46.png" alt="" /></p>
+
+<p>During the streaming process, the contents from the original image buffer are first copied into this intermediate buffer.</p>
+
+<p><img src="/assets/img/blog/20250517/47.png" alt="" />
+<img src="/assets/img/blog/20250517/48.png" alt="" /></p>
+
+<p>As shown in diagram above, after the device finishes writing data — or if an error occurs during the transfer — <code class="language-plaintext highlighter-rouge">ks.sys</code> will copy the contents of the buffered memory into the frame buffer. However, in our case, this frame buffer has already been mapped to the physical address of the <code class="language-plaintext highlighter-rouge">ntoskrnl.exe</code> image. In other words, we now have an <strong>arbitrary physical memory write primitive</strong> with fully controlled data. This opens the door to directly modifying kernel code.</p>
+
+<p><img src="/assets/img/blog/20250517/49.png" alt="" /></p>
+
+<p>In our exploit, we chose to overwrite a security check inside PsOpenProcess. Specifically, we replaced the check for <code class="language-plaintext highlighter-rouge">SeDebugPrivilege</code> with <code class="language-plaintext highlighter-rouge">SeChangeNotifyPrivilege</code>. As a result, any normal user can open a high-privilege process except PPL. For more details on the technique of replacing the check with <code class="language-plaintext highlighter-rouge">SeChangeNotifyPrivilege</code>, you can refer to <a href="https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2-en/#make-abusing-token-privilege-great-again-">my previous post</a>.</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/OBY6kJ2sxME?si=oJA1FKRKcMbj6G1_" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+
+<p>There are multiple ways to cause this issue in Kernel Streaming</p>
+<ul>
+  <li>CVE-2024-38238</li>
+  <li>CVE-2024-38241</li>
+  <li>CVE-2025-24066</li>
+  <li>…</li>
+</ul>
+
+<p>As long as you find a way to make it forget lock, it can result in an arbitrary physical memory writing.</p>
+
+<p>The last issue we would like to share is <strong>Frame Buffer Misalignment</strong>.</p>
+
+<h3 id="frame-buffer-misalignment-cve-2024-38245">Frame Buffer Misalignment (CVE-2024-38245)</h3>
+
+<p>Before diving into that, we first need to introduce a key object in Kernel Streaming: the <a href="https://learn.microsoft.com/sr-latn-rs/windows-hardware/drivers/stream/ks-allocators">KS Allocator</a>. The KS Allocator is responsible for pre-allocating a set of frame buffers that can be reused during streaming operations. This significantly reduces the overhead of dynamic memory allocation at runtime. Typically, an allocator object is associated with a pin, and third-party drivers can also implement their own custom allocator if needed. Kernel Streaming also provides a default allocator for use when no custom implementation is specified.</p>
+
+<p>In general, a KS Allocator can be created using the <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/nf-ks-kscreateallocator">KsCreateAllocator</a> API, and configured through a structure called <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ns-ks-ksallocator_framing">KSALLOCATOR_FRAMING</a>. This structure allows you to specify parameters such as the number of frame buffers, the size of each buffer, and even the alignment requirements for each frame buffer.</p>
+
+<pre><code class="language-cpp=">typedef struct {
+  union {
+    ULONG OptionsFlags;
+    ULONG RequirementsFlags;
+  };
+#if ...
+  POOL_TYPE PoolType;
+#else
+  ULONG     PoolType;
+#endif
+  ULONG     Frames;
+  ULONG     FrameSize;
+  union {
+    ULONG FileAlignment;
+    LONG  FramePitch;
+  };
+  ULONG     Reserved;
+} KSALLOCATOR_FRAMING, *PKSALLOCATOR_FRAMING;
+</code></pre>
+
+<p><strong>Note :</strong> To specify the alignment of a frame buffer, you must provide an alignment mask during allocator configuration.</p>
+
+<p>After creating a KS Allocator, we can attach it to the pin. Before reading data from the pin, we need to set its state to <strong>KSSTATE_RUN</strong>.</p>
+
+<p><img src="/assets/img/blog/20250517/50.png" alt="" /></p>
+
+<p>At that moment, the allocator will pre-allocate the number of frame buffers based on the configuration provided earlier.</p>
+
+<p><img src="/assets/img/blog/20250517/51.png" alt="" /></p>
+
+<p>From that point on, data is streamed from the device into pre-allocated frame buffers. Corresponding <code class="language-plaintext highlighter-rouge">KS FRAME</code> structures are also allocated. When we send an <code class="language-plaintext highlighter-rouge">IOCTL_KS_READ_STREAM</code> to read data, the process begins just as described earlier.</p>
+
+<p><img src="/assets/img/blog/20250517/52.png" alt="" /></p>
+
+<p>However, instead of reading data from the device each time, the worker thread will copy data from the pre-allocated frame buffers managed by the allocator. In the following section, we’ll focus on how the default allocator manages these pre-allocated buffers.</p>
+
+<p>Let’s take a deeper look at <strong>DefaultAllocator</strong>.</p>
+
+<p>ks!KsCreateDefaultAllocatorEx
+<img src="/assets/img/blog/20250517/53.png" alt="" /></p>
+
+<p>When we call <code class="language-plaintext highlighter-rouge">KsCreateAllocator</code>, Kernel Streaming creates a default allocator and initializes it using the parameters we provide. Internally, <code class="language-plaintext highlighter-rouge">ks.sys</code> implements its own custom allocation routine - <code class="language-plaintext highlighter-rouge">DefAllocatorAlloc</code> and <code class="language-plaintext highlighter-rouge">DefAllocaorFree</code> — and utilizes a <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-lookaside-lists">LookasideList</a> to efficiently manage buffer allocations and reuse.</p>
+
+<p>The allocation function is quite simple :</p>
+<pre><code class="language-cpp=">char *__fastcall DefAllocatorAlloc(POOL_TYPE PoolType, SIZE_T NumberOfBytes, ULONG Alignment)
+{
+    ...
+    if ( Alignment &gt;= FILE_OCTA_ALIGNMENT )
+        FileAlignment = Alignment;
+    ...
+    buffer = ExAllocatePoolWithTag((PoolType | 0x400), v8, 'adSK');//-----[10]
+    if ( buffer )
+    {
+        padding = (~FileAlignment &amp; (buffer + FileAlignment + 4)) - buffer;
+        buffer += padding;
+        *(buffer - 1) = padding; //-------[11]
+    }
+
+}
+
+</code></pre>
+
+<p>It simply calls <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exallocatepoolwithtag">ExAllocatePoolWithTag</a> to allocate memory at [10]. If an alignment is specified, <code class="language-plaintext highlighter-rouge">ks.sys</code> records the size of the required padding in front of the frame buffer, as shown at [11].</p>
+
+<p>In the free routine :</p>
+
+<pre><code class="language-cpp=">void __fastcall DefAllocatorFree(unsigned int *Buffer)
+{
+  __int64 padding; 
+  ...
+  if ( (Buffer &amp; 0xFFF) != 0 )
+    padding = *(Buffer - 1); //---------------[12]
+  else
+    padding = 0LL;
+  ExFreePoolWithTag(Buffer - padding, 0);
+}
+
+</code></pre>
+<p>KS use this padding size to calculate the original pointer returned by <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exallocatepoolwithtag">ExAllocatePoolWithTag</a> at [12].</p>
+
+<p>As shown in the diagram below, the memory layout of the pool looks like this:</p>
+
+<p><img src="/assets/img/blog/20250517/54.png" alt="" /></p>
+
+<p>The purple region represents the padding, while the blue region corresponds to the frame buffer itself. The 4 bytes immediately preceding the frame buffer are used to store the padding size. Under normal case, the alignment mask is expected to be a power-of-two minus one (e.g., 0x3F, 0xFFF, etc.).</p>
+
+<p>However, here’s the problem:</p>
+
+<p><img src="/assets/img/blog/20250517/55.png" alt="" /></p>
+
+<p>KS only checks whether the alignment mask is greater than 0xFFF. If it’s less than 0xFFF, it accepts any value, even if it’s not a valid alignment.</p>
+
+<blockquote>
+  <p>Useless Bug ?</p>
+</blockquote>
+
+<p>At first glance, this might seem like a harmless bug — just a minor issue with memory alignment. But what happens when that misaligned buffer meets the <code class="language-plaintext highlighter-rouge">LookasideList</code>?</p>
+
+<h4 id="lookasidelist"><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-lookaside-lists">LookasideList</a></h4>
+<p><code class="language-plaintext highlighter-rouge">LookasideList</code> are per-processor caches optimized for fixed-size memory blocks. Instead of using the general pool allocator, they maintain a simple singly linked list for fast allocation and deallocation. <strong>Both allocations and frees always check the list first before using the general pool, and the list operates in LIFO (Last-In, First-Out) order.</strong> One important constraint is that entries stored in the <code class="language-plaintext highlighter-rouge">LookasideList</code> <strong>is expected to be aligned to 0x10 bytes</strong>. You can refer to <a href="https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-slist_entry"><code class="language-plaintext highlighter-rouge">SLIST_ENTRY</code></a>.</p>
+
+<p>As you can see in <code class="language-plaintext highlighter-rouge">ExAllocateFromNPagedLookasideList</code>:</p>
+
+<pre><code class="language-cpp=">PSLIST_ENTRY ExAllocateFromNPagedLookasideList(...){
+    ...
+    ReturnChunk = ListHead-&gt;FreeChunk &amp; 0xFFFFFFFFFFFFFFF0;
+    ListHead-&gt;FreeChunk = ReturnChunk-&gt;Next;
+    ListHead-&gt;Depth-- ;
+    ...
+}
+
+</code></pre>
+
+<p>The allocation logic aligns the returned chunk address to 0x10 bytes before returning it to the caller.</p>
+
+<pre><code class="language-cpp=">PSLIST_ENTRY ExFreeToNPagedLookasideList(...,PSLIST_ENTRY Chunk){
+    ...
+    NextChunk = ListHead-&gt;FreeChunk &amp; 0xFFFFFFFFFFFFFFF0
+    Chunk-&gt;Next = NextChunk;
+    ListHead-&gt;FreeChunk = Chunk;
+    ListHead-&gt;Depth++;
+    ...
+}
+</code></pre>
+
+<p>Similarly, when freeing memory back to the <code class="language-plaintext highlighter-rouge">LookasideList</code>, it also aligns the chunk. As shown in this code snippet above, the free routine aligns the first entry in the list</p>
+
+<blockquote>
+  <p>Non–0x10-byte–aligned Frame Buffer + LookasideList</p>
+</blockquote>
+
+<p>So, what happens if a frame buffer that’s not 0x10-byte aligned is inserted into a <code class="language-plaintext highlighter-rouge">LookasideList</code>?</p>
+
+<h4 id="lets-play-the-funky-frame">Let’s play the funky frame.</h4>
+
+<p><img src="/assets/img/blog/20250517/56.png" alt="" /></p>
+
+<p>We write a script to list out all possible alignment mask and padding size. In this case, we’re using an alignment mask that results in 8 bytes of padding. Then, we configured the allocator to pre-allocate 4 frame buffer. As a result, each buffer will follow the same layout — and due to the 8-byte padding, the resulting frame buffer addresses all end with 0x08.</p>
+
+<p>The buffers will look like this one : 
+<img src="/assets/img/blog/20250517/57.png" alt="" /></p>
+
+<p>After that, the allocator returns four buffers — A, B, C, and D — all of which have addresses ending in 0x8 due to the applied padding.</p>
+
+<p><img src="/assets/img/blog/20250517/58.png" alt="" /></p>
+
+<p>When these buffers are freed, <code class="language-plaintext highlighter-rouge">ks.sys</code> releases them one by one and inserts each of them into the <code class="language-plaintext highlighter-rouge">LookasideList</code> in order.</p>
+
+<p><img src="/assets/img/blog/20250517/59.png" alt="" /></p>
+
+<p>As illustrated in the diagram above, we first free <code class="language-plaintext highlighter-rouge">Frame A</code>, which gets inserted into the <code class="language-plaintext highlighter-rouge">LookasideList</code> without any issues.</p>
+
+<p><img src="/assets/img/blog/20250517/60.png" alt="" /></p>
+
+<p>When <code class="language-plaintext highlighter-rouge">Frame B</code> is freed, the allocator first aligns the address of the current list head (<code class="language-plaintext highlighter-rouge">Frame A</code>) to satisfy the 0x10-byte alignment requirement. <strong>It then stores this aligned address in the next pointer field of <code class="language-plaintext highlighter-rouge">Frame B</code></strong>, and inserts Frame B at the head of the <code class="language-plaintext highlighter-rouge">LookasideList</code>.</p>
+
+<p><img src="/assets/img/blog/20250517/61.png" alt="" /></p>
+
+<p>We continue by freeing <code class="language-plaintext highlighter-rouge">Frame C</code> and <code class="language-plaintext highlighter-rouge">Frame D</code>, both of which follow the same pattern as before. In the end, the <code class="language-plaintext highlighter-rouge">LookasideList</code> will look like the layout illustrated in the diagram above.</p>
+
+<blockquote>
+  <p>Have you spotted the issue?</p>
+</blockquote>
+
+<p>The issue lies in the <strong>next pointer of <code class="language-plaintext highlighter-rouge">Frame D</code></strong>. Due to alignment, <strong>the next pointer ends up pointing to the start of the pool chunk, rather than the actual frame buffer</strong>.</p>
+
+<p><img src="/assets/img/blog/20250517/62.png" alt="" /></p>
+
+<p>As shown in the diagram above, you’ll notice that the next pointer of <code class="language-plaintext highlighter-rouge">Frame C</code> points to the padding area, which contains the stored padding size, not the expected list entry structure. When interpreted as a 64-bit value, this pointer becomes something like <code class="language-plaintext highlighter-rouge">0x800000000</code> —
+which falls within the user-space address range.</p>
+
+<p>Our plan is to allocate a memory page at <code class="language-plaintext highlighter-rouge">0x800000000</code>, allowing us to gain control over the <code class="language-plaintext highlighter-rouge">LookasideList</code>. We then configure the final node in the list to point to our desired target address. After that, when the device performs a read operation,
+<code class="language-plaintext highlighter-rouge">ks.sys</code> will write the incoming data into these frame buffers — including the one pointing to our chosen address.</p>
+
+<p><img src="/assets/img/blog/20250517/63.png" alt="" /></p>
+
+<blockquote>
+  <p>In theory, this gives us an arbitrary memory write primitive, right?</p>
+</blockquote>
+
+<p>However, we still face the same limitation as before: we cannot control the content that gets written.</p>
+
+<p><img src="/assets/img/blog/20250517/64.png" alt="" /></p>
+
+<p>Additionally, we cannot use the <code class="language-plaintext highlighter-rouge">buffered flag</code> in this scenario, which means we’re limited to whatever data the device sends — making precise exploitation much more difficult.</p>
+
+<p>At this point, we were stuck again.</p>
+
+<p><img src="/assets/img/blog/20250517/65.png" alt="" /></p>
+
+<p>But after thinking it through once more, we found another way forward.</p>
+
+<h4 id="lets-make-the-lookasidelist-great-again">Let’s make the LookasideList great again</h4>
+
+<p><img src="/assets/img/blog/20250517/66.png" alt="" /></p>
+
+<p>As shown in the diagram above, we first construct a fake linked list in user space. The address <code class="language-plaintext highlighter-rouge">0x41410000</code> represents a user-controlled memory region, which we use to construct a valid <code class="language-plaintext highlighter-rouge">LookasideList</code> entry. Then, we proceed to allocate the frame buffer, which causes the allocator to traverse the fake list we’ve constructed.</p>
+
+<p><img src="/assets/img/blog/20250517/67.png" alt="" /></p>
+
+<p>In <code class="language-plaintext highlighter-rouge">ExAllocateFromNPagedLookasideList</code>, the allocator first aligns the chunk and then updates the list head. However, due to the misalignment, the alignment logic mistakenly <strong>interprets the start of <code class="language-plaintext highlighter-rouge">Frame</code> D as a next pointer</strong> — leading to incorrect traversal of the <code class="language-plaintext highlighter-rouge">LookasideList</code>.</p>
+
+<p><img src="/assets/img/blog/20250517/68.png" alt="" /></p>
+
+<p>Once the first chunk is popped from the list, the linked list transforms into the state shown in the diagram above. Next, we allocate all remaining chunks from the <code class="language-plaintext highlighter-rouge">LookasideList</code>. We also configure the allocator to use smaller frame buffers, which causes the webcam to <strong>enter a wait state — it no longer reads data from the device</strong>. Next, we trigger a STOP to release all of the frame buffers.</p>
+
+<p><img src="/assets/img/blog/20250517/69.png" alt="" /></p>
+
+<p>The frame buffer will appear as shown in the diagram above. At this point, <code class="language-plaintext highlighter-rouge">ks.sys</code> begins returning the buffers to the <code class="language-plaintext highlighter-rouge">LookasideList</code>, one by one. First, it releases <code class="language-plaintext highlighter-rouge">Frame D</code>. Then, it frees the malicious chunk at <code class="language-plaintext highlighter-rouge">0x800000000</code>. After that, it frees the fake chunk at <code class="language-plaintext highlighter-rouge">0x41410000</code>.</p>
+
+<p><img src="/assets/img/blog/20250517/70.png" alt="" /></p>
+
+<p>Once the three chunks have been released, the structure of the <code class="language-plaintext highlighter-rouge">LookasideList</code> transforms into the layout illustrated above. In the end, the allocator will release our target address.</p>
+
+<p><img src="/assets/img/blog/20250517/71.png" alt="" /></p>
+
+<p><strong>It will cause the next pointer of target address to point to <code class="language-plaintext highlighter-rouge">0x41410000</code></strong>. This value can be any user-space address controlled by the attacker.</p>
+
+<p><img src="/assets/img/blog/20250517/72.png" alt="" /></p>
+
+<p>In other words, we now have a powerful arbitrary memory write primitive.</p>
+
+<p>After gaining arbitrary memory write on Windows 23H2, we can use <a href="https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntquerysysteminformation">NtQuerySystemInformation</a> to leak the address of the <a href="https://www.vergiliusproject.com/kernels/x64/windows-11/23h2/_ETHREAD">thread object</a>. With that address, we <a href="https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf">flip the necessary bit</a> in the token structure to escalate privileges. From here, we can apply any <a href="https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf">well-known EoP</a> technique to achieve full privilege escalation. By the way, once you’ve achieved arbitrary memory write, <strong>don’t forget to restore the <code class="language-plaintext highlighter-rouge">LookasideList</code></strong> to a valid state — otherwise, the system may crash during subsequent allocations.</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/QSPbzE1KUbA?si=Dgow1vCMCaKASNra" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+
+<p>We’ve successfully turned what seemed like a harmless bug into a serious vulnerability.</p>
+
+<h2 id="the-next--summary">The Next &amp; Summary</h2>
+
+<p>This bug patterns may not be limited to Kernel Streaming alone. By paying closer attention to MDL-related issues, you might be able to discover many more bugs in other driver. Kernel Streaming remains a fascinating research target and likely still harbors many undiscovered vulnerabilities beneath its surface.</p>
+
+<p>Gaining a deep understanding of Windows API implementations — and recognizing the risks of their misuse — is essential to uncovering new vulnerabilities and building effective exploitation techniques.</p>
+
+<blockquote>
+  <p>Keep these patterns in mind — it might be your next vulnerability.</p>
+</blockquote>
+
+<h2 id="reference">Reference</h2>
+<ul>
+  <li><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-mdls">Using MDLs</a></li>
+  <li><a href="https://conference.hitb.org/hitbsecconf2023hkt/materials/D2T1%20-%20Windows%20Kernel%20Security%20-%20A%20Deep%20Dive%20into%20Two%20Exploits%20Demonstrated%20at%20Pwn2Own%20-%20Thomas%20Imbert.pdf">Windows Kernel Security - A Deep Dive into Two Exploits Demonstrated at Pwn2Own</a></li>
+  <li><a href="https://big5-sec.github.io/posts/CVE-2023-29360-analysis/">CVE-2023-29360 Analysis
+</a></li>
+  <li><a href="https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf">Easy Local Windows Kernel Exploitation
+</a></li>
+</ul>
+
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/en/blog/author/angelboy">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/angelboy.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/en/blog/author/angelboy">
+                            <h3>Angelboy</h3>
+                        </a>
+                        <span>Senior Security Researcher</span>
+                        <p>
+                            I am 👼 :)
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2025 DEVCORE <b class="line-block">All rights reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

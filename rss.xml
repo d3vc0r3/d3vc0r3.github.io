@@ -4,11 +4,810 @@
         <title>DEVCORE 戴夫寇爾</title>
         <description>DEVCORE 戴夫寇爾 - 紅隊演練服務、滲透測試服務、資安教育訓練、資安顧問服務</description>
         <link>https://devco.re</link>
-        <lastBuildDate>Mon, 12 May 2025 15:39:57 +0800</lastBuildDate>
-        <pubDate>Mon, 12 May 2025 15:39:57 +0800</pubDate>
+        <lastBuildDate>Sat, 17 May 2025 22:45:38 +0800</lastBuildDate>
+        <pubDate>Sat, 17 May 2025 22:45:38 +0800</pubDate>
         <ttl>1800</ttl>
         <atom:link href="https://devco.re/rss" rel="self" type="application/rss+xml" />
 
+
+        <item>
+                <title>Frame by Frame, Kernel Streaming Keeps Giving Vulnerabilities</title>
+                <description>&lt;p&gt;This is a series of research related to Kernel Streaming attack surface. It is recommended to read the following articles first.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en/&quot;&gt;Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part I&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2-en/&quot;&gt;Streaming vulnerabilities from Windows Kernel - Proxying to Kernel - Part II&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Welcome to Part III of my series on streaming vulnerabilities in the Windows kernel. This research was also presented at &lt;a href=&quot;https://www.offensivecon.org/agenda/2025.html&quot;&gt;OffensiveCon 2025&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Over the past year, we uncovered an overlooked bug class called &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Proxying to Kernel&lt;/code&gt;, which led to severe consequences, making exploitation straightforward in Windows kernel. However, this is just the tip of the iceberg for Kernel Streaming.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After discovering several vulnerabilities — including those related to the Proxying series — in Kernel Streaming, we decided to dive deeper into its internals. Between late 2023 and the end of 2024, we identified over 20 vulnerabilities. Approximately 14 of them are related to &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/stream/avstream-overview&quot;&gt;AVStream&lt;/a&gt;, with most occurring during frame handling. In this post, I’ll focus on these frame-related issues.&lt;/p&gt;
+
+&lt;p&gt;Let’s talk about kernel streaming frame.&lt;/p&gt;
+
+&lt;h2 id=&quot;brief-overview-of-kernel-streaming-frame&quot;&gt;Brief overview of Kernel Streaming Frame&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In Kernel Streaming, when reading data from a device, Kernel Streaming will allocate KS frame to carry streaming data such as video or audio.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;struct _KSPFRAME_HEADER
+{
+  _LIST_ENTRY ListEntry;
+  _KSPFRAME_HEADER *NextFrameHeaderInIrp;
+  void *Queue;
+  _IRP *OriginalIrp;
+  _MDL *Mdl;
+  _IRP *Irp;
+  KSPIRP_FRAMING_ *IrpFraming;
+  KSSTREAM_HEADER *StreamHeader;
+  void *FrameBuffer;
+  KSPMAPPINGS_TABLE *MappingsTable;
+  unsigned int StreamHeaderSize;
+  unsigned int FrameBufferSize;
+  void *Context;
+  int RefCount;
+  void *OriginalData;
+  void *BufferedData;
+  int Status;
+  unsigned __int8 DismissalCall;
+  _KSPFRAME_HEADER_TYPE Type;
+  _KSPSTREAM_POINTER *FrameHolder;
+  unsigned int OriginalOptionsFlags;
+  _KSPMDLCACHED_STREAM_POINTER *MdlCaching;
+};
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The frame buffer inside the KS frame stores the actual image or audio data. Most frame buffers are described by a &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_mdl&quot;&gt;Memory Descriptor List (MDL)&lt;/a&gt; that maps their physical memory. If you’re not familiar with what an MDL is, don’t worry — here’s a quick overview.&lt;/p&gt;
+
+&lt;h3 id=&quot;mdl&quot;&gt;MDL&lt;/h3&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MDL (Memory Descriptor List)&lt;/code&gt; is a kernel-mode structure used in Windows to describe the physical pages backing a virtual memory buffer. It allows kernel components and drivers to perform direct memory access (DMA) and safely share buffers across different contexts. MDLs are widely used throughout the Windows kernel, commonly in conjunction with IRPs during &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-direct-i-o&quot;&gt;Direct I/O&lt;/a&gt;, as well as in file system and network drivers during data transfer operations.&lt;/p&gt;
+
+&lt;p&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MDL (Memory Descriptor List)&lt;/code&gt; structure is defined as follows:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;typedef struct _MDL {
+  struct _MDL      *Next;
+  CSHORT           Size;
+  CSHORT           MdlFlags;
+  struct _EPROCESS *Process;
+  PVOID            MappedSystemVa;
+  PVOID            StartVa;
+  ULONG            ByteCount;
+  ULONG            ByteOffset;
+  ULONG64          PFN[];  // Variable-length array of page frame numbers
+
+} MDL, *PMDL;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;This is a variable-sized structure, where the &lt;strong&gt;PFN (Page Frame Numbers)&lt;/strong&gt; array is stored at the end of the MDL. Each PFN represents the physical page corresponding to a  the virtual buffer described by the MDL.&lt;/p&gt;
+
+&lt;p&gt;In Kernel Streaming, an MDL describes a buffer that is mapped into user space and kernel space, and both mappings refer to the same physical memory.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/3.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As a result, when data is read from a device, it is written to both the user-mode and kernel-mode buffers at the same time.&lt;/p&gt;
+
+&lt;p&gt;Let’s take a quick look at how MDLs are typically used.&lt;/p&gt;
+
+&lt;h4 id=&quot;basic-usage-of-mdl&quot;&gt;Basic Usage of MDL&lt;/h4&gt;
+
+&lt;p&gt;When the kernel needs to access user-mode memory — especially at elevated IRQL levels such as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DISPATCH_LEVEL&lt;/code&gt; or within a DPC — it often relies on an MDL to safely describe and lock that memory. Typically, this process invokes the set of APIs shown in the diagram below.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/4.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;ioallocatemdl&quot;&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-ioallocatemdl&quot;&gt;IoAllocateMDL&lt;/a&gt;&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/5.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;First, the kernel calls &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IoAllocateMdl&lt;/code&gt; to allocate an MDL structure, initializing it to describe a buffer based on the provided virtual address and length. &lt;strong&gt;But it does not initialize the PFN (Page Frame Number) array in the MDL.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;mmprobeandlockpages&quot;&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-mmprobeandlockpages&quot;&gt;MmProbeAndLockPages&lt;/a&gt;&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/6.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Next, the kernel calls &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MmProbeAndLockPages&lt;/code&gt; to lock the physical pages corresponding to the virtual address range, and to populate the PFN (Page Frame Number) array inside the MDL.&lt;/p&gt;
+
+&lt;h4 id=&quot;mmmaplockedpagesspecifycache&quot;&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-mmmaplockedpagesspecifycache&quot;&gt;MmMapLockedPagesSpecifyCache&lt;/a&gt;&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/7.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Once the kernel needs to access the memory, it calls &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MmMapLockedPagesSpecifyCache&lt;/code&gt; to map a new virtual address &lt;strong&gt;using the PFNs stored in the MDL&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;By the way, it’s also possible to map kernel buffers into user space using this API.&lt;/p&gt;
+
+&lt;h4 id=&quot;mmunlockpagesiofreemdl&quot;&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-mmunlockpages&quot;&gt;MmUnlockPages&lt;/a&gt;/&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iofreemdl&quot;&gt;IoFreeMdl&lt;/a&gt;&lt;/h4&gt;
+
+&lt;p&gt;After the kernel has finished using the buffer mapped through the MDL, it must call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MmUnlockPages&lt;/code&gt; to release the locked physical pages. Finally, the MDL itself should be freed using &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IoFreeMdl&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;For the purposes of this post, it’s enough to understand that Kernel Streaming uses MDLs to manage frame buffers shared between user space and kernel space.&lt;/p&gt;
+
+&lt;p&gt;If you’re interested in more details about MDL, here are some helpful references:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-mdls&quot;&gt;Using MDLs&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://medium.com/@WaterBucket/understanding-memory-descriptor-lists-mdls-for-windows-vulnerability-research-exploit-7de8729caee7&quot;&gt;Understanding Memory Descriptor Lists (MDLs) for Windows Vulnerability Research &amp;amp; Exploit Development&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Next, let’s take a look at how a typical application reads data from a webcam — and how Kernel Streaming implements this functionality under the hood.&lt;/p&gt;
+
+&lt;h3 id=&quot;how-to-read-streams-from-webcam&quot;&gt;How to Read Streams from webcam&lt;/h3&gt;
+
+&lt;p&gt;Here is a simplified overview of the workflow for reading a video stream from a webcam using Kernel Streaming:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/8.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Open the device to obtain a handle to the webcam device.&lt;/li&gt;
+  &lt;li&gt;Use this device handle to create an instance of the Pin on this filter and obtain the Pin handle.&lt;/li&gt;
+  &lt;li&gt;Set the Pin’s state to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;RUN&lt;/code&gt; using &lt;a href=&quot;https://learn.microsoft.com/zh-tw/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_property&quot;&gt;IOCTL_KS_PROPERTY&lt;/a&gt;. When the Pin enters the RUN state, the webcam’s indicator light usually turns on, indicating that the device is active and ready to stream.&lt;/li&gt;
+  &lt;li&gt;Finally, you can use &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ni-ks-ioctl_ks_read_stream&quot;&gt;IOCTL_KS_READ_STREAM&lt;/a&gt; to read data from this Pin. When sending the IOCTL to read the stream, we need to provide a &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ns-ks-ksstream_header&quot;&gt;KSSTREAM_HEADER&lt;/a&gt; structure as input to specify the necessary information.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;typedef struct {
+  ULONG    Size;
+  ULONG    TypeSpecificFlags;
+  KSTIME   PresentationTime;
+  LONGLONG Duration;
+  ULONG    FrameExtent; //Buffer Size
+  ULONG    DataUsed; 
+  PVOID    Data; // point to image Buffer
+  ULONG    OptionsFlags;
+  ULONG    Reserved;
+} KSSTREAM_HEADER, *PKSSTREAM_HEADER;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The kernel will use this structure to copy data from the device into memory. The most important fields are the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Data&lt;/code&gt;, which points to your user-space buffer, and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;FrameExtent&lt;/code&gt;, which indicates the size of the buffer. Kernel Streaming will map a frame buffer based on these values and write the image data into the memory region you provided.  Optionally, you can also use the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;OptionsFlags&lt;/code&gt; field to describe the attributes of the frame.&lt;/p&gt;
+
+&lt;h3 id=&quot;stream-reading-in-kernel-streaming&quot;&gt;Stream Reading in Kernel Streaming&lt;/h3&gt;
+&lt;p&gt;Let’s briefly introduce how ks implements reading a frame.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/9.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;First, a buffer must be allocated in user space to store the incoming image data.
+Then, a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER&lt;/code&gt; structure is prepared, containing the buffer’s address and size, and passed to the kernel via an &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_READ_STREAM&lt;/code&gt;. When this IOCTL is sent to the webcam device, it is handled by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt;. If the request does not originate from a WoW64 process, it will be passed to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; for further processing.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/10.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Once &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; receives the request, it parses the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER&lt;/code&gt;, creates an MDL based on the provided buffer and size, and insert it to the IRP. The user-space buffer is then mapped into kernel space as a frame buffer through this MDL. At this point, both the user buffer and the frame buffer point to the same physical memory, enabling efficient zero-copy data transfers between user space and kernel space.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/11.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Finally, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; allocates a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KS Frame (_KSPFRAME_HEADER)&lt;/code&gt; in kernel. This structure contains the associated MDL, a pointer to the frame buffer, the buffer size, and other metadata used for managing the streaming operation.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/12.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KS FRAME&lt;/code&gt; is then placed into an internal queue, where it waits to be filled with data.
+Next, the Kernel Streaming worker thread dequeues a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KS FRAME&lt;/code&gt; and begins capturing image data from the device into the associated frame buffer. Any remaining &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KS FRAME&lt;/code&gt; structures in the queue will be processed one by one in the order they were enqueued.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/13.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;By the way, it’s also possible to submit multiple &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER&lt;/code&gt; structures in a single IOCTL call to request multiple frames. In that case, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; will process each frame request in order, based on the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER&lt;/code&gt; array provided in the input buffer. Each frame has a &lt;strong&gt;one-to-one mapping with a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER&lt;/code&gt;, an MDL, and a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KS FRAME&lt;/code&gt;&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;With the basics of the architecture and frame reading in place, we can now examine things from an attacker’s point of view.&lt;/p&gt;
+
+&lt;h3 id=&quot;from-attackers-perspective&quot;&gt;From Attacker’s Perspective&lt;/h3&gt;
+
+&lt;p&gt;So, where should we focus our attention?&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/14.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The first and most intuitive target is the transition between &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt;.When 32-bit requests are converted to 64-bit, improper handling of user-controlled &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER&lt;/code&gt; structures may lead to memory corruption — for example, &lt;a href=&quot;https://github.com/Black-Frost/windows-learning/tree/main/CVE-2024-38054&quot;&gt;CVE-2024-38054&lt;/a&gt; is one such case. This transition layer can also introduce inconsistency issues.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/15.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Another interesting target is how &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; manages frame buffers. If MDLs are &lt;strong&gt;misused&lt;/strong&gt; during frame buffer handling, it can result in various forms of memory corruption. We’ll examine some examples of these issues later.&lt;/p&gt;
+
+&lt;p&gt;In the course of our research on Kernel Streaming, we identified several new bug classes worth highlighting.&lt;/p&gt;
+
+&lt;h2 id=&quot;new-bug-classes-in-kernel-streaming&quot;&gt;New Bug Classes in Kernel Streaming&lt;/h2&gt;
+
+&lt;p&gt;The first bug class we identified is MDL mismatch.&lt;/p&gt;
+
+&lt;h3 id=&quot;mdl-mismatch&quot;&gt;MDL Mismatch&lt;/h3&gt;
+
+&lt;p&gt;When &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt; receives a 32-bit request, it not only converts the request to its 64-bit equivalent, but also pre-allocates an MDL to describe the frame buffer.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/16.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As illustrated in the diagram, when a 32-bit request is issued, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt; is the first to handle it. During this step, it sets up the MDL and performs the mapping for the frame buffer.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/17.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Once &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt; completes its preprocessing, it passes the IRP to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; for further handling. Since the MDL has already been created by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; will &lt;strong&gt;not&lt;/strong&gt; allocate a new one. At this point, a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KS FRAME&lt;/code&gt; is allocated to represent the frame within the Kernel Streaming framework.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/18.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Moreover, if multiple frames are requested in a single call, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt; will pre-allocate all the necessary MDLs and perform the corresponding frame buffer mappings.&lt;/p&gt;
+
+&lt;p&gt;However, if the OptionsFlags field is set to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER_OPTIONSF_PERSIST_SAMPLE (0x8000)&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt; will skip the normal MDL allocation process. This flag is actually part of Kernel Streaming’s MDL caching mechanism. While we won’t go into the full details here, it’s important to understand that enabling this flag &lt;strong&gt;causes ksthunk to skip MDL allocation for that frame&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;Additionally, since each frame is handled independently, it’s possible to intentionally mark only one of the submitted frames as caching by setting the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER_OPTIONSF_PERSIST_SAMPLE&lt;/code&gt; flag on that specific frame when submitting multiple frames in a single request.&lt;/p&gt;
+
+&lt;p&gt;Let me give you an example :&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/19.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Suppose we submit two frames, with the second frame marked as caching.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/20.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt; will check the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;OptionsFlags&lt;/code&gt; field for each frame. If the cache flag is &lt;strong&gt;not&lt;/strong&gt; set, it allocates an MDL and maps the frame buffer accordingly. Since the second frame &lt;strong&gt;has&lt;/strong&gt; the cache flag set, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt; will skip MDL allocation for that frame.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/21.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After that, the IRP is passed down to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt;, which will once again inspect the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;OptionsFlags&lt;/code&gt; field for each frame. However, the logic here is reversed compared to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt;.&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;For the first frame — because it doesn’t have the cache flag — ks.sys assumes the MDL has already been allocated by ksthunk, and therefore skips MDL allocation.&lt;/li&gt;
+  &lt;li&gt;For the second frame, since the cache flag is set, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; will allocate a new MDL and map the frame buffer.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/22.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; then creates &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KS FRAME&lt;/code&gt; based on &lt;strong&gt;the order of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER&lt;/code&gt; entries&lt;/strong&gt;.
+Each KSFRAME is paired one-to-one with its corresponding MDL, and the frames are placed into an internal queue, waiting to be pulled and processed by the worker thread.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;But… is it really safe ?&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;There seems to be something inconsistent. &lt;strong&gt;Let’s abuse the MDL chain !&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/23.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Suppose we submit two frames:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;For the first frame, we set the buffer size to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x1000&lt;/code&gt; and enable the cache flag.&lt;/li&gt;
+  &lt;li&gt;For the second frame, we set the buffer size to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x20000&lt;/code&gt;, but do not set the cache flag.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/24.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt; checks each stream header as usual. For the first frame, since &lt;strong&gt;the cache flag is set&lt;/strong&gt;, it &lt;strong&gt;skips&lt;/strong&gt; MDL allocation. For the second frame, since the cache flag is &lt;strong&gt;not&lt;/strong&gt; set, ksthunk allocates a new MDL and maps the frame buffer accordingly.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/25.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After that, the IRP is passed down to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt;, which once again inspects the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;OptionsFlags&lt;/code&gt; field for each frame.&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;For the first frame, since the cache flag is set, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; will allocate a new MDL, map the frame buffer, and insert it into the MDL chain.&lt;/li&gt;
+  &lt;li&gt;For the second frame, the cache flag is not set, so &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; assumes the MDL has already been allocated by ksthunk, and therefore skips the allocation.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/26.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Finally, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; creates &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KS FRAME&lt;/code&gt;  based on the MDL chain and the corresponding &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER&lt;/code&gt; entries. The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;FrameExtent&lt;/code&gt; field from each header is stored into the associated &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KS FRAME&lt;/code&gt;, defining the expected frame size.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/27.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As shown in the diagram above, the first frame will have a size of 0x1000 stored, while the second frame will have 0x20000 stored.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Do you notice the problem?&lt;/strong&gt; After we run it …&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/28.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Why ?&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/29.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The root cause of this issue is a mismatch between each &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER&lt;/code&gt; and its corresponding MDL. For example, the first &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER&lt;/code&gt; gets paired with the MDL of the second frame, while the second &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER&lt;/code&gt; ends up linked to the MDL of the first frame.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;What’s the actual impact?&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/30.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When the worker copies data from the device, it relies on the buffer address and size stored in each &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KS FRAME&lt;/code&gt; to perform the copy operation. Both frames are treated the same — the worker refers to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KS FRAME&lt;/code&gt; structure to determine where and how much data to copy. However, here lies the problem…&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/31.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;For the second &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KS FRAME&lt;/code&gt;, the actual allocated buffer is only &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x1000&lt;/code&gt; bytes, but the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;FrameExtent&lt;/code&gt; field in the structure indicates a size of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x20000&lt;/code&gt;. As a result, the worker attempts to copy &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x20000&lt;/code&gt; bytes into &lt;strong&gt;a much smaller buffer&lt;/strong&gt;, leading to a buffer overflow.&lt;/p&gt;
+
+&lt;p&gt;In fact, several of the vulnerabilities we discovered stem from this exact issue. As long as an attacker can create a mismatch between a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER&lt;/code&gt; and its corresponding MDL, the result is a buffer overflow.&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;CVE-2024-38237&lt;/li&gt;
+  &lt;li&gt;CVE-2025-21375&lt;/li&gt;
+  &lt;li&gt;…&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The second bug class we’re going to discuss is called &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;The Forgotten Lock in MDL&lt;/code&gt; —
+a vulnerability pattern involving incorrect handling of MDL.&lt;/p&gt;
+
+&lt;p&gt;This bug class is a bit more special&lt;/p&gt;
+
+&lt;h3 id=&quot;the-forgotten-lock&quot;&gt;The Forgotten Lock&lt;/h3&gt;
+
+&lt;p&gt;Actually, it is an &lt;strong&gt;uninitialized issue&lt;/strong&gt; in MDL.&lt;/p&gt;
+
+&lt;p&gt;Before we discuss this issue, let’s first look at some common mistakes developers make when working with MDLs.&lt;/p&gt;
+
+&lt;h4 id=&quot;security-risks-of-mdl&quot;&gt;Security Risks of MDL&lt;/h4&gt;
+
+&lt;p&gt;The first one is a common issued recently — one that I also mentioned in a &lt;a href=&quot;https://devco.re/blog/2024/08/23/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part1-en/#cve-2023-29360---logical-vulnerability&quot;&gt;previous post&lt;/a&gt;.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Incorrect &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;access mode&lt;/code&gt; flag in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MmProbeAndLockPages&lt;/code&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/32.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When the kernel calls &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MmProbeAndLockPages&lt;/code&gt; to lock a user-supplied memory buffer, it may incorrectly set the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;access mode&lt;/code&gt; flag. This mistake causes the kernel to skip the check that verifies whether the target address belongs to user space. As a result, a user-mode process could supply a kernel-mode address, leading to arbitrary memory writes in kernel space.&lt;/p&gt;
+
+&lt;p&gt;For more details, please refer to &lt;a href=&quot;https://conference.hitb.org/hitbsecconf2023hkt/materials/D2T1%20-%20Windows%20Kernel%20Security%20-%20A%20Deep%20Dive%20into%20Two%20Exploits%20Demonstrated%20at%20Pwn2Own%20-%20Thomas%20Imbert.pdf&quot;&gt;Synacktiv’s presentation at HITB 2023 HKT&lt;/a&gt; and &lt;a href=&quot;https://x.com/Big5_sec&quot;&gt;Nicolas Zilio(@Big5_sec)&lt;/a&gt; ‘s blog &lt;a href=&quot;https://big5-sec.github.io/posts/CVE-2023-29360-analysis/&quot;&gt;post&lt;/a&gt;.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Double Free in I/O Complete&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/33.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Another common issue occurs when a kernel driver frees an MDL without clearing the corresponding MDL pointer in the IRP. Later, when the IRP is completed, the system attempts to free the MDL again, resulting in a double free vulnerability during &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-iocompleterequest&quot;&gt;IoCompleteRequest&lt;/a&gt;. This pattern can also be found in Kernel Streaming(&lt;a href=&quot;https://msrc.microsoft.com/update-guide/vulnerability/CVE-2025-24046&quot;&gt;CVE-2025-24046&lt;/a&gt;).&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/34.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When frame allocation fails, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; releases the MDLs in the MDL chain, but it does not clear the MDL pointer stored in the IRP. As a result, the MDL is freed again when the IRP completes — leading to a double free.&lt;/p&gt;
+
+&lt;p&gt;These two bug patterns are quite common, there are many more overlooked issues out there.&lt;/p&gt;
+
+&lt;p&gt;Let’s take an example from &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/driversecurity/driver-security-dev-best-practices&quot;&gt;Microsoft driver Security Guidance&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;In this document, Microsoft warns that if developers use &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MmMapIoSpace&lt;/code&gt; without properly validating the physical address, it could result in arbitrary physical memory being mapped into virtual address space — potentially leading to serious security issues.&lt;/p&gt;
+
+&lt;p&gt;To illustrate safe usage, Microsoft provides the following secure coding example:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Func ConstrainedMap(PHYSICAL_ADDRESS paAddress)
+{
+    // expected_Address must be constrained to required usage boundary to prevent abuse
+    if(paAddress == expected_Address &amp;amp;&amp;amp; qwSize == valid_Size)  //-----[1]
+    {
+        lpAddress = MmMapIoSpace(paAddress, qwSize, ...);   
+        pMdl = IoAllocateMdl( lpAddress, ...); //----------[2]
+        MmMapLockedPagesSpecifyCache(pMdl, UserMode, ... ); //-------------[3]
+    }
+    else
+    {
+        return error;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;First, the physical address is validated at [1]. Then, at [2], an MDL is allocated to describe the mapped memory region.Finally, [3] calls MmMapLockedPagesSpecifyCache to map the physical memory into a user-space virtual address.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Now… you might notice something strange here.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;As we mentioned earlier, in typical usage, after allocating an MDL, you are expected to call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MmProbeAndLockPages&lt;/code&gt; to lock the underlying physical pages. However, in this case, the code calls &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MmMapLockedPagesSpecifyCache&lt;/code&gt; directly, without locking the pages first. This results in undefined behavior, as the MDL may not correctly describe valid or accessible physical memory.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/35.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As shown in diagram above, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IoAllocateMdl&lt;/code&gt; is used to allocate the MDL structure and initialize some basic metadata. However, if we immediately call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MmMapLockedPagesSpecifyCache&lt;/code&gt; without first locking the pages,the function will still attempt to access the PFN array inside the MDL. This can lead to undefined behavior, or worse, controlled memory corruption. In many cases, this leads directly to a BSoD.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/36.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, this kind of mistake is widespread throughout Kernel Streaming. In the following section, I will examine CVE-2024-38238, which clearly demonstrates this issue in practice.&lt;/p&gt;
+
+&lt;h4 id=&quot;cve-2024-38238&quot;&gt;CVE-2024-38238&lt;/h4&gt;
+
+&lt;p&gt;We once again construct two &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER&lt;/code&gt; structures — and this time, both frames are of the same size. The first frame has the cache flag set, while the second frame does not.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/37.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As mentioned earlier, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ksthunk.sys&lt;/code&gt; will allocate and lock an MDL only for the frame that does not have the cache flag set. Once that’s done, the IRP is passed down to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; for further processing.&lt;/p&gt;
+
+&lt;p&gt;Now, let’s take a closer look at how &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; handles this frame.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;__int64  CKsMdlcache::MdlCacheHandleThunkBufferIrp(...)
+{
+  ...
+  while(TotalSize &amp;gt;= sizeof(KSSTREAM_HEADER)){ //-------[4]
+      ...
+      if(OptionsFlag &amp;amp; 0x8000 == 0) //-------[5]
+        return KsProbeStreamIrp(irp, a3, 0); //-------[8]
+      IoAllocateMdl(header-&amp;gt;Data,header-&amp;gt;FrameExtent,...,Irp); //-------[6]
+  }
+  ...
+  for(i = irp-&amp;gt;MdlAddress;i;i = i-&amp;gt;Next){
+      MmProbeAndLockPages(i, irp-&amp;gt;RequestorMode, IoWriteAccess); //-------[7]
+  }
+}
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Looking at the while loop in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks!CKsMdlcache::MdlCacheHandleThunkBufferIrp&lt;/code&gt; at [4], we can see that it iterates through each &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KSSTREAM_HEADER&lt;/code&gt; and checks the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;OptionsFlag&lt;/code&gt;s at [5] to determine whether an MDL should be allocated.&lt;/p&gt;
+
+&lt;p&gt;If the cache flag is set, it proceeds to allocate a new MDL at [6]. Under WOW64, if the MDL was already allocated (e.g., by ksthunk), KS will then call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MmProbeAndLockPages&lt;/code&gt; at [7] to lock the memory pages.&lt;/p&gt;
+
+&lt;p&gt;However, in our specific case:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;The first frame has the cache flag set.&lt;/li&gt;
+  &lt;li&gt;The second frame does not.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;So, when KS begins processing the second frame, it takes the path to KsProbeStreamIrp at [8]. At this point, the MDL chain inside the IRP looks like this:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/38.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The first MDL has already been properly locked, but the second one is not locked at all.&lt;/p&gt;
+
+&lt;p&gt;After that, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks!KsProbeStreamIrp&lt;/code&gt; handles the mapping of the frame buffers:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;
+NTSTATUS KsProbeStreamIrp(PIRP Irp, ULONG ProbeFlags, ULONG HeaderSize){
+ ...
+ MDL = Irp-&amp;gt;MdlAddress;
+ if ( (MDL-&amp;gt;MdlFlags &amp;amp; is_locked_and_nonpaged) != 0 ) { //----[9]
+    while ( MDL ) 
+    {
+        if ( (MdlFlags &amp;amp; 5) != 0 )
+        MappedSystemVa = MDL-&amp;gt;MappedSystemVa;
+        else
+        MappedSystemVa = MmMapLockedPagesSpecifyCache(MDL, 0, MmCached, 0LL, 0, 0x40000010u); 
+        
+        MDL = MDL-&amp;gt;Next;
+    }
+ }
+}
+
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;As shown above, the function uses &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MmMapLockedPagesSpecifyCache&lt;/code&gt; to map the frame buffer by each MDL. If the MDL is marked as locked, the function maps it directly. However, there’s a critical flaw: It &lt;strong&gt;only checks the first MDL&lt;/strong&gt; in the MDL chain at [9],and assumes that the entire chain has already been locked.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/39.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MmMapLockedPagesSpecifyCache&lt;/code&gt; is called on the second MDL, it attempts to map memory based on an uninitialized PFN list.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Unexploitatble ?&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;The good news is that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IoAllocateMdl&lt;/code&gt; allocates memory &lt;strong&gt;from NonPagedPoolNx&lt;/strong&gt; &lt;strong&gt;without zero-initializing it&lt;/strong&gt;. This means the PFN array located at the end of the MDL structure will contain leftover memory.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/40.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As shown above, when IoAllocateMdl allocates memory, it uses the &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/pool_flags&quot;&gt;POOL_FLAG_UNINITIALIZED&lt;/a&gt; flag, and does not initialize the PFN array in the MDL. This behavior allows us to apply pool spraying techniques to gain partial or full control over the PFN values inside the MDL.&lt;/p&gt;
+
+&lt;p&gt;By calculating the exact size of the MDL structure — including the number of PFNs based on the frame size — we can perform a &lt;a href=&quot;https://www.alex-ionescu.com/?p=231&quot;&gt;pool spray using Named Pipes&lt;/a&gt; to populate &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;NonPagedPoolNx&lt;/code&gt; memory with carefully crafted data.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/41.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IoAllocateMdl&lt;/code&gt; reuses this memory without zero-initialization, the leftover values will be interpreted as valid PFNs, giving the attacker control over physical-to-virtual mappings.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/42.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As shown above, when &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MmMapLockedPagesSpecifyCache&lt;/code&gt; is called afterward, it treats the attacker-controlled PFNs as valid physical page mappings and uses them to map the frame buffer.&lt;/p&gt;
+
+&lt;p&gt;Finally, when the worker thread copies image data from the device, it writes directly to the physical addresses specified by the attacker, resulting in a powerful arbitrary physical memory write primitive.&lt;/p&gt;
+
+&lt;p&gt;Actually, not all PFNs can be mapped — they must be valid, such as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ResidentPage&lt;/code&gt;. But for our purposes, that’s more than enough.&lt;/p&gt;
+
+&lt;p&gt;The next step is to achieve elevation of privilege (EoP) using the arbitrary physical memory write primitive. But that raises the question:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Where should we write?&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;During testing on several Windows 24H2, we observed a consistent behavior:
+the physical base address of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ntoskrnl.exe&lt;/code&gt; was typically fixed at 0x100400000.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/43.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We tested it on Hyper-V and VMware. The value might have changed in newer builds, but it’s still likely to remain fixed in many cases. This behavior may also depend on the device or hardware configuration.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;So … does that mean we can just write directly to nt and take over the kernel?&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;There is a problem ……&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/44.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We cannot control the data being written, because it comes directly from the webcam device.&lt;/p&gt;
+
+&lt;p&gt;Initially, it seemed like we were stuck. But with a primitive this powerful — stable and repeatable arbitrary physical memory writes — we knew there had to be a way forward.&lt;/p&gt;
+
+&lt;p&gt;So we went back, carefully reviewed the entire Kernel Streaming workflow, and eventually discovered a new angle of attack.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Buffered&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Kernel Streaming offers a feature called buffered mode. When a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KS FRAME&lt;/code&gt; is created with the &lt;strong&gt;buffered flag(KSSTREAM_HEADER_OPTIONSF_BUFFEREDTRANSFER)&lt;/strong&gt; set, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; allocates an additional intermediate buffer in kernel space.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/45.png&quot; alt=&quot;&quot; /&gt;
+&lt;img src=&quot;/assets/img/blog/20250517/46.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;During the streaming process, the contents from the original image buffer are first copied into this intermediate buffer.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/47.png&quot; alt=&quot;&quot; /&gt;
+&lt;img src=&quot;/assets/img/blog/20250517/48.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As shown in diagram above, after the device finishes writing data — or if an error occurs during the transfer — &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; will copy the contents of the buffered memory into the frame buffer. However, in our case, this frame buffer has already been mapped to the physical address of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ntoskrnl.exe&lt;/code&gt; image. In other words, we now have an &lt;strong&gt;arbitrary physical memory write primitive&lt;/strong&gt; with fully controlled data. This opens the door to directly modifying kernel code.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/49.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In our exploit, we chose to overwrite a security check inside PsOpenProcess. Specifically, we replaced the check for &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SeDebugPrivilege&lt;/code&gt; with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SeChangeNotifyPrivilege&lt;/code&gt;. As a result, any normal user can open a high-privilege process except PPL. For more details on the technique of replacing the check with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SeChangeNotifyPrivilege&lt;/code&gt;, you can refer to &lt;a href=&quot;https://devco.re/blog/2024/10/05/streaming-vulnerabilities-from-windows-kernel-proxying-to-kernel-part2-en/#make-abusing-token-privilege-great-again-&quot;&gt;my previous post&lt;/a&gt;.&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/OBY6kJ2sxME?si=oJA1FKRKcMbj6G1_&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;p&gt;There are multiple ways to cause this issue in Kernel Streaming&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;CVE-2024-38238&lt;/li&gt;
+  &lt;li&gt;CVE-2024-38241&lt;/li&gt;
+  &lt;li&gt;CVE-2025-24066&lt;/li&gt;
+  &lt;li&gt;…&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;As long as you find a way to make it forget lock, it can result in an arbitrary physical memory writing.&lt;/p&gt;
+
+&lt;p&gt;The last issue we would like to share is &lt;strong&gt;Frame Buffer Misalignment&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;h3 id=&quot;frame-buffer-misalignment-cve-2024-38245&quot;&gt;Frame Buffer Misalignment (CVE-2024-38245)&lt;/h3&gt;
+
+&lt;p&gt;Before diving into that, we first need to introduce a key object in Kernel Streaming: the &lt;a href=&quot;https://learn.microsoft.com/sr-latn-rs/windows-hardware/drivers/stream/ks-allocators&quot;&gt;KS Allocator&lt;/a&gt;. The KS Allocator is responsible for pre-allocating a set of frame buffers that can be reused during streaming operations. This significantly reduces the overhead of dynamic memory allocation at runtime. Typically, an allocator object is associated with a pin, and third-party drivers can also implement their own custom allocator if needed. Kernel Streaming also provides a default allocator for use when no custom implementation is specified.&lt;/p&gt;
+
+&lt;p&gt;In general, a KS Allocator can be created using the &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/nf-ks-kscreateallocator&quot;&gt;KsCreateAllocator&lt;/a&gt; API, and configured through a structure called &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ks/ns-ks-ksallocator_framing&quot;&gt;KSALLOCATOR_FRAMING&lt;/a&gt;. This structure allows you to specify parameters such as the number of frame buffers, the size of each buffer, and even the alignment requirements for each frame buffer.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;typedef struct {
+  union {
+    ULONG OptionsFlags;
+    ULONG RequirementsFlags;
+  };
+#if ...
+  POOL_TYPE PoolType;
+#else
+  ULONG     PoolType;
+#endif
+  ULONG     Frames;
+  ULONG     FrameSize;
+  union {
+    ULONG FileAlignment;
+    LONG  FramePitch;
+  };
+  ULONG     Reserved;
+} KSALLOCATOR_FRAMING, *PKSALLOCATOR_FRAMING;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;Note :&lt;/strong&gt; To specify the alignment of a frame buffer, you must provide an alignment mask during allocator configuration.&lt;/p&gt;
+
+&lt;p&gt;After creating a KS Allocator, we can attach it to the pin. Before reading data from the pin, we need to set its state to &lt;strong&gt;KSSTATE_RUN&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/50.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;At that moment, the allocator will pre-allocate the number of frame buffers based on the configuration provided earlier.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/51.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;From that point on, data is streamed from the device into pre-allocated frame buffers. Corresponding &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KS FRAME&lt;/code&gt; structures are also allocated. When we send an &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;IOCTL_KS_READ_STREAM&lt;/code&gt; to read data, the process begins just as described earlier.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/52.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However, instead of reading data from the device each time, the worker thread will copy data from the pre-allocated frame buffers managed by the allocator. In the following section, we’ll focus on how the default allocator manages these pre-allocated buffers.&lt;/p&gt;
+
+&lt;p&gt;Let’s take a deeper look at &lt;strong&gt;DefaultAllocator&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;ks!KsCreateDefaultAllocatorEx
+&lt;img src=&quot;/assets/img/blog/20250517/53.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When we call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KsCreateAllocator&lt;/code&gt;, Kernel Streaming creates a default allocator and initializes it using the parameters we provide. Internally, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; implements its own custom allocation routine - &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DefAllocatorAlloc&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DefAllocaorFree&lt;/code&gt; — and utilizes a &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-lookaside-lists&quot;&gt;LookasideList&lt;/a&gt; to efficiently manage buffer allocations and reuse.&lt;/p&gt;
+
+&lt;p&gt;The allocation function is quite simple :&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;char *__fastcall DefAllocatorAlloc(POOL_TYPE PoolType, SIZE_T NumberOfBytes, ULONG Alignment)
+{
+    ...
+    if ( Alignment &amp;gt;= FILE_OCTA_ALIGNMENT )
+        FileAlignment = Alignment;
+    ...
+    buffer = ExAllocatePoolWithTag((PoolType | 0x400), v8, &apos;adSK&apos;);//-----[10]
+    if ( buffer )
+    {
+        padding = (~FileAlignment &amp;amp; (buffer + FileAlignment + 4)) - buffer;
+        buffer += padding;
+        *(buffer - 1) = padding; //-------[11]
+    }
+
+}
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;It simply calls &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exallocatepoolwithtag&quot;&gt;ExAllocatePoolWithTag&lt;/a&gt; to allocate memory at [10]. If an alignment is specified, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; records the size of the required padding in front of the frame buffer, as shown at [11].&lt;/p&gt;
+
+&lt;p&gt;In the free routine :&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;void __fastcall DefAllocatorFree(unsigned int *Buffer)
+{
+  __int64 padding; 
+  ...
+  if ( (Buffer &amp;amp; 0xFFF) != 0 )
+    padding = *(Buffer - 1); //---------------[12]
+  else
+    padding = 0LL;
+  ExFreePoolWithTag(Buffer - padding, 0);
+}
+
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;KS use this padding size to calculate the original pointer returned by &lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-exallocatepoolwithtag&quot;&gt;ExAllocatePoolWithTag&lt;/a&gt; at [12].&lt;/p&gt;
+
+&lt;p&gt;As shown in the diagram below, the memory layout of the pool looks like this:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/54.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The purple region represents the padding, while the blue region corresponds to the frame buffer itself. The 4 bytes immediately preceding the frame buffer are used to store the padding size. Under normal case, the alignment mask is expected to be a power-of-two minus one (e.g., 0x3F, 0xFFF, etc.).&lt;/p&gt;
+
+&lt;p&gt;However, here’s the problem:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/55.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;KS only checks whether the alignment mask is greater than 0xFFF. If it’s less than 0xFFF, it accepts any value, even if it’s not a valid alignment.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Useless Bug ?&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;At first glance, this might seem like a harmless bug — just a minor issue with memory alignment. But what happens when that misaligned buffer meets the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt;?&lt;/p&gt;
+
+&lt;h4 id=&quot;lookasidelist&quot;&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-lookaside-lists&quot;&gt;LookasideList&lt;/a&gt;&lt;/h4&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt; are per-processor caches optimized for fixed-size memory blocks. Instead of using the general pool allocator, they maintain a simple singly linked list for fast allocation and deallocation. &lt;strong&gt;Both allocations and frees always check the list first before using the general pool, and the list operates in LIFO (Last-In, First-Out) order.&lt;/strong&gt; One important constraint is that entries stored in the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt; &lt;strong&gt;is expected to be aligned to 0x10 bytes&lt;/strong&gt;. You can refer to &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-slist_entry&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SLIST_ENTRY&lt;/code&gt;&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;As you can see in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ExAllocateFromNPagedLookasideList&lt;/code&gt;:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;PSLIST_ENTRY ExAllocateFromNPagedLookasideList(...){
+    ...
+    ReturnChunk = ListHead-&amp;gt;FreeChunk &amp;amp; 0xFFFFFFFFFFFFFFF0;
+    ListHead-&amp;gt;FreeChunk = ReturnChunk-&amp;gt;Next;
+    ListHead-&amp;gt;Depth-- ;
+    ...
+}
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The allocation logic aligns the returned chunk address to 0x10 bytes before returning it to the caller.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp=&quot;&gt;PSLIST_ENTRY ExFreeToNPagedLookasideList(...,PSLIST_ENTRY Chunk){
+    ...
+    NextChunk = ListHead-&amp;gt;FreeChunk &amp;amp; 0xFFFFFFFFFFFFFFF0
+    Chunk-&amp;gt;Next = NextChunk;
+    ListHead-&amp;gt;FreeChunk = Chunk;
+    ListHead-&amp;gt;Depth++;
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Similarly, when freeing memory back to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt;, it also aligns the chunk. As shown in this code snippet above, the free routine aligns the first entry in the list&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Non–0x10-byte–aligned Frame Buffer + LookasideList&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;So, what happens if a frame buffer that’s not 0x10-byte aligned is inserted into a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt;?&lt;/p&gt;
+
+&lt;h4 id=&quot;lets-play-the-funky-frame&quot;&gt;Let’s play the funky frame.&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/56.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We write a script to list out all possible alignment mask and padding size. In this case, we’re using an alignment mask that results in 8 bytes of padding. Then, we configured the allocator to pre-allocate 4 frame buffer. As a result, each buffer will follow the same layout — and due to the 8-byte padding, the resulting frame buffer addresses all end with 0x08.&lt;/p&gt;
+
+&lt;p&gt;The buffers will look like this one : 
+&lt;img src=&quot;/assets/img/blog/20250517/57.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;After that, the allocator returns four buffers — A, B, C, and D — all of which have addresses ending in 0x8 due to the applied padding.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/58.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When these buffers are freed, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; releases them one by one and inserts each of them into the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt; in order.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/59.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As illustrated in the diagram above, we first free &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Frame A&lt;/code&gt;, which gets inserted into the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt; without any issues.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/60.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;When &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Frame B&lt;/code&gt; is freed, the allocator first aligns the address of the current list head (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Frame A&lt;/code&gt;) to satisfy the 0x10-byte alignment requirement. &lt;strong&gt;It then stores this aligned address in the next pointer field of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Frame B&lt;/code&gt;&lt;/strong&gt;, and inserts Frame B at the head of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/61.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We continue by freeing &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Frame C&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Frame D&lt;/code&gt;, both of which follow the same pattern as before. In the end, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt; will look like the layout illustrated in the diagram above.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Have you spotted the issue?&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;The issue lies in the &lt;strong&gt;next pointer of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Frame D&lt;/code&gt;&lt;/strong&gt;. Due to alignment, &lt;strong&gt;the next pointer ends up pointing to the start of the pool chunk, rather than the actual frame buffer&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/62.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As shown in the diagram above, you’ll notice that the next pointer of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Frame C&lt;/code&gt; points to the padding area, which contains the stored padding size, not the expected list entry structure. When interpreted as a 64-bit value, this pointer becomes something like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x800000000&lt;/code&gt; —
+which falls within the user-space address range.&lt;/p&gt;
+
+&lt;p&gt;Our plan is to allocate a memory page at &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x800000000&lt;/code&gt;, allowing us to gain control over the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt;. We then configure the final node in the list to point to our desired target address. After that, when the device performs a read operation,
+&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; will write the incoming data into these frame buffers — including the one pointing to our chosen address.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/63.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;In theory, this gives us an arbitrary memory write primitive, right?&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;However, we still face the same limitation as before: we cannot control the content that gets written.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/64.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Additionally, we cannot use the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;buffered flag&lt;/code&gt; in this scenario, which means we’re limited to whatever data the device sends — making precise exploitation much more difficult.&lt;/p&gt;
+
+&lt;p&gt;At this point, we were stuck again.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/65.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;But after thinking it through once more, we found another way forward.&lt;/p&gt;
+
+&lt;h4 id=&quot;lets-make-the-lookasidelist-great-again&quot;&gt;Let’s make the LookasideList great again&lt;/h4&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/66.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As shown in the diagram above, we first construct a fake linked list in user space. The address &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x41410000&lt;/code&gt; represents a user-controlled memory region, which we use to construct a valid &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt; entry. Then, we proceed to allocate the frame buffer, which causes the allocator to traverse the fake list we’ve constructed.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/67.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ExAllocateFromNPagedLookasideList&lt;/code&gt;, the allocator first aligns the chunk and then updates the list head. However, due to the misalignment, the alignment logic mistakenly &lt;strong&gt;interprets the start of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Frame&lt;/code&gt; D as a next pointer&lt;/strong&gt; — leading to incorrect traversal of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/68.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Once the first chunk is popped from the list, the linked list transforms into the state shown in the diagram above. Next, we allocate all remaining chunks from the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt;. We also configure the allocator to use smaller frame buffers, which causes the webcam to &lt;strong&gt;enter a wait state — it no longer reads data from the device&lt;/strong&gt;. Next, we trigger a STOP to release all of the frame buffers.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/69.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The frame buffer will appear as shown in the diagram above. At this point, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ks.sys&lt;/code&gt; begins returning the buffers to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt;, one by one. First, it releases &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Frame D&lt;/code&gt;. Then, it frees the malicious chunk at &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x800000000&lt;/code&gt;. After that, it frees the fake chunk at &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x41410000&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/70.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Once the three chunks have been released, the structure of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt; transforms into the layout illustrated above. In the end, the allocator will release our target address.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/71.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;It will cause the next pointer of target address to point to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0x41410000&lt;/code&gt;&lt;/strong&gt;. This value can be any user-space address controlled by the attacker.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250517/72.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In other words, we now have a powerful arbitrary memory write primitive.&lt;/p&gt;
+
+&lt;p&gt;After gaining arbitrary memory write on Windows 23H2, we can use &lt;a href=&quot;https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntquerysysteminformation&quot;&gt;NtQuerySystemInformation&lt;/a&gt; to leak the address of the &lt;a href=&quot;https://www.vergiliusproject.com/kernels/x64/windows-11/23h2/_ETHREAD&quot;&gt;thread object&lt;/a&gt;. With that address, we &lt;a href=&quot;https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf&quot;&gt;flip the necessary bit&lt;/a&gt; in the token structure to escalate privileges. From here, we can apply any &lt;a href=&quot;https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf&quot;&gt;well-known EoP&lt;/a&gt; technique to achieve full privilege escalation. By the way, once you’ve achieved arbitrary memory write, &lt;strong&gt;don’t forget to restore the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;LookasideList&lt;/code&gt;&lt;/strong&gt; to a valid state — otherwise, the system may crash during subsequent allocations.&lt;/p&gt;
+
+&lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/QSPbzE1KUbA?si=Dgow1vCMCaKASNra&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; referrerpolicy=&quot;strict-origin-when-cross-origin&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;p&gt;We’ve successfully turned what seemed like a harmless bug into a serious vulnerability.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-next--summary&quot;&gt;The Next &amp;amp; Summary&lt;/h2&gt;
+
+&lt;p&gt;This bug patterns may not be limited to Kernel Streaming alone. By paying closer attention to MDL-related issues, you might be able to discover many more bugs in other driver. Kernel Streaming remains a fascinating research target and likely still harbors many undiscovered vulnerabilities beneath its surface.&lt;/p&gt;
+
+&lt;p&gt;Gaining a deep understanding of Windows API implementations — and recognizing the risks of their misuse — is essential to uncovering new vulnerabilities and building effective exploitation techniques.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Keep these patterns in mind — it might be your next vulnerability.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2 id=&quot;reference&quot;&gt;Reference&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-mdls&quot;&gt;Using MDLs&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://conference.hitb.org/hitbsecconf2023hkt/materials/D2T1%20-%20Windows%20Kernel%20Security%20-%20A%20Deep%20Dive%20into%20Two%20Exploits%20Demonstrated%20at%20Pwn2Own%20-%20Thomas%20Imbert.pdf&quot;&gt;Windows Kernel Security - A Deep Dive into Two Exploits Demonstrated at Pwn2Own&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://big5-sec.github.io/posts/CVE-2023-29360-analysis/&quot;&gt;CVE-2023-29360 Analysis
+&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://media.blackhat.com/bh-us-12/Briefings/Cerrudo/BH_US_12_Cerrudo_Windows_Kernal_Slides.pdf&quot;&gt;Easy Local Windows Kernel Exploitation
+&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+                <link>https://devco.re/blog/2025/05/17/frame-by-frame-kernel-streaming-keeps-giving-vulnerabilities-en/</link>
+                <guid>https://devco.re/blog/2025/05/17/frame-by-frame-kernel-streaming-keeps-giving-vulnerabilities-en</guid>
+                <pubDate>Sat, 17 May 2025 00:00:00 +0800</pubDate>
+        </item>
 
         <item>
                 <title>關於分分鐘拿下整個網域，你還疏忽了什麼？</title>

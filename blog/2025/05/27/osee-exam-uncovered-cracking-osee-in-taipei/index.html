@@ -1,0 +1,898 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>OSEE Exam Uncovered: Cracking OSEE in Taipei | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="EXP-401(OSEE), also known as Advanced Windows Exploitation (AWE), is considered OffSec's hardest certification. As of now, only about 100–200 people worldwide hold this certification, and the pass rate is around 10%." />
+    <meta name="keywords" content="OffSec, OSEE, LiveTraining" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="OSEE Exam Uncovered: Cracking OSEE in Taipei | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2025/05/27/osee-exam-uncovered-cracking-osee-in-taipei/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20250522/cover.jpg" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="OSEE Exam Uncovered: Cracking OSEE in Taipei | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="EXP-401(OSEE), also known as Advanced Windows Exploitation (AWE), is considered OffSec's hardest certification. As of now, only about 100–200 people worldwide hold this certification, and the pass rate is around 10%.">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20250522/cover.jpg">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2025/05/27/osee-exam-uncovered-cracking-osee-in-taipei/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Simulation of real-world attacks to identify vulnerabilities and achieve objectives without disrupting business operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltration of designated enterprise systems to uncover potential vulnerabilities and assess the risks or damages.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Consultation of resource distribution and long-term defensive strategies from the attacker’s perspective.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Instruction on defending and preventing incidents with the hacker mindset, also the response procedures and analysis of attacks when incidents happen.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="https://training.devco.re/" target="_blank">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu offsec"></i>
+                                    OffSec Advanced Training <i class="icon open-in-new"></i>
+                                </h2>
+                                <p class="two-line">
+                                    Structured in-person (OffSec Live Training) and online training, featuring up-to-date offensive security skills with OffSec certification and resources.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research of updated cybersecurity techniques and trends, assess the security of products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research of the risk of enterprise systems, identification of potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Sharing vulnerability research and security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Discovery of critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                Founded by a world-class white hat hacker team, providing cybersecurity services including Red Team Assessment,  Penetration Testing, Security Consulting, and Security Training.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    Composed of cybersecurity experts with the hacker mindset, exploring innovative exploitation techniques with high morality and extreme caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    DEVCORE has been invited to leading cybersecurity conferences, has uncovered hundreds of critical product vulnerabilities, and helped enterprises improve their defensive capabilities.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    We provide diverse internship channels and programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="https://conf.devco.re/" target="_blank">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu conference"></i>
+                                    DEVCORE CONFERENCE <i class="icon open-in-new"></i>
+                                </h2>
+                                <p class="two-line">
+                                    DEVCORE’s annual technical conference focused on offensive security research, red team insights, and novel attack vectors from real-world operations.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Media Kit, Logo and Usage Guideline
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                    <a href="https://conf.devco.re/" target="_blank">
+                        <div class="item">
+                            <h2>DEVCORE CONFERENCE</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Latest News">Latest News</a>
+                    <span class="tag">
+
+                      <a href="/en/blog/tag/OffSec/">#OffSec</a> <a href="/en/blog/tag/Windows/">#Windows</a> <a href="/en/blog/tag/OSEE/">#OSEE</a> <a href="/en/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/en/blog/tag/LiveTraining/">#LiveTraining</a> 
+                    </span>
+                    <h1>
+                        OSEE Exam Uncovered: Cracking OSEE in Taipei
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/en/blog/author/terrynini">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/nini.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/en/blog/author/terrynini">Terrynini</a></span>
+                        <span class="date">2025-05-27</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20250522/cover.jpg"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p><a href="/blog/2025/05/27/osee-exam-uncovered-cracking-osee-in-taipei/">English Version</a>, <a href="/blog/2025/05/22/exp-401-osee-five-days-to-master-a-decade-of-knowledge/">中文版本</a></p>
+
+<p>In August 2024, DEVCORE and OffSec held a live training event in Taipei, offering four courses: SOC-200, WEB-200, PEN-200, and EXP-401. This was the first time OffSec held a live training in Taiwan.</p>
+
+<p>Naturally, the course I was most interested in was EXP-401, also known as Advanced Windows Exploitation (AWE). Most people know it by its certification name, “OSEE.”</p>
+
+<h2 id="introduction">Introduction</h2>
+
+<p>OSEE is considered OffSec’s hardest certification. As of now, only about 100–200 people worldwide hold this certification, and the pass rate is around 10%. We’ve always been curious just how tough this legendary cert really is. After all, how hard could a certification be?</p>
+
+<p>At DEVCORE, we started early on by asking how many people in Taiwan would be interested if an OSEE course were available locally. My first thought was: “Even if I have to dig into my pockets, I’m in!”  The reasons were simple:</p>
+
+<ol>
+  <li>OSEE is <strong>only offered in-person</strong>, with no online version available</li>
+  <li>In the past, attending this course meant <strong>having to go abroad</strong>, with the most well-known session being the annual Black Hat USA training.</li>
+  <li>It’s extremely hard to sign up, and some people even write scripts to secure their seats.</li>
+  <li>Regardless of exam results, it would be a first for Taiwan: either the first OSEE holder or the first to fail, both an achievement.</li>
+</ol>
+
+<p>OffSec’s official site has a page listing all their live training sessions: <a href="https://www.offsec.com/training-and-events/">Upcoming Live Training &amp; Events | OffSec</a>. The most well-known EXP-401 session is held every August at Black Hat USA in Las Vegas. Rough math says that the round-trip airfare from Taipei to Vegas plus hotel for the week costs a small fortune, so taking the class in Taipei easily saves more than NT$100k on travel alone. Absolutely worth it.</p>
+
+<p>All things considered, I think this was the best training course I’ve ever attended, and I highly recommend it. Even if you’re not focused on Windows research, you will still enjoy it. The goal needn’t be earning the OSEE (though passing would be awesome) certification. The class experience itself is fantastic.</p>
+
+<h2 id="course-overview">Course Overview</h2>
+
+<p>EXP-401 (OSEE) is the only “Expert-level” course from OffSec, and it’s widely recognized as the most difficult certification with the lowest pass rate. You can find its position in Paul Jerimy’s <a href="https://pauljerimy.com/security-certification-roadmap/">Security Certification Roadmap</a>:</p>
+
+<p><img src="/assets/img/blog/20250522/upload_8c455085eb6be1da05d6f11ed8b5ad8a.png" alt="" /></p>
+
+<p>EXP-401 is focused on advanced “Windows exploitation techniques.” Modern Windows systems are equipped with various security mitigations (e.g., DEP, ASLR, CFG, ACG, CET), and the course walks students through bypassing these protections, developing working exploits in environments with single or multiple protections enabled. Some highlights of the course include:</p>
+
+<ul>
+  <li><strong>In-person only</strong>: Unlike other OffSec courses, this one is not available online. The instructor relies heavily on interacting with students, so physical presence is required.</li>
+  <li><strong>Real-world focus</strong>: The course uses real-world enterprise-level applications like VMware and Edge as targets for analysis.</li>
+  <li><strong>Deep Windows content</strong>: Topics include user-mode and kernel-mode exploitation, advanced heap manipulation, VM escape, sandbox escape, and kernel driver reverse engineering.</li>
+  <li><strong>72-hour exam challenge</strong>: OSEE has the longest exam duration of all OffSec certifications. You’re given two zero-day-style challenges and must develop full working exploits and submit a <strong>detailed report</strong>, complete with steps and screenshots, within 72 hours.</li>
+</ul>
+
+<p>Although the course recommends familiarity with WinDBG, IDA Pro, x86/x64 assembly, and C/C++, I found that only basic knowledge is needed. The course doesn’t throw overly complex scenarios at you, and any reverse engineering tasks are quite straightforward. The focus is definitely on <strong>writing and refining exploits</strong>, not deep reverse engineering. So rather than pure RE skills, having experience in <strong>binary exploitation</strong> (on Windows or Linux) will be far more helpful.</p>
+
+<h2 id="before-class">Before Class</h2>
+
+<p>After registering, OffSec sends a preparation email detailing the hardware and software requirements. For example, your machine must support NX, SMEP, and VT-x/EPT to ensure you can test all protection mechanisms discussed in class. VMware content (now removed in the latest version) also required nested virtualization, plenty of disk, and RAM.</p>
+
+<p>Besides, I suggest bringing an extra portable monitor. While remote-debugging a VM, you also need to view slides or tweak exploits in Visual Studio. The constant window-switching is really distracting.</p>
+
+<p>The mail also contained plenty of reading on concepts and techniques that would be discussed during the class, such as DEP/ASLR/CFG bypass, Windows mitigations, type confusion vulnerabilities, SMEP, token stealing, LFH, and more.</p>
+
+<h2 id="class-experience">Class Experience</h2>
+
+<p>The course ran at GIS Taipei Tech Convention Center for five consecutive days, 9 AM–6 PM.
+I saw a gigantic textbook on each desk when I walking in.
+<img src="/assets/img/blog/20250522/upload_ab82acf8bee146b377b3bc70ff60b756.jpg" alt="" /></p>
+
+<p>It’s about 600 pages, 3.6 cm thick:
+<img src="/assets/img/blog/20250522/upload_17fdc7d6f806d28d3cb313584b4fe4ec.jpg" alt="" /></p>
+
+<p>In short: <em>huge</em>.</p>
+
+<p>Food and snacks were provided daily. You only had to worry about learning (and bathroom breaks).
+Our instructors were <a href="https://dz.linkedin.com/in/nassereddine-abdelli?trk=public_post_feed-actor-name">Nassereddine ABDELLI</a>(<a href="https://x.com/n4sr0">@n4sr0</a>)and <a href="https://lb.linkedin.com/in/victor-khoury">Victor Khoury</a>(<a href="https://github.com/V-i-x-x">Vixx</a>), they are very experienced and interacted constantly, tossing questions to ensure everyone kept up. Even unexpected questions were answered live with hands-on demos. I think that’s why live training is better than online courses: you can really squeeze every bit of knowledge out of the instructors.</p>
+
+<p>During the five days, two “<strong>Extra Miles</strong>” challenges were offered. Completing each of them during the week can earn you a challenge coin. There were also small Q\&amp;A quizzes for stickers.</p>
+
+<p>Near the end of day 1, the instructors impulsively added a mini-challenge: solve an ROP chain in 45 minutes to win a coin. No one succeeded. Orange or Lays joked, “Almost all of Taiwan’s Microsoft Top 100 hackers are here, and still no one cracked it.” It looks like OSEE really is tough.</p>
+
+<h3 id="day-1">Day 1</h3>
+
+<p>We received slides, VMs, and a brief course intro. The most quoted slide online is probably this one:
+<img src="/assets/img/blog/20250522/upload_7b077d2f6c8d86426a5aa31a1876449b.png" alt="" /></p>
+
+<p>It warned that the difficulty would ramp up dramatically, though I personally felt it wasn’t that extreme. Perhaps this is because these topics (VM, browser, kernel) are everyday fare for vulnerability researchers or just because CTF players are more reluctant.</p>
+
+<p>A fun Easter egg: a samurai appears at the top of the slides and gradually loses his armor as the course progresses. Its helmet turns into a straw hat, and weapons vanish until he’s just naked. It possibly symbolizes the mystery of Windows being stripped away one by one.</p>
+
+<p>The first half of the day was a warm-up: Win32 APIs, x64 shellcode, etc. Then, we dove into VMware internals, starting with protections like DEP and ASLR and how to bypass them using ROP. We then explored how VMware Workstation works under the hood.</p>
+
+<p>I was super impressed with the course materials. It’s clear that the team behind it consists of highly skilled researchers. The training manual is the crystallization of their careful study and organization. As a result, the content is filled with references. If you’re interested in exploring the original research in more depth, you can easily find further reading materials by following the references provided in the book.</p>
+
+<p>By the end of the day, I realized I really needed that second screen, so I bought one at the Syntrend that night.</p>
+
+<h3 id="day-2">Day 2</h3>
+
+<p>We continued with VMware Workstation content. The exploitation is related to the heap, so the day started with Windows Heap internals.</p>
+
+<p>Then, go into bypassing ASLR, stack pivoting, and defeating DEP. This part really highlighted the course’s practical value. Unlike CTFs (where stability isn’t essential) or Pwn2Own (where a “One Shot” is enough), this course demands stability. After exploit execution, VMware and Windows must keep running like nothing happened: no crashing, no freezing. (You can’t cheat by freezing the program with a sleep loop.)</p>
+
+<p>The afternoon shifted to the Edge browser, specifically Chakra Edge, not the current Chromium Edge. The instructors chose Chakra because it enables more native mitigations, letting us practice more Windows exploits. Pure “browser PWNs” would deserve their own course. Nonetheless, we learned core concepts: type confusion, <code class="language-plaintext highlighter-rouge">addressof</code>, <code class="language-plaintext highlighter-rouge">fakeobj</code>, and crucial debugging workflows.</p>
+
+<p>Although we haven’t yet delved deeply into the browser-related parts today, the instructor gave us our first Extra Mile challenge: <strong>use ROP to bypass CFG and achieve a sandbox escape exploit</strong>. (In class, we learned about scenarios with CET enabled, where even ROP would fail.)</p>
+
+<p>It might sound straightforward, but the instructor specifically required us to wrap the vulnerability into a function that allows ROP to be triggered repeatedly. This approach brings more discipline to the exploit development process and significantly improves development efficiency.</p>
+
+<p>Of course, there were other challenges to overcome as well, like figuring out how to obtain usable memory addresses. But because I wanted that coin so desperately, I read ahead 100+ pages that we hadn’t even covered yet and started building the exploit. I stayed up until 5 AM but still hadn’t nailed it.</p>
+
+<h3 id="day-3">Day 3</h3>
+
+<p>Day 3 of the course was entirely focused on Edge, and it was the most fascinating part of the class for me.</p>
+
+<p>We started with a Type Confusion vulnerability, and the instructor walked us step-by-step through how to manipulate JavaScript objects in Edge to gain control over the RIP (instruction pointer). From there, we moved into a series of modern defense mechanisms, and each time a new mitigation was introduced, we immediately learned how to bypass it. First, we circumvented <strong>Control Flow Guard (CFG)</strong>, then <strong>Control-Flow Enforcement Technology (CET)</strong>, followed by <strong>Arbitrary Code Guard (ACG)</strong>, and finally, we broke out of the browser’s <strong>low-privileged sandbox</strong> to execute high-privilege commands on Windows.</p>
+
+<p>Throughout the process, we not only learned about the protection mechanisms present in modern Windows systems but also gained a deep understanding of their limitations and the techniques to bypass them.</p>
+
+<p>Even though the material covered in class didn’t exactly follow the same path as the <strong>Extra Mile</strong> challenges, I managed to complete the <strong>ROP sandbox escape</strong> challenge during the lectures, making me the <strong>first to earn a challenge coin</strong>! (though its serial number looked ominous in Mandarin, which means die together):</p>
+
+<p><img src="/assets/img/blog/20250522/upload_83ad2122816ba37db84d7750df28350a.jpg" alt="" /></p>
+
+<p>Later that day, we got the final Extra Mile challenge, this time focused on <strong>Kernel Mode</strong>: From <strong>Low Integrity</strong>, exploit a known CVE to launch a high-privilege <code class="language-plaintext highlighter-rouge">cmd.exe</code>.</p>
+
+<p>The tricky part here is that, due to the Low Integrity level, you couldn’t use <code class="language-plaintext highlighter-rouge">NtQuerySystemInformation</code> to leak kernel addresses. Additionally, the CVE provided during class requires writing a file to complete the exploit, so we have to find a directory where a Low Integrity process can <strong>successfully write files</strong> in order to place our payload and carry out the attack.</p>
+
+<p>But… I’ve decided to reward myself with a good night’s sleep tonight, so I’ll just ignore that Extra Mile for now.</p>
+
+<h3 id="days-45">Days 4–5</h3>
+
+<p>The final two days focused on <strong>kernel mode</strong>: driver and Win32k exploitation, token stealing, ACL NULL-ing, SMEP, page tables, KVA shadow, VBS, kCFG, and more. Stability and clean restoration after exploitation were paramount. Crashing the OS is not acceptable.</p>
+
+<p>Despite five long days, the room only grew more excited. As Lays put it, “Nobody usually cares about Windows, so five straight days on it is a blast.” By the end, people were literally standing around the instructors, watching live demos of WinDBG and exploit fixes. The energy stayed high right through the final minute.</p>
+
+<p>I ended up earning both challenge coins. But rumor has it that a student got overconfident from winning both challenge coins and didn’t study enough for the exam… which made me a little nervous too.</p>
+
+<p><img src="/assets/img/blog/20250522/upload_29009efc9ab35f26cdb952f962900dfb.jpg" alt="" /></p>
+
+<h2 id="post-class-reflections">Post-Class Reflections</h2>
+
+<h3 id="immersive-flow">Immersive Flow</h3>
+
+<p>The week-long in-person training was an incredibly immersive flow-state experience. For five full days, my entire world revolved around Windows exploitation, there was barely room for anything else. With the Extra Miles reward system in place, I felt like I was even writing exploits in my dreams.</p>
+
+<p>To ensure system stability and maximize development speed, I had to carefully choose the right exploitation approaches from the beginning. That also meant cultivating solid coding habits. This not only improved debugging clarity but also reduced future errors and saved time revisiting concepts.</p>
+
+<h3 id="learning-resources">Learning Resources</h3>
+
+<p>A common question I get in my DMs is whether there’s a recommended learning path for EXP-401. Should you take any prerequisite courses or study specific materials? Honestly, the course itself is comprehensive enough that no additional preparation is strictly necessary. But if you’re still unsure whether it’s the right fit for you, here are a few free resources to test the waters:</p>
+<ul>
+  <li><strong><a href="https://github.com/hacksysteam/HackSysExtremeVulnerableDriver">HackSys Extreme Vulnerable Driver (HEVD)</a>:</strong> A purposely vulnerable Windows driver project, great for practicing kernel-mode exploitation.</li>
+  <li><strong><a href="https://p.ost2.fyi/">OpenSecurityTraining2</a>:</strong> A fantastic collection of free courses created by security researchers, covering topics like x86-64 OS Internals and WinDbg basics.</li>
+</ul>
+
+<p>These are high-quality, well-maintained resources often used by beginners to build a solid foundation. (Although personally, I’ve spent less than two hours on them in total.)</p>
+
+<p>For more advanced learners, try reproducing 1-day exploits with public write-ups. For example, I wrote a full exploit for one Win32k vulnerability covered in the course a year or two ago, albeit not very stable. Researchers like Angelboy have also written about some of the more challenging vulnerabilities mentioned in the course. Reproducing these is an excellent way to learn the whole process of exploit development: gathering information, locating the bug, bypassing protections, and understanding unique Windows mechanisms.</p>
+
+<h3 id="value-of-the-course">Value of the Course</h3>
+
+<p>EXP-401 is essentially a carefully distilled, high-quality crash course by OffSec, offering insights rarely found in public resources. For those in research, you’ll know that even when you’re aware of certain protections or system designs, diving into their actual implementations often requires starting from scratch, which means collecting scattered documentation, reading code, and reasoning through endless trial and error.</p>
+
+<p>When trying to understand a large and complex system, you often face a similar challenge: the system contains many critical components and mechanisms, but the relevant research is usually scattered across more than a decade of material. The first step is to invest time into searching for and organizing past research, gradually mapping out how these components interact. Only then can you begin to understand under what conditions each mechanism might fail, and eventually piece together a coherent, complete picture. Research results derived from this kind of deep, painstaking synthesis are rarely shared openly.</p>
+
+<p><strong>EXP-401</strong>, however, distills that level of research into a course and shares it with participants with no holding back. Starting from the earliest days of DEP, each subsequent defense mechanism is layered on top of the last. The course walks you step-by-step through this historical evolution. What problem was each layer of protection designed to solve? How did attackers eventually find ways to bypass it?</p>
+
+<p>By the end of the course, students gain a clear mental map of the Windows ecosystem. You learn how and why each mitigation was introduced, how it works, how it’s bypassed, and where its weaknesses lie. This isn’t just about writing exploits. It’s about truly understanding the underlying story and logic of Windows internals.</p>
+
+<h3 id="is-the-course-still-relevant-today">Is the Course Still Relevant Today?</h3>
+
+<p>The EXP-401 course primarily centers on <strong>Windows security mechanisms and exploitation techniques</strong>, with minimal focus on outdated technologies. As a result, the protection mechanisms introduced throughout the course are all still <strong>relevant and effective in modern Windows systems</strong>.</p>
+
+<p>Beyond just explaining the security mechanisms, the course is supplemented with various <strong>supporting materials</strong>. These materials aren’t meant to simulate real-world environments perfectly but to illustrate different scenarios and stimulate critical thinking about exploitation strategies. For example, the course uses a version of <strong>Microsoft Edge with the Chakra engine</strong>. While Chakra-based Edge is no longer in use today, it still serves as a valuable case study from the perspective of <strong>Windows-level protections</strong>. That’s because, regardless of the browser in question, once a vulnerability is found, the <strong>system-level challenges</strong> faced during exploit development remain largely the same.</p>
+
+<p>Of course, the <strong>in-browser challenges</strong> do differ between browsers. For instance, Chrome introduces an additional layer of complexity with its own custom <strong>sandboxing mechanism</strong>, which adds application-specific hurdles. But it’s important to understand that <strong>unless this course were specifically about browser exploit development</strong>, it’s unrealistic to expect deep coverage of browser-specific defenses.</p>
+
+<p>In summary, if your focus is strictly on <strong>Windows OS-level protection mechanisms and exploitation techniques</strong>, the content of <strong>EXP-401 remains highly relevant and applicable even today</strong>.</p>
+
+<h3 id="will-it-help-you-get-a-job">Will It Help You Get a Job?</h3>
+
+<p>Short answer: <strong>It helps, but not significantly</strong>. Here’s why:</p>
+
+<ul>
+  <li><strong>If you’re aiming for red teaming:</strong> Holding the OSEE alone doesn’t prove much unless you also demonstrate a red team mindset. Exploit skills help, but thinking like an adversary matters more.</li>
+  <li><strong>If you’re aiming for security research:</strong> OSEE is only an entry badge. Getting the OSEE only shows you can handle some technical problems, but real research is about driving your own projects and solving novel problems independently.</li>
+</ul>
+
+<p>As a researcher myself, I’d say certifications aren’t essential. Research quality is proven through results and published work, not certs. But before reaching that point, you need a solid knowledge base. And that’s where EXP-401 really shines.</p>
+
+<p>In a way, EXP-401 is like tracing a master’s artwork. You follow in the footsteps of top researchers, learning how protections are introduced, understood, and bypassed. You gain not just technical skills but also the thought process and methodology behind real-world vulnerability research. These skills translate well beyond Windows. It can also be applied to IoT, Linux, macOS research, and more.</p>
+
+<p>So yes, the course is more valuable than the cert alone. But if you’re paying for it, might as well earn that cert too.</p>
+
+<h2 id="report-writing">Report Writing</h2>
+
+<p>As mentioned earlier, the OSEE exam consists of two challenges. OffSec has designed a series of vulnerabilities for this purpose, and to simulate real-world scenarios, each vulnerability is accompanied by corresponding CVE advisories and simulated blog posts. The blog posts mainly introduce how the program works and methods previously used to exploit, while the CVE advisories describe the type of vulnerability but do not specify the exact location, trigger method or provide a PoC. Candidates must rely on these clues to reverse-engineer the binaries, identify the vulnerabilities, write code to trigger them, and ultimately bypass all protection mechanisms to read the <code class="language-plaintext highlighter-rouge">proof.txt</code> file in order to complete the challenge.</p>
+
+<p>The exam time is arranged as: <strong>72 hours to complete the exploit, 24 hours to complete the report</strong>. However, in practice, time is far less abundant than it seems. This will be explained later.</p>
+
+<p>The specific grading criteria can be found in the official OSEE report template: <a href="https://offensive-security.com/awe/AWE-Exam-Report.docx">AWE-Exam-Report.docx</a>. Each challenge is worth 50 points. Completing only half of a challenge will only earn 25 points, and the passing score is 75 points. For example, according to the first question in the report template, if you achieve code execution but fail to complete sandbox escape, you only get 25 points. Similarly, for the second question, if you achieve Read/Write Primitive but fail to escalate privileges, you also only get 25 points.</p>
+
+<p>Although I completed the course in August last year, I was way too busy to schedule the exam. In September and October, I was mainly focused on researching Pwn2Own targets (eventually successfully exploiting AeoTec). At the end of the year, I was preparing for a CCC talk, followed by SITCON at the beginning of the year, and then DEVCORE Conf in March. In the end, I barely managed to squeeze in an OSEE exam on 2/24.</p>
+
+<p>The exam started at 8:00 AM. I quickly achieved code execution for the first question and earned 25 points. However, I overlooked a detail and got stuck on sandbox escape. So, the next day, I switched to the second question and solved it around 2:00 PM, earning 50 points. I spent the remaining half-day grinding on the first question and finally beat it at 2:00 AM. We were talking about being the first in Taiwan to get an OSEE, but now I think it makes more sense to aim for an “OSEE Speedrun.” I basically lived a normal life during those few days (aside from having a camera pointed at my dumb face, it was fairly normal) and even had time to practice piano. If I hadn’t messed up on the first day, finishing in a day seemed possible.</p>
+
+<ul>
+  <li>Timeline
+    <ul>
+      <li>2/24 08:00:00: Exam started at 8:00 AM</li>
+      <li>2/25 14:04:52: Solved the second question</li>
+      <li>2/26 02:41:43: Solved the first question, completed the exam</li>
+    </ul>
+  </li>
+</ul>
+
+<p>The rest of the time was spent focusing on writing the report.<br />
+As mentioned earlier, candidates must <strong>complete the exploit within 72 hours</strong>, and then <strong>complete the report within the next 24 hours</strong>. However, in reality, the time is not nearly as sufficient as it seems, because the OSEE report requirements are extremely strict.</p>
+
+<p>Take the official template <a href="https://offensive-security.com/awe/AWE-Exam-Report.docx">AWE-Exam-Report.docx</a> for example, you’ll see that the entire structure is meticulously detailed, with sections like “2.2 Initial Exploitation”, “2.3 Read and Write Primitive”, “2.4 Code Execution”, “2.5 Sandbox Escape”, and so on.</p>
+
+<p>When we write exploits normally, we usually just proceed linearly and rarely document every intermediate step. However, you have to break down each stage clearly during the exam. Not only must you explain how you exploited the vulnerability, but you must also provide concrete proof of bypassing protection mechanisms, along with copy-paste-ready code. For example, in the “Read and Write Primitive” stage, you might just check this in passing and move on in normal dev flow. But in the report, you must prove you can do this. A common approach is to write a small PoC that reads/writes an inaccessible memory region, with debugger screenshots as supporting evidence.</p>
+
+<p>However, the <strong>exam machine is only available for 72 hours, and all data downloads are prohibited</strong>. This means that if you don’t collect all the required screenshots, evidence, and intermediate steps within those 72 hours, writing the report later will be extremely painful, and you might even fail due to lack of evidence. Therefore, it’s impossible to write the report afterward by trying to break down the PoC into stages cause you’ll be missing necessary screenshots and won’t be able to verify if the PoC still works. The safest strategy is: Within 72 hours, not only complete the exploit but also simultaneously write PoCs, gather all data, and draft the main content of the report.</p>
+
+<p>There have been cases where candidates scored a full 100 points during the exploit phase but failed the exam because the report was not detailed enough. So, I was terrified and submitted a 100-page report.</p>
+<h2 id="final-thoughts">Final Thoughts</h2>
+
+<p>At the time, the exam didn’t feel that hard. Some may have seen <a href="https://www.facebook.com/share/p/16W1Jo4eqp/">Xu Muyuan’s post</a> about the low pass rate, but for anyone who dares to call themselves a researcher, this exam should be easy enough to make you laugh.</p>
+
+<p>Once I submitted everything, I waited for OffSec to review it. They say it can take up to 10 business days. I finally got the pass notification on March 10.</p>
+
+<p>It’s rumored that this is the <strong>first OSEE certification in Taiwan</strong>, so… achievement is unlocked!
+<img src="/assets/img/blog/20250522/upload_b03d6106afb193bc29194272198cf43b.png" alt="" /></p>
+
+<p>A bit sad that OffSec no longer sends physical certificates or cards. I really wanted a physical OSEE card for the memories. I still have my OSCP card, which is a treasured keepsake.</p>
+
+<h2 id="bonus-upcoming-live-training-by-devcore-august-2025">Bonus: Upcoming live training by DEVCORE (August 2025)</h2>
+
+<p>DEVCORE will once again host OffSec’s  live training this August, offering:</p>
+<ul>
+  <li><strong>PEN-300:</strong> Advanced Evasion Techniques</li>
+  <li><strong>WEB-300:</strong> Advanced Web Attacks</li>
+  <li><strong>EXP-401:</strong> Advanced Windows Exploitation</li>
+</ul>
+
+<p>If you’re interested, I recommend registering early. Early bird pricing is much cheaper and the price increases over time.</p>
+
+<p>More info: <a href="https://training.devco.re/2025">DEVCORE &amp; OffSec Live Training 2025</a>
+<img src="/assets/img/blog/20250522/upload_b7cab66943df4921db18bbd3c37487f8.png" alt="" /></p>
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/en/blog/author/terrynini">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/nini.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/en/blog/author/terrynini">
+                            <h3>Terrynini</h3>
+                        </a>
+                        <span>Security Researcher</span>
+                        <p>
+                            I’m NiNi, hunting the demons that lurk in your binary every day. <br>๛ฅ(=ˇωˇ=)ฅ
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2025 DEVCORE <b class="line-block">All rights reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

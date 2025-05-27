@@ -4,7 +4,7 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2025-05-22T19:19:43+08:00</updated>
+ <updated>2025-05-27T19:06:18+08:00</updated>
  <id>https://devco.re</id>
  <author>
    <name></name>
@@ -13,11 +13,255 @@
 
  
  <entry>
+   <title>OSEE Exam Uncovered: Cracking OSEE in Taipei</title>
+   <link href="https://devco.re/blog/2025/05/27/osee-exam-uncovered-cracking-osee-in-taipei/"/>
+   <updated>2025-05-27T00:00:00+08:00</updated>
+   <id>https://devco.re/blog/2025/05/27/osee-exam-uncovered-cracking-osee-in-taipei</id>
+   <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2025/05/27/osee-exam-uncovered-cracking-osee-in-taipei/&quot;&gt;English Version&lt;/a&gt;, &lt;a href=&quot;/blog/2025/05/22/exp-401-osee-five-days-to-master-a-decade-of-knowledge/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;In August 2024, DEVCORE and OffSec held a live training event in Taipei, offering four courses: SOC-200, WEB-200, PEN-200, and EXP-401. This was the first time OffSec held a live training in Taiwan.&lt;/p&gt;
+
+&lt;p&gt;Naturally, the course I was most interested in was EXP-401, also known as Advanced Windows Exploitation (AWE). Most people know it by its certification name, “OSEE.”&lt;/p&gt;
+
+&lt;h2 id=&quot;introduction&quot;&gt;Introduction&lt;/h2&gt;
+
+&lt;p&gt;OSEE is considered OffSec’s hardest certification. As of now, only about 100–200 people worldwide hold this certification, and the pass rate is around 10%. We’ve always been curious just how tough this legendary cert really is. After all, how hard could a certification be?&lt;/p&gt;
+
+&lt;p&gt;At DEVCORE, we started early on by asking how many people in Taiwan would be interested if an OSEE course were available locally. My first thought was: “Even if I have to dig into my pockets, I’m in!”  The reasons were simple:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;OSEE is &lt;strong&gt;only offered in-person&lt;/strong&gt;, with no online version available&lt;/li&gt;
+  &lt;li&gt;In the past, attending this course meant &lt;strong&gt;having to go abroad&lt;/strong&gt;, with the most well-known session being the annual Black Hat USA training.&lt;/li&gt;
+  &lt;li&gt;It’s extremely hard to sign up, and some people even write scripts to secure their seats.&lt;/li&gt;
+  &lt;li&gt;Regardless of exam results, it would be a first for Taiwan: either the first OSEE holder or the first to fail, both an achievement.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;OffSec’s official site has a page listing all their live training sessions: &lt;a href=&quot;https://www.offsec.com/training-and-events/&quot;&gt;Upcoming Live Training &amp;amp; Events | OffSec&lt;/a&gt;. The most well-known EXP-401 session is held every August at Black Hat USA in Las Vegas. Rough math says that the round-trip airfare from Taipei to Vegas plus hotel for the week costs a small fortune, so taking the class in Taipei easily saves more than NT$100k on travel alone. Absolutely worth it.&lt;/p&gt;
+
+&lt;p&gt;All things considered, I think this was the best training course I’ve ever attended, and I highly recommend it. Even if you’re not focused on Windows research, you will still enjoy it. The goal needn’t be earning the OSEE (though passing would be awesome) certification. The class experience itself is fantastic.&lt;/p&gt;
+
+&lt;h2 id=&quot;course-overview&quot;&gt;Course Overview&lt;/h2&gt;
+
+&lt;p&gt;EXP-401 (OSEE) is the only “Expert-level” course from OffSec, and it’s widely recognized as the most difficult certification with the lowest pass rate. You can find its position in Paul Jerimy’s &lt;a href=&quot;https://pauljerimy.com/security-certification-roadmap/&quot;&gt;Security Certification Roadmap&lt;/a&gt;:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250522/upload_8c455085eb6be1da05d6f11ed8b5ad8a.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;EXP-401 is focused on advanced “Windows exploitation techniques.” Modern Windows systems are equipped with various security mitigations (e.g., DEP, ASLR, CFG, ACG, CET), and the course walks students through bypassing these protections, developing working exploits in environments with single or multiple protections enabled. Some highlights of the course include:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;In-person only&lt;/strong&gt;: Unlike other OffSec courses, this one is not available online. The instructor relies heavily on interacting with students, so physical presence is required.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Real-world focus&lt;/strong&gt;: The course uses real-world enterprise-level applications like VMware and Edge as targets for analysis.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Deep Windows content&lt;/strong&gt;: Topics include user-mode and kernel-mode exploitation, advanced heap manipulation, VM escape, sandbox escape, and kernel driver reverse engineering.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;72-hour exam challenge&lt;/strong&gt;: OSEE has the longest exam duration of all OffSec certifications. You’re given two zero-day-style challenges and must develop full working exploits and submit a &lt;strong&gt;detailed report&lt;/strong&gt;, complete with steps and screenshots, within 72 hours.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Although the course recommends familiarity with WinDBG, IDA Pro, x86/x64 assembly, and C/C++, I found that only basic knowledge is needed. The course doesn’t throw overly complex scenarios at you, and any reverse engineering tasks are quite straightforward. The focus is definitely on &lt;strong&gt;writing and refining exploits&lt;/strong&gt;, not deep reverse engineering. So rather than pure RE skills, having experience in &lt;strong&gt;binary exploitation&lt;/strong&gt; (on Windows or Linux) will be far more helpful.&lt;/p&gt;
+
+&lt;h2 id=&quot;before-class&quot;&gt;Before Class&lt;/h2&gt;
+
+&lt;p&gt;After registering, OffSec sends a preparation email detailing the hardware and software requirements. For example, your machine must support NX, SMEP, and VT-x/EPT to ensure you can test all protection mechanisms discussed in class. VMware content (now removed in the latest version) also required nested virtualization, plenty of disk, and RAM.&lt;/p&gt;
+
+&lt;p&gt;Besides, I suggest bringing an extra portable monitor. While remote-debugging a VM, you also need to view slides or tweak exploits in Visual Studio. The constant window-switching is really distracting.&lt;/p&gt;
+
+&lt;p&gt;The mail also contained plenty of reading on concepts and techniques that would be discussed during the class, such as DEP/ASLR/CFG bypass, Windows mitigations, type confusion vulnerabilities, SMEP, token stealing, LFH, and more.&lt;/p&gt;
+
+&lt;h2 id=&quot;class-experience&quot;&gt;Class Experience&lt;/h2&gt;
+
+&lt;p&gt;The course ran at GIS Taipei Tech Convention Center for five consecutive days, 9 AM–6 PM.
+I saw a gigantic textbook on each desk when I walking in.
+&lt;img src=&quot;/assets/img/blog/20250522/upload_ab82acf8bee146b377b3bc70ff60b756.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It’s about 600 pages, 3.6 cm thick:
+&lt;img src=&quot;/assets/img/blog/20250522/upload_17fdc7d6f806d28d3cb313584b4fe4ec.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;In short: &lt;em&gt;huge&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;Food and snacks were provided daily. You only had to worry about learning (and bathroom breaks).
+Our instructors were &lt;a href=&quot;https://dz.linkedin.com/in/nassereddine-abdelli?trk=public_post_feed-actor-name&quot;&gt;Nassereddine ABDELLI&lt;/a&gt;(&lt;a href=&quot;https://x.com/n4sr0&quot;&gt;@n4sr0&lt;/a&gt;)and &lt;a href=&quot;https://lb.linkedin.com/in/victor-khoury&quot;&gt;Victor Khoury&lt;/a&gt;(&lt;a href=&quot;https://github.com/V-i-x-x&quot;&gt;Vixx&lt;/a&gt;), they are very experienced and interacted constantly, tossing questions to ensure everyone kept up. Even unexpected questions were answered live with hands-on demos. I think that’s why live training is better than online courses: you can really squeeze every bit of knowledge out of the instructors.&lt;/p&gt;
+
+&lt;p&gt;During the five days, two “&lt;strong&gt;Extra Miles&lt;/strong&gt;” challenges were offered. Completing each of them during the week can earn you a challenge coin. There were also small Q\&amp;amp;A quizzes for stickers.&lt;/p&gt;
+
+&lt;p&gt;Near the end of day 1, the instructors impulsively added a mini-challenge: solve an ROP chain in 45 minutes to win a coin. No one succeeded. Orange or Lays joked, “Almost all of Taiwan’s Microsoft Top 100 hackers are here, and still no one cracked it.” It looks like OSEE really is tough.&lt;/p&gt;
+
+&lt;h3 id=&quot;day-1&quot;&gt;Day 1&lt;/h3&gt;
+
+&lt;p&gt;We received slides, VMs, and a brief course intro. The most quoted slide online is probably this one:
+&lt;img src=&quot;/assets/img/blog/20250522/upload_7b077d2f6c8d86426a5aa31a1876449b.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;It warned that the difficulty would ramp up dramatically, though I personally felt it wasn’t that extreme. Perhaps this is because these topics (VM, browser, kernel) are everyday fare for vulnerability researchers or just because CTF players are more reluctant.&lt;/p&gt;
+
+&lt;p&gt;A fun Easter egg: a samurai appears at the top of the slides and gradually loses his armor as the course progresses. Its helmet turns into a straw hat, and weapons vanish until he’s just naked. It possibly symbolizes the mystery of Windows being stripped away one by one.&lt;/p&gt;
+
+&lt;p&gt;The first half of the day was a warm-up: Win32 APIs, x64 shellcode, etc. Then, we dove into VMware internals, starting with protections like DEP and ASLR and how to bypass them using ROP. We then explored how VMware Workstation works under the hood.&lt;/p&gt;
+
+&lt;p&gt;I was super impressed with the course materials. It’s clear that the team behind it consists of highly skilled researchers. The training manual is the crystallization of their careful study and organization. As a result, the content is filled with references. If you’re interested in exploring the original research in more depth, you can easily find further reading materials by following the references provided in the book.&lt;/p&gt;
+
+&lt;p&gt;By the end of the day, I realized I really needed that second screen, so I bought one at the Syntrend that night.&lt;/p&gt;
+
+&lt;h3 id=&quot;day-2&quot;&gt;Day 2&lt;/h3&gt;
+
+&lt;p&gt;We continued with VMware Workstation content. The exploitation is related to the heap, so the day started with Windows Heap internals.&lt;/p&gt;
+
+&lt;p&gt;Then, go into bypassing ASLR, stack pivoting, and defeating DEP. This part really highlighted the course’s practical value. Unlike CTFs (where stability isn’t essential) or Pwn2Own (where a “One Shot” is enough), this course demands stability. After exploit execution, VMware and Windows must keep running like nothing happened: no crashing, no freezing. (You can’t cheat by freezing the program with a sleep loop.)&lt;/p&gt;
+
+&lt;p&gt;The afternoon shifted to the Edge browser, specifically Chakra Edge, not the current Chromium Edge. The instructors chose Chakra because it enables more native mitigations, letting us practice more Windows exploits. Pure “browser PWNs” would deserve their own course. Nonetheless, we learned core concepts: type confusion, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addressof&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;fakeobj&lt;/code&gt;, and crucial debugging workflows.&lt;/p&gt;
+
+&lt;p&gt;Although we haven’t yet delved deeply into the browser-related parts today, the instructor gave us our first Extra Mile challenge: &lt;strong&gt;use ROP to bypass CFG and achieve a sandbox escape exploit&lt;/strong&gt;. (In class, we learned about scenarios with CET enabled, where even ROP would fail.)&lt;/p&gt;
+
+&lt;p&gt;It might sound straightforward, but the instructor specifically required us to wrap the vulnerability into a function that allows ROP to be triggered repeatedly. This approach brings more discipline to the exploit development process and significantly improves development efficiency.&lt;/p&gt;
+
+&lt;p&gt;Of course, there were other challenges to overcome as well, like figuring out how to obtain usable memory addresses. But because I wanted that coin so desperately, I read ahead 100+ pages that we hadn’t even covered yet and started building the exploit. I stayed up until 5 AM but still hadn’t nailed it.&lt;/p&gt;
+
+&lt;h3 id=&quot;day-3&quot;&gt;Day 3&lt;/h3&gt;
+
+&lt;p&gt;Day 3 of the course was entirely focused on Edge, and it was the most fascinating part of the class for me.&lt;/p&gt;
+
+&lt;p&gt;We started with a Type Confusion vulnerability, and the instructor walked us step-by-step through how to manipulate JavaScript objects in Edge to gain control over the RIP (instruction pointer). From there, we moved into a series of modern defense mechanisms, and each time a new mitigation was introduced, we immediately learned how to bypass it. First, we circumvented &lt;strong&gt;Control Flow Guard (CFG)&lt;/strong&gt;, then &lt;strong&gt;Control-Flow Enforcement Technology (CET)&lt;/strong&gt;, followed by &lt;strong&gt;Arbitrary Code Guard (ACG)&lt;/strong&gt;, and finally, we broke out of the browser’s &lt;strong&gt;low-privileged sandbox&lt;/strong&gt; to execute high-privilege commands on Windows.&lt;/p&gt;
+
+&lt;p&gt;Throughout the process, we not only learned about the protection mechanisms present in modern Windows systems but also gained a deep understanding of their limitations and the techniques to bypass them.&lt;/p&gt;
+
+&lt;p&gt;Even though the material covered in class didn’t exactly follow the same path as the &lt;strong&gt;Extra Mile&lt;/strong&gt; challenges, I managed to complete the &lt;strong&gt;ROP sandbox escape&lt;/strong&gt; challenge during the lectures, making me the &lt;strong&gt;first to earn a challenge coin&lt;/strong&gt;! (though its serial number looked ominous in Mandarin, which means die together):&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250522/upload_83ad2122816ba37db84d7750df28350a.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Later that day, we got the final Extra Mile challenge, this time focused on &lt;strong&gt;Kernel Mode&lt;/strong&gt;: From &lt;strong&gt;Low Integrity&lt;/strong&gt;, exploit a known CVE to launch a high-privilege &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cmd.exe&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;The tricky part here is that, due to the Low Integrity level, you couldn’t use &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;NtQuerySystemInformation&lt;/code&gt; to leak kernel addresses. Additionally, the CVE provided during class requires writing a file to complete the exploit, so we have to find a directory where a Low Integrity process can &lt;strong&gt;successfully write files&lt;/strong&gt; in order to place our payload and carry out the attack.&lt;/p&gt;
+
+&lt;p&gt;But… I’ve decided to reward myself with a good night’s sleep tonight, so I’ll just ignore that Extra Mile for now.&lt;/p&gt;
+
+&lt;h3 id=&quot;days-45&quot;&gt;Days 4–5&lt;/h3&gt;
+
+&lt;p&gt;The final two days focused on &lt;strong&gt;kernel mode&lt;/strong&gt;: driver and Win32k exploitation, token stealing, ACL NULL-ing, SMEP, page tables, KVA shadow, VBS, kCFG, and more. Stability and clean restoration after exploitation were paramount. Crashing the OS is not acceptable.&lt;/p&gt;
+
+&lt;p&gt;Despite five long days, the room only grew more excited. As Lays put it, “Nobody usually cares about Windows, so five straight days on it is a blast.” By the end, people were literally standing around the instructors, watching live demos of WinDBG and exploit fixes. The energy stayed high right through the final minute.&lt;/p&gt;
+
+&lt;p&gt;I ended up earning both challenge coins. But rumor has it that a student got overconfident from winning both challenge coins and didn’t study enough for the exam… which made me a little nervous too.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/blog/20250522/upload_29009efc9ab35f26cdb952f962900dfb.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;post-class-reflections&quot;&gt;Post-Class Reflections&lt;/h2&gt;
+
+&lt;h3 id=&quot;immersive-flow&quot;&gt;Immersive Flow&lt;/h3&gt;
+
+&lt;p&gt;The week-long in-person training was an incredibly immersive flow-state experience. For five full days, my entire world revolved around Windows exploitation, there was barely room for anything else. With the Extra Miles reward system in place, I felt like I was even writing exploits in my dreams.&lt;/p&gt;
+
+&lt;p&gt;To ensure system stability and maximize development speed, I had to carefully choose the right exploitation approaches from the beginning. That also meant cultivating solid coding habits. This not only improved debugging clarity but also reduced future errors and saved time revisiting concepts.&lt;/p&gt;
+
+&lt;h3 id=&quot;learning-resources&quot;&gt;Learning Resources&lt;/h3&gt;
+
+&lt;p&gt;A common question I get in my DMs is whether there’s a recommended learning path for EXP-401. Should you take any prerequisite courses or study specific materials? Honestly, the course itself is comprehensive enough that no additional preparation is strictly necessary. But if you’re still unsure whether it’s the right fit for you, here are a few free resources to test the waters:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;&lt;a href=&quot;https://github.com/hacksysteam/HackSysExtremeVulnerableDriver&quot;&gt;HackSys Extreme Vulnerable Driver (HEVD)&lt;/a&gt;:&lt;/strong&gt; A purposely vulnerable Windows driver project, great for practicing kernel-mode exploitation.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;&lt;a href=&quot;https://p.ost2.fyi/&quot;&gt;OpenSecurityTraining2&lt;/a&gt;:&lt;/strong&gt; A fantastic collection of free courses created by security researchers, covering topics like x86-64 OS Internals and WinDbg basics.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;These are high-quality, well-maintained resources often used by beginners to build a solid foundation. (Although personally, I’ve spent less than two hours on them in total.)&lt;/p&gt;
+
+&lt;p&gt;For more advanced learners, try reproducing 1-day exploits with public write-ups. For example, I wrote a full exploit for one Win32k vulnerability covered in the course a year or two ago, albeit not very stable. Researchers like Angelboy have also written about some of the more challenging vulnerabilities mentioned in the course. Reproducing these is an excellent way to learn the whole process of exploit development: gathering information, locating the bug, bypassing protections, and understanding unique Windows mechanisms.&lt;/p&gt;
+
+&lt;h3 id=&quot;value-of-the-course&quot;&gt;Value of the Course&lt;/h3&gt;
+
+&lt;p&gt;EXP-401 is essentially a carefully distilled, high-quality crash course by OffSec, offering insights rarely found in public resources. For those in research, you’ll know that even when you’re aware of certain protections or system designs, diving into their actual implementations often requires starting from scratch, which means collecting scattered documentation, reading code, and reasoning through endless trial and error.&lt;/p&gt;
+
+&lt;p&gt;When trying to understand a large and complex system, you often face a similar challenge: the system contains many critical components and mechanisms, but the relevant research is usually scattered across more than a decade of material. The first step is to invest time into searching for and organizing past research, gradually mapping out how these components interact. Only then can you begin to understand under what conditions each mechanism might fail, and eventually piece together a coherent, complete picture. Research results derived from this kind of deep, painstaking synthesis are rarely shared openly.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;EXP-401&lt;/strong&gt;, however, distills that level of research into a course and shares it with participants with no holding back. Starting from the earliest days of DEP, each subsequent defense mechanism is layered on top of the last. The course walks you step-by-step through this historical evolution. What problem was each layer of protection designed to solve? How did attackers eventually find ways to bypass it?&lt;/p&gt;
+
+&lt;p&gt;By the end of the course, students gain a clear mental map of the Windows ecosystem. You learn how and why each mitigation was introduced, how it works, how it’s bypassed, and where its weaknesses lie. This isn’t just about writing exploits. It’s about truly understanding the underlying story and logic of Windows internals.&lt;/p&gt;
+
+&lt;h3 id=&quot;is-the-course-still-relevant-today&quot;&gt;Is the Course Still Relevant Today?&lt;/h3&gt;
+
+&lt;p&gt;The EXP-401 course primarily centers on &lt;strong&gt;Windows security mechanisms and exploitation techniques&lt;/strong&gt;, with minimal focus on outdated technologies. As a result, the protection mechanisms introduced throughout the course are all still &lt;strong&gt;relevant and effective in modern Windows systems&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;Beyond just explaining the security mechanisms, the course is supplemented with various &lt;strong&gt;supporting materials&lt;/strong&gt;. These materials aren’t meant to simulate real-world environments perfectly but to illustrate different scenarios and stimulate critical thinking about exploitation strategies. For example, the course uses a version of &lt;strong&gt;Microsoft Edge with the Chakra engine&lt;/strong&gt;. While Chakra-based Edge is no longer in use today, it still serves as a valuable case study from the perspective of &lt;strong&gt;Windows-level protections&lt;/strong&gt;. That’s because, regardless of the browser in question, once a vulnerability is found, the &lt;strong&gt;system-level challenges&lt;/strong&gt; faced during exploit development remain largely the same.&lt;/p&gt;
+
+&lt;p&gt;Of course, the &lt;strong&gt;in-browser challenges&lt;/strong&gt; do differ between browsers. For instance, Chrome introduces an additional layer of complexity with its own custom &lt;strong&gt;sandboxing mechanism&lt;/strong&gt;, which adds application-specific hurdles. But it’s important to understand that &lt;strong&gt;unless this course were specifically about browser exploit development&lt;/strong&gt;, it’s unrealistic to expect deep coverage of browser-specific defenses.&lt;/p&gt;
+
+&lt;p&gt;In summary, if your focus is strictly on &lt;strong&gt;Windows OS-level protection mechanisms and exploitation techniques&lt;/strong&gt;, the content of &lt;strong&gt;EXP-401 remains highly relevant and applicable even today&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;h3 id=&quot;will-it-help-you-get-a-job&quot;&gt;Will It Help You Get a Job?&lt;/h3&gt;
+
+&lt;p&gt;Short answer: &lt;strong&gt;It helps, but not significantly&lt;/strong&gt;. Here’s why:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;If you’re aiming for red teaming:&lt;/strong&gt; Holding the OSEE alone doesn’t prove much unless you also demonstrate a red team mindset. Exploit skills help, but thinking like an adversary matters more.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;If you’re aiming for security research:&lt;/strong&gt; OSEE is only an entry badge. Getting the OSEE only shows you can handle some technical problems, but real research is about driving your own projects and solving novel problems independently.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;As a researcher myself, I’d say certifications aren’t essential. Research quality is proven through results and published work, not certs. But before reaching that point, you need a solid knowledge base. And that’s where EXP-401 really shines.&lt;/p&gt;
+
+&lt;p&gt;In a way, EXP-401 is like tracing a master’s artwork. You follow in the footsteps of top researchers, learning how protections are introduced, understood, and bypassed. You gain not just technical skills but also the thought process and methodology behind real-world vulnerability research. These skills translate well beyond Windows. It can also be applied to IoT, Linux, macOS research, and more.&lt;/p&gt;
+
+&lt;p&gt;So yes, the course is more valuable than the cert alone. But if you’re paying for it, might as well earn that cert too.&lt;/p&gt;
+
+&lt;h2 id=&quot;report-writing&quot;&gt;Report Writing&lt;/h2&gt;
+
+&lt;p&gt;As mentioned earlier, the OSEE exam consists of two challenges. OffSec has designed a series of vulnerabilities for this purpose, and to simulate real-world scenarios, each vulnerability is accompanied by corresponding CVE advisories and simulated blog posts. The blog posts mainly introduce how the program works and methods previously used to exploit, while the CVE advisories describe the type of vulnerability but do not specify the exact location, trigger method or provide a PoC. Candidates must rely on these clues to reverse-engineer the binaries, identify the vulnerabilities, write code to trigger them, and ultimately bypass all protection mechanisms to read the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;proof.txt&lt;/code&gt; file in order to complete the challenge.&lt;/p&gt;
+
+&lt;p&gt;The exam time is arranged as: &lt;strong&gt;72 hours to complete the exploit, 24 hours to complete the report&lt;/strong&gt;. However, in practice, time is far less abundant than it seems. This will be explained later.&lt;/p&gt;
+
+&lt;p&gt;The specific grading criteria can be found in the official OSEE report template: &lt;a href=&quot;https://offensive-security.com/awe/AWE-Exam-Report.docx&quot;&gt;AWE-Exam-Report.docx&lt;/a&gt;. Each challenge is worth 50 points. Completing only half of a challenge will only earn 25 points, and the passing score is 75 points. For example, according to the first question in the report template, if you achieve code execution but fail to complete sandbox escape, you only get 25 points. Similarly, for the second question, if you achieve Read/Write Primitive but fail to escalate privileges, you also only get 25 points.&lt;/p&gt;
+
+&lt;p&gt;Although I completed the course in August last year, I was way too busy to schedule the exam. In September and October, I was mainly focused on researching Pwn2Own targets (eventually successfully exploiting AeoTec). At the end of the year, I was preparing for a CCC talk, followed by SITCON at the beginning of the year, and then DEVCORE Conf in March. In the end, I barely managed to squeeze in an OSEE exam on 2/24.&lt;/p&gt;
+
+&lt;p&gt;The exam started at 8:00 AM. I quickly achieved code execution for the first question and earned 25 points. However, I overlooked a detail and got stuck on sandbox escape. So, the next day, I switched to the second question and solved it around 2:00 PM, earning 50 points. I spent the remaining half-day grinding on the first question and finally beat it at 2:00 AM. We were talking about being the first in Taiwan to get an OSEE, but now I think it makes more sense to aim for an “OSEE Speedrun.” I basically lived a normal life during those few days (aside from having a camera pointed at my dumb face, it was fairly normal) and even had time to practice piano. If I hadn’t messed up on the first day, finishing in a day seemed possible.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Timeline
+    &lt;ul&gt;
+      &lt;li&gt;2/24 08:00:00: Exam started at 8:00 AM&lt;/li&gt;
+      &lt;li&gt;2/25 14:04:52: Solved the second question&lt;/li&gt;
+      &lt;li&gt;2/26 02:41:43: Solved the first question, completed the exam&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The rest of the time was spent focusing on writing the report.&lt;br /&gt;
+As mentioned earlier, candidates must &lt;strong&gt;complete the exploit within 72 hours&lt;/strong&gt;, and then &lt;strong&gt;complete the report within the next 24 hours&lt;/strong&gt;. However, in reality, the time is not nearly as sufficient as it seems, because the OSEE report requirements are extremely strict.&lt;/p&gt;
+
+&lt;p&gt;Take the official template &lt;a href=&quot;https://offensive-security.com/awe/AWE-Exam-Report.docx&quot;&gt;AWE-Exam-Report.docx&lt;/a&gt; for example, you’ll see that the entire structure is meticulously detailed, with sections like “2.2 Initial Exploitation”, “2.3 Read and Write Primitive”, “2.4 Code Execution”, “2.5 Sandbox Escape”, and so on.&lt;/p&gt;
+
+&lt;p&gt;When we write exploits normally, we usually just proceed linearly and rarely document every intermediate step. However, you have to break down each stage clearly during the exam. Not only must you explain how you exploited the vulnerability, but you must also provide concrete proof of bypassing protection mechanisms, along with copy-paste-ready code. For example, in the “Read and Write Primitive” stage, you might just check this in passing and move on in normal dev flow. But in the report, you must prove you can do this. A common approach is to write a small PoC that reads/writes an inaccessible memory region, with debugger screenshots as supporting evidence.&lt;/p&gt;
+
+&lt;p&gt;However, the &lt;strong&gt;exam machine is only available for 72 hours, and all data downloads are prohibited&lt;/strong&gt;. This means that if you don’t collect all the required screenshots, evidence, and intermediate steps within those 72 hours, writing the report later will be extremely painful, and you might even fail due to lack of evidence. Therefore, it’s impossible to write the report afterward by trying to break down the PoC into stages cause you’ll be missing necessary screenshots and won’t be able to verify if the PoC still works. The safest strategy is: Within 72 hours, not only complete the exploit but also simultaneously write PoCs, gather all data, and draft the main content of the report.&lt;/p&gt;
+
+&lt;p&gt;There have been cases where candidates scored a full 100 points during the exploit phase but failed the exam because the report was not detailed enough. So, I was terrified and submitted a 100-page report.&lt;/p&gt;
+&lt;h2 id=&quot;final-thoughts&quot;&gt;Final Thoughts&lt;/h2&gt;
+
+&lt;p&gt;At the time, the exam didn’t feel that hard. Some may have seen &lt;a href=&quot;https://www.facebook.com/share/p/16W1Jo4eqp/&quot;&gt;Xu Muyuan’s post&lt;/a&gt; about the low pass rate, but for anyone who dares to call themselves a researcher, this exam should be easy enough to make you laugh.&lt;/p&gt;
+
+&lt;p&gt;Once I submitted everything, I waited for OffSec to review it. They say it can take up to 10 business days. I finally got the pass notification on March 10.&lt;/p&gt;
+
+&lt;p&gt;It’s rumored that this is the &lt;strong&gt;first OSEE certification in Taiwan&lt;/strong&gt;, so… achievement is unlocked!
+&lt;img src=&quot;/assets/img/blog/20250522/upload_b03d6106afb193bc29194272198cf43b.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;A bit sad that OffSec no longer sends physical certificates or cards. I really wanted a physical OSEE card for the memories. I still have my OSCP card, which is a treasured keepsake.&lt;/p&gt;
+
+&lt;h2 id=&quot;bonus-upcoming-live-training-by-devcore-august-2025&quot;&gt;Bonus: Upcoming live training by DEVCORE (August 2025)&lt;/h2&gt;
+
+&lt;p&gt;DEVCORE will once again host OffSec’s  live training this August, offering:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;PEN-300:&lt;/strong&gt; Advanced Evasion Techniques&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;WEB-300:&lt;/strong&gt; Advanced Web Attacks&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;EXP-401:&lt;/strong&gt; Advanced Windows Exploitation&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;If you’re interested, I recommend registering early. Early bird pricing is much cheaper and the price increases over time.&lt;/p&gt;
+
+&lt;p&gt;More info: &lt;a href=&quot;https://training.devco.re/2025&quot;&gt;DEVCORE &amp;amp; OffSec Live Training 2025&lt;/a&gt;
+&lt;img src=&quot;/assets/img/blog/20250522/upload_b7cab66943df4921db18bbd3c37487f8.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+</content>
+ </entry>
+ 
+ <entry>
    <title>EXP-401 (OSEE)：用五天課程訓練通透十年的知識體系</title>
    <link href="https://devco.re/blog/2025/05/22/exp-401-osee-five-days-to-master-a-decade-of-knowledge/"/>
    <updated>2025-05-22T00:00:00+08:00</updated>
    <id>https://devco.re/blog/2025/05/22/exp-401-osee-five-days-to-master-a-decade-of-knowledge</id>
-   <content type="html">&lt;h2 id=&quot;前言&quot;&gt;前言&lt;/h2&gt;
+   <content type="html">&lt;p&gt;&lt;a href=&quot;/blog/2025/05/27/osee-exam-uncovered-cracking-osee-in-taipei/&quot;&gt;English Version&lt;/a&gt;, &lt;a href=&quot;/blog/2025/05/22/exp-401-osee-five-days-to-master-a-decade-of-knowledge/&quot;&gt;中文版本&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;前言&quot;&gt;前言&lt;/h2&gt;
 
 &lt;p&gt;2024 年 8 月，DEVCORE 跟 OffSec 在台北辦了一場 Live Training，總共有四門課可以報名：SOC-200、WEB-200、PEN-200、EXP-401，這是第一次看到 OffSec 在台灣辦 Live Training。當然，其中我最感興趣的肯定是 EXP-401，也叫做 Advanced Windows Exploitation（AWE），更多人知道的是他的證照名稱「OSEE」。&lt;/p&gt;
 
@@ -53,7 +297,7 @@
 
 &lt;h2 id=&quot;課程前準備&quot;&gt;課程前準備&lt;/h2&gt;
 
-&lt;p&gt;在報名完成後會收到 OffSec 寄來的行前通知，內容包含了課程的硬體與軟體需求。例如，為了確保學員有辦法練習到課堂上提到的保護，會需要電腦支援 NX、SMEP 與 VT-x/EPT。而且因為課程中有 VMWare 相關的內容，需要啟用巢狀虛擬化之外還要確保硬碟空間與 RAM 的大小足夠（不過新版的課程移除 VMWare 了）。我個人會推薦另外帶一個攜帶式的外接螢幕去上課，因為在對虛擬機進行 remote debugging 的同時，還需要看上課簡報或是在 Visual Studio 中修改 exploit，如果一直切來切去是會滿分心的。&lt;/p&gt;
+&lt;p&gt;在報名完成後會收到 OffSec 寄來的行前通知，內容包含了課程的硬體與軟體需求。例如，為了確保學員有辦法練習到課堂上提到的保護，會需要電腦支援 NX、SMEP 與 VT-x/EPT。而且因為課程中有 VMware 相關的內容，需要啟用巢狀虛擬化之外還要確保硬碟空間與 RAM 的大小足夠（不過新版的課程移除 VMware 了）。我個人會推薦另外帶一個攜帶式的外接螢幕去上課，因為在對虛擬機進行 remote debugging 的同時，還需要看上課簡報或是在 Visual Studio 中修改 exploit，如果一直切來切去是會滿分心的。&lt;/p&gt;
 
 &lt;p&gt;除此之外，行前通知中還包含了很多課前準備資料，包含了很多上課中會提到的概念以及手法的粗淺介紹，諸如：Bypassing DEP、Bypassing ASLR、Bypassing CFG、Windows Mitigations Improvements、Type Confusion Vulnerabilities、SMEP、Token Stealing、Low Fragmentation Heap 等等各種事前預習資料。&lt;/p&gt;
 
@@ -67,7 +311,7 @@
 
 &lt;p&gt;簡單來說，就是有夠大本。&lt;/p&gt;
 
-&lt;p&gt;上課期間，每天都有提供各種食物和點心，除了學習以外的事情一律都不需要擔心。這次的講師是 &lt;a href=&quot;https://dz.linkedin.com/in/nassereddine-abdelli?trk=public_post_feed-actor-name&quot;&gt;Nassereddine ABDELLI&lt;/a&gt;（&lt;a href=&quot;https://x.com/n4sr0&quot;&gt;@n4sr0&lt;/a&gt;）與 &lt;a href=&quot;https://lb.linkedin.com/in/victor-khoury&quot;&gt;Victor Khoury&lt;/a&gt;（&lt;a href=&quot;https://github.com/V-i-x-x&quot;&gt;Vixx&lt;/a&gt;），兩位講師都非常的有經驗，跟學員的互動非常的多，時常會拋出問題來確認學員是不是都有理解課程進度。即使學員問一些講師沒有預期到的問題，他們也都能當場實際操作並解答，驗證並回答學員的問題，完全發揮了 Live Traning 的優點。&lt;/p&gt;
+&lt;p&gt;上課期間，每天都有提供各種食物和點心，除了學習以外的事情一律都不需要擔心。這次的講師是 &lt;a href=&quot;https://dz.linkedin.com/in/nassereddine-abdelli?trk=public_post_feed-actor-name&quot;&gt;Nassereddine ABDELLI&lt;/a&gt;（&lt;a href=&quot;https://x.com/n4sr0&quot;&gt;@n4sr0&lt;/a&gt;）與 &lt;a href=&quot;https://lb.linkedin.com/in/victor-khoury&quot;&gt;Victor Khoury&lt;/a&gt;（&lt;a href=&quot;https://github.com/V-i-x-x&quot;&gt;Vixx&lt;/a&gt;），兩位講師都非常的有經驗，跟學員的互動非常的多，時常會拋出問題來確認學員是不是都有理解課程進度。即使學員問一些講師沒有預期到的問題，他們也都能當場實際操作並解答，驗證並回答學員的問題，完全發揮了 Live Training 的優點。&lt;/p&gt;
 
 &lt;p&gt;在五天的課程中，還設計了幾個名為 Extra Miles 的挑戰，只要能在 Live Training 期間完成，就能獲得一枚 Challenge Coin，總共有兩個這樣的 Challenge。課堂上也有一些小型問答活動，答對的話可以拿到貼紙。&lt;/p&gt;
 
@@ -93,7 +337,7 @@
 
 &lt;p&gt;下半天，內容逐漸進入到 Edge Browser 的部分。不過這邊教的還是 Chakra 版本的 Edge，而不是現行的 Chromium 版本。講師提到，選擇 Chakra 版是因為這個版本啟用了更多 Windows 原生的保護機制，選擇舊版的 Edge 反而可以練習到更多 Windows 的 exploit 技巧，更符合這門課「Advanced Windows Exploitation」的定位。實際上要在這門課中真正學好 Browser pwn 確實也是不可能的，要想追上最新版的細節或漏洞研究趨勢，那會是另一個龐大到可以開成一整門課的主題，不是 Advanced Windows Exploitation 這門課需要追求的。但即便如此，我們還是學到了許多關於 Browser Exploit 的核心概念，例如 Type Confusion、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;addressof&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;fakeobj&lt;/code&gt; 等技巧，以及重要的 Debugging 流程。&lt;/p&gt;
 
-&lt;p&gt;雖然 Browser 的部分還沒開始太多，但今天講師還是給了第一個 Extra Mile：&lt;strong&gt;使用 ROP 繞過 CFG（Control Flow Guard）保護，完成 Sandbox Escape 的 exploit&lt;/strong&gt;（課堂上教是 CET（Control-Flow Enforcement Technology）啟用的情境，屆時連 ROP 都無法成功）。聽起來很簡單，但講師還特別要求，我們必須把漏洞包裝成一個可以無限次觸發 ROP 的 function，讓 Exploit 開發過程更加有紀律，也能提升開發效率。&lt;/p&gt;
+&lt;p&gt;雖然 Browser 的部分還沒開始太多，但今天講師還是給了第一個 Extra Mile：&lt;strong&gt;使用 ROP 繞過 CFG（Control Flow Guard）保護，完成 Sandbox Escape 的 exploit&lt;/strong&gt;（課堂上教是 CET（Control-Flow Enforcement Technology）啟用的情境，屆時連 ROP 都無法成功）。聽起來很簡單，但講師還特別要求，我們必須把漏洞包裝成一個可以無限次觸發 ROP 的 function，讓 exploit 開發過程更加有紀律，也能提升開發效率。&lt;/p&gt;
 
 &lt;p&gt;當然，這中間還有其他難點需要解決，像是如何取得可用的記憶體位置等等。但是因為我真的很想拿到 Challenge Coin，所以我一個晚上看了一兩百頁還沒有教到的地方，先把要做什麼事情釐清之後就開始寫這個 exploit。&lt;/p&gt;
 
@@ -111,7 +355,7 @@
 
 &lt;p&gt;在今天下課之前，講師也給出了這門課最後一個 Extra Mile 挑戰，這次是跟後面即將上到的 Kernel Mode 課程內容有關：在 Low Integrity 的情境下完成某個 CVE 的漏洞利用最後執行高權限的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cmd.exe&lt;/code&gt;。&lt;/p&gt;
 
-&lt;p&gt;這邊的難點在於因為是 Low Integrity 所以無法直接使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;NtQeurySystemInformation&lt;/code&gt; 來洩漏 Windows Kernel 的記憶體位置，需要透過其他漏洞來迂迴的取得我們想要的 Kernel 記憶體位置。而且，由於課堂中給的 CVE 需要寫檔案才能完成漏洞利用，我們還需要找一個 Low Integrity 也能寫入的資料夾才能順利放置 exploit 所需的檔案並完成利用。&lt;/p&gt;
+&lt;p&gt;這邊的難點在於因為是 Low Integrity 所以無法直接使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;NtQuerySystemInformation&lt;/code&gt; 來洩漏 Windows Kernel 的記憶體位置，需要透過其他漏洞來迂迴的取得我們想要的 Kernel 記憶體位置。而且，由於課堂中給的 CVE 需要寫檔案才能完成漏洞利用，我們還需要找一個 Low Integrity 也能寫入的資料夾才能順利放置 exploit 所需的檔案並完成利用。&lt;/p&gt;
 
 &lt;h3 id=&quot;day-45&quot;&gt;Day 4、5&lt;/h3&gt;
 
@@ -127,7 +371,7 @@
 
 &lt;h3 id=&quot;完整的體驗&quot;&gt;完整的體驗&lt;/h3&gt;
 
-&lt;p&gt;一週的實體訓練課程帶來了極佳的心流體驗。這五天的生活，除了 Windows 的 Exploit 之外就沒別的東西了，加上 Extra Miles 的獎勵機制，可以說是連做夢都在寫 Exploit，精神狀態直接變成 Windows 的形狀。而且為了確保系統的穩定性還有開發的速度，從一開始就必須認真思考，選擇最適合的方式來完成 exploit，以便後續作業能更輕鬆。同時，也必須建立良好的 coding 習慣，這不僅能在除錯過程中提升可讀性，也能在後續維護時，減少出錯的機率，並節省釐清概念所需的時間。&lt;/p&gt;
+&lt;p&gt;一週的實體訓練課程帶來了極佳的心流體驗。這五天的生活，除了 Windows 的 exploit 之外就沒別的東西了，加上 Extra Miles 的獎勵機制，可以說是連做夢都在寫 exploit，精神狀態直接變成 Windows 的形狀。而且為了確保系統的穩定性還有開發的速度，從一開始就必須認真思考，選擇最適合的方式來完成 exploit，以便後續作業能更輕鬆。同時，也必須建立良好的 coding 習慣，這不僅能在除錯過程中提升可讀性，也能在後續維護時，減少出錯的機率，並節省釐清概念所需的時間。&lt;/p&gt;
 &lt;h3 id=&quot;學習資源&quot;&gt;學習資源&lt;/h3&gt;
 
 &lt;p&gt;後續有不少人私訊詢問 EXP-401 這堂課是否有建議的 learning path，例如是否應該先修哪些課程，或是否有推薦的預習資源。老實說，我覺得課程本身就足夠了，不太需要額外找其他資源來準備。不過，如果你還在考慮自己是否適合這堂課，可以先從以下幾個免費資源開始：&lt;/p&gt;
@@ -138,7 +382,7 @@
 
 &lt;p&gt;這些資源都是非常知名且品質有保障的免費教材，維護者本身要不是現職資安研究員，就是同時也有在開設付費課程的專業人士。就我所知，許多初學者在早期學習時期就是靠這些資源打基礎。（不過我個人沒有完整使用過這些資源，總時數不超過兩個小時。）&lt;/p&gt;
 
-&lt;p&gt;或者，假設你的程度比較進階一點，那其實可以考慮直接找網路上有 Write-up 的 1-day 復現。像這堂課中提到的某個 Win32k 漏洞，我其實一兩年前就寫過完整的 Exploit，雖然當時做得還不夠穩定。Angelboy 也寫過一些課程中提到、難度比較高的漏洞利用。這種實作練習非常有幫助，因為過程中會經歷到 exploit 開發的各個步驟：搜集資料、定位漏洞位置、保護機制的繞過、Windows 的特殊機制等等。&lt;/p&gt;
+&lt;p&gt;或者，假設你的程度比較進階一點，那其實可以考慮直接找網路上有 Write-up 的 1-day 復現。像這堂課中提到的某個 Win32k 漏洞，我其實一兩年前就寫過完整的 exploit，雖然當時做得還不夠穩定。Angelboy 也寫過一些課程中提到、難度比較高的漏洞利用。這種實作練習非常有幫助，因為過程中會經歷到 exploit 開發的各個步驟：搜集資料、定位漏洞位置、保護機制的繞過、Windows 的特殊機制等等。&lt;/p&gt;
 
 &lt;h3 id=&quot;課程本身的價值&quot;&gt;課程本身的價值&lt;/h3&gt;
 
@@ -153,7 +397,7 @@
 
 &lt;p&gt;EXP-401 的課程設計主要圍繞在 Windows 的保護機制與漏洞利用方法上，內容並未過多著墨於那些已經被淘汰的技術。因此，課程中介紹的各種保護機制，基本上都是目前 Windows 系統中仍然存在且有效的防護措施。&lt;/p&gt;
 
-&lt;p&gt;除了講解保護機制本身，課程也搭配了許多輔助教材。不過，這些教材的主要目的是為了說明各種情境，並促進學員對漏洞利用方法的思考。例如，以課程中使用 Chakra 引擎版本的 Edge 瀏覽器來說，使用 Chakra 版本的 Edge 當然不貼近現實，因為沒有人在使用它了，但從 Windows 系統保護機制的角度來看，這樣的範例依然相當適用。因為無論是哪一款瀏覽器，只要出現漏洞，開發 Exploit 時所面對的系統層面問題基本上是一致的。&lt;/p&gt;
+&lt;p&gt;除了講解保護機制本身，課程也搭配了許多輔助教材。不過，這些教材的主要目的是為了說明各種情境，並促進學員對漏洞利用方法的思考。例如，以課程中使用 Chakra 引擎版本的 Edge 瀏覽器來說，使用 Chakra 版本的 Edge 當然不貼近現實，因為沒有人在使用它了，但從 Windows 系統保護機制的角度來看，這樣的範例依然相當適用。因為無論是哪一款瀏覽器，只要出現漏洞，開發 exploit 時所面對的系統層面問題基本上是一致的。&lt;/p&gt;
 
 &lt;p&gt;當然，在「瀏覽器範圍內」要解決的問題是不一樣的，像 Chrome 就會多出一層自己設計的 Sandbox 機制，這是應用程式層面的額外挑戰。但必須理解，除非這門課叫做 Browser Exploit Development，否則你不應該預期在這堂課上獲取太多瀏覽器特有防護機制相關的知識。&lt;/p&gt;
 
@@ -164,7 +408,7 @@
 &lt;p&gt;這是許多人關心的問題。我的回答是：&lt;strong&gt;有幫助，但影響不大。&lt;/strong&gt; 為什麼這麼說呢？&lt;/p&gt;
 
 &lt;ol&gt;
-  &lt;li&gt;&lt;strong&gt;如果你想成為一名紅隊演練專家：&lt;/strong&gt; 在沒有紅隊相關證照的情況下，僅持有 OSEE 並不能證明什麼。雇主更在意的是你是否具備完整的紅隊演練思維（mindset），而不是你有能力在 Windows 上面開發 Exploit。當然，如果兩者兼備，肯定是非常加分的。&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;如果你想成為一名紅隊演練專家：&lt;/strong&gt; 在沒有紅隊相關證照的情況下，僅持有 OSEE 並不能證明什麼。雇主更在意的是你是否具備完整的紅隊演練思維（mindset），而不是你有能力在 Windows 上面開發 exploit。當然，如果兩者兼備，肯定是非常加分的。&lt;/li&gt;
   &lt;li&gt;&lt;strong&gt;如果你想成為一名資安研究員：&lt;/strong&gt; 這門課的內容僅能視為入門等級。取得 OSEE 證照，頂多證明你有能力處理某些基本的技術問題。但在真正的研究工作中，更重要的是：你能不能自己主導一個研究？能不能獨立解決研究過程中遇到的各種問題？&lt;/li&gt;
 &lt;/ol&gt;
 
@@ -178,7 +422,7 @@
 
 &lt;p&gt;如同前面說的，OSEE 考試一共有兩題。OffSec 為此設計了一系列漏洞，並且為了貼近現實，每個漏洞都有對應的 CVE Advisory 和模擬的部落格文章。部落格文章主要介紹程式的運作機制和過去漏洞利用的方法，而 CVE Advisory 雖然會描述漏洞類型，但並不會具體指出漏洞位置、觸發方式，也不會提供 PoC。考生必須依靠這些線索，自行逆向分析，找出漏洞所在，撰寫可觸發漏洞的程式，最終在繞過所有保護機制後，讀取 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;proof.txt&lt;/code&gt; 檔案，才算完成挑戰。&lt;/p&gt;
 
-&lt;p&gt;考試時間安排為：&lt;strong&gt;72 小時內完成 Exploit，24 小時內完成報告&lt;/strong&gt;。但實際操作時，時間遠沒有表面上那麼充裕，這點稍後會解釋。&lt;/p&gt;
+&lt;p&gt;考試時間安排為：&lt;strong&gt;72 小時內完成 exploit，24 小時內完成報告&lt;/strong&gt;。但實際操作時，時間遠沒有表面上那麼充裕，這點稍後會解釋。&lt;/p&gt;
 
 &lt;p&gt;具體評分標準可參考 OSEE 官方提供的報告模板：&lt;a href=&quot;https://offensive-security.com/awe/AWE-Exam-Report.docx&quot;&gt;AWE-Exam-Report.docx&lt;/a&gt;。每一題的分數都是 50 分，但若只完成某題的一半，僅能獲得 25 分，而合格分數為 75 分。例如，以報告模板中的第一題來說，若只做到 Code Execution，卻無法完成 Sandbox Escape，就只能拿 25 分；第二題若僅做到 Read/Write Primitive，但未成功提升權限，同樣只能拿 25 分。&lt;/p&gt;
 
@@ -197,18 +441,18 @@
 &lt;/ul&gt;
 
 &lt;p&gt;接下來剩下的時間，就是用來專心撰寫報告。
-前面提到，考生必須在 &lt;strong&gt;72 小時內完成 Exploit&lt;/strong&gt;，並在接下來 &lt;strong&gt;24 小時內完成報告&lt;/strong&gt;。但實際上，時間根本沒那麼充裕，原因在於 OSEE 的報告要求非常嚴格。&lt;/p&gt;
+前面提到，考生必須在 &lt;strong&gt;72 小時內完成 exploit&lt;/strong&gt;，並在接下來 &lt;strong&gt;24 小時內完成報告&lt;/strong&gt;。但實際上，時間根本沒那麼充裕，原因在於 OSEE 的報告要求非常嚴格。&lt;/p&gt;
 
 &lt;p&gt;以官方提供的範本 &lt;a href=&quot;https://offensive-security.com/awe/AWE-Exam-Report.docx&quot;&gt;AWE-Exam-Report.docx&lt;/a&gt; 為例，可以發現整份報告的結構被劃分得非常細緻，比如：「2.2 Initial Exploitation」、「2.3 Read and Write Primitive」、「2.4 Code Execution」、「2.5 Sandbox Escape」等等。&lt;/p&gt;
 
-&lt;p&gt;平時自己寫 Exploit，通常都是順順寫到底，很少會特意去紀錄中間每個細節。但在考試中，必須清楚拆解每一個階段，不僅要說明自己是怎麼利用漏洞的，還必須具體證明自己繞過了哪些保護機制，並且附上可以直接複製貼上就能夠執行的程式碼。例如，「Read and Write Primitive」這個階段，平常我們可能只是在開發過程中確認一下就繼續推進了，很少會特別停下來做獨立驗證。但在報告中，你必須證明自己具備這個能力。常見的做法是撰寫小型 PoC，讀寫一塊不可存取的記憶體，並搭配 Debugger 截圖作為佐證。&lt;/p&gt;
+&lt;p&gt;平時自己寫 exploit，通常都是順順寫到底，很少會特意去紀錄中間每個細節。但在考試中，必須清楚拆解每一個階段，不僅要說明自己是怎麼利用漏洞的，還必須具體證明自己繞過了哪些保護機制，並且附上可以直接複製貼上就能夠執行的程式碼。例如，「Read and Write Primitive」這個階段，平常我們可能只是在開發過程中確認一下就繼續推進了，很少會特別停下來做獨立驗證。但在報告中，你必須證明自己具備這個能力。常見的做法是撰寫小型 PoC，讀寫一塊不可存取的記憶體，並搭配 Debugger 截圖作為佐證。&lt;/p&gt;
 
-&lt;p&gt;然而，&lt;strong&gt;考試機器只開放 72 小時使用，而且所有資料都禁止下載&lt;/strong&gt;。這表示：如果 72 小時內沒有收集齊全所有必須的截圖、證據和中間過程，之後在寫報告時就會非常痛苦，甚至可能因為證據不足導致無法通過。因此，在寫報告時才去拆分每個階段的 PoC 是不可能的，因為這樣會缺少必要的截圖，甚至無法驗證 PoC 是否能正常執行。最保險的策略是：&lt;strong&gt;在 72 小時內，不只是完成 Exploit，也要同步撰寫 PoC，收集完所有資料，並把報告的主要內容草擬出來。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;然而，&lt;strong&gt;考試機器只開放 72 小時使用，而且所有資料都禁止下載&lt;/strong&gt;。這表示：如果 72 小時內沒有收集齊全所有必須的截圖、證據和中間過程，之後在寫報告時就會非常痛苦，甚至可能因為證據不足導致無法通過。因此，在寫報告時才去拆分每個階段的 PoC 是不可能的，因為這樣會缺少必要的截圖，甚至無法驗證 PoC 是否能正常執行。最保險的策略是：&lt;strong&gt;在 72 小時內，不只是完成 exploit，也要同步撰寫 PoC，收集完所有資料，並把報告的主要內容草擬出來。&lt;/strong&gt;&lt;/p&gt;
 
 &lt;p&gt;而且真的有人因為報告不夠詳盡，即使在解題階段拿了 100 分也沒有通過，所以我嚇得直接交了一百頁的報告出去。&lt;/p&gt;
 &lt;h2 id=&quot;結語&quot;&gt;結語&lt;/h2&gt;
 
-&lt;p&gt;把所有 Exploit 和報告都整理好交出去之後，就只剩等待 OffSec 公告考試結果了。官方說審核可能需要最多十個工作天，我一路等到了 3 月 10 號，終於收到通過的通知。
+&lt;p&gt;把所有 exploit 和報告都整理好交出去之後，就只剩等待 OffSec 公告考試結果了。官方說審核可能需要最多十個工作天，我一路等到了 3 月 10 號，終於收到通過的通知。
 據說這是全台灣第一張 OSEE 證照，算是順利解鎖了一個成就：
 &lt;img src=&quot;/assets/img/blog/20250522/upload_b03d6106afb193bc29194272198cf43b.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 
@@ -216,7 +460,7 @@
 &lt;ul&gt;
   &lt;li&gt;&lt;strong&gt;PEN-300&lt;/strong&gt;（Advanced Evasion Techniques and Breaching Defenses）&lt;/li&gt;
   &lt;li&gt;&lt;strong&gt;WEB-300&lt;/strong&gt;（Advanced Web Attacks and Exploitation）&lt;/li&gt;
-  &lt;li&gt;&lt;strong&gt;EXP-401&lt;/strong&gt;（Windows User Mode Exploit Development）&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;EXP-401&lt;/strong&gt;（Advanced Windows Exploitation）&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;p&gt;如果有興趣參加，建議可以早點報名，因為早鳥票價相對非常划算（隨著時間接近，價格會逐步上升）。&lt;br /&gt;

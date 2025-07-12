@@ -1,0 +1,811 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>錯過五年，我終於踏進 OSEE 的世界 | DEVCORE 戴夫寇爾</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="這邊主要是以平常有在碰 Windows 的人的角度出發。老實說，大約在 5 年前就對 OSEE 這張證照略有所聞，而當時也剛好開始學一些 Windows Pwn 的相關知識，出一些 CTF 題目給大家玩玩，順便增進 Windows 知識，當時也學了一些有關 Windows Kernel 的利用技巧，不過剛開時學時也處處碰壁，花了好一段時間才慢慢學會怎麼去好好搞一個 Windows Kernel Exploit。在得知有這張證照之後，便下定決心未來某一天一定要拿到這張證照。" />
+    <meta name="keywords" content="OffSec, OSEE, LiveTraining" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="錯過五年，我終於踏進 OSEE 的世界 | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2025/07/12/finally-stepping-into-the-world-of-osee-after-five-years/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20250712/cover.png" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="錯過五年，我終於踏進 OSEE 的世界 | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="這邊主要是以平常有在碰 Windows 的人的角度出發。老實說，大約在 5 年前就對 OSEE 這張證照略有所聞，而當時也剛好開始學一些 Windows Pwn 的相關知識，出一些 CTF 題目給大家玩玩，順便增進 Windows 知識，當時也學了一些有關 Windows Kernel 的利用技巧，不過剛開時學時也處處碰壁，花了好一段時間才慢慢學會怎麼去好好搞一個 Windows Kernel Exploit。在得知有這張證照之後，便下定決心未來某一天一定要拿到這張證照。">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image:src" content="https://devco.re/assets/img/blog/20250712/cover.png">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2025/07/12/finally-stepping-into-the-world-of-osee-after-five-years/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body>
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>服務<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    紅隊演練
+                                </h2>
+                                <p class="two-line">
+                                    在不影響企業營運前提下，無所不用其極，從各種進入點執行模擬入侵攻擊，達成企業指定的演練情境。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    滲透測試
+                                </h2>
+                                <p class="two-line">
+                                    以駭客思維及手法嘗試入侵企業指定系統，找出潛在漏洞，驗證企業資料與設備是否可被竊取或破壞。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    資安顧問服務
+                                </h2>
+                                <p class="two-line">
+                                    以紅隊演練為基礎，提供攻擊者視角與可能入侵路徑，協助企業評估資安資源優先順序，並擬定長期防禦策略。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    資安教育訓練
+                                </h2>
+                                <p class="two-line">
+                                    從攻擊思維出發，協助企業有效預防資安事故並防禦；以及事件發生時，如何快速判定攻擊目的、手法、漏洞與及應變方式。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="https://training.devco.re/" target="_blank">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu offsec"></i>
+                                    OffSec 駭客技術課程 <i class="icon open-in-new"></i>
+                                </h2>
+                                <p class="two-line">
+                                    攜手全球網路安全培訓及認證商 OffSec，透過 Live Training 原廠講師實體授課及線上課程的結構化學習資源，讓資安人員的網路安全攻擊技術與時俱進。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>研究<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    總覽概要
+                                </h2>
+                                <p class="two-line">
+                                    持續精研資安最新技術及漏洞研究趨勢，全方位檢測企業產品安全性、吸取經驗並轉化為紅隊演練工具與手法。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    競賽與獎項
+                                </h2>
+                                <p class="two-line">
+                                    國際級資訊安全競賽獎項肯定。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    企業漏洞回報
+                                </h2>
+                                <p class="two-line">
+                                    研究企業系統中的資安風險及各種可能的突破口，並通報企業修補。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    國際研討會
+                                </h2>
+                                <p class="two-line">
+                                    參與全球資安盛會，發表、交流漏洞的知識與資訊。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE 漏洞列表
+                                </h2>
+                                <p class="two-line">
+                                    挖掘並回報國際知名產品與服務的重大漏洞。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>公司<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                公司簡介
+                            </h2>
+                            <p>
+                                DEVCORE 戴夫寇爾由世界級白帽駭客團隊創立，提供紅隊演練、滲透測試、資安顧問服務、資安教育訓練等服務。
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    團隊成員
+                                </h2>
+                                <p class="two-line">
+                                    由熱衷挑戰、具備駭客思維的資安專家組成，專注於創新攻擊手法研究，並以「高道德、高自律、高嚴謹」為最高指導原則。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    成就與沿革
+                                </h2>
+                                <p class="two-line">
+                                    長期聚焦於攻擊研究，屢屢獲邀參與全球知名資安研討會，已揭露數百個重要產品漏洞、協助企業提升防禦能量。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    企業社會責任
+                                </h2>
+                                <p class="two-line">
+                                    提供多元實習管道和研習計畫，提升新世代人才資安能量，推廣資訊安全意識。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    工作機會
+                                </h2>
+                                <p class="two-line">
+                                    加入 DEVCORE，共同改善資安產業結構，與我們一起打造更安全的世界。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="https://conf.devco.re/" target="_blank">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu conference"></i>
+                                    攻擊導向技術研討會 <i class="icon open-in-new"></i>
+                                </h2>
+                                <p class="two-line">
+                                    由 DEVCORE 舉辦的技術研討會，聚焦於技術並由駭客視角出發，帶您探索創新的攻擊技術與手法，從攻擊思考防禦的策略。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>新聞<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    DEVCORE 最新消息。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    媒體素材下載
+                                </h2>
+                                <p>
+                                    使用 DEVCORE 商標須遵循的使用規範。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/search/">搜尋</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/contact/">聯絡我們</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>服務</span>
+                <div class="menuItem">
+                    <a href="/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                紅隊演練
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                滲透測試
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                顧問服務
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                教育訓練
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>資安研究</span>
+                <div class="menuItem">
+                    <a href="/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>總覽概要</h2>
+                        </div>
+                    </a>
+                    <a href="/research/awards/">
+                        <div class="item">
+                            <h2>競賽與獎項</h2>
+                        </div>
+                    </a>
+                    <a href="/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Bug Bounty</h2>
+                        </div>
+                    </a>
+                    <a href="/research/talks/">
+                        <div class="item">
+                            <h2>國際研討會</h2>
+                        </div>
+                    </a>
+                    <a href="/research/cve/">
+                        <div class="item">
+                            <h2>CVE 漏洞列表</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>公司</span>
+                <div class="menuItem">
+                    <a href="/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>公司簡介</h2>
+                        </div>
+                    </a>
+                    <a href="/company/our-team/">
+                        <div class="item">
+                            <h2>團隊成員</h2>
+                        </div>
+                    </a>
+                    <a href="/company/history/">
+                        <div class="item">
+                            <h2>成就與沿革</h2>
+                        </div>
+                    </a>
+                    <a href="/company/csr/">
+                        <div class="item">
+                            <h2>企業社會責任</h2>
+                        </div>
+                    </a>
+                    <a href="/company/jobs/">
+                        <div class="item">
+                            <h2>工作機會</h2>
+                        </div>
+                    </a>
+                    <a href="https://conf.devco.re/" target="_blank">
+                        <div class="item">
+                            <h2>DEVCORE CONFERENCE</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>新聞</span>
+                <div class="menuItem">
+                    <!-- <a href="/blog/">
+                    <div class="item">
+                        <h2>所有文章</h2>
+                    </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>案例剖析</h2>
+                        </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>科普文章</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>技術專欄</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>資安新聞</h2>
+                        </div>
+                    </a> -->
+                    <a href="/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/media-kit/">
+                        <div class="item">
+                            <h2>媒體素材下載</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                搜尋
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                聯絡我們
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/blog/">所有文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/最新消息/">最新消息</a>
+                </li>
+                <li>
+                    <a href="/blog/category/技術專欄/">技術專欄</a>
+                </li>
+                <li>
+                    <a href="/blog/category/科普文章/">科普文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/資安新聞/">資安新聞</a>
+                </li>
+                <li>
+                    <a href="/blog/category/學生相關計劃/">學生相關計劃</a>
+                </li>
+                <li>
+                    <a href="/media-kit/">媒體素材下載</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/blog/category/最新消息">最新消息</a>
+                    <span class="tag">
+
+                      <a href="/blog/tag/OffSec/">#OffSec</a> <a href="/blog/tag/Windows/">#Windows</a> <a href="/blog/tag/OSEE/">#OSEE</a> <a href="/blog/tag/LiveTraining/">#LiveTraining</a> 
+                    </span>
+                    <h1>
+                        錯過五年，我終於踏進 OSEE 的世界
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/blog/author/angelboy">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/angelboy.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/blog/author/angelboy">Angelboy</a></span>
+                        <span class="date">2025-07-12</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20250712/cover.png"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p>前面我想已經有許多篇 OSEE 心得了，多數內容應該就不再多做贅述，有興趣的同學可參考下列幾篇</p>
+<ul>
+  <li><a href="/blog/2025/05/22/exp-401-osee-five-days-to-master-a-decade-of-knowledge/">EXP-401 (OSEE)：用五天課程訓練通透十年的知識體系</a></li>
+  <li><a href="/blog/2025/07/02/webdog-view-on-osee-advanced-windows-exploitation-from-0.1/">從 Web 狗的視角看 OSEE — 從 0.1 開始的 Advanced Windows Exploitation 考試</a></li>
+  <li><a href="/blog/2025/07/11/exp-401-course-and-second-exam-thoughts/">EXP-401 課程 &amp;&amp; 第二次考試心得</a></li>
+</ul>
+
+<h2 id="前言">前言</h2>
+
+<p>這邊主要是以平常有在碰 Windows 的人的角度出發。老實說，大約在 5 年前就對 OSEE 這張證照略有所聞，而當時也剛好開始學一些 Windows Pwn 的相關知識，出一些 CTF 題目給大家玩玩，順便增進 Windows 知識，當時也學了一些有關 Windows Kernel 的利用技巧，不過剛開始學時也處處碰壁，花了好一段時間才慢慢學會怎麼去好好搞一個 Windows Kernel Exploit。在得知有這張證照之後，便下定決心未來某一天一定要拿到這張證照。</p>
+
+<p>大約在 2019 左右，打 CTF 漸漸的提不起興趣，慢慢的開始玩玩不同的東西，在過往 CTF 題目中，Windows 一直很少出現，但在真實世界中，卻是隨處可見，於是便開始了研究 Windows 這項旅程。在剛開始接觸 Windows Pwn 及 Windows Kernel 時，多數資源都偏舊，很多在 Windows 10 上就不能運作，在這一年，我花了許多時間逆向，慢慢了解 Windows 上的漏洞該怎麼去利用，也寫了<a href="https://www.slideshare.net/slideshow/windows-10-nt-heap-exploitation-english-version/154467191">幾個</a><a href="https://speakerdeck.com/scwuaptx/windows-kernel-heap-segment-heap-in-windows-kernel-part-1">教學投影片</a>作為紀錄。而在 2020 年開始加入 DEVCORE 之後，每一年都會訂自己的年度目標，而 OSEE 跟在 Pwn2Own 中攻破 Windows 就一直在我的目標清單中。OSEE 這張證照很特別，一定得飛去現場上完課之後才能去考試，那時候上課地點也只有 Black Hat USA，然而 2020-2022 間，剛好就遇上疫情爆發，無法直接飛出國去上課，而我的目標也漸漸地從 Windows Kernel 的漏洞利用，轉往 Windows Kernel 漏洞挖掘。但在這兩年間，卻挖不太到漏洞，2022 也頂多在 <a href="https://conf.devco.re/2024/keynote/DEVCORE-CONFERENCE-2024-Angelboy-LeakLess-Another-Leak-Way-in-Windows-Kernel-DFSC.pdf">DFSC</a> 上，挖到了幾個淺而易見的洞，但接下來很長一段時間就沒有產出了。這時也開始迷惘是不是不太適合挖 Windows Kernel，因為這個原因 2023 年初時，讓我更想拿到 OSEE 這張證照，想要證明自己在 Windows 上，還是有一定的能力的，不過當年可能是疫情關係，那年沒開課。很快地就來到 2024 年，OffSec 終於來到亞洲區開課了，並且在台灣有開 OSEE 課程，大幅省下了機票費，研究組的幾位夥伴也剛好有興趣就一起報名了這門課。</p>
+
+<h2 id="上課">上課</h2>
+<p>課程內容我就不多說了，在 <a href="https://devco.re/blog/2025/05/22/exp-401-osee-five-days-to-master-a-decade-of-knowledge/">EXP-401 (OSEE)：用五天課程訓練通透十年的知識體系</a> 應該都有詳細介紹每一天所上課的內容，這篇只著重在個人心得方面。</p>
+
+<p>時間很快地就來到 2024 年 8 月，五天課上下來，不得不說，真的非常扎實，對於課程內容我想絕對對得起它的價錢。不論從課程的設計、題目及講師，都有非常高的品質。很後悔當初 2019 有機會去 Las Vegas 時，沒有去報名這門課，如果當初有先報這門課，我想在後面漏洞利用方面就不會卡太多時間，因為課程中提到了許許多多我當初在研究 Windows 漏洞利用時所遇到的問題。個人覺得上課好玩的地方，就是跟大家一起解 Extra Mile，就很像以前大家在寫 CTF 一樣，有一定的挑戰性，甚至有人為了 Coin 而整夜沒睡把它解完，不過我還是建議大家認真上課，可以節省很多看書的時間。</p>
+
+<p>課程內容另一個重點包括了「穩定的漏洞利用」，也非常有價值，這算是以往在打 CTF 不太會注意的事情。在現實的漏洞利用上，不論是在紅隊或是 Pwn2Own 上，通常都不允許你失敗，一旦打失敗就很有可能 BSoD 或是服務中斷，而這門課也很重視這一點，算是我在這們課中所學到最多的部分。</p>
+
+<h2 id="考試">考試</h2>
+
+<p>老實說，安排完考試後，其實還蠻擔心會不會考不過，如果平常都有在碰 Windows 還考不過，可能就是我的問題了。但剛好那段時間也在準備 OffensiveCon 演講，實在沒太多時間準備，多數還是靠這幾年玩下來的基礎來考試，另外這也是我第一次考 OffSec 系列的證照，難免也會各種擔心，會擔心我會不會看不懂題目要幹嘛，報告會不會寫太爛等等的。</p>
+
+<p>時間很快地就來到了 2025-05-31 05:00，時間實在不是很好，腦袋還是很昏沉的狀態，光是環境設定就弄了一小時。而題目就如<a href="https://offensive-security.com/awe/AWE-Exam-Report.docx">官方範例報告</a>中所述，分別就是 User Land 跟 Kernel Land 的題目。由於平常都在碰 Windows Kernel，我就決定先解這題，不過因為太常碰了，一看就知道題目要做啥，雖然中間自己 Exploit 寫錯沒發現多花了一點時間，約花 3 個小時才搞定。</p>
+
+<p>而另外一提 User Land 的題目則相對麻煩一點，除了要 Code Execution 還要 Sandbox Escape，也必須寫出不依賴任何版本的漏洞利用，題目敘述很清楚，而題目中也會有一些引導幫助你解題，你會很清楚的知道下一步該做甚麼，只要你一步一步慢慢來就可以完成。其實這題就很像在打 CTF 題目，這題我大概花了 16 小時左右解決後，就去睡覺了。</p>
+
+<p>而隔天醒來後就開始寫報告了，這時候我並沒有立即結束考試，因為考試必須要一步一步截圖，所以我還是跟著昨天的步驟慢慢寫報告，截完所需要的圖，報告寫完後才結束考。由於前面有因為報告沒有過的先例，這份我寫的特別認真，也花了 16 小時寫這份報告，總頁數寫完大概有 256 頁吧。</p>
+
+<p>考完試之後，大概一週後就順利收到通過的通知。</p>
+
+<p><img src="/assets/img/blog/20250712/08cbcbee694010404a3f73dbda56c960.png" alt="" /></p>
+
+<p>題外話，後來也和通過的同學們聊一下題目，發現原來我看錯題目了，其實<strong>不需要</strong>寫出不依賴任何版本的漏洞利用 ……</p>
+
+<blockquote>
+  <p>題目記得看清楚一點。</p>
+</blockquote>
+
+<h2 id="結語">結語</h2>
+
+<p>想考五年的 OSEE 總算入手了，總算完成了一直擺在預定清單，卻一直沒有完成的項目。</p>
+
+<p>這幾年很常聽到大家說 OSEE 很難、很貴，實際上來說，如果平常有在打 CTF Pwn 題或對於 Binary 有一定程度了解的人，我想應該沒甚麼問題，可以直接上課，考試稍微複習一下即可。而如果平常很少碰 Binary 或漏洞利用，建議可以先學習一下 OSED 的內容，我覺得至少要會手動疊出 ROP 會比較適合一點。不過，比起考試，這門價值多數還是在課程上，如果你想學習 Windows 漏洞利用、想知道外面 APT 組織都是如何利用這些漏洞，還有看懂他們是怎麼去利用的，我想這門課應該非常適合你。</p>
+
+<p>而今年 DEVCORE 也有繼續推出 OSEE，機會難得，可以省下不少機票錢也不需要調時差，如果有興趣的同學可以好好把握機會，詳細內容可參考 <a href="https://training.devco.re/2025">https://training.devco.re/2025</a>。</p>
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/blog/author/angelboy">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/angelboy.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>Angelboy</h3>
+                        </a>
+                        <span>Senior Security Researcher</span>
+                        <p>
+                            I am 👼 :)
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+        <!-- 相關文章 -->
+        <section class="recommand articles-list">
+            <div class="container">
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/最新消息">最新消息</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/OffSec/">#OffSec</a> <a href="/blog/tag/Windows/">#Windows</a> <a href="/blog/tag/OSEE/">#OSEE</a> <a href="/blog/tag/LiveTraining/">#LiveTraining</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2025/07/12/finally-stepping-into-the-world-of-osee-after-five-years/">錯過五年，我終於踏進 OSEE 的世界</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/angelboy">
+                            <h3>Angelboy</h3>
+                        </a>
+                    
+                        <span class="date">2025-07-12</span>
+                        <p class="line-litmit-3">這邊主要是以平常有在碰 Windows 的人的角度出發。老實說，大約在 5 年前就對 OSEE 這張證照略有所聞，而當時也剛好開始學一些 Windows Pwn 的相關知識，出一些 CTF 題目給大家玩玩，順便增進 Windows 知識，當時也學了一些有關 Windows Kernel 的利用技巧，不過剛開時學時也處處碰壁，花了好一段時間才慢慢學會怎麼去好好搞一個 Windows Kernel Exploit。在得知有這張證照之後，便下定決心未來某一天一定要拿到這張證照。
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/最新消息">最新消息</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/OffSec/">#OffSec</a> <a href="/blog/tag/Windows/">#Windows</a> <a href="/blog/tag/OSEE/">#OSEE</a> <a href="/blog/tag/LiveTraining/">#LiveTraining</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2025/07/11/exp-401-course-and-second-exam-thoughts/">EXP-401 課程 && 第二次考試心得</a> 
+                        </h2>
+                    
+                    
+                        <a class="author" href="/blog/author/research">
+                            <h3>DEVCORE Research Team</h3>
+                        </a>
+                    
+                        <span class="date">2025-07-11</span>
+                        <p class="line-litmit-3">EXP-401 (OSEE) 考試第二次挑戰心得公開！從 VMware 到 Windows Kernel，完整分享學習曲線、踩坑經驗、考試細節與重考流程。
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/學生相關計劃">學生相關計劃</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> <a href="/blog/tag/徵才/">#徵才</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2025/07/07/8th-internship-program-recruit/">DEVCORE 2025 第八屆實習生計畫</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2025-07-07</span>
+                        <p class="line-litmit-3">DEVCORE 第八屆實習生計畫將於 2025 年 9 月正式登場，即日起開放報名！歡迎詳閱以下資訊並填寫報名表單，報名至 07/28 23:59 截止。
+                        </p>
+                    </div>
+                </article>
+              
+
+            </div>
+        </section>
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">服務</h6>
+        <ul>
+            <li><a href="/services/red-team/">紅隊演練</a></li>
+            <li><a href="/services/penetration-test/">滲透測試</a></li>
+            <li><a href="/services/security-consulting/">資安顧問服務</a></li>
+            <li><a href="/services/security-training/">資安教育訓練</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">研究</h6>
+        <ul>
+            <li><a href="/research/overview/">總覽概要</a></li>
+            <li><a href="/research/awards/">競賽與獎項</a></li>
+            <li><a href="/research/bug-bounty/">企業漏洞回報</a></li>
+            <li><a href="/research/talks/">國際研討會</a></li>
+            <li><a href="/research/cve/">CVE 漏洞列表</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">公司</h6>
+        <ul>
+            <li><a href="/company/about/">公司簡介</a></li>
+            <li><a href="/company/our-team/">團隊成員</a></li>
+            <li><a href="/company/history/">成就與沿革</a></li>
+            <li><a href="/company/csr/">企業社會責任</a></li>
+            <li><a href="/company/jobs/">工作機會</a></li>
+            <li><a href="/contact/">聯絡我們</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">新聞</h6>
+        <ul>
+            <li><a href="/blog/">BLOG</a></li>
+            <li><a href="/media-kit/">媒體素材下載</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2025 DEVCORE 戴夫寇爾股份有限公司. <b class="line-block">All rights reserved.</b></span>
+            <span><a href="/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+

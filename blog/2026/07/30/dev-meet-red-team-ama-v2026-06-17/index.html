@@ -1,0 +1,969 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>/dev/meet 資安小聚 v2026.06.17 Red Team AMA | DEVCORE 戴夫寇爾</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="在 /dev/meet 資安小聚 v2026.06.17 上，我們首次嘗試 Red Team AMA 形式，讓大家一次拋出心中最好奇的疑問。當天由 DEVCORE 紅隊主管 Alan、資深紅隊演練專家 Mico 親自解答，內容涵蓋紅隊演練的核心概念、方法論，一路談到職涯發展。" />
+    <meta name="keywords" content="/dev/meet" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="/dev/meet 資安小聚 v2026.06.17 Red Team AMA | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2026/07/30/dev-meet-red-team-ama-v2026-06-17/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20260730/cover.jpg" />
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="/dev/meet 資安小聚 v2026.06.17 Red Team AMA | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="在 /dev/meet 資安小聚 v2026.06.17 上，我們首次嘗試 Red Team AMA 形式，讓大家一次拋出心中最好奇的疑問。當天由 DEVCORE 紅隊主管 Alan、資深紅隊演練專家 Mico 親自解答，內容涵蓋紅隊演練的核心概念、方法論，一路談到職涯發展。">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image" content="https://devco.re/assets/img/blog/20260730/cover.jpg">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2026/07/30/dev-meet-red-team-ama-v2026-06-17/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body>
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>服務<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    紅隊演練
+                                </h2>
+                                <p class="two-line">
+                                    在不影響企業營運前提下，無所不用其極，從各種進入點執行模擬入侵攻擊，達成企業指定的演練情境。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/opsr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-opsr"></i>
+                                    主動式產品安全研究
+                                </h2>
+                                <p class="two-line">
+                                    以攻擊者視角，從硬體、韌體到軟體全面評估產品的高風險弱點，加強團隊安全程式碼概念及意識，讓產品能抵禦複雜的網路威脅。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    滲透測試
+                                </h2>
+                                <p class="two-line">
+                                    以駭客思維及手法嘗試入侵企業指定系統，找出潛在漏洞，驗證企業資料與設備是否可被竊取或破壞。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    資安顧問服務
+                                </h2>
+                                <p class="two-line">
+                                    以紅隊演練為基礎，提供攻擊者視角與可能入侵路徑，協助企業評估資安資源優先順序，並擬定長期防禦策略。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    資安教育訓練
+                                </h2>
+                                <p class="two-line">
+                                    從攻擊思維出發，協助企業有效預防資安事故並防禦；以及事件發生時，如何快速判定攻擊目的、手法、漏洞與及應變方式。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="https://training.devco.re/" target="_blank">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu offsec"></i>
+                                    OffSec 駭客技術課程 <i class="icon open-in-new"></i>
+                                </h2>
+                                <p class="two-line">
+                                    攜手全球網路安全培訓及認證商 OffSec，透過 Live Training 原廠講師實體授課及線上課程的結構化學習資源，讓資安人員的網路安全攻擊技術與時俱進。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>研究<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    總覽概要
+                                </h2>
+                                <p class="two-line">
+                                    持續精研資安最新技術及漏洞研究趨勢，全方位檢測企業產品安全性、吸取經驗並轉化為紅隊演練工具與手法。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    競賽與獎項
+                                </h2>
+                                <p class="two-line">
+                                    國際級資訊安全競賽獎項肯定。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    企業漏洞回報
+                                </h2>
+                                <p class="two-line">
+                                    研究企業系統中的資安風險及各種可能的突破口，並通報企業修補。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    國際研討會
+                                </h2>
+                                <p class="two-line">
+                                    參與全球資安盛會，發表、交流漏洞的知識與資訊。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE 漏洞列表
+                                </h2>
+                                <p class="two-line">
+                                    挖掘並回報國際知名產品與服務的重大漏洞。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>公司<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                公司簡介
+                            </h2>
+                            <p>
+                                DEVCORE 戴夫寇爾由世界級白帽駭客團隊創立，提供紅隊演練、滲透測試、資安顧問服務、資安教育訓練等服務。
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    團隊成員
+                                </h2>
+                                <p class="two-line">
+                                    由熱衷挑戰、具備駭客思維的資安專家組成，專注於創新攻擊手法研究，並以「高道德、高自律、高嚴謹」為最高指導原則。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    成就與沿革
+                                </h2>
+                                <p class="two-line">
+                                    長期聚焦於攻擊研究，屢屢獲邀參與全球知名資安研討會，已揭露數百個重要產品漏洞、協助企業提升防禦能量。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    企業社會責任
+                                </h2>
+                                <p class="two-line">
+                                    提供多元實習管道和研習計畫，提升新世代人才資安能量，推廣資訊安全意識。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    工作機會
+                                </h2>
+                                <p class="two-line">
+                                    加入 DEVCORE，共同改善資安產業結構，與我們一起打造更安全的世界。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="https://conf.devco.re/" target="_blank">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu conference"></i>
+                                    攻擊導向技術研討會 <i class="icon open-in-new"></i>
+                                </h2>
+                                <p class="two-line">
+                                    由 DEVCORE 舉辦的技術研討會，聚焦於技術並由駭客視角出發，帶您探索創新的攻擊技術與手法，從攻擊思考防禦的策略。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>新聞<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    DEVCORE 最新消息。
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    媒體素材下載
+                                </h2>
+                                <p>
+                                    使用 DEVCORE 商標須遵循的使用規範。
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/search/">搜尋</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/contact/">聯絡我們</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>服務</span>
+                <div class="menuItem">
+                    <a href="/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                紅隊演練
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/opsr/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-opsr"></i>
+                                主動式產品安全研究
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                滲透測試
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                顧問服務
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                教育訓練
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="https://training.devco.re/" class="fullwidth" target="_blank">
+                        <div class="item">
+                            <h2>
+                                <i class="icon offsec"></i>
+                                OffSec 駭客技術課程
+                                <i class="icon open-in-new" style="margin-left: auto;"></i>
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>資安研究</span>
+                <div class="menuItem">
+                    <a href="/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>總覽概要</h2>
+                        </div>
+                    </a>
+                    <a href="/research/awards/">
+                        <div class="item">
+                            <h2>競賽與獎項</h2>
+                        </div>
+                    </a>
+                    <a href="/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Bug Bounty</h2>
+                        </div>
+                    </a>
+                    <a href="/research/talks/">
+                        <div class="item">
+                            <h2>國際研討會</h2>
+                        </div>
+                    </a>
+                    <a href="/research/cve/">
+                        <div class="item">
+                            <h2>CVE 漏洞列表</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>公司</span>
+                <div class="menuItem">
+                    <a href="/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>公司簡介</h2>
+                        </div>
+                    </a>
+                    <a href="/company/our-team/">
+                        <div class="item">
+                            <h2>團隊成員</h2>
+                        </div>
+                    </a>
+                    <a href="/company/history/">
+                        <div class="item">
+                            <h2>成就與沿革</h2>
+                        </div>
+                    </a>
+                    <a href="/company/csr/">
+                        <div class="item">
+                            <h2>企業社會責任</h2>
+                        </div>
+                    </a>
+                    <a href="/company/jobs/">
+                        <div class="item">
+                            <h2>工作機會</h2>
+                        </div>
+                    </a>
+                    <a href="https://conf.devco.re/" class="fullwidth" target="_blank">
+                        <div class="item">
+                            <h2>
+                                DEVCORE CONFERENCE
+                                <i class="icon open-in-new" style="margin-left: auto;"></i>
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>新聞</span>
+                <div class="menuItem">
+                    <!-- <a href="/blog/">
+                    <div class="item">
+                        <h2>所有文章</h2>
+                    </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>案例剖析</h2>
+                        </div>
+                    </a> -->
+                    <!-- <a href="">
+                        <div class="item">
+                            <h2>科普文章</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>技術專欄</h2>
+                        </div>
+                    </a>
+                    <a href="">
+                        <div class="item">
+                            <h2>資安新聞</h2>
+                        </div>
+                    </a> -->
+                    <a href="/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/media-kit/">
+                        <div class="item">
+                            <h2>媒體素材下載</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                搜尋
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                聯絡我們
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/blog/">所有文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/最新消息/">最新消息</a>
+                </li>
+                <li>
+                    <a href="/blog/category/技術專欄/">技術專欄</a>
+                </li>
+                <li>
+                    <a href="/blog/category/科普文章/">科普文章</a>
+                </li>
+                <li>
+                    <a href="/blog/category/資安新聞/">資安新聞</a>
+                </li>
+                <li>
+                    <a href="/blog/category/學生相關計劃/">學生相關計劃</a>
+                </li>
+                <li>
+                    <a href="/media-kit/">媒體素材下載</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/blog/category/科普文章">科普文章</a>
+                    <span class="tag">
+
+                      <a href="/blog/tag/Red Team/">#Red Team</a> <a href="/blog/tag/AMA/">#AMA</a> <a href="/blog/tag/devmeet/">#devmeet</a> 
+                    </span>
+                    <h1>
+                        /dev/meet 資安小聚 v2026.06.17 Red Team AMA
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="date">2026-07-30</span>
+                    </div>         
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20260730/cover.jpg"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<p>在 <a href="https://devcore.kktix.cc/events/meet260617">/dev/meet 資安小聚 v2026.06.17</a>上，我們首次嘗試 Red Team AMA 形式，事前公開徵集提問，讓大家一次拋出心中最好奇的疑問。</p>
+
+<p>當天由 DEVCORE 紅隊主管 Alan、資深紅隊演練專家 Mico 親自解答，內容涵蓋紅隊演練的核心概念、方法論，一路談到職涯發展。這篇文章整理了當天最具代表性的問答，帶大家了解紅隊演練究竟是什麼、怎麼進行，以及想踏入這個領域該做哪些準備。</p>
+
+<h2 id="方法論--流程">方法論 / 流程</h2>
+
+<ol>
+  <li>
+    <p><strong>演練過程若發現一個漏洞但繼續深入可能會影響到客戶正式環境，如何權衡要不要繼續？如果某個攻擊路徑卡關很久，如何判斷要繼續嘗試還是換路徑？</strong></p>
+
+    <p><strong>權衡的核心在溝通</strong></p>
+
+    <p>關鍵原則是「紅隊是要<strong>降低</strong>風險，而不是增加風險。」 如果明知有風險仍然執行，即使達標，一旦造成客戶負擔就不是好結果。</p>
+
+    <p>因此，紅隊會向客戶清楚傳達四件事：繼續攻擊的風險、潛在成果、客戶能否接受相應風險以及是否有替代情境（如測試環境、備援與復原機制）。雙方確認後，才會繼續進行驗證。</p>
+
+    <p><strong>攻擊路徑卡關的判斷</strong></p>
+
+    <p>紅隊演練是在特定時間內完成任務，因此會牽涉到資源競爭，資源包含人力、已取得的帳密、已拿下的 Shell 等。在綜合評估成員時間與資源後：</p>
+
+    <ul>
+      <li>如果剩餘時間不夠：嘗試更換攻擊手法</li>
+      <li>但更常見的情況是<strong>已無其他路徑</strong>，只能在現有路徑繼續努力</li>
+    </ul>
+  </li>
+  <li>
+    <p><strong>假設已經滲透到內網，mDNS 會是內網機器 IP 情報搜集的一個好方法嗎？實戰中是否會用到 mDNS 呢？如果會用到，有什麼專門分析 mDNS 流量的工具？</strong></p>
+
+    <p>這題的背景，應該跟<a href="https://conf.devco.re/2024/keynote/DEVCORE-CONFERENCE-2024-linwz-Red-Team-Reborn-Discovering-new-attack-surfaces-in-Red-Team-operations.pdf">前年 DEVCORE CONFERENCE，由 Linwz 研究的漏洞有關</a>，當時大量提及 mDNS 技術。</p>
+
+    <p>mDNS 確實是情報收集方法之一。秉持「偵查之所在，滲透之所在」，取得越多資源、視野越全知越好（能清楚知道哪一網段可打、哪一網段不可打）。我們確實有自行撰寫專門分析 mDNS 流量的工具，但以紅隊實際攻擊情境而言<strong>較少用到</strong>。原因是：</p>
+
+    <p><strong>mDNS（Multicast DNS）的適用場景主要集中在沒有集中式 DNS 伺服器的小型或本地區域網路（LAN）中，</strong> 例如 IoT 設備或 OA 區 <em>(Office Automation)</em> 設備上。但紅隊的攻擊目標多坐落於 Server Farm 環境。</p>
+
+    <p>而 OA 區，即使知道某台電腦是誰的，下一步也較難推進。因為 Client 端電腦管控通常較嚴格，不允許直接進行 Client 端攻擊（除非有人自行開了 8080 Port 之類，但可遇不可求）。</p>
+  </li>
+  <li>
+    <p><strong>如何有效管理、記錄各種工具指令？</strong></p>
+
+    <p>這是一個蠻好的問題。有蠻多人在實際開始做紅隊之前，可能不明白這件事情的重要性。大家可能會覺得紅隊就是靠駭客技術，反正唯一的目標就是把機器拿下來。但其實紅隊真正從開始做到結束都有專門的紀錄。過程中超多客戶會來詢問說：「你們有沒有在什麼時間、什麼日期的幾點幾分做了什麼事情？」這時候如果你沒有做紀錄，其實會發現自己常常回答不出來，客戶可能就會覺得太不專業了，連自己做過什麼都不知道。</p>
+
+    <p>對我們 DEVCORE 來說，要把所有的攻擊資料全部收集起來，確實是一件會影響到作戰效率的事情。所以我們盡可能把很多可以自動化的東西都做自動化。我們內部開發了一個專門記錄的平台，主要會透過這個內部平台自動記錄一半的資料，例如一些 Web Request 可以在你做檢測的時候，自動把流量記錄到內部平台。</p>
+
+    <p>而另一部分則要非常仰賴同仁的紀律。包含每次在做特定類型的檢測時，我們會要求留下包含截圖、Request 或是相關說明的證據。如果客戶真的來詢問上述的問題，我們的 TPM 團隊作為主要回應的窗口，就可以在第一時間透過內部的紀錄系統，馬上查到檢測成員在某個時間點確實有做這樣子的操作。</p>
+
+    <p>客戶其實會在意這個，是因為他們會擔心剛剛發現的事件不是紅隊演練，而是真實的資安事件。如果我們可以在第一時間協助他們辨別，對提升客戶的信任感有很大的幫助。所以紀錄對我們來說是非常重要的事情，就像是盡可能留下 Raw Data，然後手動去把一些重要的東西打上標記，用手動標記去輔助你調閱 Raw Data 的紀錄。這就是我們覺得蠻有效的管理紀錄方法：一部分的自動化，搭配檢測人員的紀律。</p>
+  </li>
+</ol>
+
+<h2 id="紅藍協作">紅藍協作</h2>
+
+<ol>
+  <li>
+    <p><strong>如果演練過程中藍隊偵測到紅隊的行動並做出反應，紅隊會繼續原計畫，還是調整策略應對藍隊的防禦？</strong></p>
+
+    <p>先說結論，取決於<strong>客戶怎麼點菜</strong>。</p>
+
+    <p>核心還是要看<strong>客戶對於紅隊結果的期望是什麼</strong>，通常會有兩種典型情境：</p>
+
+    <p><strong>對抗驗證防禦機制型</strong>：客戶想充分驗證藍隊能力的極限，要求紅隊全力進攻、也不開放阻擋機制。此時紅隊會嘗試繞過防禦機制，以及人工與自動化的偵測機制。</p>
+
+    <p><strong>合作最大化演練成果型</strong>：如果客戶更在意當防禦機制失效，是否有其他弱點以及藍隊如何因應這樣的風險，則會採用這個模式。通常客戶在確認其藍隊已經能偵測到部分行為後，接下來會持續監測但<strong>不做阻擋</strong>，讓紅隊繼續進行後續的漏洞驗證或橫向移動，進行更深入的模擬。</p>
+  </li>
+  <li>
+    <p><strong>藍隊背景的人轉做紅隊，會有哪些優勢跟挑戰？</strong></p>
+
+    <p><strong>優勢一：理解防禦機制、更有機會判斷與繞過特定機制：</strong> 藍隊出身轉紅隊時，較能想像攻擊行為為何被阻擋、Webshell 或 Payload 為何被偵測。可從網路被切斷等徵兆判斷是 WAF (Web Application Firewall) 還是其他防禦設備在作動，進而想出繞過該機制的方法，或快速判斷無法繞過，做出對應策略。</p>
+
+    <p><strong>優勢二：熟悉攻擊樣態：</strong> 藍隊工作會花大量時間檢視各種 Log 與 APT (Advanced Persistent Threat) 報告，在轉成紅隊後，更容易聯想到可用的攻擊方式。</p>
+
+    <p><strong>優勢三：能用藍隊的語言交付價值：</strong>藍隊 SOC (Security Operations Center) 有自己的共通語言（如直接用 Event ID「Event 4624」溝通）。藍隊背景轉紅隊後，更清楚<strong>藍隊需要什麼</strong>，能有效地將紅隊產出的價值用藍隊聽得懂的語言交付給客戶。</p>
+
+    <p><strong>IT 背景的 Domain Knowledge 同樣有幫助：</strong> 雖然  IT 管理人員不直接歸類為藍隊，熟悉公司資產的管理方式、架構分層，以及 Proxy 用 PAC 管理規則等。這些 Domain Knowledge 對進攻非常有幫助，能站在防禦方視角進攻，加速學習流程。</p>
+
+    <p><strong>對應挑戰</strong> ：藍隊日常偏向「用眼睛看」，看 Log、看報告、看別人的攻擊長什麼樣。而紅隊的挑戰是，<strong>必須把想像的東西轉化成可用的攻擊手法，因此這部分很仰賴時間刻意練習來補足，例如考攻擊型證照、打靶機或 Hack The Box，把「認得出來」磨成「打得出來」。</strong></p>
+  </li>
+  <li>
+    <p><strong>在某次演練，有沒有遇過藍隊的防禦手法或工具讓你們卡關，甚至改變了原本的攻擊路線？可以分享一個印象深刻的例子嗎？</strong></p>
+
+    <p><strong>案例一、對抗到底的客戶：利用內外網監控強度有別改變攻擊路線</strong></p>
+
+    <p>他們的防禦手法蠻及時的，可能在半小時內就偵測到我們的一些攻擊行為。他們就是屬於想要對抗到底的客戶，不做任何的白名單。後來我們猜測不可能真的 24/7 都這麼厲害吧？於是我們挑了一個月黑風高的夜晚，跟窗口說我們想要驗證半夜是不是真的 24/7 這麼兇猛。客戶當然也很興奮地答應了。</p>
+
+    <p>我們本來想說半夜登入不可能被發現了，結果他們真的蠻厲害的，我們登入伺服器大概 15 分鐘內他們就會發現。因為這個攻擊行為是我們想要登入某一個伺服器把一個 5大約 6 GB 的檔案拉下來，當作這次紅隊演練的成果。但是檔案實在太大了，根本不可能在 15 分鐘以內下載下來。我們甚至換過很多次 IP，不管怎麼樣他們都可以在 10 到 20 分鐘之內反應並把我們斷線。</p>
+
+    <p>以這個情況來說，我們發現他們對外部 IP 做登入的行為非常敏感。因為我們那時候還有別的內網據點，我們的做法就是登入該伺服器之後，用 SMB（Server Message Block）把檔案拋到另外一台內網的據點。果然他們 10 分鐘就把我們斷線了。隔天早上我們登入那個據點時，發現檔案成功丟過去了，而且那個據點本身的防禦沒有檔案伺服器那麼強，我們後來就在那個據點把檔案拖回來，自始至終他們都沒有發現。後來他們很驚訝地問我們到底是怎麼拖回去的，這讓我印象超級深刻。</p>
+
+    <p><strong>案例二：當成果被清除＋紀律限制下的應對</strong></p>
+
+    <p>另一個例子是我們在某個週四發現了一個重大的風險，再差一步就可以拿到非台灣區的帳號密碼並登入驗證。因此週末睡了個好覺，結果禮拜一上班打開電腦登入進去，結果顯示 Loading Fail。本來想說沒關係，因為看過他的網站架構，他的帳號密碼一定要放在 config file 裡面。我有 Webshell，我就去看 config file，而且他密碼加密儲存，我們解密解回來就知道他的新密碼。一切都想得非常美好，結果發現 Webshell 被刪掉了，過沒幾分鐘那個網站就被下架了。</p>
+
+    <p>這場演練因為是對抗模式，所以最後只能重新在外網再找一個外部的點。但礙於時間及成果考量，<strong>最後我們的做法是跟他們協調假定突破（Assumed Breach）的方式來繼續進行任務。</strong></p>
+  </li>
+</ol>
+
+<h2 id="工具技術">工具/技術</h2>
+
+<ol>
+  <li>
+    <p><strong>你們團隊最常用的工具組合大概是哪些，是否有自行開發工具或撰寫 exploit？</strong></p>
+
+    <p>簡單回答最常用的工具組合，可以包含 MacOS、Burp Suite、Kali 內建工具或是 Nmap 這類老牌工具。我們內部也有自己研發的工具和撰寫 exploit。</p>
+
+    <p>其實工具迭代的速度非常快，不管是掃 Subdomain 的工具還是掃目錄的工具。重<strong>點不在工具本身</strong>，而是你知道你現在的 TTPs（Tactics, Techniques, and Procedures）到底是什麼。你知道你現在要做什麼事情（例如掃目錄、做 Subdomain 探測、掃 Port 或是做橫向移動），然後再看這個時間點流行的工具是什麼。只要你知道你在做什麼，工具就只是一個幫你達成目的的載體。尤其現在 AI Vibe Coding 這麼快，<strong>更完善的工具也會迭代的很快</strong>。</p>
+
+    <p>我們也常在一些棘手的條件下自行開發工具，假如今天打下了一個 SQL Injection，然後可以做 XP_CMDSHELL。打進去之後，那台機器沒有外網連線，只能跑 cURL。在這種情況下要怎麼去串？這時就可以寫工具讓整個過程變得很舒服，例如讓它變成一個 SOCKS Proxy 或是 HTTP Proxy，背後其實就是幫你把這些東西塞在 XP_CMDSHELL 後面的 cURL 程式裡面。</p>
+  </li>
+  <li>
+    <p><strong>現在 AI 工具(像 ChatGPT 或 Claude)如何應用在紅隊工作流程？用在哪些環節比較有幫助？</strong></p>
+
+    <p><strong>用途一：因應冷門情境快速 Vibe Coding 工具</strong></p>
+
+    <p>遇到像 SQL Injection Tunnel 這類不常發生、但當下就是得用到的情境，過去必須自己花時間寫工具（可能要寫一天還得自建 Lab 實驗）。現在仍然要自己建  Lab，但寫 Code 可交給 AI、再由人工校對，可以大幅縮短時間，讓寫工具這件事輕鬆很多。</p>
+
+    <p><strong>用途二：快速理解冷門技術的運作方式</strong></p>
+
+    <p>攻擊過程常遇到日常難以自建環境的冷門技術，出現許多看不懂的名詞或不明的運作。透過與 AI，能在短時間內快速理解某系統的運作方式，例如：request 怎麼送、response 格式為何、會接受什麼樣的請求，藉此推進攻擊。</p>
+
+    <p><strong>用途三：協助尋找 Open Source 弱點</strong></p>
+
+    <p>若目標是 Open Source，<strong>因為是網路上可以公開取得的資訊</strong>，因次我們也可以利用 AI 來快速找出弱點。而這也是紅隊或是滲透<strong>目前的困境</strong>：基於保密義務，我們無法直接將客戶資產交給 AI 分析，<strong>但事實上這些資產可能也需要經過 AI 的試煉來評估風險</strong>。</p>
+  </li>
+  <li>
+    <p><strong>面對 EDR 或防毒軟體越來越強，現在繞過偵測的思路跟幾年前比起來有什麼不同？</strong></p>
+
+    <p><strong>從「硬拚技術」轉向「講求策略」</strong></p>
+
+    <p>跟幾年前最大的不同，是不再期待靠技術正面硬解。EDR／防毒是廠商經營多年的成熟商業軟體，紅隊也不是跳進網路就無所不能的魔術師。技術終究有極限（就像…「洪師傅不要跟他拼拳」）。當對方 10 分鐘抓到你、檔案就是抓不下來時，這已不是技術能繞過的問題，重點轉為在有限時間內找出更簡單、更不被注意的路徑：改用別的據點、聲東擊西，思考有沒有其他策略支撐整條攻擊鏈。</p>
+
+    <p><strong>思維突破盲點的實例</strong></p>
+
+    <p>有時客戶問紅隊是怎麼繞過的、為何<strong>藍隊</strong>完全沒有 Log，才發現是因為紅隊盤點到客戶資產中一台未被納管的重要伺服器（例如測試機連到了正式環境），從那裡突破。具備這種盤點與全局思維，反而能突破盲點。</p>
+  </li>
+</ol>
+
+<h2 id="團隊建立">團隊建立</h2>
+
+<ol>
+  <li>
+    <p><strong>一個紅隊團隊如何分工？</strong></p>
+
+    <p>Shaolin 在 2019 年有寫過一篇文章 一 <a href="https://devco.re/blog/2019/10/24/evolution-of-DEVCORE-red-team-and-the-next/">紅隊演練的進化與下一步</a>，裡面有詳細講到紅隊的分工。大致上紅隊會有幾個角色：包含做偵查（Recon）的角色、很會打漏洞引導初始進入（Initial Access）的角色、負責橫向移動（Lateral Movement）的角色，以及幫忙建立 C2（Command and Control）架構的角色。再來還有最重要的部分，就是負責與客戶溝通的角色。</p>
+
+    <p>這些是在<strong>紅隊裡角色的分類，不代表紅隊專家只會固定擔任一種角色</strong>。意思是說，<strong>我們每個人都同時有這些角色三、四種以上擅長的能力</strong>，並會在不同的紅隊專案中，根據專案的屬性或個人的專長來擔任不同的角色（例如在<strong>半導體</strong>專案負責 Recon，在<strong>金融</strong>專案負責做後滲透）。</p>
+  </li>
+  <li>
+    <p><strong>招募新人除了技術能力，還會重視哪些軟實力？</strong></p>
+
+    <p>在公司裡，大家都是篩選過後、經驗非常豐富且技術非常厲害的人。你要怎麼在大家都很厲害的情況下一起共事，這是一個滿重要的軟實力。你必須在實力都很高竿的團隊中，將你的價值提交給這個團隊，團隊也能夠去吸收你的價值，並更有效率地前往目標。</p>
+
+    <p>剛剛講到很多分工，既然有分工，更重要的就是分工之後要怎麼把結果結合。所以除了技術能力之外，我們還會特別注意他能不能很好地跟其他人合作，以及具備良好的溝通表達能力。做紅隊不是只有技術，因為客戶真正最在意的，是最後你怎麼 Deliver 給他（包含去簡報、回答他的問題、幫他解決他的困難等等）。</p>
+
+    <p>另外，我想要引用我們執行長 Allen 每次都會跟面試者、潛在面試者或學生說的一句話：「勇氣就是 DEVCORE 的第 0 關。」有超多應徵者會擔心自己是不是不能來面試，或者擔心一生只有一次投履歷的機會、沒上的話就再也沒有機會了。明明就沒有這樣的事情。我們真心想要跟喜歡資安技術的應徵者交流，如果你有疑問，不要問，投就對了。</p>
+
+    <p>如果從不同面向來看新人的職缺需求，第一個面向是「紅隊到底要什麼」，再來是「你的同事到底需要你什麼」。</p>
+
+    <p>紅隊要的就是如何達到目標。以學習技術來說，像是 Cross-Site Scripting（XSS）這些前端的東西，我們可能稍微不這麼重視；我們重視的是如果實打實地駭進一台主機拿到 Shell，要怎麼在複雜且只有特定 Port 或限制極嚴格的環境底下把東西撈出來。</p>
+
+    <p>我們的線上測驗其實主要就是在這種特殊的環境之下，考驗面試者怎麼想辦法去解決這個問題。另一個角度是「你的同事要什麼」。同事要的就是我信任你、知道你能 Cover 的 Coverage 很多。當你講述你看待一個目標的思路講得很具體（例如看到這個網站，你會看 A、B、C、D、E 到第十項這麼細），同事之間就會蠻放心把事情交給你。</p>
+
+    <p>至於要怎麼練習？現在 AI 很方便，你可以截一個 HTML 給他，問他這個網站看到了什麼東西、會往什麼方向走。我相信 AI 會吐出至少十個方向，這可以把它變成你的直覺與肌肉記憶。但我最在乎的，其實還是對資安的喜歡，對於本質很好奇並一直鑽下去，這個精神才是紅隊最需要的。</p>
+  </li>
+  <li>
+    <p><strong>新人加入團隊後，通常需要多久才能獨立主導演練專案？這個過程中最常卡住的點是什麼？</strong></p>
+
+    <p>我們的新人差不多會經歷 5 到 6 個完整的紅隊演練專案之後，就會開始嘗試去獨立主導一個演練專案。</p>
+
+    <p>這個過程中最常卡住的點，主要是「溝通表達的能力」。可能過去很多人非常專注在技術能力，沒有想過要怎麼把一個技術講給沒有那麼懂技術的人聽懂，這其實是需要練習的。另外就是當遇到技術瓶頸無法解決時，你要怎麼和團隊一起去想到解決問題的方法。</p>
+
+    <p>還有一個最常卡住的點是：假設你下一次主導的案子，客戶已經做過 2 到 3 次的紅隊演練了，這時候客戶的防禦通常會變得更好，絕對不會像之前一樣那麼好打。</p>
+
+    <p>當你是新人要主持一個防守很強的企業專案時，最卡的點往往是「你會忘記你不是一個人作戰，你是一個團隊在作戰」。大家是一起去面對這個案子，要如何去分工、確認過去的點確實都檢查過，並且發揮想像力去想到新的技巧來突破卡關的點，這才是關鍵。</p>
+  </li>
+</ol>
+
+<h2 id="職涯發展">職涯發展</h2>
+
+<ol>
+  <li>
+    <p><strong>證照(像 OSCP、CEH 等)在你們招募時的重要性？有哪幾張特別重要嗎？</strong></p>
+
+    <p>每一張證照分別傳遞出來的訊息都不一樣（有些是白箱分析、有些是網路滲透）。取得這些證照，其實就是間接在告訴我們你經歷過了哪些努力。但是我們也認識到證照不完全代表全部的實力，所以我們還會看很多證照以外的部分。</p>
+
+    <p>我們通常不會特別只看某一張證照。但是在面試的過程中，我們會去詢問你在考取這個證照時經歷過什麼樣的困難、你又是怎麼去克服的。我們可以從這個過程中去了解你是怎麼做學習。</p>
+
+    <p>考證照當然是一個目標，但額外你沿途看過的風景確實也很重要。像是我們<a href="https://drive.google.com/file/d/1qxSRLEHoLuHgq3SEewhU1lNgfYvOIzbl/view?usp=drive_link">上一場小聚的分享者 Nullday</a>，他就是瘋狂打 Hack The Box 來做準備。因為我們也是 Offsec 的代理商，所以我們很清楚這些證照需要走過哪些步驟、經歷過哪些瘋狂。</p>
+
+    <p>應徵者中蠻多人有取得 Offsec 系列的證照。另外想研究 AD 的人，可能會去考取像 Altered Security 的 CRTP；或者是像 Hack The Box 現在自己推出的證照，這些我們在面試過程中都有陸續聽到。OSCP 是大家都知道的，對我們來說，證照就像是個名牌，我們一看就知道你肯定經歷過哪些辛苦的路。</p>
+  </li>
+  <li>
+    <p><strong>非資訊相關背景，有自主參與資安社跟 AI 社，想往資安工程師、數據分析、或維運方面轉職，有什麼系統化的學習路徑？</strong></p>
+
+    <p>非資訊相關背景的話，其實資安這個領域用到的基礎知識真的很廣，很難直接畫一張地圖說你只要照著學就可以成為一個很好的資安工程師。</p>
+
+    <p>但是現在真的已經有蠻多資源。包含攻擊型有 Hack The Box，防禦型也有藍隊版的 Hack The Box（例如 Let’s Defend 這一類的管道）。但是很重要的一點，是原本資工系會學到的、跟資訊領域最基礎相關的知識，才是支撐你在這個領域走得更遠的核心。包含網路的基本運作原理、作業系統（OS）怎麼操作與其運作原理等。</p>
+
+    <p>會詢問「系統化」這件事情，代表你有意識到自己目前學的東西可能沒有走在系統架構之中。但每個人的系統化確實不一樣。當你真的很想學某項東西時，證照的 Material（教材）會是一個不錯的路線。因為你可以從素材中從 0 到 100 這樣走過去，這對某些人來說就是一個蠻系統化的教材。適合 A 的路徑不一定最適合 B，推薦大家都可以打造適合自己的系統。</p>
+  </li>
+  <li>
+    <p><strong>公司目前對紅隊新人的職缺需求是什麼樣子?有沒有適合新鮮人或轉職者的職位?</strong></p>
+
+    <p>現在紅隊演練的概念大家都知道了，代表很多公司企業都開始在做紅隊演練，所以我們當然會希望新人具備所謂的「即戰力」。我們希望應徵者具備系統化的知識，去學過攻擊是怎麼樣發生、漏洞是怎麼樣產生、以及 AD（Active Directory）有哪些攻擊手法，並且對技術本身是熱愛的。</p>
+
+    <p>目前我們最一開始的進入點，應該是「滲透測試工程師」這個職缺。這個職缺甚至是為了一些剛畢業的人產出的。因為我們知道，一般在學校的人可能不會有機會接觸或練習到 Windows AD 的環境。現在網路上的資源雖然比較多，但我們還是希望那些會找漏洞、會打 Web 站點的人可以先進來。</p>
+
+    <p>大家進來擔任滲透測試工程師後，可以一邊執行業務、一邊接受紅隊演練專家技能的訓練，我們希望可以在 2 年之內培養轉職到紅隊演練專家。如果你是剛入手的人，可以先去 Burp Suite 的 Web Security Academy 網站裡面去學習一些怎麼找漏洞的知識，然後來投遞我們的滲透測試工程師職缺。</p>
+  </li>
+</ol>
+
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+
+        <!-- 相關文章 -->
+        <section class="recommand articles-list">
+            <div class="container">
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/科普文章">科普文章</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/Red Team/">#Red Team</a> <a href="/blog/tag/AMA/">#AMA</a> <a href="/blog/tag/devmeet/">#devmeet</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2026/07/30/dev-meet-red-team-ama-v2026-06-17/">/dev/meet 資安小聚 v2026.06.17 Red Team AMA</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2026-07-30</span>
+                        <p class="line-litmit-3">在 /dev/meet 資安小聚 v2026.06.17 上，我們首次嘗試 Red Team AMA 形式，讓大家一次拋出心中最好奇的疑問。當天由 DEVCORE 紅隊主管 Alan、資深紅隊演練專家 Mico 親自解答，內容涵蓋紅隊演練的核心概念、方法論，一路談到職涯發展。
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/學生相關計劃">學生相關計劃</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> <a href="/blog/tag/徵才/">#徵才</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2026/07/08/10th-internship-program-recruit/">DEVCORE 2026 第十屆實習生計畫</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2026-07-08</span>
+                        <p class="line-litmit-3">DEVCORE 第十屆實習生計畫將於 2026 年 9 月正式登場，即日起開放報名！歡迎詳閱以下資訊並填寫報名表單，報名至 2026/07/23 23:59 截止。
+                        </p>
+                    </div>
+                </article>
+              
+                <!-- 相關文章 Item -->
+                <article class="article">
+                    <div class="content">
+                        <a class="category" href="/blog/category/學生相關計劃">學生相關計劃</a>
+                        <span class="tag">
+    
+                          <a href="/blog/tag/公告/">#公告</a> <a href="/blog/tag/徵才/">#徵才</a> 
+                        </span>
+                        <h2>
+                            <a href="/blog/2025/12/30/9th-internship-program-recruit/">DEVCORE 2026 第九屆實習生計畫</a> 
+                        </h2>
+                    
+                    
+                        <span class="date">2025-12-30</span>
+                        <p class="line-litmit-3">DEVCORE 第九屆實習生計畫將於 2026 年 3 月正式登場，即日起開放報名！歡迎詳閱以下資訊並填寫報名表單，報名至 2026/01/18 23:59 截止。
+                        </p>
+                    </div>
+                </article>
+              
+
+            </div>
+        </section>
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">服務</h6>
+        <ul>
+            <li><a href="/services/red-team/">紅隊演練</a></li>
+            <li><a href="/services/opsr/">主動式產品安全研究</a></li>
+            <li><a href="/services/penetration-test/">滲透測試</a></li>
+            <li><a href="/services/security-consulting/">資安顧問服務</a></li>
+            <li><a href="/services/security-training/">資安教育訓練</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">研究</h6>
+        <ul>
+            <li><a href="/research/overview/">總覽概要</a></li>
+            <li><a href="/research/awards/">競賽與獎項</a></li>
+            <li><a href="/research/bug-bounty/">企業漏洞回報</a></li>
+            <li><a href="/research/talks/">國際研討會</a></li>
+            <li><a href="/research/cve/">CVE 漏洞列表</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">公司</h6>
+        <ul>
+            <li><a href="/company/about/">公司簡介</a></li>
+            <li><a href="/company/our-team/">團隊成員</a></li>
+            <li><a href="/company/history/">成就與沿革</a></li>
+            <li><a href="/company/csr/">企業社會責任</a></li>
+            <li><a href="/company/jobs/">工作機會</a></li>
+            <li><a href="/contact/">聯絡我們</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">新聞</h6>
+        <ul>
+            <li><a href="/blog/">BLOG</a></li>
+            <li><a href="/media-kit/">媒體素材下載</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2026 DEVCORE 戴夫寇爾股份有限公司. <b class="line-block">All rights reserved.</b></span>
+            <span><a href="/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+

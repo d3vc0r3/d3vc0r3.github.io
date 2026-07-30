@@ -4,13 +4,230 @@
  <title>DEVCORE 戴夫寇爾</title>
  <link href="https://devco.re/" rel="self"/>
  <link href="https://devco.re"/>
- <updated>2026-07-30T08:05:27+00:00</updated>
+ <updated>2026-07-30T10:20:08+00:00</updated>
  <id>https://devco.re</id>
  <author>
    <name></name>
    <email></email>
  </author>
 
+ 
+ <entry>
+   <title>/dev/meet 資安小聚 v2026.06.17 Red Team AMA</title>
+   <link href="https://devco.re/blog/2026/07/30/dev-meet-red-team-ama-v2026-06-17/"/>
+   <updated>2026-07-30T00:00:00+00:00</updated>
+   <id>https://devco.re/blog/2026/07/30/dev-meet-red-team-ama-v2026-06-17</id>
+   <content type="html">&lt;p&gt;在 &lt;a href=&quot;https://devcore.kktix.cc/events/meet260617&quot;&gt;/dev/meet 資安小聚 v2026.06.17&lt;/a&gt;上，我們首次嘗試 Red Team AMA 形式，事前公開徵集提問，讓大家一次拋出心中最好奇的疑問。&lt;/p&gt;
+
+&lt;p&gt;當天由 DEVCORE 紅隊主管 Alan、資深紅隊演練專家 Mico 親自解答，內容涵蓋紅隊演練的核心概念、方法論，一路談到職涯發展。這篇文章整理了當天最具代表性的問答，帶大家了解紅隊演練究竟是什麼、怎麼進行，以及想踏入這個領域該做哪些準備。&lt;/p&gt;
+
+&lt;h2 id=&quot;方法論--流程&quot;&gt;方法論 / 流程&lt;/h2&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;演練過程若發現一個漏洞但繼續深入可能會影響到客戶正式環境，如何權衡要不要繼續？如果某個攻擊路徑卡關很久，如何判斷要繼續嘗試還是換路徑？&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;權衡的核心在溝通&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;關鍵原則是「紅隊是要&lt;strong&gt;降低&lt;/strong&gt;風險，而不是增加風險。」 如果明知有風險仍然執行，即使達標，一旦造成客戶負擔就不是好結果。&lt;/p&gt;
+
+    &lt;p&gt;因此，紅隊會向客戶清楚傳達四件事：繼續攻擊的風險、潛在成果、客戶能否接受相應風險以及是否有替代情境（如測試環境、備援與復原機制）。雙方確認後，才會繼續進行驗證。&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;攻擊路徑卡關的判斷&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;紅隊演練是在特定時間內完成任務，因此會牽涉到資源競爭，資源包含人力、已取得的帳密、已拿下的 Shell 等。在綜合評估成員時間與資源後：&lt;/p&gt;
+
+    &lt;ul&gt;
+      &lt;li&gt;如果剩餘時間不夠：嘗試更換攻擊手法&lt;/li&gt;
+      &lt;li&gt;但更常見的情況是&lt;strong&gt;已無其他路徑&lt;/strong&gt;，只能在現有路徑繼續努力&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;假設已經滲透到內網，mDNS 會是內網機器 IP 情報搜集的一個好方法嗎？實戰中是否會用到 mDNS 呢？如果會用到，有什麼專門分析 mDNS 流量的工具？&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;這題的背景，應該跟&lt;a href=&quot;https://conf.devco.re/2024/keynote/DEVCORE-CONFERENCE-2024-linwz-Red-Team-Reborn-Discovering-new-attack-surfaces-in-Red-Team-operations.pdf&quot;&gt;前年 DEVCORE CONFERENCE，由 Linwz 研究的漏洞有關&lt;/a&gt;，當時大量提及 mDNS 技術。&lt;/p&gt;
+
+    &lt;p&gt;mDNS 確實是情報收集方法之一。秉持「偵查之所在，滲透之所在」，取得越多資源、視野越全知越好（能清楚知道哪一網段可打、哪一網段不可打）。我們確實有自行撰寫專門分析 mDNS 流量的工具，但以紅隊實際攻擊情境而言&lt;strong&gt;較少用到&lt;/strong&gt;。原因是：&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;mDNS（Multicast DNS）的適用場景主要集中在沒有集中式 DNS 伺服器的小型或本地區域網路（LAN）中，&lt;/strong&gt; 例如 IoT 設備或 OA 區 &lt;em&gt;(Office Automation)&lt;/em&gt; 設備上。但紅隊的攻擊目標多坐落於 Server Farm 環境。&lt;/p&gt;
+
+    &lt;p&gt;而 OA 區，即使知道某台電腦是誰的，下一步也較難推進。因為 Client 端電腦管控通常較嚴格，不允許直接進行 Client 端攻擊（除非有人自行開了 8080 Port 之類，但可遇不可求）。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;如何有效管理、記錄各種工具指令？&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;這是一個蠻好的問題。有蠻多人在實際開始做紅隊之前，可能不明白這件事情的重要性。大家可能會覺得紅隊就是靠駭客技術，反正唯一的目標就是把機器拿下來。但其實紅隊真正從開始做到結束都有專門的紀錄。過程中超多客戶會來詢問說：「你們有沒有在什麼時間、什麼日期的幾點幾分做了什麼事情？」這時候如果你沒有做紀錄，其實會發現自己常常回答不出來，客戶可能就會覺得太不專業了，連自己做過什麼都不知道。&lt;/p&gt;
+
+    &lt;p&gt;對我們 DEVCORE 來說，要把所有的攻擊資料全部收集起來，確實是一件會影響到作戰效率的事情。所以我們盡可能把很多可以自動化的東西都做自動化。我們內部開發了一個專門記錄的平台，主要會透過這個內部平台自動記錄一半的資料，例如一些 Web Request 可以在你做檢測的時候，自動把流量記錄到內部平台。&lt;/p&gt;
+
+    &lt;p&gt;而另一部分則要非常仰賴同仁的紀律。包含每次在做特定類型的檢測時，我們會要求留下包含截圖、Request 或是相關說明的證據。如果客戶真的來詢問上述的問題，我們的 TPM 團隊作為主要回應的窗口，就可以在第一時間透過內部的紀錄系統，馬上查到檢測成員在某個時間點確實有做這樣子的操作。&lt;/p&gt;
+
+    &lt;p&gt;客戶其實會在意這個，是因為他們會擔心剛剛發現的事件不是紅隊演練，而是真實的資安事件。如果我們可以在第一時間協助他們辨別，對提升客戶的信任感有很大的幫助。所以紀錄對我們來說是非常重要的事情，就像是盡可能留下 Raw Data，然後手動去把一些重要的東西打上標記，用手動標記去輔助你調閱 Raw Data 的紀錄。這就是我們覺得蠻有效的管理紀錄方法：一部分的自動化，搭配檢測人員的紀律。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;紅藍協作&quot;&gt;紅藍協作&lt;/h2&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;如果演練過程中藍隊偵測到紅隊的行動並做出反應，紅隊會繼續原計畫，還是調整策略應對藍隊的防禦？&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;先說結論，取決於&lt;strong&gt;客戶怎麼點菜&lt;/strong&gt;。&lt;/p&gt;
+
+    &lt;p&gt;核心還是要看&lt;strong&gt;客戶對於紅隊結果的期望是什麼&lt;/strong&gt;，通常會有兩種典型情境：&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;對抗驗證防禦機制型&lt;/strong&gt;：客戶想充分驗證藍隊能力的極限，要求紅隊全力進攻、也不開放阻擋機制。此時紅隊會嘗試繞過防禦機制，以及人工與自動化的偵測機制。&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;合作最大化演練成果型&lt;/strong&gt;：如果客戶更在意當防禦機制失效，是否有其他弱點以及藍隊如何因應這樣的風險，則會採用這個模式。通常客戶在確認其藍隊已經能偵測到部分行為後，接下來會持續監測但&lt;strong&gt;不做阻擋&lt;/strong&gt;，讓紅隊繼續進行後續的漏洞驗證或橫向移動，進行更深入的模擬。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;藍隊背景的人轉做紅隊，會有哪些優勢跟挑戰？&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;優勢一：理解防禦機制、更有機會判斷與繞過特定機制：&lt;/strong&gt; 藍隊出身轉紅隊時，較能想像攻擊行為為何被阻擋、Webshell 或 Payload 為何被偵測。可從網路被切斷等徵兆判斷是 WAF (Web Application Firewall) 還是其他防禦設備在作動，進而想出繞過該機制的方法，或快速判斷無法繞過，做出對應策略。&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;優勢二：熟悉攻擊樣態：&lt;/strong&gt; 藍隊工作會花大量時間檢視各種 Log 與 APT (Advanced Persistent Threat) 報告，在轉成紅隊後，更容易聯想到可用的攻擊方式。&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;優勢三：能用藍隊的語言交付價值：&lt;/strong&gt;藍隊 SOC (Security Operations Center) 有自己的共通語言（如直接用 Event ID「Event 4624」溝通）。藍隊背景轉紅隊後，更清楚&lt;strong&gt;藍隊需要什麼&lt;/strong&gt;，能有效地將紅隊產出的價值用藍隊聽得懂的語言交付給客戶。&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;IT 背景的 Domain Knowledge 同樣有幫助：&lt;/strong&gt; 雖然  IT 管理人員不直接歸類為藍隊，熟悉公司資產的管理方式、架構分層，以及 Proxy 用 PAC 管理規則等。這些 Domain Knowledge 對進攻非常有幫助，能站在防禦方視角進攻，加速學習流程。&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;對應挑戰&lt;/strong&gt; ：藍隊日常偏向「用眼睛看」，看 Log、看報告、看別人的攻擊長什麼樣。而紅隊的挑戰是，&lt;strong&gt;必須把想像的東西轉化成可用的攻擊手法，因此這部分很仰賴時間刻意練習來補足，例如考攻擊型證照、打靶機或 Hack The Box，把「認得出來」磨成「打得出來」。&lt;/strong&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;在某次演練，有沒有遇過藍隊的防禦手法或工具讓你們卡關，甚至改變了原本的攻擊路線？可以分享一個印象深刻的例子嗎？&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;案例一、對抗到底的客戶：利用內外網監控強度有別改變攻擊路線&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;他們的防禦手法蠻及時的，可能在半小時內就偵測到我們的一些攻擊行為。他們就是屬於想要對抗到底的客戶，不做任何的白名單。後來我們猜測不可能真的 24/7 都這麼厲害吧？於是我們挑了一個月黑風高的夜晚，跟窗口說我們想要驗證半夜是不是真的 24/7 這麼兇猛。客戶當然也很興奮地答應了。&lt;/p&gt;
+
+    &lt;p&gt;我們本來想說半夜登入不可能被發現了，結果他們真的蠻厲害的，我們登入伺服器大概 15 分鐘內他們就會發現。因為這個攻擊行為是我們想要登入某一個伺服器把一個 5大約 6 GB 的檔案拉下來，當作這次紅隊演練的成果。但是檔案實在太大了，根本不可能在 15 分鐘以內下載下來。我們甚至換過很多次 IP，不管怎麼樣他們都可以在 10 到 20 分鐘之內反應並把我們斷線。&lt;/p&gt;
+
+    &lt;p&gt;以這個情況來說，我們發現他們對外部 IP 做登入的行為非常敏感。因為我們那時候還有別的內網據點，我們的做法就是登入該伺服器之後，用 SMB（Server Message Block）把檔案拋到另外一台內網的據點。果然他們 10 分鐘就把我們斷線了。隔天早上我們登入那個據點時，發現檔案成功丟過去了，而且那個據點本身的防禦沒有檔案伺服器那麼強，我們後來就在那個據點把檔案拖回來，自始至終他們都沒有發現。後來他們很驚訝地問我們到底是怎麼拖回去的，這讓我印象超級深刻。&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;案例二：當成果被清除＋紀律限制下的應對&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;另一個例子是我們在某個週四發現了一個重大的風險，再差一步就可以拿到非台灣區的帳號密碼並登入驗證。因此週末睡了個好覺，結果禮拜一上班打開電腦登入進去，結果顯示 Loading Fail。本來想說沒關係，因為看過他的網站架構，他的帳號密碼一定要放在 config file 裡面。我有 Webshell，我就去看 config file，而且他密碼加密儲存，我們解密解回來就知道他的新密碼。一切都想得非常美好，結果發現 Webshell 被刪掉了，過沒幾分鐘那個網站就被下架了。&lt;/p&gt;
+
+    &lt;p&gt;這場演練因為是對抗模式，所以最後只能重新在外網再找一個外部的點。但礙於時間及成果考量，&lt;strong&gt;最後我們的做法是跟他們協調假定突破（Assumed Breach）的方式來繼續進行任務。&lt;/strong&gt;&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;工具技術&quot;&gt;工具/技術&lt;/h2&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;你們團隊最常用的工具組合大概是哪些，是否有自行開發工具或撰寫 exploit？&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;簡單回答最常用的工具組合，可以包含 MacOS、Burp Suite、Kali 內建工具或是 Nmap 這類老牌工具。我們內部也有自己研發的工具和撰寫 exploit。&lt;/p&gt;
+
+    &lt;p&gt;其實工具迭代的速度非常快，不管是掃 Subdomain 的工具還是掃目錄的工具。重&lt;strong&gt;點不在工具本身&lt;/strong&gt;，而是你知道你現在的 TTPs（Tactics, Techniques, and Procedures）到底是什麼。你知道你現在要做什麼事情（例如掃目錄、做 Subdomain 探測、掃 Port 或是做橫向移動），然後再看這個時間點流行的工具是什麼。只要你知道你在做什麼，工具就只是一個幫你達成目的的載體。尤其現在 AI Vibe Coding 這麼快，&lt;strong&gt;更完善的工具也會迭代的很快&lt;/strong&gt;。&lt;/p&gt;
+
+    &lt;p&gt;我們也常在一些棘手的條件下自行開發工具，假如今天打下了一個 SQL Injection，然後可以做 XP_CMDSHELL。打進去之後，那台機器沒有外網連線，只能跑 cURL。在這種情況下要怎麼去串？這時就可以寫工具讓整個過程變得很舒服，例如讓它變成一個 SOCKS Proxy 或是 HTTP Proxy，背後其實就是幫你把這些東西塞在 XP_CMDSHELL 後面的 cURL 程式裡面。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;現在 AI 工具(像 ChatGPT 或 Claude)如何應用在紅隊工作流程？用在哪些環節比較有幫助？&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;用途一：因應冷門情境快速 Vibe Coding 工具&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;遇到像 SQL Injection Tunnel 這類不常發生、但當下就是得用到的情境，過去必須自己花時間寫工具（可能要寫一天還得自建 Lab 實驗）。現在仍然要自己建  Lab，但寫 Code 可交給 AI、再由人工校對，可以大幅縮短時間，讓寫工具這件事輕鬆很多。&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;用途二：快速理解冷門技術的運作方式&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;攻擊過程常遇到日常難以自建環境的冷門技術，出現許多看不懂的名詞或不明的運作。透過與 AI，能在短時間內快速理解某系統的運作方式，例如：request 怎麼送、response 格式為何、會接受什麼樣的請求，藉此推進攻擊。&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;用途三：協助尋找 Open Source 弱點&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;若目標是 Open Source，&lt;strong&gt;因為是網路上可以公開取得的資訊&lt;/strong&gt;，因次我們也可以利用 AI 來快速找出弱點。而這也是紅隊或是滲透&lt;strong&gt;目前的困境&lt;/strong&gt;：基於保密義務，我們無法直接將客戶資產交給 AI 分析，&lt;strong&gt;但事實上這些資產可能也需要經過 AI 的試煉來評估風險&lt;/strong&gt;。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;面對 EDR 或防毒軟體越來越強，現在繞過偵測的思路跟幾年前比起來有什麼不同？&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;從「硬拚技術」轉向「講求策略」&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;跟幾年前最大的不同，是不再期待靠技術正面硬解。EDR／防毒是廠商經營多年的成熟商業軟體，紅隊也不是跳進網路就無所不能的魔術師。技術終究有極限（就像…「洪師傅不要跟他拼拳」）。當對方 10 分鐘抓到你、檔案就是抓不下來時，這已不是技術能繞過的問題，重點轉為在有限時間內找出更簡單、更不被注意的路徑：改用別的據點、聲東擊西，思考有沒有其他策略支撐整條攻擊鏈。&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;思維突破盲點的實例&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;有時客戶問紅隊是怎麼繞過的、為何&lt;strong&gt;藍隊&lt;/strong&gt;完全沒有 Log，才發現是因為紅隊盤點到客戶資產中一台未被納管的重要伺服器（例如測試機連到了正式環境），從那裡突破。具備這種盤點與全局思維，反而能突破盲點。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;團隊建立&quot;&gt;團隊建立&lt;/h2&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;一個紅隊團隊如何分工？&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;Shaolin 在 2019 年有寫過一篇文章 一 &lt;a href=&quot;https://devco.re/blog/2019/10/24/evolution-of-DEVCORE-red-team-and-the-next/&quot;&gt;紅隊演練的進化與下一步&lt;/a&gt;，裡面有詳細講到紅隊的分工。大致上紅隊會有幾個角色：包含做偵查（Recon）的角色、很會打漏洞引導初始進入（Initial Access）的角色、負責橫向移動（Lateral Movement）的角色，以及幫忙建立 C2（Command and Control）架構的角色。再來還有最重要的部分，就是負責與客戶溝通的角色。&lt;/p&gt;
+
+    &lt;p&gt;這些是在&lt;strong&gt;紅隊裡角色的分類，不代表紅隊專家只會固定擔任一種角色&lt;/strong&gt;。意思是說，&lt;strong&gt;我們每個人都同時有這些角色三、四種以上擅長的能力&lt;/strong&gt;，並會在不同的紅隊專案中，根據專案的屬性或個人的專長來擔任不同的角色（例如在&lt;strong&gt;半導體&lt;/strong&gt;專案負責 Recon，在&lt;strong&gt;金融&lt;/strong&gt;專案負責做後滲透）。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;招募新人除了技術能力，還會重視哪些軟實力？&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;在公司裡，大家都是篩選過後、經驗非常豐富且技術非常厲害的人。你要怎麼在大家都很厲害的情況下一起共事，這是一個滿重要的軟實力。你必須在實力都很高竿的團隊中，將你的價值提交給這個團隊，團隊也能夠去吸收你的價值，並更有效率地前往目標。&lt;/p&gt;
+
+    &lt;p&gt;剛剛講到很多分工，既然有分工，更重要的就是分工之後要怎麼把結果結合。所以除了技術能力之外，我們還會特別注意他能不能很好地跟其他人合作，以及具備良好的溝通表達能力。做紅隊不是只有技術，因為客戶真正最在意的，是最後你怎麼 Deliver 給他（包含去簡報、回答他的問題、幫他解決他的困難等等）。&lt;/p&gt;
+
+    &lt;p&gt;另外，我想要引用我們執行長 Allen 每次都會跟面試者、潛在面試者或學生說的一句話：「勇氣就是 DEVCORE 的第 0 關。」有超多應徵者會擔心自己是不是不能來面試，或者擔心一生只有一次投履歷的機會、沒上的話就再也沒有機會了。明明就沒有這樣的事情。我們真心想要跟喜歡資安技術的應徵者交流，如果你有疑問，不要問，投就對了。&lt;/p&gt;
+
+    &lt;p&gt;如果從不同面向來看新人的職缺需求，第一個面向是「紅隊到底要什麼」，再來是「你的同事到底需要你什麼」。&lt;/p&gt;
+
+    &lt;p&gt;紅隊要的就是如何達到目標。以學習技術來說，像是 Cross-Site Scripting（XSS）這些前端的東西，我們可能稍微不這麼重視；我們重視的是如果實打實地駭進一台主機拿到 Shell，要怎麼在複雜且只有特定 Port 或限制極嚴格的環境底下把東西撈出來。&lt;/p&gt;
+
+    &lt;p&gt;我們的線上測驗其實主要就是在這種特殊的環境之下，考驗面試者怎麼想辦法去解決這個問題。另一個角度是「你的同事要什麼」。同事要的就是我信任你、知道你能 Cover 的 Coverage 很多。當你講述你看待一個目標的思路講得很具體（例如看到這個網站，你會看 A、B、C、D、E 到第十項這麼細），同事之間就會蠻放心把事情交給你。&lt;/p&gt;
+
+    &lt;p&gt;至於要怎麼練習？現在 AI 很方便，你可以截一個 HTML 給他，問他這個網站看到了什麼東西、會往什麼方向走。我相信 AI 會吐出至少十個方向，這可以把它變成你的直覺與肌肉記憶。但我最在乎的，其實還是對資安的喜歡，對於本質很好奇並一直鑽下去，這個精神才是紅隊最需要的。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;新人加入團隊後，通常需要多久才能獨立主導演練專案？這個過程中最常卡住的點是什麼？&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;我們的新人差不多會經歷 5 到 6 個完整的紅隊演練專案之後，就會開始嘗試去獨立主導一個演練專案。&lt;/p&gt;
+
+    &lt;p&gt;這個過程中最常卡住的點，主要是「溝通表達的能力」。可能過去很多人非常專注在技術能力，沒有想過要怎麼把一個技術講給沒有那麼懂技術的人聽懂，這其實是需要練習的。另外就是當遇到技術瓶頸無法解決時，你要怎麼和團隊一起去想到解決問題的方法。&lt;/p&gt;
+
+    &lt;p&gt;還有一個最常卡住的點是：假設你下一次主導的案子，客戶已經做過 2 到 3 次的紅隊演練了，這時候客戶的防禦通常會變得更好，絕對不會像之前一樣那麼好打。&lt;/p&gt;
+
+    &lt;p&gt;當你是新人要主持一個防守很強的企業專案時，最卡的點往往是「你會忘記你不是一個人作戰，你是一個團隊在作戰」。大家是一起去面對這個案子，要如何去分工、確認過去的點確實都檢查過，並且發揮想像力去想到新的技巧來突破卡關的點，這才是關鍵。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;職涯發展&quot;&gt;職涯發展&lt;/h2&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;證照(像 OSCP、CEH 等)在你們招募時的重要性？有哪幾張特別重要嗎？&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;每一張證照分別傳遞出來的訊息都不一樣（有些是白箱分析、有些是網路滲透）。取得這些證照，其實就是間接在告訴我們你經歷過了哪些努力。但是我們也認識到證照不完全代表全部的實力，所以我們還會看很多證照以外的部分。&lt;/p&gt;
+
+    &lt;p&gt;我們通常不會特別只看某一張證照。但是在面試的過程中，我們會去詢問你在考取這個證照時經歷過什麼樣的困難、你又是怎麼去克服的。我們可以從這個過程中去了解你是怎麼做學習。&lt;/p&gt;
+
+    &lt;p&gt;考證照當然是一個目標，但額外你沿途看過的風景確實也很重要。像是我們&lt;a href=&quot;https://drive.google.com/file/d/1qxSRLEHoLuHgq3SEewhU1lNgfYvOIzbl/view?usp=drive_link&quot;&gt;上一場小聚的分享者 Nullday&lt;/a&gt;，他就是瘋狂打 Hack The Box 來做準備。因為我們也是 Offsec 的代理商，所以我們很清楚這些證照需要走過哪些步驟、經歷過哪些瘋狂。&lt;/p&gt;
+
+    &lt;p&gt;應徵者中蠻多人有取得 Offsec 系列的證照。另外想研究 AD 的人，可能會去考取像 Altered Security 的 CRTP；或者是像 Hack The Box 現在自己推出的證照，這些我們在面試過程中都有陸續聽到。OSCP 是大家都知道的，對我們來說，證照就像是個名牌，我們一看就知道你肯定經歷過哪些辛苦的路。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;非資訊相關背景，有自主參與資安社跟 AI 社，想往資安工程師、數據分析、或維運方面轉職，有什麼系統化的學習路徑？&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;非資訊相關背景的話，其實資安這個領域用到的基礎知識真的很廣，很難直接畫一張地圖說你只要照著學就可以成為一個很好的資安工程師。&lt;/p&gt;
+
+    &lt;p&gt;但是現在真的已經有蠻多資源。包含攻擊型有 Hack The Box，防禦型也有藍隊版的 Hack The Box（例如 Let’s Defend 這一類的管道）。但是很重要的一點，是原本資工系會學到的、跟資訊領域最基礎相關的知識，才是支撐你在這個領域走得更遠的核心。包含網路的基本運作原理、作業系統（OS）怎麼操作與其運作原理等。&lt;/p&gt;
+
+    &lt;p&gt;會詢問「系統化」這件事情，代表你有意識到自己目前學的東西可能沒有走在系統架構之中。但每個人的系統化確實不一樣。當你真的很想學某項東西時，證照的 Material（教材）會是一個不錯的路線。因為你可以從素材中從 0 到 100 這樣走過去，這對某些人來說就是一個蠻系統化的教材。適合 A 的路徑不一定最適合 B，推薦大家都可以打造適合自己的系統。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;公司目前對紅隊新人的職缺需求是什麼樣子?有沒有適合新鮮人或轉職者的職位?&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;現在紅隊演練的概念大家都知道了，代表很多公司企業都開始在做紅隊演練，所以我們當然會希望新人具備所謂的「即戰力」。我們希望應徵者具備系統化的知識，去學過攻擊是怎麼樣發生、漏洞是怎麼樣產生、以及 AD（Active Directory）有哪些攻擊手法，並且對技術本身是熱愛的。&lt;/p&gt;
+
+    &lt;p&gt;目前我們最一開始的進入點，應該是「滲透測試工程師」這個職缺。這個職缺甚至是為了一些剛畢業的人產出的。因為我們知道，一般在學校的人可能不會有機會接觸或練習到 Windows AD 的環境。現在網路上的資源雖然比較多，但我們還是希望那些會找漏洞、會打 Web 站點的人可以先進來。&lt;/p&gt;
+
+    &lt;p&gt;大家進來擔任滲透測試工程師後，可以一邊執行業務、一邊接受紅隊演練專家技能的訓練，我們希望可以在 2 年之內培養轉職到紅隊演練專家。如果你是剛入手的人，可以先去 Burp Suite 的 Web Security Academy 網站裡面去學習一些怎麼找漏洞的知識，然後來投遞我們的滲透測試工程師職缺。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+</content>
+ </entry>
  
  <entry>
    <title>DEVCORE 2026 第十屆實習生計畫</title>

